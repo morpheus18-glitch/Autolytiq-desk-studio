@@ -4,7 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import DealsList from "@/pages/deals-list";
-import DealWorksheet from "@/pages/deal-worksheet";
+import DealWorksheetV2 from "@/pages/deal-worksheet-v2";
 import NewDeal from "@/pages/new-deal";
 import NotFound from "@/pages/not-found";
 
@@ -14,7 +14,7 @@ function Router() {
       <Route path="/" component={() => <Redirect to="/deals" />} />
       <Route path="/deals" component={DealsList} />
       <Route path="/deals/new" component={NewDeal} />
-      <Route path="/deals/:id" component={DealWorksheet} />
+      <Route path="/deals/:id" component={DealWorksheetV2} />
       <Route component={NotFound} />
     </Switch>
   );
