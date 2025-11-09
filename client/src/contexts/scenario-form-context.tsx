@@ -59,18 +59,29 @@ export function ScenarioFormProvider({
   const [dirtyFields, setDirtyFields] = useState<Set<string>>(new Set());
   const { setAutoSaveStatus } = useStore();
   const saveTimerRef = useRef<NodeJS.Timeout>();
+  const scenarioIdRef = useRef<string>(initialScenario.id);
   
-  // Sync with prop changes and cancel pending saves
+  // Sync with server updates intelligently
   useEffect(() => {
-    // Cancel any pending save when scenario changes
-    if (saveTimerRef.current) {
-      clearTimeout(saveTimerRef.current);
-    }
+    const isScenarioSwitch = initialScenario.id !== scenarioIdRef.current;
+    const hasNoEdits = dirtyFields.size === 0;
     
-    setScenario(initialScenario);
-    setDirtyFields(new Set());
-    setAutoSaveStatus('idle');
-  }, [initialScenario, setAutoSaveStatus]);
+    if (isScenarioSwitch) {
+      // True scenario switch: cancel pending save, reset everything
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+      
+      setScenario(initialScenario);
+      setDirtyFields(new Set());
+      setAutoSaveStatus('idle');
+      scenarioIdRef.current = initialScenario.id;
+    } else if (hasNoEdits) {
+      // Same scenario, no edits: adopt server updates (e.g., after auto-save)
+      setScenario(initialScenario);
+    }
+    // Same scenario WITH edits: preserve user input, ignore server refetch
+  }, [initialScenario, dirtyFields, setAutoSaveStatus]);
   
   // Auto-save mutation using existing infrastructure
   const { mutate: saveScenario, isPending: isSaving } = useMutation({

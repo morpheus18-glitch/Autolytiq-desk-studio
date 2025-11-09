@@ -14,6 +14,7 @@ import { ScenarioFormProvider, useScenarioForm } from '@/contexts/scenario-form-
 import { PricingForm } from '@/components/forms/pricing-form';
 import { TradeForm } from '@/components/forms/trade-form';
 import { FinanceLeaseForm } from '@/components/forms/finance-lease-form';
+import { FIGrid } from '@/components/forms/fi-grid';
 
 const DEAL_STATE_COLORS: Record<string, string> = {
   DRAFT: 'bg-muted text-muted-foreground',
@@ -225,6 +226,10 @@ export default function DealWorksheetV2() {
           <DeskSection title="Finance Terms" icon={Calculator} defaultOpen>
             <FinanceLeaseForm />
           </DeskSection>
+          
+          <DeskSection title="F&I Products" icon={Receipt}>
+            <FIGrid />
+          </DeskSection>
         </div>
       
         {/* Desktop: Side-by-Side Sections */}
@@ -310,6 +315,11 @@ export default function DealWorksheetV2() {
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Finance Terms</h3>
                 <FinanceLeaseForm />
+              </div>
+              
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">F&I Products</h3>
+                <FIGrid />
               </div>
             </div>
           </div>
