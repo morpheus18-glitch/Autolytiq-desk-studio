@@ -91,19 +91,27 @@ export const taxJurisdictions = pgTable("tax_jurisdictions", {
   state: text("state").notNull(),
   county: text("county"),
   city: text("city"),
+  township: text("township"),
+  specialDistrict: text("special_district"),
+  zipCode: text("zip_code"),
   stateTaxRate: decimal("state_tax_rate", { precision: 6, scale: 4 }).notNull(),
   countyTaxRate: decimal("county_tax_rate", { precision: 6, scale: 4 }).notNull().default("0"),
   cityTaxRate: decimal("city_tax_rate", { precision: 6, scale: 4 }).notNull().default("0"),
+  townshipTaxRate: decimal("township_tax_rate", { precision: 6, scale: 4 }).notNull().default("0"),
+  specialDistrictTaxRate: decimal("special_district_tax_rate", { precision: 6, scale: 4 }).notNull().default("0"),
   tradeInCreditType: text("trade_in_credit_type").notNull().default("tax_on_difference"), // none, full_credit, tax_on_difference
   registrationFee: decimal("registration_fee", { precision: 10, scale: 2 }).notNull().default("0"),
   titleFee: decimal("title_fee", { precision: 10, scale: 2 }).notNull().default("0"),
   plateFee: decimal("plate_fee", { precision: 10, scale: 2 }).notNull().default("0"),
   docFeeMax: decimal("doc_fee_max", { precision: 10, scale: 2 }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
   stateIdx: index("tax_jurisdictions_state_idx").on(table.state, table.county, table.city),
+  zipIdx: index("tax_jurisdictions_zip_idx").on(table.zipCode),
 }));
 
-export const insertTaxJurisdictionSchema = createInsertSchema(taxJurisdictions).omit({ id: true });
+export const insertTaxJurisdictionSchema = createInsertSchema(taxJurisdictions).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertTaxJurisdiction = z.infer<typeof insertTaxJurisdictionSchema>;
 export type TaxJurisdiction = typeof taxJurisdictions.$inferSelect;
 

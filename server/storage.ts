@@ -38,6 +38,7 @@ export interface IStorage {
   createTradeVehicle(tradeVehicle: InsertTradeVehicle): Promise<TradeVehicle>;
   
   // Tax Jurisdictions
+  getAllTaxJurisdictions(): Promise<TaxJurisdiction[]>;
   getTaxJurisdiction(state: string, county?: string, city?: string): Promise<TaxJurisdiction | undefined>;
   createTaxJurisdiction(jurisdiction: InsertTaxJurisdiction): Promise<TaxJurisdiction>;
   
@@ -156,6 +157,11 @@ export class DatabaseStorage implements IStorage {
   }
   
   // Tax Jurisdictions
+  async getAllTaxJurisdictions(): Promise<TaxJurisdiction[]> {
+    const jurisdictions = await db.select().from(taxJurisdictions);
+    return jurisdictions;
+  }
+  
   async getTaxJurisdiction(state: string, county?: string, city?: string): Promise<TaxJurisdiction | undefined> {
     let query = db.select().from(taxJurisdictions).where(eq(taxJurisdictions.state, state));
     

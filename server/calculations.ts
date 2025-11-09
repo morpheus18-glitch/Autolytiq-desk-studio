@@ -137,6 +137,8 @@ export interface TaxCalculationInput {
   stateTaxRate: number;
   countyTaxRate: number;
   cityTaxRate: number;
+  townshipTaxRate?: number;
+  specialDistrictTaxRate?: number;
   tradeInCreditType: string;
 }
 
@@ -149,6 +151,8 @@ export function calculateSalesTax(input: TaxCalculationInput): number {
     stateTaxRate,
     countyTaxRate,
     cityTaxRate,
+    townshipTaxRate = 0,
+    specialDistrictTaxRate = 0,
     tradeInCreditType,
   } = input;
   
@@ -174,7 +178,9 @@ export function calculateSalesTax(input: TaxCalculationInput): number {
   
   const totalRate = new Decimal(stateTaxRate)
     .plus(countyTaxRate)
-    .plus(cityTaxRate);
+    .plus(cityTaxRate)
+    .plus(townshipTaxRate)
+    .plus(specialDistrictTaxRate);
   
   const totalTax = taxableAmount.times(totalRate);
   

@@ -120,6 +120,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/tax-jurisdictions', async (req, res) => {
     try {
       const { state, county, city } = req.query;
+      
+      // If no query params, return all jurisdictions
+      if (!state && !county && !city) {
+        const jurisdictions = await storage.getAllTaxJurisdictions();
+        return res.json(jurisdictions);
+      }
+      
+      // Otherwise, search for specific jurisdiction
       const jurisdiction = await storage.getTaxJurisdiction(
         String(state || ''),
         county ? String(county) : undefined,

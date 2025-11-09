@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,8 +11,9 @@ import { Calculator, Plus, Trash2, DollarSign } from 'lucide-react';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useStore } from '@/lib/store';
 import { debounce } from 'lodash';
-import type { DealScenario, TradeVehicle, DealerFee, Accessory } from '@shared/schema';
+import type { DealScenario, TradeVehicle, DealerFee, Accessory, TaxJurisdiction } from '@shared/schema';
 import { AmortizationTable } from './amortization-table';
+import { TaxJurisdictionSelector } from './tax-jurisdiction-selector';
 import { calculateFinancePayment, calculateLeasePayment, calculateSalesTax, moneyFactorToAPR, aprToMoneyFactor } from '@/lib/calculations';
 
 interface ScenarioCalculatorProps {
@@ -24,10 +25,24 @@ interface ScenarioCalculatorProps {
 export function ScenarioCalculator({ scenario, dealId, tradeVehicle }: ScenarioCalculatorProps) {
   const { setIsSaving, setLastSaved, setSaveError } = useStore();
   const [formData, setFormData] = useState(scenario);
+  const [selectedTaxJurisdiction, setSelectedTaxJurisdiction] = useState<TaxJurisdiction | null>(null);
   
   // Parse JSONB fields
   const dealerFees: DealerFee[] = Array.isArray(formData.dealerFees) ? formData.dealerFees : [];
   const accessories: Accessory[] = Array.isArray(formData.accessories) ? formData.accessories : [];
+  
+  // Fetch the tax jurisdiction for this scenario
+  const { data: jurisdictions } = useQuery<TaxJurisdiction[]>({
+    queryKey: ['/api/tax-jurisdictions'],
+  });
+  
+  // Set the selected jurisdiction when the data loads
+  useEffect(() => {
+    if (jurisdictions && formData.taxJurisdictionId) {
+      const jurisdiction = jurisdictions.find(j => j.id === formData.taxJurisdictionId);
+      setSelectedTaxJurisdiction(jurisdiction || null);
+    }
+  }, [jurisdictions, formData.taxJurisdictionId]);
   
   const updateScenarioMutation = useMutation({
     mutationFn: async (data: Partial<DealScenario>) => {
@@ -57,15 +72,37 @@ export function ScenarioCalculator({ scenario, dealId, tradeVehicle }: ScenarioC
   
   // Calculate totals whenever formData changes
   useEffect(() => {
+    // Use tax jurisdiction rates if available, otherwise use defaults
+    const stateTaxRate = selectedTaxJurisdiction 
+      ? parseFloat(selectedTaxJurisdiction.stateTaxRate as any) 
+      : 0.0725;
+    const countyTaxRate = selectedTaxJurisdiction 
+      ? parseFloat(selectedTaxJurisdiction.countyTaxRate as any) 
+      : 0.0025;
+    const cityTaxRate = selectedTaxJurisdiction 
+      ? parseFloat(selectedTaxJurisdiction.cityTaxRate as any) 
+      : 0;
+    const townshipTaxRate = selectedTaxJurisdiction 
+      ? parseFloat(selectedTaxJurisdiction.townshipTaxRate as any) 
+      : 0;
+    const specialDistrictTaxRate = selectedTaxJurisdiction 
+      ? parseFloat(selectedTaxJurisdiction.specialDistrictTaxRate as any) 
+      : 0;
+    const tradeInCreditType = selectedTaxJurisdiction 
+      ? selectedTaxJurisdiction.tradeInCreditType 
+      : 'tax_on_difference';
+    
     const taxCalc = calculateSalesTax({
       vehiclePrice: parseFloat(formData.vehiclePrice as any) || 0,
       tradeAllowance: parseFloat(formData.tradeAllowance as any) || 0,
       dealerFees: dealerFees.map(f => ({ amount: f.amount, taxable: f.taxable })),
       accessories: accessories.map(a => ({ amount: a.amount, taxable: a.taxable })),
-      stateTaxRate: 0.0725, // Default CA rate - would come from tax jurisdiction
-      countyTaxRate: 0.0025,
-      cityTaxRate: 0,
-      tradeInCreditType: 'tax_on_difference',
+      stateTaxRate,
+      countyTaxRate,
+      cityTaxRate,
+      townshipTaxRate,
+      specialDistrictTaxRate,
+      tradeInCreditType,
     });
     
     const totalFees = dealerFees.reduce((sum, f) => sum + f.amount, 0) +
@@ -131,10 +168,21 @@ export function ScenarioCalculator({ scenario, dealId, tradeVehicle }: ScenarioC
     formData.residualValue,
     formData.dealerFees,
     formData.accessories,
+    selectedTaxJurisdiction,
   ]);
   
   const handleFieldChange = (field: keyof DealScenario, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+  
+  const handleTaxJurisdictionChange = (jurisdiction: TaxJurisdiction | null) => {
+    setSelectedTaxJurisdiction(jurisdiction);
+    const updatedData = {
+      ...formData,
+      taxJurisdictionId: jurisdiction?.id || null,
+    };
+    setFormData(updatedData);
+    debouncedSave(updatedData);
   };
   
   const addDealerFee = () => {
@@ -247,6 +295,14 @@ export function ScenarioCalculator({ scenario, dealId, tradeVehicle }: ScenarioC
                   </div>
                 </div>
               </div>
+            </div>
+            
+            {/* Tax Jurisdiction Selector */}
+            <div>
+              <TaxJurisdictionSelector
+                selectedJurisdictionId={formData.taxJurisdictionId || undefined}
+                onSelect={handleTaxJurisdictionChange}
+              />
             </div>
             
             {/* Trade-In */}
