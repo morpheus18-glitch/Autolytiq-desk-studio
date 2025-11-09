@@ -340,6 +340,5 @@ export type AftermarketProduct = {
   cost: number; // Dealer cost
   price: number; // Customer price (what they pay)
   term?: number; // Term in months (for warranties, maintenance, etc.)
-  taxable: boolean;
-  frontEnd: boolean; // true = cash/down payment add-on, false = financed into loan
+  taxable: boolean; // Whether this product is taxed (varies by state/product type)
 };

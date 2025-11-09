@@ -93,10 +93,7 @@ export function ScenarioCalculator({ scenario, dealId, tradeVehicle }: ScenarioC
       ? selectedTaxJurisdiction.tradeInCreditType 
       : 'tax_on_difference';
     
-    // Separate aftermarket products by type (front-end vs financed)
-    const frontEndProducts = aftermarketProducts.filter(p => p.frontEnd);
-    const financedProducts = aftermarketProducts.filter(p => !p.frontEnd);
-    
+    // Calculate tax on everything that's taxable
     const taxCalc = calculateSalesTax({
       vehiclePrice: parseFloat(formData.vehiclePrice as any) || 0,
       tradeAllowance: parseFloat(formData.tradeAllowance as any) || 0,
@@ -114,13 +111,10 @@ export function ScenarioCalculator({ scenario, dealId, tradeVehicle }: ScenarioC
       tradeInCreditType,
     });
     
-    // Total fees includes: dealer fees, accessories, and FINANCED aftermarket products
+    // Total fees = dealer fees + accessories + ALL aftermarket products
     const totalFees = dealerFees.reduce((sum, f) => sum + f.amount, 0) +
                      accessories.reduce((sum, a) => sum + a.amount, 0) +
-                     financedProducts.reduce((sum, p) => sum + p.price, 0);
-    
-    // Front-end products add to upfront costs (not financed)
-    const frontEndTotal = frontEndProducts.reduce((sum, p) => sum + p.price, 0);
+                     aftermarketProducts.reduce((sum, p) => sum + p.price, 0);
     
     let monthlyPayment = 0;
     let amountFinanced = 0;
@@ -128,6 +122,7 @@ export function ScenarioCalculator({ scenario, dealId, tradeVehicle }: ScenarioC
     let cashDueAtSigning = 0;
     
     if (formData.scenarioType === 'FINANCE_DEAL') {
+      // Amount Financed = Vehicle Price + Tax + Fees + Trade Payoff - Down Payment - Trade Allowance
       const result = calculateFinancePayment({
         vehiclePrice: parseFloat(formData.vehiclePrice as any) || 0,
         downPayment: parseFloat(formData.downPayment as any) || 0,
@@ -140,10 +135,8 @@ export function ScenarioCalculator({ scenario, dealId, tradeVehicle }: ScenarioC
       });
       monthlyPayment = result.monthlyPayment;
       amountFinanced = result.amountFinanced;
-      // Total cost includes financed amount + front-end products
-      totalCost = result.totalCost + frontEndTotal;
-      // Cash due at signing = down payment + front-end products
-      cashDueAtSigning = parseFloat(formData.downPayment as any) + frontEndTotal;
+      totalCost = result.totalCost;
+      cashDueAtSigning = parseFloat(formData.downPayment as any) || 0;
     } else if (formData.scenarioType === 'LEASE_DEAL') {
       const result = calculateLeasePayment({
         vehiclePrice: parseFloat(formData.vehiclePrice as any) || 0,
@@ -158,17 +151,14 @@ export function ScenarioCalculator({ scenario, dealId, tradeVehicle }: ScenarioC
       });
       monthlyPayment = result.monthlyPayment;
       amountFinanced = result.amountFinanced;
-      // Total cost includes financed amount + front-end products
-      totalCost = result.totalCost + frontEndTotal;
-      // Cash due at signing = cap cost reduction + front-end products
-      cashDueAtSigning = parseFloat(formData.downPayment as any) + frontEndTotal;
+      totalCost = result.totalCost;
+      cashDueAtSigning = parseFloat(formData.downPayment as any) || 0;
     } else {
-      // Cash deal - everything is upfront
+      // Cash deal: Total = Vehicle + Tax + Fees - Trade Allowance + Trade Payoff
       const vehiclePrice = parseFloat(formData.vehiclePrice as any) || 0;
       const tradeAllowance = parseFloat(formData.tradeAllowance as any) || 0;
       const tradePayoff = parseFloat(formData.tradePayoff as any) || 0;
-      // Total cost = vehicle + tax + ALL fees (including front-end products)
-      totalCost = vehiclePrice + taxCalc + totalFees + frontEndTotal - tradeAllowance + tradePayoff;
+      totalCost = vehiclePrice + taxCalc + totalFees - tradeAllowance + tradePayoff;
       cashDueAtSigning = totalCost;
     }
     

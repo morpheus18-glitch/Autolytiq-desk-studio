@@ -34,7 +34,6 @@ export function AftermarketProducts({ products, onChange }: AftermarketProductsP
     cost: 0,
     price: 0,
     taxable: false,
-    frontEnd: false,
   });
 
   const handleAddProduct = () => {
@@ -47,7 +46,6 @@ export function AftermarketProducts({ products, onChange }: AftermarketProductsP
       price: Number(newProduct.price) || 0,
       term: newProduct.term || category?.defaultTerm,
       taxable: newProduct.taxable || false,
-      frontEnd: newProduct.frontEnd || false,
     };
 
     onChange([...products, product]);
@@ -57,7 +55,6 @@ export function AftermarketProducts({ products, onChange }: AftermarketProductsP
       cost: 0,
       price: 0,
       taxable: false,
-      frontEnd: false,
     });
   };
 
@@ -92,9 +89,6 @@ export function AftermarketProducts({ products, onChange }: AftermarketProductsP
                     <Badge variant="secondary" className="text-xs">
                       {PRODUCT_CATEGORIES.find(c => c.value === product.category)?.label}
                     </Badge>
-                    {product.frontEnd && (
-                      <Badge variant="outline" className="text-xs">Front-End</Badge>
-                    )}
                     {product.term && product.term > 0 && (
                       <Badge variant="outline" className="text-xs">{product.term} months</Badge>
                     )}
@@ -118,7 +112,7 @@ export function AftermarketProducts({ products, onChange }: AftermarketProductsP
                     <div>
                       <Label className="text-xs text-muted-foreground">Monthly Impact</Label>
                       <p className="font-mono font-semibold">
-                        {product.frontEnd ? 'N/A' : `+$${(product.price / (product.term || 60)).toFixed(2)}`}
+                        +${(product.price / (product.term || 60)).toFixed(2)}
                       </p>
                     </div>
                   </div>
@@ -130,15 +124,7 @@ export function AftermarketProducts({ products, onChange }: AftermarketProductsP
                         onCheckedChange={(checked) => handleUpdateProduct(product.id, { taxable: checked })}
                         data-testid={`switch-taxable-${product.id}`}
                       />
-                      <span>Taxable</span>
-                    </label>
-                    <label className="flex items-center gap-2 text-sm cursor-pointer">
-                      <Switch
-                        checked={product.frontEnd}
-                        onCheckedChange={(checked) => handleUpdateProduct(product.id, { frontEnd: checked })}
-                        data-testid={`switch-frontend-${product.id}`}
-                      />
-                      <span>Front-End</span>
+                      <span>Subject to Sales Tax</span>
                     </label>
                   </div>
                 </div>
@@ -250,15 +236,7 @@ export function AftermarketProducts({ products, onChange }: AftermarketProductsP
                   onCheckedChange={(checked) => setNewProduct({ ...newProduct, taxable: checked })}
                   data-testid="switch-new-taxable"
                 />
-                <span>Subject to Sales Tax</span>
-              </label>
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <Switch
-                  checked={newProduct.frontEnd || false}
-                  onCheckedChange={(checked) => setNewProduct({ ...newProduct, frontEnd: checked })}
-                  data-testid="switch-new-frontend"
-                />
-                <span>Front-End (Cash/Down Payment)</span>
+                <span>Subject to Sales Tax (varies by state)</span>
               </label>
             </div>
           </div>
