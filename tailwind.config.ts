@@ -83,9 +83,12 @@ export default {
         },
       },
       fontFamily: {
-        sans: ["var(--font-sans)"],
-        serif: ["var(--font-serif)"],
-        mono: ["var(--font-mono)"],
+        sans: ["Inter", "system-ui", "sans-serif"],
+        serif: ["Georgia", "serif"],
+        mono: ["JetBrains Mono", "SF Mono", "monospace"],
+      },
+      fontFeatureSettings: {
+        'tabular': '"tnum"',
       },
       keyframes: {
         "accordion-down": {
