@@ -1,25 +1,29 @@
 import { ReactNode, useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, LucideIcon } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 
 interface DeskSectionProps {
   title: string;
+  icon?: LucideIcon;
   summary?: string;
   children: ReactNode;
   defaultExpanded?: boolean;
   alwaysExpanded?: boolean;
   testId?: string;
+  defaultOpen?: boolean; // Alias for defaultExpanded
 }
 
 export function DeskSection({ 
-  title, 
+  title,
+  icon: Icon,
   summary, 
   children, 
   defaultExpanded = false,
+  defaultOpen = false,
   alwaysExpanded = false,
   testId 
 }: DeskSectionProps) {
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded || alwaysExpanded);
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded || defaultOpen || alwaysExpanded);
 
   const handleToggle = () => {
     if (!alwaysExpanded) {
@@ -38,11 +42,18 @@ export function DeskSection({
         data-testid={testId ? `${testId}-header` : undefined}
         disabled={alwaysExpanded}
       >
-        <div className="flex-1">
-          <h2 className="text-lg md:text-xl font-semibold">{title}</h2>
-          {summary && !isExpanded && (
-            <p className="text-xs md:text-sm text-muted-foreground mt-1">{summary}</p>
+        <div className="flex items-center gap-3 flex-1">
+          {Icon && (
+            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 text-primary">
+              <Icon className="w-4 h-4" />
+            </div>
           )}
+          <div className="flex-1">
+            <h2 className="text-lg md:text-xl font-semibold">{title}</h2>
+            {summary && !isExpanded && (
+              <p className="text-xs md:text-sm text-muted-foreground mt-1">{summary}</p>
+            )}
+          </div>
         </div>
         {!alwaysExpanded && (
           <ChevronDown 

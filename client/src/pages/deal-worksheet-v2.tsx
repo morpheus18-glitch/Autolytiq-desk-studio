@@ -3,14 +3,17 @@ import { useRoute } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Car, User, History, Printer, FileText, DollarSign, Calculator, Receipt } from 'lucide-react';
+import { Car, User, History, Printer, FileText, DollarSign, Calculator, Receipt, TrendingUp } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import type { DealWithRelations, DealScenario } from '@shared/schema';
 import { LayoutShell } from '@/components/layout-shell';
 import { SectionHeader } from '@/components/section-header';
 import { PaymentSummaryPanel } from '@/components/payment-summary-panel';
 import { DeskSection } from '@/components/desk-section';
-import { ScenarioCalculator } from '@/components/scenario-calculator';
+import { ScenarioFormProvider, useScenarioForm } from '@/contexts/scenario-form-context';
+import { PricingForm } from '@/components/forms/pricing-form';
+import { TradeForm } from '@/components/forms/trade-form';
+import { FinanceLeaseForm } from '@/components/forms/finance-lease-form';
 
 const DEAL_STATE_COLORS: Record<string, string> = {
   DRAFT: 'bg-muted text-muted-foreground',
@@ -93,186 +96,225 @@ export default function DealWorksheetV2() {
     </div>
   );
   
-  const summary = (
-    <div className="space-y-4">
-      {/* Mobile: Compact View */}
-      <div className="lg:hidden">
-        <PaymentSummaryPanel scenario={activeScenario} variant="compact" />
-      </div>
-      
-      {/* Desktop: Full View */}
-      <div className="hidden lg:block space-y-6">
-        <div>
-          <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4">
-            Payment Summary
-          </h3>
-          <PaymentSummaryPanel scenario={activeScenario} variant="full" />
+  // Summary component - will be rendered inside ScenarioFormProvider
+  const SummaryContent = () => {
+    const { calculations } = useScenarioForm();
+    
+    return (
+      <div className="space-y-4">
+        {/* Mobile: Compact View */}
+        <div className="lg:hidden">
+          <PaymentSummaryPanel variant="compact" />
         </div>
         
-        {/* Scenario Selector - Desktop Only */}
-        {deal.scenarios.length > 1 && (
-          <div className="space-y-2">
-            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Compare Scenarios
-            </h4>
-            <div className="space-y-2">
-              {deal.scenarios.map((scenario) => (
-                <button
-                  key={scenario.id}
-                  onClick={() => setActiveScenarioId(scenario.id)}
-                  className={`w-full text-left p-3 rounded-md border transition-all ${
-                    scenario.id === activeScenarioId
-                      ? 'bg-primary/10 border-primary text-primary'
-                      : 'bg-card border-border hover-elevate active-elevate-2'
-                  }`}
-                  data-testid={`button-scenario-${scenario.id}`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium">
-                      {scenario.scenarioType === 'FINANCE_DEAL' ? 'Finance' : 
-                       scenario.scenarioType === 'LEASE_DEAL' ? 'Lease' : 'Cash'}
-                    </span>
-                    <span className="text-sm font-mono font-semibold tabular-nums">
-                      ${parseFloat(scenario.monthlyPayment).toFixed(0)}/mo
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
+        {/* Desktop: Full View */}
+        <div className="hidden lg:block space-y-6">
+          <div>
+            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4">
+              Payment Summary
+            </h3>
+            <PaymentSummaryPanel variant="full" />
           </div>
-        )}
+          
+          {/* Scenario Selector - Desktop Only */}
+          {deal.scenarios.length > 1 && (
+            <div className="space-y-2">
+              <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Compare Scenarios
+              </h4>
+              <div className="space-y-2">
+                {deal.scenarios.map((scenario) => {
+                  // Show live calculation for active scenario, server value for others
+                  const isActive = scenario.id === activeScenarioId;
+                  const displayPayment = isActive 
+                    ? calculations.monthlyPayment.toNumber()
+                    : parseFloat(scenario.monthlyPayment);
+                  
+                  return (
+                    <button
+                      key={scenario.id}
+                      onClick={() => setActiveScenarioId(scenario.id)}
+                      className={`w-full text-left p-3 rounded-md border transition-all ${
+                        isActive
+                          ? 'bg-primary/10 border-primary text-primary'
+                          : 'bg-card border-border hover-elevate active-elevate-2'
+                      }`}
+                      data-testid={`button-scenario-${scenario.id}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium">
+                          {scenario.scenarioType === 'FINANCE_DEAL' ? 'Finance' : 
+                           scenario.scenarioType === 'LEASE_DEAL' ? 'Lease' : 'Cash'}
+                        </span>
+                        <span className="text-sm font-mono font-semibold tabular-nums">
+                          ${displayPayment.toFixed(0)}/mo
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
   
   return (
-    <LayoutShell header={header} summary={summary}>
-      {/* Mobile: Collapsible Sections */}
-      <div className="lg:hidden space-y-4">
-        <DeskSection title="Customer Information" icon={User} defaultOpen>
-          <div className="space-y-4 text-sm">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <div className="text-xs text-muted-foreground mb-1">Name</div>
-                <div className="font-medium">{deal.customer.firstName} {deal.customer.lastName}</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground mb-1">Phone</div>
-                <div className="font-medium font-mono">{deal.customer.phone || 'N/A'}</div>
-              </div>
-              <div className="col-span-2">
-                <div className="text-xs text-muted-foreground mb-1">Email</div>
-                <div className="font-medium">{deal.customer.email || 'N/A'}</div>
-              </div>
-            </div>
-          </div>
-        </DeskSection>
-        
-        <DeskSection title="Vehicle Details" icon={Car}>
-          <div className="space-y-4 text-sm">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <div className="text-xs text-muted-foreground mb-1">Year/Make/Model</div>
-                <div className="font-medium">{deal.vehicle.year} {deal.vehicle.make} {deal.vehicle.model}</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground mb-1">Stock #</div>
-                <div className="font-medium font-mono">{deal.vehicle.stockNumber}</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground mb-1">Price</div>
-                <div className="font-mono font-semibold text-base">${parseFloat(deal.vehicle.price as string).toLocaleString()}</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground mb-1">Mileage</div>
-                <div className="font-mono">{deal.vehicle.mileage.toLocaleString()} mi</div>
+    <ScenarioFormProvider 
+      scenario={activeScenario} 
+      tradeVehicle={deal.tradeVehicle || null}
+      dealId={deal.id}
+    >
+      <LayoutShell header={header} summary={<SummaryContent />}>
+        {/* Mobile: Collapsible Sections */}
+        <div className="lg:hidden space-y-4">
+          <DeskSection title="Customer Information" icon={User} defaultOpen>
+            <div className="space-y-4 text-sm">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Name</div>
+                  <div className="font-medium">{deal.customer.firstName} {deal.customer.lastName}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Phone</div>
+                  <div className="font-medium font-mono">{deal.customer.phone || 'N/A'}</div>
+                </div>
+                <div className="col-span-2">
+                  <div className="text-xs text-muted-foreground mb-1">Email</div>
+                  <div className="font-medium">{deal.customer.email || 'N/A'}</div>
+                </div>
               </div>
             </div>
-          </div>
-        </DeskSection>
-        
-        <DeskSection title="Deal Structure" icon={Calculator} defaultOpen>
-          <ScenarioCalculator 
-            scenario={activeScenario} 
-            dealId={deal.id} 
-            tradeVehicle={deal.tradeVehicle}
-          />
-        </DeskSection>
-      </div>
+          </DeskSection>
+          
+          <DeskSection title="Vehicle Details" icon={Car}>
+            <div className="space-y-4 text-sm">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Year/Make/Model</div>
+                  <div className="font-medium">{deal.vehicle.year} {deal.vehicle.make} {deal.vehicle.model}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Stock #</div>
+                  <div className="font-medium font-mono">{deal.vehicle.stockNumber}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Price</div>
+                  <div className="font-mono font-semibold text-base">${parseFloat(deal.vehicle.price as string).toLocaleString()}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Mileage</div>
+                  <div className="font-mono">{deal.vehicle.mileage.toLocaleString()} mi</div>
+                </div>
+              </div>
+            </div>
+          </DeskSection>
+          
+          <DeskSection title="Pricing" icon={DollarSign} defaultOpen>
+            <PricingForm />
+          </DeskSection>
+          
+          {deal.tradeVehicle && (
+            <DeskSection title="Trade-In" icon={TrendingUp}>
+              <TradeForm />
+            </DeskSection>
+          )}
+          
+          <DeskSection title="Finance Terms" icon={Calculator} defaultOpen>
+            <FinanceLeaseForm />
+          </DeskSection>
+        </div>
       
-      {/* Desktop: Side-by-Side Sections */}
-      <div className="hidden lg:block space-y-8">
-        {/* Customer & Vehicle Info */}
-        <div className="grid grid-cols-2 gap-8">
-          <div className="space-y-4">
-            <SectionHeader icon={User} title="Customer Information" />
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <div className="text-xs text-muted-foreground mb-1">Name</div>
-                <div className="font-medium">{deal.customer.firstName} {deal.customer.lastName}</div>
+        {/* Desktop: Side-by-Side Sections */}
+        <div className="hidden lg:block space-y-8">
+          {/* Customer & Vehicle Info */}
+          <div className="grid grid-cols-2 gap-8">
+            <div className="space-y-4">
+              <SectionHeader icon={User} title="Customer Information" />
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Name</div>
+                  <div className="font-medium">{deal.customer.firstName} {deal.customer.lastName}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Phone</div>
+                  <div className="font-medium font-mono">{deal.customer.phone || 'N/A'}</div>
+                </div>
+                <div className="col-span-2">
+                  <div className="text-xs text-muted-foreground mb-1">Email</div>
+                  <div className="font-medium">{deal.customer.email || 'N/A'}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Address</div>
+                  <div className="font-medium">{deal.customer.address || 'N/A'}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">City, State ZIP</div>
+                  <div className="font-medium">
+                    {[deal.customer.city, deal.customer.state, deal.customer.zipCode].filter(Boolean).join(', ') || 'N/A'}
+                  </div>
+                </div>
               </div>
-              <div>
-                <div className="text-xs text-muted-foreground mb-1">Phone</div>
-                <div className="font-medium font-mono">{deal.customer.phone || 'N/A'}</div>
-              </div>
-              <div className="col-span-2">
-                <div className="text-xs text-muted-foreground mb-1">Email</div>
-                <div className="font-medium">{deal.customer.email || 'N/A'}</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground mb-1">Address</div>
-                <div className="font-medium">{deal.customer.address || 'N/A'}</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground mb-1">City, State ZIP</div>
-                <div className="font-medium">
-                  {[deal.customer.city, deal.customer.state, deal.customer.zipCode].filter(Boolean).join(', ') || 'N/A'}
+            </div>
+            
+            <div className="space-y-4">
+              <SectionHeader icon={Car} title="Vehicle Details" />
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Year/Make/Model</div>
+                  <div className="font-medium">{deal.vehicle.year} {deal.vehicle.make} {deal.vehicle.model}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Stock #</div>
+                  <div className="font-medium font-mono">{deal.vehicle.stockNumber}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">VIN</div>
+                  <div className="font-mono text-xs">{deal.vehicle.vin}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Mileage</div>
+                  <div className="font-mono">{deal.vehicle.mileage.toLocaleString()} mi</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Price</div>
+                  <div className="font-mono font-semibold text-lg">${parseFloat(deal.vehicle.price as string).toLocaleString()}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Color</div>
+                  <div className="font-medium">{deal.vehicle.exteriorColor || 'N/A'}</div>
                 </div>
               </div>
             </div>
           </div>
           
-          <div className="space-y-4">
-            <SectionHeader icon={Car} title="Vehicle Details" />
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <div className="text-xs text-muted-foreground mb-1">Year/Make/Model</div>
-                <div className="font-medium">{deal.vehicle.year} {deal.vehicle.make} {deal.vehicle.model}</div>
+          {/* Deal Structure with Modular Forms */}
+          <div className="space-y-6">
+            <SectionHeader icon={Calculator} title="Deal Structure" subtitle="Configure pricing, finance terms, and products" />
+            
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Pricing</h3>
+                <PricingForm />
               </div>
-              <div>
-                <div className="text-xs text-muted-foreground mb-1">Stock #</div>
-                <div className="font-medium font-mono">{deal.vehicle.stockNumber}</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground mb-1">VIN</div>
-                <div className="font-mono text-xs">{deal.vehicle.vin}</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground mb-1">Mileage</div>
-                <div className="font-mono">{deal.vehicle.mileage.toLocaleString()} mi</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground mb-1">Price</div>
-                <div className="font-mono font-semibold text-lg">${parseFloat(deal.vehicle.price as string).toLocaleString()}</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground mb-1">Color</div>
-                <div className="font-medium">{deal.vehicle.exteriorColor || 'N/A'}</div>
+              
+              {deal.tradeVehicle && (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Trade-In</h3>
+                  <TradeForm />
+                </div>
+              )}
+              
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Finance Terms</h3>
+                <FinanceLeaseForm />
               </div>
             </div>
           </div>
         </div>
-        
-        {/* Deal Structure */}
-        <div className="space-y-6">
-          <SectionHeader icon={Calculator} title="Deal Structure" subtitle="Configure pricing, finance terms, and products" />
-          <ScenarioCalculator 
-            scenario={activeScenario} 
-            dealId={deal.id} 
-            tradeVehicle={deal.tradeVehicle}
-          />
-        </div>
-      </div>
-    </LayoutShell>
+      </LayoutShell>
+    </ScenarioFormProvider>
   );
 }

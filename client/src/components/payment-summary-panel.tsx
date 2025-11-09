@@ -3,28 +3,28 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { DollarSign, TrendingUp, Calendar, Percent } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { DealScenario } from '@shared/schema';
+import { useScenarioForm } from '@/contexts/scenario-form-context';
 
 interface PaymentSummaryPanelProps {
-  scenario: DealScenario;
   variant?: 'full' | 'compact';
   className?: string;
 }
 
-export function PaymentSummaryPanel({ scenario, variant = 'full', className }: PaymentSummaryPanelProps) {
+export function PaymentSummaryPanel({ variant = 'full', className }: PaymentSummaryPanelProps) {
+  const { scenario, calculations } = useScenarioForm();
   const isCompact = variant === 'compact';
 
-  const formatCurrency = (value: string | number) => {
-    const num = typeof value === 'string' ? parseFloat(value) : value;
+  const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(num);
+    }).format(value);
   };
 
-  const formatDecimal = (value: string | number, decimals = 2) => {
+  const formatDecimal = (value: string | number | null, decimals = 2) => {
+    if (value === null || value === undefined) return '0.00';
     const num = typeof value === 'string' ? parseFloat(value) : value;
     return num.toFixed(decimals);
   };
@@ -54,8 +54,8 @@ export function PaymentSummaryPanel({ scenario, variant = 'full', className }: P
             </span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl md:text-4xl font-mono font-bold tabular-nums">
-              {formatCurrency(scenario.monthlyPayment)}
+            <span className="text-3xl md:text-4xl font-mono font-bold tabular-nums" data-testid="text-payment-summary-monthly">
+              {formatCurrency(calculations.monthlyPayment.toNumber())}
             </span>
             <span className="text-sm text-muted-foreground">/mo</span>
           </div>
@@ -74,7 +74,7 @@ export function PaymentSummaryPanel({ scenario, variant = 'full', className }: P
                   Down Payment
                 </div>
                 <div className="text-lg font-mono font-semibold tabular-nums">
-                  {formatCurrency(scenario.downPayment)}
+                  {formatCurrency(calculations.downPayment.toNumber())}
                 </div>
               </div>
 
@@ -96,7 +96,7 @@ export function PaymentSummaryPanel({ scenario, variant = 'full', className }: P
                   Financed
                 </div>
                 <div className="text-lg font-mono font-semibold tabular-nums">
-                  {formatCurrency(scenario.amountFinanced)}
+                  {formatCurrency(calculations.amountFinanced.toNumber())}
                 </div>
               </div>
 
@@ -107,7 +107,7 @@ export function PaymentSummaryPanel({ scenario, variant = 'full', className }: P
                   Total Cost
                 </div>
                 <div className="text-lg font-mono font-semibold tabular-nums">
-                  {formatCurrency(scenario.totalCost)}
+                  {formatCurrency(calculations.totalCost.toNumber())}
                 </div>
               </div>
             </div>
@@ -118,11 +118,11 @@ export function PaymentSummaryPanel({ scenario, variant = 'full', className }: P
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">Sales Tax</span>
-                <span className="font-mono font-semibold tabular-nums">{formatCurrency(scenario.totalTax)}</span>
+                <span className="font-mono font-semibold tabular-nums">{formatCurrency(calculations.totalTax.toNumber())}</span>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">Fees</span>
-                <span className="font-mono font-semibold tabular-nums">{formatCurrency(scenario.totalFees)}</span>
+                <span className="font-mono font-semibold tabular-nums">{formatCurrency(calculations.totalFees.toNumber())}</span>
               </div>
             </div>
           </>
