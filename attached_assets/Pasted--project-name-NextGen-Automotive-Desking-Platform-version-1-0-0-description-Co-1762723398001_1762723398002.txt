@@ -1,0 +1,2024 @@
+{
+“project”: {
+“name”: “NextGen Automotive Desking Platform”,
+“version”: “1.0.0”,
+“description”: “Comprehensive automotive desking tool with advanced finance/lease calculations, multi-jurisdictional tax engine, and complete deal lifecycle management”,
+“objectives”: [
+“Real-time accurate finance and lease calculations with full amortization”,
+“Intelligent multi-jurisdictional tax engine supporting all US states, counties, cities, and local jurisdictions”,
+“Multi-scenario deal structuring with instant comparison”,
+“Complete audit trail with microsecond-level change tracking”,
+“Seamless customer and vehicle history integration”,
+“Product catalog management with backend mapping”,
+“Real-time collaboration and conflict resolution”,
+“Predictive analytics and deal optimization”
+]
+},
+
+“technical_stack”: {
+“architecture”: {
+“pattern”: “Microservices with Event-Driven Architecture”,
+“style”: “Domain-Driven Design (DDD)”,
+“deployment”: “Kubernetes with multi-region support”,
+“rationale”: “Scalability, fault isolation, independent service deployment”
+},
+
+```
+"backend": {
+  "primary_language": "Go (Golang)",
+  "rationale": "High performance, excellent concurrency, strong typing for financial calculations",
+  "version": "1.21+",
+  "alternative_services": {
+    "calculation_engine": "Rust",
+    "rationale": "Memory safety and zero-cost abstractions for mission-critical financial calculations"
+  },
+  "frameworks": [
+    {
+      "name": "Gin",
+      "purpose": "HTTP web framework",
+      "version": "1.9+"
+    },
+    {
+      "name": "gRPC",
+      "purpose": "Internal service communication",
+      "version": "1.58+"
+    },
+    {
+      "name": "GORM",
+      "purpose": "ORM for database operations",
+      "version": "1.25+"
+    }
+  ]
+},
+
+"frontend": {
+  "framework": "React 18+ with TypeScript",
+  "rationale": "Component reusability, strong typing, excellent ecosystem",
+  "state_management": "Zustand with Immer",
+  "ui_library": "shadcn/ui with Tailwind CSS",
+  "form_handling": "React Hook Form with Zod validation",
+  "data_fetching": "TanStack Query (React Query)",
+  "real_time": "Socket.io-client",
+  "build_tool": "Vite",
+  "additional_libraries": [
+    {
+      "name": "react-table",
+      "purpose": "Advanced data grids for deal worksheets"
+    },
+    {
+      "name": "recharts",
+      "purpose": "Payment visualization and analytics"
+    },
+    {
+      "name": "date-fns",
+      "purpose": "Date calculations for term lengths"
+    },
+    {
+      "name": "decimal.js",
+      "purpose": "Precise decimal calculations on frontend"
+    },
+    {
+      "name": "framer-motion",
+      "purpose": "Smooth animations for scenario transitions"
+    }
+  ]
+},
+
+"databases": {
+  "primary": {
+    "type": "PostgreSQL 15+",
+    "purpose": "Transactional data, deal records, audit logs",
+    "extensions": ["uuid-ossp", "pg_trgm", "btree_gin"],
+    "rationale": "ACID compliance, JSON support, excellent performance"
+  },
+  "cache": {
+    "type": "Redis 7+",
+    "purpose": "Session management, real-time collaboration, tax rate caching",
+    "modules": ["RedisJSON", "RedisTimeSeries"]
+  },
+  "time_series": {
+    "type": "TimescaleDB",
+    "purpose": "Audit trails, performance metrics, historical analytics",
+    "rationale": "Optimized for time-series queries on audit data"
+  },
+  "document_store": {
+    "type": "MongoDB 7+",
+    "purpose": "Product catalogs, configuration documents, templates",
+    "rationale": "Flexible schema for varying product structures"
+  }
+},
+
+"message_queue": {
+  "type": "Apache Kafka",
+  "purpose": "Event streaming, audit trail, service communication",
+  "topics": [
+    "deal.created",
+    "deal.updated",
+    "deal.scenario.added",
+    "calculation.requested",
+    "calculation.completed",
+    "customer.updated",
+    "vehicle.updated",
+    "product.added",
+    "audit.change"
+  ]
+},
+
+"search_engine": {
+  "type": "Elasticsearch 8+",
+  "purpose": "Full-text search for customers, vehicles, products, historical deals",
+  "rationale": "Fast search with faceting and relevance scoring"
+},
+
+"api_gateway": {
+  "type": "Kong Gateway",
+  "features": ["Rate limiting", "Authentication", "Request transformation", "Monitoring"]
+},
+
+"authentication": {
+  "protocol": "OAuth 2.0 + OpenID Connect",
+  "provider": "Keycloak",
+  "token_type": "JWT with RS256",
+  "session_management": "Redis-backed sessions with sliding expiration"
+}
+```
+
+},
+
+“core_services”: {
+“calculation_engine”: {
+“name”: “Financial Calculator Service”,
+“language”: “Rust”,
+“responsibilities”: [
+“Finance payment calculations with full amortization schedules”,
+“Lease payment calculations (closed-end and open-end)”,
+“Residual value calculations”,
+“Money factor to APR conversions”,
+“Payment-to-income ratio calculations”,
+“Total cost of ownership projections”
+],
+“libraries”: [
+{
+“name”: “rust_decimal”,
+“purpose”: “Arbitrary precision decimal arithmetic”
+},
+{
+“name”: “chrono”,
+“purpose”: “Date handling for payment schedules”
+}
+],
+“calculation_formulas”: {
+“finance_payment”: {
+“formula”: “P * [r(1+r)^n] / [(1+r)^n - 1]”,
+“where”: {
+“P”: “Principal (amount financed)”,
+“r”: “Periodic interest rate (APR/12/100)”,
+“n”: “Number of payments (term in months)”
+},
+“precision”: “Round to nearest cent, but maintain full precision in intermediate calculations”
+},
+“lease_payment”: {
+“formula”: “Depreciation + Finance Charge”,
+“depreciation”: “(Capitalized Cost - Residual Value) / Term”,
+“finance_charge”: “(Capitalized Cost + Residual Value) * Money Factor”,
+“money_factor_to_apr”: “Money Factor * 2400”,
+“apr_to_money_factor”: “APR / 2400”
+},
+“sales_tax_timing”: {
+“upfront”: “Add to capitalized cost (capitalized cost reduction)”,
+“monthly”: “Calculate on depreciation + finance charge monthly”,
+“state_specific”: “Reference tax_rules table for jurisdiction”
+}
+},
+“validation_rules”: [
+“APR must be >= 0 and <= 99.99%”,
+“Term must be > 0 and <= 96 months for finance, <= 60 for lease”,
+“Down payment must be >= 0”,
+“Trade value can be negative (negative equity)”,
+“Residual value must be > 0 for leases”,
+“Money factor must be >= 0”
+],
+“performance_requirements”: {
+“response_time”: “< 50ms for single calculation”,
+“batch_processing”: “1000 calculations per second”,
+“accuracy”: “100% match to bank calculation sheets within $0.01”
+}
+},
+
+```
+"tax_engine": {
+  "name": "Multi-Jurisdictional Tax Service",
+  "language": "Go",
+  "responsibilities": [
+    "Calculate sales tax based on customer address",
+    "Calculate sales tax for out-of-state deliveries",
+    "Apply county, city, township, and special district taxes",
+    "Handle tax exemptions and exclusions",
+    "Calculate registration fees, title fees, and doc fees",
+    "Apply manufacturer incentives and rebates",
+    "Handle trade-in tax credits where applicable"
+  ],
+  "data_sources": {
+    "primary": {
+      "provider": "Custom jurisdiction database",
+      "update_frequency": "Quarterly with emergency updates",
+      "structure": "Hierarchical: State -> County -> City -> Special Districts"
+    },
+    "validation": {
+      "provider": "Avalara or Vertex API",
+      "purpose": "Quarterly validation of custom database"
+    }
+  },
+  "tax_rules_schema": {
+    "jurisdiction_id": "UUID",
+    "jurisdiction_type": "ENUM(state, county, city, district)",
+    "parent_jurisdiction_id": "UUID (nullable for states)",
+    "name": "VARCHAR(255)",
+    "tax_rate": "DECIMAL(6,4) - stored as 0.0625 for 6.25%",
+    "applies_to_vehicle_sale": "BOOLEAN",
+    "applies_to_trade_in": "BOOLEAN",
+    "trade_in_credit_type": "ENUM(none, full_credit, partial_credit, tax_on_difference)",
+    "tax_on_dealer_fees": "BOOLEAN",
+    "tax_on_doc_fee": "BOOLEAN",
+    "tax_on_accessories": "BOOLEAN",
+    "max_taxable_amount": "DECIMAL(12,2) - null for no maximum",
+    "effective_date": "DATE",
+    "expiration_date": "DATE (nullable)",
+    "special_rules": "JSONB - for complex scenarios"
+  },
+  "calculation_logic": {
+    "address_lookup": {
+      "step_1": "Validate and standardize address using USPS API",
+      "step_2": "Geocode address to lat/long",
+      "step_3": "Perform point-in-polygon query against jurisdiction boundaries",
+      "step_4": "Build jurisdiction hierarchy from state -> local",
+      "step_5": "Cache result in Redis with 24-hour TTL"
+    },
+    "tax_calculation": {
+      "step_1": "Calculate base taxable amount (vehicle price - trade allowance if applicable)",
+      "step_2": "Add taxable fees and accessories",
+      "step_3": "Apply state tax rate",
+      "step_4": "Apply county tax rate (cumulative)",
+      "step_5": "Apply city tax rate (cumulative)",
+      "step_6": "Apply special district taxes (cumulative)",
+      "step_7": "Round each jurisdiction separately, then sum",
+      "step_8": "Apply caps/maximums if defined"
+    },
+    "out_of_state_logic": {
+      "scenario_1": "Customer from different state buying in dealer state",
+      "rule": "Apply destination state taxes (customer's home state)",
+      "scenario_2": "Customer from dealer state buying for out-of-state delivery",
+      "rule": "Apply destination state taxes if reciprocal agreement exists, otherwise dealer state",
+      "scenario_3": "Interstate commerce exceptions",
+      "rule": "Reference IRP (International Registration Plan) for commercial vehicles"
+    }
+  },
+  "registration_fees": {
+    "structure": {
+      "base_registration": "State-specific base fee",
+      "weight_based": "Additional fee based on vehicle weight (commercial vehicles)",
+      "value_based": "Ad valorem tax (property tax on vehicle value) - specific states",
+      "title_fee": "One-time title transfer fee",
+      "plate_fee": "License plate issuance fee",
+      "emissions_fee": "Smog check or emissions testing fee (specific counties)",
+      "electric_vehicle_fee": "Additional fee for EVs (state-specific)",
+      "doc_fee_cap": "State maximum on dealer documentation fees"
+    },
+    "calculation_service": {
+      "input": ["state", "county", "vehicle_weight", "vehicle_value", "vehicle_type", "fuel_type"],
+      "output": {
+        "registration_fee": "DECIMAL(10,2)",
+        "title_fee": "DECIMAL(10,2)",
+        "plate_fee": "DECIMAL(10,2)",
+        "other_fees": "ARRAY of {name, amount}",
+        "total_fees": "DECIMAL(10,2)"
+      }
+    }
+  },
+  "api_endpoints": [
+    {
+      "path": "/api/v1/tax/calculate",
+      "method": "POST",
+      "input": {
+        "vehicle_price": "DECIMAL",
+        "trade_in_value": "DECIMAL",
+        "accessories": "ARRAY of {name, price, taxable}",
+        "dealer_fees": "ARRAY of {name, amount, taxable}",
+        "customer_address": "ADDRESS object",
+        "delivery_address": "ADDRESS object (optional)",
+        "vehicle_type": "STRING",
+        "vehicle_weight": "INTEGER (lbs)"
+      },
+      "output": {
+        "jurisdictions": "ARRAY of {name, type, rate, tax_amount}",
+        "total_sales_tax": "DECIMAL",
+        "registration_fees": "OBJECT",
+        "total_fees": "DECIMAL",
+        "grand_total": "DECIMAL",
+        "calculation_breakdown": "DETAILED object for transparency"
+      }
+    }
+  ]
+},
+
+"deal_management_service": {
+  "name": "Deal Orchestration Service",
+  "language": "Go",
+  "responsibilities": [
+    "Create and manage deal records",
+    "Coordinate between calculation and tax engines",
+    "Manage multiple scenarios per deal",
+    "Handle deal state transitions",
+    "Trigger audit events",
+    "Manage deal locking and concurrency"
+  ],
+  "deal_states": [
+    "DRAFT",
+    "IN_PROGRESS",
+    "PENDING_MANAGER_APPROVAL",
+    "PENDING_FINANCE_APPROVAL",
+    "APPROVED",
+    "SUBMITTED_TO_LENDER",
+    "FUNDED",
+    "DELIVERED",
+    "CANCELLED",
+    "LOST"
+  ],
+  "scenario_types": [
+    "CASH_DEAL",
+    "FINANCE_DEAL",
+    "LEASE_DEAL",
+    "BALLOON_FINANCE",
+    "CUSTOM"
+  ],
+  "database_schema": {
+    "deals": {
+      "id": "UUID PRIMARY KEY",
+      "deal_number": "VARCHAR(50) UNIQUE NOT NULL - format: YYYY-MM-NNNN",
+      "dealership_id": "UUID NOT NULL",
+      "salesperson_id": "UUID NOT NULL",
+      "sales_manager_id": "UUID",
+      "finance_manager_id": "UUID",
+      "customer_id": "UUID NOT NULL",
+      "vehicle_id": "UUID NOT NULL",
+      "trade_vehicle_id": "UUID (nullable)",
+      "deal_state": "ENUM(deal_states)",
+      "active_scenario_id": "UUID",
+      "created_at": "TIMESTAMP WITH TIME ZONE NOT NULL",
+      "updated_at": "TIMESTAMP WITH TIME ZONE NOT NULL",
+      "locked_by": "UUID (nullable) - for concurrent editing protection",
+      "locked_at": "TIMESTAMP WITH TIME ZONE (nullable)",
+      "metadata": "JSONB - extensible field for custom data",
+      "indexes": [
+        "idx_deal_number",
+        "idx_customer_id",
+        "idx_vehicle_id",
+        "idx_dealership_id",
+        "idx_deal_state",
+        "idx_created_at"
+      ]
+    },
+    
+    "deal_scenarios": {
+      "id": "UUID PRIMARY KEY",
+      "deal_id": "UUID NOT NULL REFERENCES deals(id)",
+      "scenario_name": "VARCHAR(255) NOT NULL",
+      "scenario_type": "ENUM(scenario_types)",
+      "is_active": "BOOLEAN DEFAULT true",
+      "display_order": "INTEGER NOT NULL",
+      "created_at": "TIMESTAMP WITH TIME ZONE NOT NULL",
+      "updated_at": "TIMESTAMP WITH TIME ZONE NOT NULL",
+      "vehicle_pricing": {
+        "msrp": "DECIMAL(12,2)",
+        "selling_price": "DECIMAL(12,2) NOT NULL",
+        "invoice_price": "DECIMAL(12,2)",
+        "dealer_cost": "DECIMAL(12,2)",
+        "holdback": "DECIMAL(12,2)",
+        "pack": "DECIMAL(8,2)",
+        "gross_profit": "DECIMAL(12,2) - calculated field"
+      },
+      "trade_in": {
+        "acv": "DECIMAL(12,2) - actual cash value",
+        "trade_allowance": "DECIMAL(12,2) - what customer gets",
+        "payoff_amount": "DECIMAL(12,2)",
+        "equity": "DECIMAL(12,2) - calculated: allowance - payoff",
+        "over_allowance": "DECIMAL(12,2) - calculated: allowance - acv"
+      },
+      "finance_details": {
+        "down_payment": "DECIMAL(12,2) NOT NULL",
+        "rebates_and_incentives": "DECIMAL(12,2)",
+        "total_down": "DECIMAL(12,2) - calculated",
+        "amount_financed": "DECIMAL(12,2) - calculated",
+        "apr": "DECIMAL(6,4)",
+        "term_months": "INTEGER",
+        "payment_amount": "DECIMAL(10,2)",
+        "total_of_payments": "DECIMAL(12,2)",
+        "total_interest": "DECIMAL(12,2)",
+        "finance_charge": "DECIMAL(12,2)"
+      },
+      "lease_details": {
+        "capitalized_cost": "DECIMAL(12,2)",
+        "cap_cost_reduction": "DECIMAL(12,2)",
+        "adjusted_cap_cost": "DECIMAL(12,2)",
+        "residual_value": "DECIMAL(12,2)",
+        "residual_percentage": "DECIMAL(5,2)",
+        "money_factor": "DECIMAL(8,6)",
+        "equivalent_apr": "DECIMAL(6,4)",
+        "term_months": "INTEGER",
+        "base_payment": "DECIMAL(10,2)",
+        "monthly_tax": "DECIMAL(10,2)",
+        "total_payment": "DECIMAL(10,2)",
+        "total_amount_due_at_signing": "DECIMAL(12,2)",
+        "acquisition_fee": "DECIMAL(8,2)",
+        "disposition_fee": "DECIMAL(8,2)"
+      },
+      "tax_and_fees": {
+        "sales_tax": "DECIMAL(10,2)",
+        "registration_fee": "DECIMAL(10,2)",
+        "title_fee": "DECIMAL(8,2)",
+        "doc_fee": "DECIMAL(8,2)",
+        "dealer_fees": "JSONB - array of {name, amount, taxable}",
+        "government_fees": "JSONB - array of {name, amount}",
+        "total_fees": "DECIMAL(10,2)"
+      },
+      "frontend_products": "JSONB - array of product objects",
+      "backend_products": "JSONB - array of product objects",
+      "we_owe_items": "JSONB - array of {description, amount, due_date, status}",
+      "notes": "TEXT",
+      "indexes": [
+        "idx_deal_scenarios_deal_id",
+        "idx_deal_scenarios_is_active"
+      ]
+    },
+    
+    "deal_products": {
+      "id": "UUID PRIMARY KEY",
+      "scenario_id": "UUID NOT NULL REFERENCES deal_scenarios(id)",
+      "product_id": "UUID NOT NULL",
+      "product_category": "ENUM(FRONTEND, BACKEND, WE_OWE)",
+      "product_name": "VARCHAR(255) NOT NULL",
+      "product_code": "VARCHAR(100)",
+      "cost": "DECIMAL(10,2)",
+      "selling_price": "DECIMAL(10,2) NOT NULL",
+      "gross_profit": "DECIMAL(10,2)",
+      "taxable": "BOOLEAN",
+      "included_in_payment": "BOOLEAN - if financed/leased",
+      "provider_id": "UUID - for backend products (warranty, gap, etc)",
+      "term_months": "INTEGER - for backend products with terms",
+      "coverage_details": "JSONB",
+      "display_order": "INTEGER",
+      "created_at": "TIMESTAMP WITH TIME ZONE NOT NULL",
+      "created_by": "UUID NOT NULL"
+    },
+    
+    "amortization_schedules": {
+      "id": "UUID PRIMARY KEY",
+      "scenario_id": "UUID NOT NULL REFERENCES deal_scenarios(id)",
+      "payment_number": "INTEGER NOT NULL",
+      "payment_date": "DATE NOT NULL",
+      "payment_amount": "DECIMAL(10,2) NOT NULL",
+      "principal": "DECIMAL(10,2) NOT NULL",
+      "interest": "DECIMAL(10,2) NOT NULL",
+      "remaining_balance": "DECIMAL(12,2) NOT NULL",
+      "indexes": [
+        "idx_amortization_scenario_id",
+        "UNIQUE idx_amortization_scenario_payment (scenario_id, payment_number)"
+      ]
+    }
+  },
+  
+  "api_endpoints": [
+    {
+      "path": "/api/v1/deals",
+      "method": "POST",
+      "description": "Create new deal",
+      "auth": "Required - salesperson or manager role"
+    },
+    {
+      "path": "/api/v1/deals/{dealId}",
+      "method": "GET",
+      "description": "Retrieve deal with all scenarios",
+      "response_time_target": "< 200ms"
+    },
+    {
+      "path": "/api/v1/deals/{dealId}/scenarios",
+      "method": "POST",
+      "description": "Add new scenario to existing deal",
+      "triggers": ["Calculation engine", "Tax engine", "Audit event"]
+    },
+    {
+      "path": "/api/v1/deals/{dealId}/scenarios/{scenarioId}",
+      "method": "PATCH",
+      "description": "Update scenario - triggers recalculation",
+      "concurrency": "Optimistic locking with version field"
+    },
+    {
+      "path": "/api/v1/deals/{dealId}/scenarios/{scenarioId}/calculate",
+      "method": "POST",
+      "description": "Force recalculation of scenario",
+      "async": true
+    },
+    {
+      "path": "/api/v1/deals/{dealId}/lock",
+      "method": "POST",
+      "description": "Lock deal for editing by current user",
+      "lock_duration": "15 minutes with heartbeat refresh"
+    },
+    {
+      "path": "/api/v1/deals/{dealId}/unlock",
+      "method": "POST",
+      "description": "Release deal lock"
+    }
+  ]
+},
+
+"audit_service": {
+  "name": "Audit Trail Service",
+  "language": "Go",
+  "database": "TimescaleDB",
+  "responsibilities": [
+    "Record every change to deals and scenarios with microsecond precision",
+    "Capture user identity, timestamp, field changes, and IP address",
+    "Enable point-in-time deal reconstruction",
+    "Support compliance and regulatory requirements",
+    "Provide change history for dispute resolution"
+  ],
+  "audit_log_schema": {
+    "audit_events": {
+      "id": "UUID PRIMARY KEY",
+      "event_timestamp": "TIMESTAMP WITH TIME ZONE NOT NULL - hypertable partition key",
+      "event_type": "VARCHAR(100) NOT NULL - e.g., DEAL_CREATED, SCENARIO_UPDATED",
+      "entity_type": "ENUM(DEAL, SCENARIO, PRODUCT, CUSTOMER, VEHICLE)",
+      "entity_id": "UUID NOT NULL",
+      "parent_entity_id": "UUID - deal_id if entity is scenario/product",
+      "user_id": "UUID NOT NULL",
+      "user_role": "VARCHAR(50)",
+      "user_ip": "INET",
+      "session_id": "UUID",
+      "changes": "JSONB - {field: {old: value, new: value}}",
+      "full_snapshot": "JSONB - complete object state after change",
+      "metadata": "JSONB - request context, user agent, etc",
+      "indexes": [
+        "idx_audit_entity_type_id (entity_type, entity_id)",
+        "idx_audit_user_id",
+        "idx_audit_event_type"
+      ],
+      "retention": "7 years for compliance"
+    }
+  },
+  "change_tracking": {
+    "capture_method": "Database triggers + application events",
+    "fields_tracked": "ALL fields in deals, scenarios, products tables",
+    "diff_format": "JSON Patch (RFC 6902) for space efficiency",
+    "compression": "ZSTD compression for historical records > 90 days old"
+  },
+  "audit_api": [
+    {
+      "path": "/api/v1/audit/{entityType}/{entityId}",
+      "method": "GET",
+      "description": "Get complete audit trail for entity",
+      "pagination": "Cursor-based, 100 events per page"
+    },
+    {
+      "path": "/api/v1/audit/{entityType}/{entityId}/at/{timestamp}",
+      "method": "GET",
+      "description": "Reconstruct entity state at specific point in time"
+    },
+    {
+      "path": "/api/v1/audit/compare",
+      "method": "POST",
+      "description": "Compare two versions of an entity",
+      "input": {
+        "entity_id": "UUID",
+        "timestamp_a": "ISO8601",
+        "timestamp_b": "ISO8601"
+      }
+    }
+  ]
+},
+
+"customer_service": {
+  "name": "Customer Management Service",
+  "language": "Go",
+  "responsibilities": [
+    "Manage customer records and contact information",
+    "Track customer interactions and deal history",
+    "Handle credit applications and pre-approvals",
+    "Manage co-buyers and guarantors",
+    "Link to CRM systems"
+  ],
+  "database_schema": {
+    "customers": {
+      "id": "UUID PRIMARY KEY",
+      "dealership_id": "UUID NOT NULL",
+      "customer_type": "ENUM(INDIVIDUAL, BUSINESS)",
+      "first_name": "VARCHAR(100)",
+      "last_name": "VARCHAR(100)",
+      "business_name": "VARCHAR(255)",
+      "date_of_birth": "DATE",
+      "ssn_encrypted": "BYTEA - encrypted with AES-256",
+      "drivers_license": "VARCHAR(50)",
+      "dl_state": "VARCHAR(2)",
+      "dl_expiration": "DATE",
+      "email": "VARCHAR(255)",
+      "phone_primary": "VARCHAR(20)",
+      "phone_secondary": "VARCHAR(20)",
+      "address": "JSONB - {street, city, state, zip, county}",
+      "employment": "JSONB - {employer, position, income, start_date}",
+      "credit_score": "INTEGER",
+      "credit_tier": "VARCHAR(20)",
+      "credit_app_date": "TIMESTAMP WITH TIME ZONE",
+      "marketing_opt_in": "BOOLEAN",
+      "created_at": "TIMESTAMP WITH TIME ZONE NOT NULL",
+      "updated_at": "TIMESTAMP WITH TIME ZONE NOT NULL",
+      "indexes": [
+        "idx_customers_email",
+        "idx_customers_phone",
+        "gin_idx_customers_name (to_tsvector('english', first_name || ' ' || last_name))",
+        "idx_customers_dealership_id"
+      ]
+    },
+    
+    "customer_relationships": {
+      "id": "UUID PRIMARY KEY",
+      "deal_id": "UUID NOT NULL",
+      "customer_id": "UUID NOT NULL",
+      "relationship_type": "ENUM(PRIMARY_BUYER, CO_BUYER, CO_SIGNER, GUARANTOR)",
+      "ownership_percentage": "DECIMAL(5,2) - for co-buyers"
+    }
+  },
+  "customer_drill_down": {
+    "description": "When clicking on customer name in deal view, show expandable panel",
+    "sections": [
+      {
+        "name": "Contact Information",
+        "fields": ["Name", "Email", "Phone", "Address"],
+        "editable": true
+      },
+      {
+        "name": "Deal History",
+        "query": "All deals associated with this customer",
+        "display": "Grid with columns: Date, Vehicle, Deal Type, Status, Salesperson",
+        "clickable": "Each row links to full deal details"
+      },
+      {
+        "name": "Vehicle History",
+        "query": "All vehicles purchased or traded by this customer",
+        "display": "Timeline view with vehicle details"
+      },
+      {
+        "name": "Credit Information",
+        "fields": ["Credit Score", "Credit Tier", "Last Credit App Date"],
+        "permissions": "Finance manager and above only"
+      },
+      {
+        "name": "Communication Log",
+        "query": "All interactions, calls, emails, texts",
+        "integration": "CRM system via API"
+      }
+    ]
+  }
+},
+
+"vehicle_service": {
+  "name": "Vehicle Inventory & History Service",
+  "language": "Go",
+  "responsibilities": [
+    "Manage vehicle inventory (new and used)",
+    "Track vehicle history and deals",
+    "VIN decoding and validation",
+    "Vehicle valuation integration",
+    "Cost and pricing management"
+  ],
+  "database_schema": {
+    "vehicles": {
+      "id": "UUID PRIMARY KEY",
+      "dealership_id": "UUID NOT NULL",
+      "vin": "VARCHAR(17) UNIQUE NOT NULL",
+      "stock_number": "VARCHAR(50)",
+      "vehicle_type": "ENUM(NEW, USED, CPO)",
+      "status": "ENUM(AVAILABLE, PENDING, SOLD, WHOLESALED)",
+      "year": "INTEGER NOT NULL",
+      "make": "VARCHAR(100) NOT NULL",
+      "model": "VARCHAR(100) NOT NULL",
+      "trim": "VARCHAR(100)",
+      "body_style": "VARCHAR(50)",
+      "exterior_color": "VARCHAR(50)",
+      "interior_color": "VARCHAR(50)",
+      "engine": "VARCHAR(100)",
+      "transmission": "VARCHAR(100)",
+      "drivetrain": "VARCHAR(50)",
+      "fuel_type": "VARCHAR(50)",
+      "mileage": "INTEGER",
+      "msrp": "DECIMAL(12,2)",
+      "invoice": "DECIMAL(12,2)",
+      "dealer_cost": "DECIMAL(12,2)",
+      "asking_price": "DECIMAL(12,2)",
+      "book_value": "DECIMAL(12,2)",
+      "certified": "BOOLEAN",
+      "features": "JSONB - array of feature strings",
+      "options_list": "JSONB",
+      "condition_report": "JSONB",
+      "images": "JSONB - array of image URLs",
+      "acquired_date": "DATE",
+      "acquired_from": "VARCHAR(255)",
+      "days_in_stock": "INTEGER - calculated field",
+      "created_at": "TIMESTAMP WITH TIME ZONE NOT NULL",
+      "updated_at": "TIMESTAMP WITH TIME ZONE NOT NULL",
+      "indexes": [
+        "idx_vehicles_vin",
+        "idx_vehicles_stock_number",
+        "idx_vehicles_status",
+        "idx_vehicles_dealership_id",
+        "gin_idx_vehicles_search (to_tsvector('english', year || ' ' || make || ' ' || model))"
+      ]
+    },
+    
+    "vehicle_cost_history": {
+      "id": "UUID PRIMARY KEY",
+      "vehicle_id": "UUID NOT NULL",
+      "cost_type": "ENUM(ACQUISITION, RECONDITIONING, DETAIL, TRANSPORT, FLOORPLAN)",
+      "amount": "DECIMAL(10,2) NOT NULL",
+      "description": "VARCHAR(255)",
+      "date": "DATE NOT NULL",
+      "invoice_number": "VARCHAR(100)",
+      "created_at": "TIMESTAMP WITH TIME ZONE NOT NULL"
+    },
+    
+    "vehicle_deal_history": {
+      "id": "UUID PRIMARY KEY",
+      "vehicle_id": "UUID NOT NULL",
+      "deal_id": "UUID NOT NULL",
+      "event_type": "ENUM(DEAL_STARTED, DEAL_COMPLETED, DEAL_CANCELLED)",
+      "event_date": "TIMESTAMP WITH TIME ZONE NOT NULL",
+      "selling_price": "DECIMAL(12,2)",
+      "salesperson_id": "UUID",
+      "customer_id": "UUID",
+      "notes": "TEXT",
+      "indexes": [
+        "idx_vehicle_deal_history_vehicle_id",
+        "idx_vehicle_deal_history_deal_id"
+      ]
+    }
+  },
+  "vin_decoder": {
+    "provider": "NHTSA vPIC API (primary, free)",
+    "fallback": "VINaudit or Carfax API (commercial)",
+    "cache_duration": "Permanent (VIN data doesn't change)",
+    "decoded_fields": [
+      "Make", "Model", "Year", "Trim", "Body Style", "Engine",
+      "Transmission", "Drivetrain", "Fuel Type", "Manufacturing Plant",
+      "Weight Rating", "Vehicle Type"
+    ]
+  },
+  "valuation_integration": {
+    "providers": [
+      {
+        "name": "Black Book",
+        "purpose": "Wholesale (ACV) valuations",
+        "update_frequency": "Weekly"
+      },
+      {
+        "name": "Kelley Blue Book (KBB)",
+        "purpose": "Retail valuations",
+        "update_frequency": "Weekly"
+      },
+      {
+        "name": "NADA Guides",
+        "purpose": "Trade-in and retail valuations",
+        "update_frequency": "Monthly"
+      }
+    ],
+    "cache_strategy": "Cache valuations for 7 days, refresh on-demand"
+  },
+  "vehicle_drill_down": {
+    "description": "When clicking on vehicle in deal view, show expandable panel",
+    "sections": [
+      {
+        "name": "Vehicle Details",
+        "fields": ["VIN", "Stock", "Year", "Make", "Model", "Trim", "Color", "Mileage"],
+        "images": "Photo gallery"
+      },
+      {
+        "name": "Pricing",
+        "fields": ["MSRP", "Invoice", "Current Asking", "Book Value", "Days in Stock"]
+      },
+      {
+        "name": "Cost Breakdown",
+        "query": "All costs from vehicle_cost_history",
+        "display": "Table with total investment calculation"
+      },
+      {
+        "name": "Deal History",
+        "query": "All deals associated with this vehicle",
+        "display": "Timeline with deal details, pricing, and outcomes",
+        "clickable": "Each deal links to full deal record"
+      },
+      {
+        "name": "Condition Report",
+        "data": "Inspection details, damage notes, reconditioning needs"
+      }
+    ]
+  }
+},
+
+"product_catalog_service": {
+  "name": "Product & Accessory Management",
+  "language": "Go",
+  "database": "MongoDB",
+  "responsibilities": [
+    "Manage frontend products (accessories, add-ons)",
+    "Manage backend products (warranties, GAP, VSC, maintenance plans)",
+    "Product pricing by dealership/region",
+    "Provider/vendor management",
+    "Product eligibility rules",
+    "Commission structures"
+  ],
+  "product_categories": {
+    "frontend": [
+      "Accessories (wheels, running boards, tonneau covers, etc)",
+      "Paint protection",
+      "Window tinting",
+      "Interior protection",
+      "Bed liners",
+      "Trailer hitches",
+      "Remote starters",
+      "Security systems",
+      "Custom upholstery"
+    ],
+    "backend": [
+      "Extended warranties/Vehicle Service Contracts (VSC)",
+      "GAP insurance",
+      "Tire and wheel protection",
+      "Maintenance plans",
+      "Theft protection",
+      "Road hazard warranty",
+      "Paintless dent repair plans",
+      "Key replacement coverage"
+    ]
+  },
+  "mongodb_schema": {
+    "products_collection": {
+      "document_structure": {
+        "_id": "ObjectId",
+        "product_code": "STRING - unique identifier",
+        "product_name": "STRING",
+        "category": "STRING - frontend or backend",
+        "subcategory": "STRING",
+        "provider_id": "STRING - vendor/underwriter",
+        "description": "STRING",
+        "long_description": "STRING",
+        "cost_base": "DECIMAL",
+        "pricing_tiers": [
+          {
+            "tier_name": "STRING - e.g., Standard, Premium, Ultimate",
+            "retail_price": "DECIMAL",
+            "min_price": "DECIMAL - minimum allowed selling price",
+            "dealership_cost": "DECIMAL"
+          }
+        ],
+        "term_months": "ARRAY of INTEGERS - [12, 24, 36, 48, etc]",
+        "mileage_limits": "ARRAY of INTEGERS - for warranties",
+        "eligibility_rules": {
+          "vehicle_age_max": "INTEGER",
+          "vehicle_mileage_max": "INTEGER",
+          "vehicle_types": "ARRAY - [NEW, USED, CPO]",
+          "excluded_makes": "ARRAY",
+          "excluded_models": "ARRAY",
+          "requires_inspection": "BOOLEAN"
+        },
+        "taxable": "BOOLEAN",
+        "can_be_financed": "BOOLEAN",
+        "requires_customer_signature": "BOOLEAN",
+        "contract_template_id": "STRING",
+        "commission_structure": {
+          "flat_amount": "DECIMAL",
+          "percentage": "DECIMAL",
+          "split_rules": "OBJECT - how to split between sales and F&I"
+        },
+        "is_active": "BOOLEAN",
+        "effective_date": "DATE",
+        "expiration_date": "DATE",
+        "images": "ARRAY of URLs",
+        "documents": "ARRAY of {name, url}",
+        "created_at": "DATE",
+        "updated_at": "DATE"
+      },
+      "indexes": [
+        {"product_code": 1},
+        {"category": 1, "is_active": 1},
+        {"provider_id": 1},
+        {"product_name": "text"}
+      ]
+    },
+    
+    "providers_collection": {
+      "document_structure": {
+        "_id": "ObjectId",
+        "provider_name": "STRING",
+        "provider_type": "STRING - warranty, gap, maintenance, accessory",
+        "contact_info": "OBJECT",
+        "api_config": "OBJECT - for automated eligibility checks",
+        "payment_terms": "STRING",
+        "commission_schedule": "OBJECT",
+        "is_active": "BOOLEAN"
+      }
+    }
+  },
+  "product_selection_ui": {
+    "frontend_products": {
+      "display": "Grid with images and prices",
+      "selection": "Checkbox with quantity and price input",
+      "validation": "Real-time price validation against min/max",
+      "installation": "Track if dealership installs or vendor installs"
+    },
+    "backend_products": {
+      "display": "List with expandable details",
+      "eligibility_check": "Auto-check based on vehicle details",
+      "term_selection": "Dropdown for term/mileage combinations",
+      "rate_calculation": "Auto-calculate based on term selected",
+      "finance_mapping": "Auto-add to amount financed when selected"
+    }
+  },
+  "we_owe_management": {
+    "description": "Items dealer owes customer (repairs, accessories to be installed, etc)",
+    "fields": [
+      "Description",
+      "Estimated cost",
+      "Due date",
+      "Status (Pending, Completed, Cancelled)",
+      "Assigned to (technician/department)",
+      "Completion date",
+      "Notes"
+    ],
+    "notifications": "Alert when due date approaching or overdue",
+    "completion_tracking": "Require sign-off when marked complete"
+  }
+},
+
+"integration_service": {
+  "name": "External System Integration Hub",
+  "language": "Go",
+  "responsibilities": [
+    "Integrate with DMS (Dealer Management Systems)",
+    "Integrate with lender decision engines",
+    "Integrate with credit bureaus",
+    "Integrate with manufacturer incentive systems",
+    "Integrate with accounting systems",
+    "Integrate with document generation systems"
+  ],
+  "dms_integrations": [
+    {
+      "dms": "CDK Global",
+      "integration_type": "REST API + Webhook",
+      "sync_frequency": "Real-time for deals, nightly for inventory",
+      "data_flow": ["Customer records", "Vehicle inventory", "Deal records", "Accounting"]
+    },
+    {
+      "dms": "Reynolds and Reynolds",
+      "integration_type": "XML API",
+      "sync_frequency": "Real-time for deals, nightly for inventory"
+    },
+    {
+      "dms": "Dealertrack DMS",
+      "integration_type": "REST API",
+      "sync_frequency": "Real-time bidirectional"
+    }
+  ],
+  "lender_integrations": {
+    "providers": [
+      "RouteOne",
+      "Dealertrack",
+      "CU Direct",
+      "Ally Auto Finance",
+      "Chase Auto",
+      "Capital One Auto",
+      "Wells Fargo Dealer Services"
+    ],
+    "integration_method": "Standard automotive finance XML (STAR format)",
+    "workflow": [
+      "1. Export deal data in STAR XML format",
+      "2. Submit to lender via secure API/SFTP",
+      "3. Receive decision (approve/counter/decline) via callback",
+      "4. Update deal with lender decision and terms",
+      "5. If approved, send stipulations and documents",
+      "6. Track funding status"
+    ]
+  },
+  "credit_bureau_integration": {
+    "bureaus": ["Experian", "Equifax", "TransUnion"],
+    "service": "Soft pull for pre-qualification, hard pull for actual application",
+    "compliance": "FCRA compliant, permissible purpose documented",
+    "data_security": "TLS 1.3, cert pinning, API keys rotated monthly"
+  }
+},
+
+"collaboration_service": {
+  "name": "Real-Time Collaboration Service",
+  "language": "Go",
+  "websocket_server": "Socket.io",
+  "responsibilities": [
+    "Real-time deal updates across multiple users",
+    "Presence detection (who's viewing/editing)",
+    "Concurrent editing with operational transformation",
+    "Live commenting and annotations",
+    "Manager approval workflows"
+  ],
+  "features": {
+    "presence": {
+      "description": "Show avatars of users currently viewing deal",
+      "update_frequency": "Every 10 seconds via heartbeat",
+      "timeout": "30 seconds of inactivity = presence removed"
+    },
+    "live_updates": {
+      "description": "Push changes to all connected users",
+      "granularity": "Field-level updates",
+      "conflict_resolution": "Last-write-wins with version numbers",
+      "notification": "Toast notification: 'John updated finance terms'"
+    },
+    "deal_locking": {
+      "description": "Prevent conflicting edits",
+      "strategy": "Optimistic locking - warn users if editing simultaneously",
+      "lock_duration": "Auto-release after 15 minutes of inactivity",
+      "override": "Managers can force-unlock deals"
+    },
+    "commenting": {
+      "description": "Add comments to deals/scenarios",
+      "mentions": "@ mention users to notify them",
+      "threading": "Support threaded discussions",
+      "persistence": "Store in separate comments table"
+    }
+  },
+  "websocket_events": [
+    "deal:joined - User opened deal",
+    "deal:left - User closed deal",
+    "deal:updated - Any field changed",
+    "scenario:added - New scenario created",
+    "scenario:updated - Scenario modified",
+    "comment:added - New comment added",
+    "user:typing - User is editing field"
+  ]
+},
+
+"reporting_analytics_service": {
+  "name": "Business Intelligence & Analytics",
+  "language": "Go",
+  "data_warehouse": "Apache Druid or ClickHouse",
+  "visualization": "Embedded dashboards with Metabase or Apache Superset",
+  "responsibilities": [
+    "Deal metrics and KPIs",
+    "Salesperson performance tracking",
+    "Gross profit analysis",
+    "Product penetration rates",
+    "Conversion funnel analytics",
+    "Forecasting and predictions"
+  ],
+  "key_reports": [
+    {
+      "name": "Daily Deal Log",
+      "description": "All deals by status, salesperson, gross profit",
+      "refresh": "Real-time"
+    },
+    {
+      "name": "Salesperson Leaderboard",
+      "metrics": ["Units sold", "Gross profit", "Backend penetration", "Average deal time"],
+      "filters": ["Date range", "Dealership", "Vehicle type"]
+    },
+    {
+      "name": "Product Penetration",
+      "description": "Percentage of deals with each backend product",
+      "segmentation": ["By salesperson", "By F&I manager", "By vehicle type"]
+    },
+    {
+      "name": "Deal Velocity",
+      "description": "Time from deal start to completion by stage",
+      "visualization": "Funnel chart showing drop-off rates"
+    },
+    {
+      "name": "Gross Profit Analysis",
+      "breakdown": ["Front-end gross", "Backend gross", "Total gross", "Per unit averages"],
+      "comparison": "YoY, MoM, vs. objectives"
+    }
+  ]
+}
+```
+
+},
+
+“user_interface”: {
+“design_system”: {
+“framework”: “shadcn/ui + Tailwind CSS”,
+“typography”: “Inter for UI, Roboto Mono for numbers”,
+“color_palette”: {
+“primary”: “Blue (#0066FF) - CTAs and emphasis”,
+“success”: “Green (#22C55E) - approved deals, positive indicators”,
+“warning”: “Amber (#F59E0B) - pending approvals, caution”,
+“error”: “Red (#EF4444) - declined deals, validation errors”,
+“neutral”: “Slate grays for backgrounds and borders”
+},
+“spacing”: “8px base grid system”,
+“elevation”: “3 levels of shadow for depth hierarchy”
+},
+
+```
+"key_screens": {
+  "deal_worksheet": {
+    "layout": "3-column layout",
+    "columns": [
+      {
+        "name": "Customer & Vehicle Info (Left Sidebar)",
+        "width": "300px",
+        "collapsible": true,
+        "content": [
+          "Customer summary card with drill-down link",
+          "Vehicle summary card with drill-down link",
+          "Trade-in summary (if applicable)",
+          "Salesperson and manager info"
+        ]
+      },
+      {
+        "name": "Scenario Workspace (Center)",
+        "width": "Flexible, remaining space",
+        "content": [
+          "Scenario tabs at top (swipeable on tablet)",
+          "Vehicle pricing section",
+          "Trade-in section",
+          "Finance/Lease calculator section",
+          "Tax and fees breakdown (expandable)",
+          "Frontend products grid",
+          "Backend products list",
+          "We owe section",
+          "Payment summary (sticky at bottom)",
+          "Action buttons: Save, Print, Submit for Approval"
+        ]
+      },
+      {
+        "name": "Deal Summary & Actions (Right Sidebar)",
+        "width": "320px",
+        "collapsible": true,
+        "content": [
+          "All scenarios comparison table",
+          "Deal timeline/activity feed",
+          "Approval status indicators",
+          "Quick actions: Add Scenario, Add Product, Add Comment",
+          "Export/Print options",
+          "Lender submission status"
+        ]
+      }
+    ],
+    "responsive": {
+      "tablet": "Stack sidebars above/below center workspace",
+      "mobile": "Single column, accordion sections"
+    }
+  },
+  
+  "scenario_comparison_view": {
+    "description": "Side-by-side comparison of all scenarios",
+    "display": "Table with scenarios as columns",
+    "rows": [
+      "Selling price",
+      "Down payment",
+      "Amount financed/capitalized cost",
+      "APR/Money factor",
+      "Term",
+      "Monthly payment",
+      "Total of payments",
+      "Total cost",
+      "Gross profit",
+      "Frontend products included",
+      "Backend products included"
+    ],
+    "interactions": [
+      "Highlight differences in color",
+      "Click any cell to edit inline",
+      "Star favorite scenario",
+      "Print comparison sheet for customer"
+    ]
+  },
+  
+  "customer_drill_down_panel": {
+    "trigger": "Click customer name anywhere in app",
+    "animation": "Slide in from right, overlay with backdrop",
+    "width": "500px",
+    "close_method": "Click backdrop, ESC key, or X button",
+    "sections": "As defined in customer_service section above",
+    "loading": "Skeleton loaders for async data"
+  },
+  
+  "vehicle_drill_down_panel": {
+    "trigger": "Click vehicle description or VIN",
+    "animation": "Slide in from right",
+    "width": "600px",
+    "sections": "As defined in vehicle_service section above",
+    "image_gallery": "Lightbox with zoom capability"
+  },
+  
+  "product_selector": {
+    "frontend_products": {
+      "layout": "Grid cards with images",
+      "search": "Filter by name/category",
+      "selection": "Click to add, quantity input appears",
+      "price_override": "Finance manager can override prices within bounds"
+    },
+    "backend_products": {
+      "layout": "List with expandable details",
+      "auto_filter": "Show only eligible products based on vehicle",
+      "term_selector": "Dropdown for each product",
+      "real_time_update": "Payment updates as products added"
+    }
+  }
+},
+
+"keyboard_shortcuts": {
+  "global": [
+    "Ctrl+S - Save deal",
+    "Ctrl+N - New scenario",
+    "Ctrl+P - Print worksheet",
+    "Ctrl+K - Command palette (search)",
+    "Esc - Close overlays/modals"
+  ],
+  "worksheet": [
+    "Tab - Navigate between fields",
+    "Ctrl+Enter - Calculate/recalculate",
+    "Ctrl+D - Duplicate scenario",
+    "Ctrl+/ - Add comment"
+  ]
+},
+
+"auto_save": {
+  "trigger": "On blur of any input field",
+  "debounce": "500ms - wait for user to stop typing",
+  "indicator": "Subtle checkmark or 'Saved' text with fade animation",
+  "failure_handling": "Show error message, keep local state, retry automatically",
+  "offline_support": "Queue changes in IndexedDB, sync when online"
+},
+
+"validation": {
+  "strategy": "Real-time validation on blur, final validation on save",
+  "error_display": "Inline under field with red border",
+  "error_aggregation": "Summary at top of form if multiple errors",
+  "examples": [
+    "APR must be between 0% and 99.99%",
+    "Term must be 12-96 months for finance, 12-60 for lease",
+    "Down payment cannot exceed vehicle price",
+    "Selling price cannot be below dealer cost (warning, not error)"
+  ]
+}
+```
+
+},
+
+“data_flow_and_state_management”: {
+“frontend_architecture”: {
+“state_management”: “Zustand with slices per domain”,
+“stores”: [
+{
+“name”: “dealStore”,
+“state”: [“currentDeal”, “scenarios”, “activeScenarioId”, “isLoading”, “errors”],
+“actions”: [“loadDeal”, “updateScenario”, “addScenario”, “deletScenario”, “recalculate”]
+},
+{
+“name”: “customerStore”,
+“state”: [“currentCustomer”, “dealHistory”, “vehicleHistory”],
+“actions”: [“loadCustomer”, “updateCustomer”]
+},
+{
+“name”: “vehicleStore”,
+“state”: [“currentVehicle”, “dealHistory”, “costHistory”],
+“actions”: [“loadVehicle”, “updateVehicle”]
+},
+{
+“name”: “uiStore”,
+“state”: [“sidebarOpen”, “activePanel”, “selectedProducts”, “modalState”],
+“actions”: [“toggleSidebar”, “openPanel”, “closePanel”, “showModal”]
+},
+{
+“name”: “authStore”,
+“state”: [“user”, “permissions”, “token”],
+“actions”: [“login”, “logout”, “refreshToken”]
+}
+]
+},
+
+```
+"data_sync_strategy": {
+  "pattern": "Optimistic UI updates with server reconciliation",
+  "steps": [
+    "1. User makes change in UI",
+    "2. Immediately update local state",
+    "3. Send change to backend API (async)",
+    "4. On success: Update with server response (may have calculated fields)",
+    "5. On error: Rollback local state, show error to user",
+    "6. Backend emits event to Kafka for audit trail",
+    "7. WebSocket pushes update to other connected users"
+  ]
+},
+
+"calculation_flow": {
+  "trigger_events": [
+    "User changes selling price",
+    "User changes down payment",
+    "User changes APR or term",
+    "User adds/removes product",
+    "User updates trade-in value",
+    "User changes customer address (affects tax)"
+  ],
+  "process": [
+    "1. Debounce user input (500ms)",
+    "2. Call calculation API with current scenario data",
+    "3. Calculation service returns: payment, amount financed, total of payments",
+    "4. Call tax service with updated prices and customer address",
+    "5. Tax service returns: tax amount, fee breakdown",
+    "6. Update scenario state with all calculated values",
+    "7. Re-render affected UI components",
+    "8. Emit audit event with changes"
+  ],
+  "error_handling": [
+    "If calculation fails, show last good state",
+    "Display error message with retry button",
+    "Log error to monitoring system"
+  ]
+}
+```
+
+},
+
+“security_and_compliance”: {
+“authentication”: {
+“method”: “OAuth 2.0 + OpenID Connect via Keycloak”,
+“flows”: [
+“Authorization Code Flow for web apps”,
+“PKCE extension for mobile apps”
+],
+“token_lifetime”: {
+“access_token”: “15 minutes”,
+“refresh_token”: “7 days”,
+“id_token”: “15 minutes”
+},
+“mfa”: “Optional TOTP or SMS for high-privilege roles”
+},
+
+```
+"authorization": {
+  "model": "Role-Based Access Control (RBAC) with permissions",
+  "roles": [
+    {
+      "role": "Salesperson",
+      "permissions": [
+        "deal.create",
+        "deal.read.own",
+        "deal.update.own",
+        "scenario.create",
+        "scenario.update.own",
+        "customer.read",
+        "vehicle.read",
+        "product.read"
+      ]
+    },
+    {
+      "role": "Sales Manager",
+      "permissions": [
+        "All Salesperson permissions",
+        "deal.read.all",
+        "deal.update.all",
+        "deal.approve",
+        "deal.unlock",
+        "pricing.override",
+        "reports.view.sales"
+      ]
+    },
+    {
+      "role": "Finance Manager",
+      "permissions": [
+        "deal.read.all",
+        "deal.update.finance_terms",
+        "backend_product.add",
+        "backend_product.remove",
+        "credit_info.read",
+        "lender.submit",
+        "reports.view.finance"
+      ]
+    },
+    {
+      "role": "General Manager",
+      "permissions": ["All permissions"]
+    },
+    {
+      "role": "Controller",
+      "permissions": [
+        "deal.read.all",
+        "reports.view.all",
+        "accounting.export"
+      ]
+    }
+  ],
+  "enforcement": "API Gateway validates JWT claims + database permission check"
+},
+
+"data_encryption": {
+  "at_rest": {
+    "database": "PostgreSQL with pgcrypto extension",
+    "fields": ["SSN", "Credit card numbers (if stored)", "Bank account info"],
+    "algorithm": "AES-256-GCM",
+    "key_management": "HashiCorp Vault with automatic rotation"
+  },
+  "in_transit": {
+    "external": "TLS 1.3 only, cert pinning on mobile",
+    "internal": "mTLS for service-to-service communication",
+    "websockets": "WSS (WebSocket Secure)"
+  }
+},
+
+"pii_handling": {
+  "gdpr_compliance": "Right to access, right to deletion, data portability",
+  "data_retention": {
+    "active_customers": "Indefinite while active",
+    "inactive_customers": "7 years for financial records, then anonymize",
+    "audit_logs": "7 years for compliance"
+  },
+  "anonymization": "Replace PII with pseudonyms after retention period",
+  "consent_management": "Track marketing and data processing consents"
+},
+
+"compliance_standards": {
+  "standards": [
+    "GLBA - Gramm-Leach-Bliley Act (financial data protection)",
+    "FCRA - Fair Credit Reporting Act (credit pulls)",
+    "OFAC - Sanctions screening",
+    "State dealer licensing requirements",
+    "Red Flags Rule - Identity theft prevention"
+  ],
+  "auditing": "Annual third-party security audit",
+  "logging": "All PII access logged with justification"
+}
+```
+
+},
+
+“deployment_and_infrastructure”: {
+“cloud_provider”: “AWS or GCP (multi-region for DR)”,
+“container_orchestration”: “Kubernetes (EKS or GKE)”,
+“service_mesh”: “Istio for traffic management and observability”,
+
+```
+"infrastructure_components": [
+  {
+    "component": "Load Balancer",
+    "service": "AWS ALB / GCP Load Balancer",
+    "ssl_termination": true,
+    "waf": "AWS WAF for DDoS and injection protection"
+  },
+  {
+    "component": "API Gateway",
+    "service": "Kong Gateway",
+    "scaling": "Auto-scale based on request rate"
+  },
+  {
+    "component": "Application Pods",
+    "replicas": "Minimum 3 per service for HA",
+    "auto_scaling": "HPA based on CPU and memory"
+  },
+  {
+    "component": "Database",
+    "service": "AWS RDS PostgreSQL or Cloud SQL",
+    "ha": "Multi-AZ with automatic failover",
+    "backups": "Daily full, continuous WAL archiving, 35-day retention"
+  },
+  {
+    "component": "Cache",
+    "service": "AWS ElastiCache Redis or Cloud Memorystore",
+    "ha": "Redis Sentinel or Redis Cluster mode"
+  },
+  {
+    "component": "Message Queue",
+    "service": "AWS MSK (Kafka) or Confluent Cloud",
+    "retention": "7 days for audit events, 24 hours for transient events"
+  },
+  {
+    "component": "Object Storage",
+    "service": "S3 or Cloud Storage",
+    "purpose": "Document storage, images, exports",
+    "versioning": "Enabled"
+  }
+],
+
+"ci_cd": {
+  "pipeline": "GitLab CI or GitHub Actions",
+  "stages": [
+    "Lint and static analysis",
+    "Unit tests",
+    "Build containers",
+    "Push to registry",
+    "Integration tests",
+    "Deploy to staging",
+    "Automated E2E tests",
+    "Manual approval gate",
+    "Deploy to production (blue-green)",
+    "Smoke tests",
+    "Rollback on failure"
+  ],
+  "deployment_frequency": "Multiple times per day",
+  "rollback_time": "< 5 minutes"
+},
+
+"monitoring_and_observability": {
+  "metrics": {
+    "tool": "Prometheus + Grafana",
+    "custom_metrics": [
+      "Deals created per minute",
+      "Calculation latency",
+      "Tax engine response time",
+      "WebSocket connection count",
+      "API error rate",
+      "Database query duration"
+    ]
+  },
+  "logging": {
+    "tool": "ELK Stack or Cloud Logging",
+    "log_levels": ["ERROR", "WARN", "INFO", "DEBUG"],
+    "structured_logging": "JSON format with correlation IDs"
+  },
+  "tracing": {
+    "tool": "Jaeger or Cloud Trace",
+    "instrumentation": "OpenTelemetry",
+    "sampling": "1% for normal traffic, 100% for errors"
+  },
+  "alerting": {
+    "tool": "PagerDuty or Opsgenie",
+    "critical_alerts": [
+      "Service down (> 1 min)",
+      "Error rate > 5%",
+      "Database connection pool exhausted",
+      "Calculation engine timeout",
+      "Payment failure spike"
+    ],
+    "escalation": "Immediate for P0, 15 min for P1, 1 hour for P2"
+  }
+},
+
+"disaster_recovery": {
+  "rto": "4 hours (Recovery Time Objective)",
+  "rpo": "15 minutes (Recovery Point Objective)",
+  "backup_strategy": [
+    "Database: Continuous replication to secondary region",
+    "Files: Cross-region replication for S3",
+    "Configuration: Stored in Git, deployed via IaC"
+  ],
+  "failover": "Automated DNS failover to secondary region",
+  "testing": "Quarterly DR drills with documented results"
+}
+```
+
+},
+
+“testing_strategy”: {
+“unit_tests”: {
+“framework_go”: “testing package + testify”,
+“framework_rust”: “built-in test framework”,
+“framework_frontend”: “Vitest + React Testing Library”,
+“coverage_target”: “80% for business logic, 60% overall”,
+“critical_tests”: [
+“Finance payment calculations”,
+“Lease payment calculations”,
+“Tax calculations for all scenarios”,
+“Gross profit calculations”,
+“Amortization schedule generation”
+]
+},
+
+```
+"integration_tests": {
+  "framework": "Postman + Newman for API tests",
+  "test_database": "Separate PostgreSQL instance with test data",
+  "scenarios": [
+    "Complete deal creation flow",
+    "Multi-scenario deal with calculations",
+    "Out-of-state tax calculation",
+    "Backend product addition and mapping",
+    "Audit trail verification"
+  ]
+},
+
+"end_to_end_tests": {
+  "framework": "Playwright or Cypress",
+  "critical_paths": [
+    "Create deal, add scenario, add products, submit for approval",
+    "Manager approval workflow",
+    "Customer and vehicle drill-downs",
+    "Scenario comparison",
+    "Real-time collaboration (multi-user)"
+  ],
+  "browsers": ["Chrome", "Firefox", "Safari", "Edge"],
+  "devices": ["Desktop", "Tablet", "Mobile"]
+},
+
+"performance_tests": {
+  "tool": "k6 or JMeter",
+  "scenarios": [
+    "Concurrent deal creation (100 users)",
+    "Calculation engine load (1000 req/sec)",
+    "Tax engine with complex jurisdictions",
+    "Large dataset queries (10k+ deals)"
+  ],
+  "acceptance_criteria": {
+    "api_response_time_p95": "< 500ms",
+    "calculation_response_time_p99": "< 100ms",
+    "database_query_time_p95": "< 200ms",
+    "page_load_time": "< 2 seconds"
+  }
+},
+
+"security_tests": {
+  "sast": "SonarQube for static analysis",
+  "dast": "OWASP ZAP for dynamic scanning",
+  "dependency_scanning": "Snyk or Dependabot",
+  "penetration_testing": "Annual third-party pentest",
+  "owasp_top_10": "Verify mitigations for all OWASP Top 10 risks"
+}
+```
+
+},
+
+“development_workflow”: {
+“version_control”: {
+“system”: “Git with GitFlow branching model”,
+“branches”: [
+“main - Production code”,
+“develop - Integration branch”,
+“feature/* - New features”,
+“bugfix/* - Bug fixes”,
+“hotfix/* - Emergency production fixes”
+],
+“commit_convention”: “Conventional Commits (feat:, fix:, docs:, etc)”,
+“pr_requirements”: [
+“At least 1 approval from code owner”,
+“All tests passing”,
+“No merge conflicts”,
+“Code coverage not decreased”
+]
+},
+
+```
+"code_quality": {
+  "linting": {
+    "go": "golangci-lint",
+    "rust": "cargo clippy",
+    "typescript": "ESLint with TypeScript plugin",
+    "pre_commit_hooks": "Run linters and formatters before commit"
+  },
+  "formatting": {
+    "go": "gofmt",
+    "rust": "cargo fmt",
+    "typescript": "Prettier"
+  },
+  "code_review_checklist": [
+    "Follows coding standards",
+    "Includes unit tests",
+    "No hardcoded secrets",
+    "Error handling present",
+    "Logging appropriate",
+    "Performance considered",
+    "Security reviewed"
+  ]
+},
+
+"documentation": {
+  "api_docs": "OpenAPI 3.0 spec with Swagger UI",
+  "architecture": "ADR (Architecture Decision Records) in docs/adr/",
+  "runbooks": "Operational procedures for common tasks and incidents",
+  "onboarding": "New developer setup guide with scripts",
+  "code_comments": "Focus on why, not what - code should be self-documenting"
+}
+```
+
+},
+
+“additional_features”: {
+“deal_comparison_analytics”: {
+“description”: “AI-powered insights comparing current deal to historical similar deals”,
+“inputs”: [“Vehicle make/model”, “Customer credit tier”, “Region”],
+“outputs”: [
+“Average selling price for similar vehicles”,
+“Average down payment percentage”,
+“Most popular term length”,
+“Backend product penetration rates”,
+“Suggested selling price for target margin”
+]
+},
+
+```
+"predictive_approval": {
+  "description": "ML model to predict likelihood of lender approval",
+  "features": [
+    "Credit score",
+    "DTI ratio",
+    "LTV ratio",
+    "Employment stability",
+    "Historical lender approval patterns"
+  ],
+  "output": "Approval probability with confidence interval",
+  "action": "Suggest deal restructuring to improve approval odds"
+},
+
+"payment_quoting_tool": {
+  "description": "Quick payment calculator for initial customer contact",
+  "inputs": ["Approximate vehicle price", "Estimated credit tier", "Preferred term"],
+  "output": "Range of monthly payments with disclaimers",
+  "integration": "Embeddable widget for dealer website"
+},
+
+"mobile_app": {
+  "framework": "React Native for iOS and Android",
+  "features": [
+    "View and edit deals on the go",
+    "Quick payment calculations",
+    "Customer and vehicle lookup",
+    "Photo upload for trade-in condition report",
+    "Push notifications for approvals and comments",
+    "Offline mode with sync when online"
+  ]
+},
+
+"customer_facing_portal": {
+  "description": "Portal where customers can view their deal details",
+  "features": [
+    "View current deal scenarios",
+    "Digital signature for documents",
+    "Upload required documents (license, insurance, etc)",
+    "Chat with salesperson",
+    "Schedule delivery appointment",
+    "Make deposits/payments"
+  ],
+  "access": "Secure link sent via SMS or email"
+},
+
+"document_generation": {
+  "description": "Auto-generate all deal paperwork",
+  "documents": [
+    "Buyer's order",
+    "Finance contract",
+    "Lease agreement",
+    "Extended warranty contracts",
+    "Trade-in appraisal form",
+    "Odometer disclosure",
+    "Delivery checklist"
+  ],
+  "integration": "DealerSocket Forms or vAuto",
+  "e_signature": "DocuSign or Adobe Sign integration"
+},
+
+"incentive_optimizer": {
+  "description": "Automatically find and apply best manufacturer incentives",
+  "data_sources": [
+    "OEM incentive databases",
+    "Regional promotions",
+    "Loyalty programs",
+    "Conquest programs"
+  ],
+  "logic": "Stack incentives based on eligibility and maximize customer savings",
+  "alerts": "Notify if customer qualifies for special programs"
+}
+```
+
+},
+
+“implementation_roadmap”: {
+“phase_1_mvp”: {
+“duration”: “4-5 months”,
+“scope”: [
+“Core deal management (create, update, delete)”,
+“Single scenario per deal”,
+“Finance payment calculation”,
+“Basic tax calculation (single jurisdiction)”,
+“Customer and vehicle management”,
+“User authentication and RBAC”,
+“Auto-save functionality”,
+“Basic audit trail”
+],
+“team”: “4 backend, 3 frontend, 1 DevOps, 1 QA, 1 PM”
+},
+
+```
+"phase_2_advanced_calculations": {
+  "duration": "2-3 months",
+  "scope": [
+    "Multi-scenario support",
+    "Lease payment calculation",
+    "Multi-jurisdictional tax engine",
+    "Out-of-state tax handling",
+    "Registration fee calculation",
+    "Product catalog integration",
+    "Frontend and backend product management",
+    "We owe tracking"
+  ]
+},
+
+"phase_3_collaboration_and_integrations": {
+  "duration": "2-3 months",
+  "scope": [
+    "Real-time collaboration with WebSockets",
+    "Manager approval workflows",
+    "Commenting system",
+    "DMS integration",
+    "Lender integration",
+    "Credit bureau integration",
+    "Document generation"
+  ]
+},
+
+"phase_4_analytics_and_ai": {
+  "duration": "3-4 months",
+  "scope": [
+    "Business intelligence dashboards",
+    "Deal comparison analytics",
+    "Predictive approval modeling",
+    "Incentive optimizer",
+    "Performance reporting",
+    "Forecasting tools"
+  ]
+},
+
+"phase_5_customer_facing": {
+  "duration": "2-3 months",
+  "scope": [
+    "Customer portal",
+    "Mobile app (iOS and Android)",
+    "E-signature integration",
+    "Online payment processing",
+    "SMS and email notifications"
+  ]
+}
+```
+
+},
+
+“success_metrics”: {
+“business_kpis”: [
+{
+“metric”: “Deal Creation Time”,
+“target”: “< 10 minutes average from customer info to first scenario”,
+“current_industry_avg”: “20-30 minutes”
+},
+{
+“metric”: “Calculation Accuracy”,
+“target”: “100% match to lender calculations within $0.01”,
+“measurement”: “Automated validation against lender sheets”
+},
+{
+“metric”: “User Adoption Rate”,
+“target”: “95% of salespeople using system daily within 3 months of launch”,
+“measurement”: “Active users / total users”
+},
+{
+“metric”: “System Uptime”,
+“target”: “99.9% (< 45 minutes downtime per month)”,
+“measurement”: “Synthetic monitoring”
+},
+{
+“metric”: “Gross Profit Increase”,
+“target”: “5-10% increase in average gross profit per deal”,
+“reasoning”: “Better product penetration, optimized pricing, reduced errors”
+},
+{
+“metric”: “Deal Approval Time”,
+“target”: “< 4 hours from submission to lender decision”,
+“current_industry_avg”: “24-48 hours”
+},
+{
+“metric”: “User Satisfaction (NPS)”,
+“target”: “NPS > 50”,
+“measurement”: “Quarterly surveys”
+}
+],
+
+```
+"technical_metrics": [
+  {
+    "metric": "API Response Time (p95)",
+    "target": "< 500ms"
+  },
+  {
+    "metric": "Calculation Engine Response Time (p99)",
+    "target": "< 100ms"
+  },
+  {
+    "metric": "Database Query Time (p95)",
+    "target": "< 200ms"
+  },
+  {
+    "metric": "Code Test Coverage",
+    "target": "> 80% for business logic"
+  },
+  {
+    "metric": "Security Vulnerability Count",
+    "target": "0 critical, < 5 high severity"
+  }
+]
+```
+
+},
+
+“training_and_change_management”: {
+“user_training”: {
+“audience_segments”: [
+“Salespeople”,
+“Sales Managers”,
+“Finance Managers”,
+“General Managers”,
+“Admins”
+],
+“training_methods”: [
+{
+“method”: “Live instructor-led training”,
+“duration”: “2 hours per role”,
+“location”: “On-site at dealerships”
+},
+{
+“method”: “Video tutorials”,
+“description”: “5-10 minute videos for each feature”,
+“platform”: “YouTube unlisted or LMS”
+},
+{
+“method”: “Interactive walkthroughs”,
+“tool”: “Pendo or Intercom product tours”,
+“trigger”: “First-time user experience”
+},
+{
+“method”: “Documentation and FAQs”,
+“platform”: “Searchable knowledge base”
+}
+],
+“certification”: “Optional certification for power users”
+},
+
+```
+"support_model": {
+  "tiers": [
+    {
+      "tier": "Tier 1 - Help Desk",
+      "channels": ["Phone", "Email", "Live chat"],
+      "hours": "8am-8pm dealership local time",
+      "sla": "< 2 hour response time"
+    },
+    {
+      "tier": "Tier 2 - Technical Support",
+      "escalation": "Complex technical issues, integration problems",
+      "sla": "< 4 hour response time"
+    },
+    {
+      "tier": "Tier 3 - Engineering",
+      "escalation": "Bugs, system issues",
+      "sla": "< 24 hour initial response, fix in next release or hotfix"
+    }
+  ],
+  "proactive_support": [
+    "Monthly webinars on new features",
+    "Quarterly business reviews with key clients",
+    "Proactive monitoring with alerts to support team"
+  ]
+}
+```
+
+},
+
+“competitive_advantages”: {
+“vs_vinsolutions”: [
+“Superior tax engine with instant multi-jurisdiction calculation”,
+“Real-time collaboration without conflicts”,
+“Better product catalog management”,
+“Faster performance and modern UI”
+],
+“vs_reynolds_ignite”: [
+“More intuitive user interface”,
+“Better mobile experience”,
+“Predictive analytics and AI features”,
+“Open API for custom integrations”
+],
+“vs_drivecentric”: [
+“More accurate finance/lease calculations”,
+“Better audit trail with microsecond precision”,
+“Superior scenario comparison tools”,
+“Faster calculation engine”
+],
+“vs_dealersocket”: [
+“Modern tech stack (easier to extend)”,
+“Better real-time features”,
+“More comprehensive product catalog”,
+“Better reporting and analytics”
+],
+
+```
+"unique_differentiators": [
+  "AI-powered deal insights and predictive approval",
+  "Instant out-of-state tax calculations with 100% accuracy",
+  "Unlimited scenarios with instant comparison",
+  "Complete audit trail for compliance and dispute resolution",
+  "Customer-facing portal for transparency and faster deals",
+  "Mobile-first design for on-the-lot flexibility",
+  "Open API for dealer-specific customizations",
+  "Incentive optimizer to maximize customer savings and closing rates"
+]
+```
+
+}
+}
