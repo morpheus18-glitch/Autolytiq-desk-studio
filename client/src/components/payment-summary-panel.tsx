@@ -4,6 +4,7 @@ import { Separator } from '@/components/ui/separator';
 import { DollarSign, TrendingUp, Calendar, Percent } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useScenarioForm } from '@/contexts/scenario-form-context';
+import { useValueTransition } from '@/hooks/use-value-transition';
 
 interface PaymentSummaryPanelProps {
   variant?: 'full' | 'compact';
@@ -13,6 +14,11 @@ interface PaymentSummaryPanelProps {
 export function PaymentSummaryPanel({ variant = 'full', className }: PaymentSummaryPanelProps) {
   const { scenario, calculations } = useScenarioForm();
   const isCompact = variant === 'compact';
+
+  // Smooth transitions for key values (Apple/Nike quality)
+  const monthlyPayment = useValueTransition(calculations.monthlyPayment.toNumber(), { duration: 200 });
+  const amountFinanced = useValueTransition(calculations.amountFinanced.toNumber(), { duration: 200 });
+  const totalCost = useValueTransition(calculations.totalCost.toNumber(), { duration: 200 });
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -54,8 +60,8 @@ export function PaymentSummaryPanel({ variant = 'full', className }: PaymentSumm
             </span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl md:text-4xl font-mono font-bold tabular-nums" data-testid="text-payment-summary-monthly">
-              {formatCurrency(calculations.monthlyPayment.toNumber())}
+            <span className="text-3xl md:text-4xl font-mono font-bold tabular-nums transition-all duration-200" data-testid="text-payment-summary-monthly">
+              {formatCurrency(monthlyPayment)}
             </span>
             <span className="text-sm text-muted-foreground">/mo</span>
           </div>
@@ -95,8 +101,8 @@ export function PaymentSummaryPanel({ variant = 'full', className }: PaymentSumm
                   <TrendingUp className="w-3 h-3" />
                   Financed
                 </div>
-                <div className="text-lg font-mono font-semibold tabular-nums">
-                  {formatCurrency(calculations.amountFinanced.toNumber())}
+                <div className="text-lg font-mono font-semibold tabular-nums transition-all duration-200">
+                  {formatCurrency(amountFinanced)}
                 </div>
               </div>
 
@@ -106,8 +112,8 @@ export function PaymentSummaryPanel({ variant = 'full', className }: PaymentSumm
                   <DollarSign className="w-3 h-3" />
                   Total Cost
                 </div>
-                <div className="text-lg font-mono font-semibold tabular-nums">
-                  {formatCurrency(calculations.totalCost.toNumber())}
+                <div className="text-lg font-mono font-semibold tabular-nums transition-all duration-200">
+                  {formatCurrency(totalCost)}
                 </div>
               </div>
             </div>
