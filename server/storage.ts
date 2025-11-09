@@ -1,6 +1,6 @@
 // Referenced from javascript_database blueprint integration
 import { 
-  users, customers, vehicles, tradeVehicles, deals, dealScenarios, auditLog, taxJurisdictions,
+  users, customers, vehicles, tradeVehicles, deals, dealScenarios, auditLog, taxJurisdictions, taxRuleGroups,
   type User, type InsertUser,
   type Customer, type InsertCustomer,
   type Vehicle, type InsertVehicle,
@@ -8,7 +8,7 @@ import {
   type Deal, type InsertDeal,
   type DealScenario, type InsertDealScenario,
   type AuditLog, type InsertAuditLog,
-  type TaxJurisdiction, type InsertTaxJurisdiction,
+  type TaxJurisdiction, type InsertTaxJurisdiction, type TaxJurisdictionWithRules,
   type DealWithRelations,
 } from "@shared/schema";
 import { db } from "./db";
@@ -38,8 +38,8 @@ export interface IStorage {
   createTradeVehicle(tradeVehicle: InsertTradeVehicle): Promise<TradeVehicle>;
   
   // Tax Jurisdictions
-  getAllTaxJurisdictions(): Promise<TaxJurisdiction[]>;
-  getTaxJurisdiction(state: string, county?: string, city?: string): Promise<TaxJurisdiction | undefined>;
+  getAllTaxJurisdictions(): Promise<TaxJurisdictionWithRules[]>;
+  getTaxJurisdiction(state: string, county?: string, city?: string): Promise<TaxJurisdictionWithRules | undefined>;
   createTaxJurisdiction(jurisdiction: InsertTaxJurisdiction): Promise<TaxJurisdiction>;
   
   // Deals
@@ -157,13 +157,24 @@ export class DatabaseStorage implements IStorage {
   }
   
   // Tax Jurisdictions
-  async getAllTaxJurisdictions(): Promise<TaxJurisdiction[]> {
-    const jurisdictions = await db.select().from(taxJurisdictions);
-    return jurisdictions;
+  async getAllTaxJurisdictions(): Promise<TaxJurisdictionWithRules[]> {
+    const jurisdictions = await db
+      .select()
+      .from(taxJurisdictions)
+      .leftJoin(taxRuleGroups, eq(taxJurisdictions.taxRuleGroupId, taxRuleGroups.id));
+    
+    return jurisdictions.map(row => ({
+      ...row.tax_jurisdictions,
+      taxRuleGroup: row.tax_rule_groups || null
+    }));
   }
   
-  async getTaxJurisdiction(state: string, county?: string, city?: string): Promise<TaxJurisdiction | undefined> {
-    let query = db.select().from(taxJurisdictions).where(eq(taxJurisdictions.state, state));
+  async getTaxJurisdiction(state: string, county?: string, city?: string): Promise<TaxJurisdictionWithRules | undefined> {
+    let query = db
+      .select()
+      .from(taxJurisdictions)
+      .leftJoin(taxRuleGroups, eq(taxJurisdictions.taxRuleGroupId, taxRuleGroups.id))
+      .where(eq(taxJurisdictions.state, state));
     
     if (county) {
       query = query.where(eq(taxJurisdictions.county, county)) as any;
@@ -172,8 +183,13 @@ export class DatabaseStorage implements IStorage {
       query = query.where(eq(taxJurisdictions.city, city)) as any;
     }
     
-    const [jurisdiction] = await query;
-    return jurisdiction || undefined;
+    const [result] = await query;
+    if (!result) return undefined;
+    
+    return {
+      ...result.tax_jurisdictions,
+      taxRuleGroup: result.tax_rule_groups || null
+    };
   }
   
   async createTaxJurisdiction(insertJurisdiction: InsertTaxJurisdiction): Promise<TaxJurisdiction> {

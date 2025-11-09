@@ -85,31 +85,88 @@ export const insertTradeVehicleSchema = createInsertSchema(tradeVehicles).omit({
 export type InsertTradeVehicle = z.infer<typeof insertTradeVehicleSchema>;
 export type TradeVehicle = typeof tradeVehicles.$inferSelect;
 
+// ===== TAX RULE GROUPS TABLE =====
+// Groups states by similar tax characteristics for efficient categorization
+export const taxRuleGroups = pgTable("tax_rule_groups", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull().unique(), // e.g., "Flat State Tax", "Variable County Tax", "No Doc Fee Tax", etc.
+  description: text("description"),
+  
+  // Tax structure characteristics
+  taxStructure: text("tax_structure").notNull(), // flat_state, variable_county_city, origin_based, destination_based
+  
+  // What gets taxed?
+  docFeeTaxable: boolean("doc_fee_taxable").notNull().default(false),
+  warrantyTaxable: boolean("warranty_taxable").notNull().default(false),
+  gapTaxable: boolean("gap_taxable").notNull().default(false),
+  maintenanceTaxable: boolean("maintenance_taxable").notNull().default(false),
+  accessoriesTaxable: boolean("accessories_taxable").notNull().default(true),
+  
+  // Trade-in handling
+  tradeInCreditType: text("trade_in_credit_type").notNull().default("tax_on_difference"), // none, full_credit, tax_on_difference
+  
+  // Rebate taxation
+  rebateTaxable: boolean("rebate_taxable").notNull().default(false), // Some states tax rebates, some don't
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertTaxRuleGroupSchema = createInsertSchema(taxRuleGroups).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertTaxRuleGroup = z.infer<typeof insertTaxRuleGroupSchema>;
+export type TaxRuleGroup = typeof taxRuleGroups.$inferSelect;
+
 // ===== TAX JURISDICTIONS TABLE =====
 export const taxJurisdictions = pgTable("tax_jurisdictions", {
   id: uuid("id").primaryKey().defaultRandom(),
+  
+  // Link to tax rule group for shared characteristics
+  taxRuleGroupId: uuid("tax_rule_group_id").references(() => taxRuleGroups.id),
+  
+  // Geographic identifiers
   state: text("state").notNull(),
   county: text("county"),
   city: text("city"),
   township: text("township"),
   specialDistrict: text("special_district"),
-  zipCode: text("zip_code"),
+  
+  // Tax rates
   stateTaxRate: decimal("state_tax_rate", { precision: 6, scale: 4 }).notNull(),
   countyTaxRate: decimal("county_tax_rate", { precision: 6, scale: 4 }).notNull().default("0"),
   cityTaxRate: decimal("city_tax_rate", { precision: 6, scale: 4 }).notNull().default("0"),
   townshipTaxRate: decimal("township_tax_rate", { precision: 6, scale: 4 }).notNull().default("0"),
   specialDistrictTaxRate: decimal("special_district_tax_rate", { precision: 6, scale: 4 }).notNull().default("0"),
-  tradeInCreditType: text("trade_in_credit_type").notNull().default("tax_on_difference"), // none, full_credit, tax_on_difference
+  
+  // Government fees
   registrationFee: decimal("registration_fee", { precision: 10, scale: 2 }).notNull().default("0"),
   titleFee: decimal("title_fee", { precision: 10, scale: 2 }).notNull().default("0"),
   plateFee: decimal("plate_fee", { precision: 10, scale: 2 }).notNull().default("0"),
   docFeeMax: decimal("doc_fee_max", { precision: 10, scale: 2 }),
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
   stateIdx: index("tax_jurisdictions_state_idx").on(table.state, table.county, table.city),
-  zipIdx: index("tax_jurisdictions_zip_idx").on(table.zipCode),
+  ruleGroupIdx: index("tax_jurisdictions_rule_group_idx").on(table.taxRuleGroupId),
 }));
+
+// ===== ZIP CODE TO JURISDICTION LOOKUP TABLE =====
+// Fast lookup table: zip code -> jurisdiction
+export const zipCodeLookup = pgTable("zip_code_lookup", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  zipCode: text("zip_code").notNull().unique(),
+  taxJurisdictionId: uuid("tax_jurisdiction_id").notNull().references(() => taxJurisdictions.id),
+  city: text("city"), // For display purposes
+  state: text("state").notNull(), // For quick filtering
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  zipIdx: index("zip_code_lookup_zip_idx").on(table.zipCode),
+  stateIdx: index("zip_code_lookup_state_idx").on(table.state),
+}));
+
+export const insertZipCodeLookupSchema = createInsertSchema(zipCodeLookup).omit({ id: true, createdAt: true });
+export type InsertZipCodeLookup = z.infer<typeof insertZipCodeLookupSchema>;
+export type ZipCodeLookup = typeof zipCodeLookup.$inferSelect;
 
 export const insertTaxJurisdictionSchema = createInsertSchema(taxJurisdictions).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertTaxJurisdiction = z.infer<typeof insertTaxJurisdictionSchema>;
@@ -279,6 +336,26 @@ export const dealsRelations = relations(deals, ({ one, many }) => ({
   auditLogs: many(auditLog),
 }));
 
+export const taxRuleGroupsRelations = relations(taxRuleGroups, ({ many }) => ({
+  jurisdictions: many(taxJurisdictions),
+}));
+
+export const taxJurisdictionsRelations = relations(taxJurisdictions, ({ one, many }) => ({
+  taxRuleGroup: one(taxRuleGroups, {
+    fields: [taxJurisdictions.taxRuleGroupId],
+    references: [taxRuleGroups.id],
+  }),
+  dealScenarios: many(dealScenarios),
+  zipCodes: many(zipCodeLookup),
+}));
+
+export const zipCodeLookupRelations = relations(zipCodeLookup, ({ one }) => ({
+  taxJurisdiction: one(taxJurisdictions, {
+    fields: [zipCodeLookup.taxJurisdictionId],
+    references: [taxJurisdictions.id],
+  }),
+}));
+
 export const dealScenariosRelations = relations(dealScenarios, ({ one, many }) => ({
   deal: one(deals, {
     fields: [dealScenarios.dealId],
@@ -317,8 +394,12 @@ export type DealWithRelations = Deal & {
   scenarios: DealScenario[];
 };
 
+export type TaxJurisdictionWithRules = TaxJurisdiction & {
+  taxRuleGroup: TaxRuleGroup | null;
+};
+
 export type ScenarioWithRelations = DealScenario & {
-  taxJurisdiction: TaxJurisdiction | null;
+  taxJurisdiction: TaxJurisdictionWithRules | null;
 };
 
 export type DealerFee = {

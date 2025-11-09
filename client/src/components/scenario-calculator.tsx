@@ -11,7 +11,7 @@ import { Calculator, Plus, Trash2, DollarSign } from 'lucide-react';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useStore } from '@/lib/store';
 import { debounce } from 'lodash';
-import type { DealScenario, TradeVehicle, DealerFee, Accessory, TaxJurisdiction, AftermarketProduct } from '@shared/schema';
+import type { DealScenario, TradeVehicle, DealerFee, Accessory, TaxJurisdictionWithRules, AftermarketProduct } from '@shared/schema';
 import { AmortizationTable } from './amortization-table';
 import { TaxJurisdictionSelector } from './tax-jurisdiction-selector';
 import { calculateFinancePayment, calculateLeasePayment, calculateSalesTax, moneyFactorToAPR, aprToMoneyFactor } from '@/lib/calculations';
@@ -25,15 +25,15 @@ interface ScenarioCalculatorProps {
 export function ScenarioCalculator({ scenario, dealId, tradeVehicle }: ScenarioCalculatorProps) {
   const { setIsSaving, setLastSaved, setSaveError } = useStore();
   const [formData, setFormData] = useState(scenario);
-  const [selectedTaxJurisdiction, setSelectedTaxJurisdiction] = useState<TaxJurisdiction | null>(null);
+  const [selectedTaxJurisdiction, setSelectedTaxJurisdiction] = useState<TaxJurisdictionWithRules | null>(null);
   
   // Parse JSONB fields
   const dealerFees: DealerFee[] = Array.isArray(formData.dealerFees) ? formData.dealerFees : [];
   const accessories: Accessory[] = Array.isArray(formData.accessories) ? formData.accessories : [];
   const aftermarketProducts: AftermarketProduct[] = Array.isArray(formData.aftermarketProducts) ? formData.aftermarketProducts : [];
   
-  // Fetch the tax jurisdiction for this scenario
-  const { data: jurisdictions } = useQuery<TaxJurisdiction[]>({
+  // Fetch the tax jurisdiction for this scenario with rule groups
+  const { data: jurisdictions } = useQuery<TaxJurisdictionWithRules[]>({
     queryKey: ['/api/tax-jurisdictions'],
   });
   
@@ -89,9 +89,8 @@ export function ScenarioCalculator({ scenario, dealId, tradeVehicle }: ScenarioC
     const specialDistrictTaxRate = selectedTaxJurisdiction 
       ? parseFloat(selectedTaxJurisdiction.specialDistrictTaxRate as any) 
       : 0;
-    const tradeInCreditType = selectedTaxJurisdiction 
-      ? selectedTaxJurisdiction.tradeInCreditType 
-      : 'tax_on_difference';
+    // Get trade-in credit type from tax rule group (with fallback)
+    const tradeInCreditType = selectedTaxJurisdiction?.taxRuleGroup?.tradeInCreditType || 'tax_on_difference';
     
     // Calculate tax on everything that's taxable
     const taxCalc = calculateSalesTax({
@@ -154,11 +153,12 @@ export function ScenarioCalculator({ scenario, dealId, tradeVehicle }: ScenarioC
       totalCost = result.totalCost;
       cashDueAtSigning = parseFloat(formData.downPayment as any) || 0;
     } else {
-      // Cash deal: Total = Vehicle + Tax + Fees - Trade Allowance + Trade Payoff
+      // Cash deal: Total = Vehicle + Tax + Fees - Trade Allowance - Trade Payoff
+      // (Trade payoff is subtracted because it's an amount the customer owes on their trade)
       const vehiclePrice = parseFloat(formData.vehiclePrice as any) || 0;
       const tradeAllowance = parseFloat(formData.tradeAllowance as any) || 0;
       const tradePayoff = parseFloat(formData.tradePayoff as any) || 0;
-      totalCost = vehiclePrice + taxCalc + totalFees - tradeAllowance + tradePayoff;
+      totalCost = vehiclePrice + taxCalc + totalFees - tradeAllowance - tradePayoff;
       cashDueAtSigning = totalCost;
     }
     
