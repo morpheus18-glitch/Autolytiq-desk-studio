@@ -1,211 +1,201 @@
-# NextGen Automotive Desking Platform - Design Guidelines
+# NextGen Automotive Desking Platform - Design Guidelines v2.0
 
 ## Design Approach
-**System**: Carbon Design System principles adapted for automotive finance
-**Rationale**: Enterprise-grade, data-intensive application requiring clear hierarchy, efficient workflows, and professional credibility. Inspired by Linear's precision and Stripe's data clarity.
+**System**: Carbon Design System with mobile-first responsive principles
+**Rationale**: Enterprise-grade automotive finance tool requiring simultaneous visibility of all deal components. Single-page architecture optimized for speed and mobile usability. Inspired by Linear's precision and modern fintech dashboards.
 
 ## Core Design Principles
-1. **Data Primacy**: Information is always visible and accessible - no hidden calculations
-2. **Instant Feedback**: Every input change triggers immediate visual updates across all dependent fields
-3. **Professional Trust**: Clean, precise layouts that convey financial accuracy and reliability
-4. **Efficient Workflows**: Minimize clicks, maximize keyboard navigation, optimize for speed
+1. **Mobile-First Excellence**: All features fully functional on smallest screens - no compromises
+2. **Simultaneous Visibility**: Every deal component visible without scrolling on desktop; organized accordion sections on mobile
+3. **Zero-Latency Feedback**: All calculations update instantly across all sections
+4. **Professional Authority**: Clean, precise layouts conveying financial accuracy and dealership credibility
 
 ---
 
 ## Typography System
 
-**Font Stack**: Inter (primary), SF Mono (monospace for numbers)
+**Font Stack**: Inter (UI), SF Mono (numbers/currency)
 
 **Hierarchy**:
-- Page Headers: text-3xl font-semibold (Deal #2024-01-0042)
-- Section Headers: text-xl font-semibold (Customer Information, Payment Calculations)
-- Subsection/Card Headers: text-lg font-medium
-- Labels: text-sm font-medium uppercase tracking-wide
-- Body Text: text-base font-normal
-- Financial Values: text-lg font-mono font-semibold (tabular-nums)
-- Helper Text: text-sm text-muted-foreground
-- Timestamps/Metadata: text-xs text-muted-foreground font-mono
+- Deal Header: text-2xl md:text-3xl font-semibold
+- Section Headers: text-lg md:text-xl font-semibold
+- Subsection Labels: text-sm md:text-base font-medium uppercase tracking-wide
+- Input Labels: text-xs md:text-sm font-medium
+- Financial Values: text-xl md:text-2xl font-mono font-semibold tabular-nums
+- Body Text: text-sm md:text-base
+- Helper Text: text-xs text-muted-foreground
 
-**Critical**: All currency and numerical values use `font-mono` with `tabular-nums` for perfect vertical alignment in tables and lists.
+**Critical**: All currency values use `font-mono tabular-nums` for vertical alignment. Mobile maintains clear hierarchy with scaled-down sizes.
 
 ---
 
 ## Layout System
 
-**Spacing Primitives**: Use Tailwind units of **2, 4, 6, 8, 12, 16** consistently
-- Component padding: p-4 to p-6
-- Section spacing: space-y-8 or gap-8
-- Form field spacing: space-y-4
-- Card padding: p-6
-- Page margins: p-8 to p-12
+**Spacing Primitives**: Tailwind units **2, 4, 6, 8** (mobile-optimized, doubled on desktop: md:p-4 → md:p-8)
 
-**Grid Structure**:
-- Main workspace: Two-column layout (2/3 for deal worksheet, 1/3 for scenario comparison)
-- Deal list: Full-width table with sticky headers
-- Forms: Single column max-w-2xl for focused data entry
-- Dashboard: CSS Grid with `grid-cols-1 md:grid-cols-2 lg:grid-cols-3` for metrics cards
+**Mobile-First Grid Architecture**:
 
-**Container Widths**:
-- Main app: max-w-7xl mx-auto
-- Form modals: max-w-3xl
-- Narrow content: max-w-2xl
+**Mobile (< 768px)**:
+- Single column stacked sections
+- Collapsible accordions for: Customer Info, Vehicle Details, Trade-In, Pricing Breakdown, Finance Terms, F&I Products, Tax & Fees
+- Sticky payment summary bar at bottom (h-20) showing monthly payment and total
+- Tap section headers to expand/collapse
+- Currently editing section auto-expands, others collapse to headers only
+
+**Tablet (768px - 1024px)**:
+- Two-column grid for primary sections
+- Left: Customer/Vehicle/Trade-In stacked
+- Right: Pricing/Finance/F&I/Calculations stacked
+- Payment summary cards in fixed-width sidebar (w-80)
+
+**Desktop (> 1024px)**:
+- Three-column layout: `grid-cols-[1fr_1.5fr_400px]`
+- Left: Customer + Vehicle + Trade-In (vertical stack)
+- Center: Pricing + Finance Terms + F&I Products (vertical stack with real-time calculation updates)
+- Right: Sticky payment summary panel with all scenarios visible
+
+**Container Strategy**:
+- Mobile: Full-width with px-4 padding
+- Desktop: max-w-[1600px] mx-auto px-8
 
 ---
 
 ## Component Library
 
-### Navigation & Structure
-**Top Navigation Bar**:
-- Fixed header with dealership branding (left), global search (center), user profile + notifications (right)
-- Height: h-16
-- Contains breadcrumb navigation for deep pages
+### Mobile Navigation
+**Sticky Header** (h-14):
+- Hamburger menu (left) → Deal actions drawer
+- Deal # + Customer name (center, truncated)
+- Save status icon (right)
 
-**Sidebar** (Deal Management):
-- Width: w-64, collapsible to w-16 (icon-only)
-- Sections: Active Deals, Draft Deals, Archived, Reports
-- Deal count badges for each section
+**Bottom Payment Bar** (Fixed):
+- Large monthly payment display (text-2xl font-mono)
+- Tap to expand full breakdown modal
+- Visual indicator when calculations update (subtle pulse)
 
-**Tabs** (Scenario Switching):
-- Horizontal tabs for Cash/Finance/Lease scenarios
-- Active tab with bottom border indicator (border-b-2)
-- Payment summary shown in each tab label ($847/mo)
+### Accordion Sections (Mobile)
+- Header: Section title + summary value (e.g., "Vehicle • $45,990")
+- Chevron icon for expand/collapse
+- Active section: Full-height with border-l-4 accent
+- Collapsed: h-14 with one-line summary
+- Smooth height transitions (duration-200)
 
-### Data Display
+### Data Input Components
 
-**Financial Summary Cards**:
-- Prominent cards with shadow-sm and rounded-lg borders
-- Large currency values (text-3xl font-mono) centered or right-aligned
-- Label above value, calculation breakdown below in text-sm
-- Grid layout: `grid-cols-2 gap-4` for side-by-side comparisons
-
-**Deal Worksheet Table**:
-- Dense data table with alternating row backgrounds
-- Sticky header row
-- Column groups: Vehicle Info | Pricing | Trade-In | Finance Terms | Tax & Fees | Payment
-- Editable cells with inline editing (click to edit, Enter to save)
-- Real-time calculation indicators (subtle pulse animation on change)
-
-**Amortization Schedule**:
-- Scrollable table within card: max-h-96 overflow-y-auto
-- Columns: Payment #, Date, Payment Amount, Principal, Interest, Remaining Balance
-- Right-aligned numerical columns
-- Highlight current month row
-
-**Audit Trail Timeline**:
-- Vertical timeline on left with connecting lines
-- Each entry: timestamp + user avatar + change description + before/after values
-- Grouped by date with collapsible sections
-- Recent changes highlighted
-
-### Forms & Inputs
-
-**Input Fields**:
-- Consistent height: h-10
-- Labels above inputs (required fields marked with *)
-- Currency inputs: prefix with $ symbol, right-aligned text
-- Percentage inputs: suffix with % symbol
-- Auto-formatting as user types (currency: commas, decimals limited to 2)
+**Smart Input Fields**:
+- Mobile: h-12 touch-friendly targets, text-base
+- Desktop: h-10 standard
+- Currency: $ prefix, auto-format with commas, 2 decimal max
+- Percentage: % suffix, validate 0-100 range
+- Focus state: ring-2 with accent color
 
 **Vehicle Lookup**:
-- Combo box with autocomplete
-- Shows: Stock # | Year Make Model | VIN (last 8) | Price
-- Select triggers auto-population of all vehicle fields below
-- Loading skeleton while fetching data
+- Search bar with instant filtering
+- Results: Stock # | Year Make Model | Price (stacked on mobile, columns on desktop)
+- Recent vehicles prioritized
+- Selected vehicle auto-populates: VIN, MSRP, Invoice, Color, Mileage
 
-**Customer/Trade-In Selection**:
-- Similar autocomplete pattern
-- Recent customers prioritized
-- "Add New" button at bottom of dropdown
+**Customer Selection**:
+- Autocomplete with recent customers
+- Display: Name, Phone (last 4), Last Visit
+- "Add New Customer" quick form inline
 
-**Dealer Fees & Accessories**:
-- Repeating row pattern with Add/Remove buttons
-- Each row: Name | Amount | Taxable checkbox | Delete icon
-- Total automatically calculated and displayed below
+**F&I Products Grid**:
+- Product cards with: Name, Provider, Term, Cost, Monthly Impact
+- Toggle switches for inclusion in deal
+- Mobile: Single column stacked
+- Desktop: grid-cols-2 gap-4
+- Products: Extended Warranty, GAP Insurance, Maintenance Plan, Theft Protection, Tire & Wheel, Paint Protection
+- Each toggle instantly updates all payment calculations
 
-**Tax Jurisdiction Display**:
-- Read-only field showing detected jurisdiction from address
-- Format: "California, Los Angeles County, Los Angeles City"
-- Edit icon to manually override if needed
+### Real-Time Calculation Displays
 
-### Interactive Elements
+**Payment Breakdown Card**:
+- Stacked rows (mobile) or table (desktop)
+- Base Payment | F&I Products | Tax | Total Monthly
+- Principal/Interest breakdown for finance deals
+- Lease: Depreciation + Rent Charge + Tax
+- Each row updates with 200ms fade transition when values change
 
-**Scenario Comparison Panel**:
-- Sticky side panel (position-sticky top-16)
-- Stacked cards for each active scenario
-- Key metrics: Monthly Payment, Due at Signing, Total Cost
-- "Make Active" button for non-active scenarios
-- Delete scenario icon (top-right)
+**Scenario Comparison**:
+- Horizontal swipe cards on mobile (snap scroll)
+- Side-by-side cards on desktop
+- Each scenario shows: Monthly Payment, Down Payment, Total Cost, APR/MF
+- Active scenario has accent border-2
+- Swipe or tap to switch active scenario
 
-**State Transitions**:
-- Status badge with appropriate styling (Draft, In Progress, Approved, etc.)
-- Dropdown menu for state change (only valid transitions shown)
-- Confirmation modal for critical transitions
+**Tax Calculation Display**:
+- Jurisdiction auto-detected from customer address
+- Breakdown: State Tax (X.XX%) + County (X.XX%) + City (X.XX%) = Total
+- Override button for manual jurisdiction selection
+- Sales tax, doc fee, registration calculated separately and summed
 
-**Auto-Save Indicator**:
-- Fixed position bottom-right corner
-- States: "Saving...", "Saved" (with timestamp), "Error - Retry"
-- Subtle fade-in/out animations
+### Professional Dealer Elements
 
-**Action Buttons**:
-- Primary: Large prominent button (h-11 px-8) for "Create Deal", "Submit for Approval"
-- Secondary: Standard buttons (h-9 px-4) for "Add Scenario", "Print Worksheet"
-- Destructive: Outlined with warning styling for "Cancel Deal"
+**Dealership Branding Header**:
+- Logo (h-8 md:h-10)
+- Dealership name + location (text-sm)
+- Salesperson name + ID badge
 
-### Feedback & Status
+**Deal Status Badge**:
+- Pill shape with status color coding
+- States: Draft, Pending, Manager Review, F&I, Funded, Delivered
+- Mobile: Compact icon + abbreviation
+- Desktop: Full text label
 
-**Calculation Loading**:
-- Skeleton loaders for payment values during recalculation
-- Maintains layout stability (no content shift)
-
-**Validation Errors**:
-- Inline below fields in red text
-- Icon indicator on input border
-- Form-level error summary at top of section
-
-**Success Confirmations**:
-- Toast notifications (top-right): "Deal saved", "Scenario added"
-- Auto-dismiss after 3 seconds
+**Print/Export Actions**:
+- Generate buyer's order (PDF)
+- Email to customer
+- Send to F&I manager
+- Mobile: Action sheet modal
+- Desktop: Dropdown menu
 
 ---
 
-## Page Layouts
+## Page Structure
 
-**Deal List Page**:
-- Search bar + filters (status, salesperson, date range) at top
-- Data table below with: Deal #, Customer, Vehicle, Salesperson, Status, Created Date, Actions
-- Pagination controls at bottom (showing "1-20 of 156 deals")
-- "Create New Deal" button (top-right)
+**Single-Page Deal Worksheet**:
 
-**Deal Worksheet Page**:
-- Sticky header: Deal # | Customer Name | Vehicle | Status | Actions (Save, Print, Submit)
-- Main content: 2/3 width with tabbed sections (Customer, Vehicle, Trade-In, Pricing, Finance/Lease Terms)
-- Right sidebar: 1/3 width with Scenario Comparison + Audit Trail (collapsible)
-- All calculations update in real-time as fields change
+Mobile flow (vertical scroll with accordions):
+1. Deal Header (sticky)
+2. Customer Information (accordion)
+3. Vehicle Details (accordion)
+4. Trade-In (accordion - optional, hide if no trade)
+5. Pricing Breakdown (accordion - always visible calculations)
+6. Finance/Lease Terms (accordion)
+7. F&I Products (accordion - grid of toggles)
+8. Tax & Fees (accordion - auto-calculated, manual overrides)
+9. Bottom Payment Bar (sticky)
 
-**Audit History Modal**:
-- Full-screen overlay with timeline view
-- Filters: User, Field Changed, Date Range
-- Export to CSV button
+Desktop simultaneous view:
+- All sections visible in three-column grid
+- No scrolling required for any calculation
+- Real-time updates cascade across all dependent fields
+- Scenario comparison always visible in right sidebar
 
 ---
 
 ## Animations
-Use **sparingly** - only for feedback:
-- Subtle pulse on recalculated values (scale-105 for 200ms)
-- Smooth transitions on tab changes (duration-200)
-- Fade-in for toast notifications (duration-300)
-- Skeleton loaders with shimmer effect
+**Calculation Updates**:
+- Value changes: fade-out old, fade-in new (duration-200)
+- Dependent field cascade: staggered 50ms delay per field
+- Payment summary: scale-105 pulse for 300ms when total updates
+
+**Mobile Interactions**:
+- Accordion expand/collapse: smooth height transition
+- Bottom sheet modals: slide-up (duration-300)
+- Scenario swipe: momentum-based snap scroll
 
 ---
 
 ## Accessibility
-- All inputs have associated labels
-- Keyboard shortcuts for common actions (Cmd+S to save, Cmd+K for search)
-- Focus indicators on all interactive elements (ring-2 ring-offset-2)
-- ARIA labels on icon-only buttons
-- Screen reader announcements for auto-save status
+- Touch targets: minimum 44x44px (iOS) / 48x48px (Android)
+- High contrast mode support for all text/background combinations
+- Landscape orientation optimized (split-screen on mobile)
+- VoiceOver/TalkBack: Announce calculation updates
+- Keyboard shortcuts: Tab through inputs, Enter to save, Esc to close modals
 
 ---
 
 ## Images
-**No hero images needed** - this is an enterprise application, not a marketing site. Focus is on data, tables, and functional UI components.
+**Not applicable** - Enterprise B2B application focused entirely on data, calculations, and functional UI. No hero images or marketing photography needed. Dealership logo only.

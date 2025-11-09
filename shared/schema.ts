@@ -176,6 +176,7 @@ export const dealScenarios = pgTable("deal_scenarios", {
   // Fees and accessories (stored as JSONB array)
   dealerFees: jsonb("dealer_fees").notNull().default([]), // [{name: string, amount: number, taxable: boolean}]
   accessories: jsonb("accessories").notNull().default([]), // [{name: string, amount: number, taxable: boolean}]
+  aftermarketProducts: jsonb("aftermarket_products").notNull().default([]), // F&I products and physical add-ons
   
   // Tax jurisdiction
   taxJurisdictionId: uuid("tax_jurisdiction_id").references(() => taxJurisdictions.id),
@@ -186,6 +187,7 @@ export const dealScenarios = pgTable("deal_scenarios", {
   amountFinanced: decimal("amount_financed", { precision: 12, scale: 2 }).notNull().default("0"),
   monthlyPayment: decimal("monthly_payment", { precision: 12, scale: 2 }).notNull().default("0"),
   totalCost: decimal("total_cost", { precision: 12, scale: 2 }).notNull().default("0"),
+  cashDueAtSigning: decimal("cash_due_at_signing", { precision: 12, scale: 2 }).notNull().default("0"),
   
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -329,4 +331,15 @@ export type Accessory = {
   name: string;
   amount: number;
   taxable: boolean;
+};
+
+export type AftermarketProduct = {
+  id: string; // Unique ID within the scenario (use nanoid or uuid)
+  name: string;
+  category: 'warranty' | 'gap' | 'maintenance' | 'tire_wheel' | 'theft' | 'paint_protection' | 'window_tint' | 'bedliner' | 'etch' | 'custom';
+  cost: number; // Dealer cost
+  price: number; // Customer price (what they pay)
+  term?: number; // Term in months (for warranties, maintenance, etc.)
+  taxable: boolean;
+  frontEnd: boolean; // true = cash/down payment add-on, false = financed into loan
 };
