@@ -12,8 +12,6 @@ import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useStore } from '@/lib/store';
 import { debounce } from 'lodash';
 import type { DealScenario, TradeVehicle, DealerFee, Accessory, TaxJurisdictionWithRules, AftermarketProduct } from '@shared/schema';
-import { AmortizationTable } from './amortization-table';
-import { TaxJurisdictionSelector } from './tax-jurisdiction-selector';
 import { calculateFinancePayment, calculateLeasePayment, calculateSalesTax, moneyFactorToAPR, aprToMoneyFactor } from '@/lib/calculations';
 
 interface ScenarioCalculatorProps {

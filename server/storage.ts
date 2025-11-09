@@ -170,25 +170,27 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getTaxJurisdiction(state: string, county?: string, city?: string): Promise<TaxJurisdictionWithRules | undefined> {
-    let query = db
+    const conditions = [eq(taxJurisdictions.state, state)];
+    
+    if (county) {
+      conditions.push(eq(taxJurisdictions.county, county));
+    }
+    if (city) {
+      conditions.push(eq(taxJurisdictions.city, city));
+    }
+    
+    const result = await db
       .select()
       .from(taxJurisdictions)
       .leftJoin(taxRuleGroups, eq(taxJurisdictions.taxRuleGroupId, taxRuleGroups.id))
-      .where(eq(taxJurisdictions.state, state));
+      .where(and(...conditions));
     
-    if (county) {
-      query = query.where(eq(taxJurisdictions.county, county)) as any;
-    }
-    if (city) {
-      query = query.where(eq(taxJurisdictions.city, city)) as any;
-    }
+    if (!result || result.length === 0) return undefined;
     
-    const [result] = await query;
-    if (!result) return undefined;
-    
+    const [row] = result;
     return {
-      ...result.tax_jurisdictions,
-      taxRuleGroup: result.tax_rule_groups || null
+      ...row.tax_jurisdictions,
+      taxRuleGroup: row.tax_rule_groups || null
     };
   }
   

@@ -31,7 +31,10 @@ Preferred communication style: Simple, everyday language.
 - Auto-save functionality with debounced mutations to prevent data loss
 - Instant visual feedback across all dependent fields when inputs change
 - Tabular numbers with monospace fonts for perfect vertical alignment
-- Responsive layout with sticky headers for data-intensive tables
+- Mobile-first responsive design with single-page view (no tabs)
+- Three-column desktop layout (Customer/Vehicle | Deal Structure | Payment Summary)
+- Collapsible accordion sections on mobile with fixed bottom payment bar
+- Apple/Nike quality standards: backdrop blur, smooth transitions, perfect spacing
 
 ### Backend Architecture
 
@@ -61,8 +64,10 @@ Preferred communication style: Simple, everyday language.
 - **Vehicles**: Inventory management with unique stock numbers and VINs
 - **Trade Vehicles**: Trade-in vehicle information linked to deals
 - **Deals**: Core deal entity with state machine (DRAFT → IN_PROGRESS → APPROVED/CANCELLED)
-- **Deal Scenarios**: Multiple financing/leasing scenarios per deal for comparison
-- **Tax Jurisdictions**: Multi-jurisdictional tax rates (state, county, city, local)
+- **Deal Scenarios**: Multiple financing/leasing scenarios per deal with aftermarket products JSONB field
+- **Tax Rule Groups**: Categorizes states by tax characteristics (doc fee taxation, warranty/GAP taxation, trade-in credit handling)
+- **Tax Jurisdictions**: Multi-jurisdictional tax rates linked to rule groups
+- **Zip Code Lookup**: Fast routing from customer zip code to tax jurisdiction
 - **Audit Log**: Microsecond-level change tracking with user attribution and field-level changes
 
 **Key Design Decisions**:
