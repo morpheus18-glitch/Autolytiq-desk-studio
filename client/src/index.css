@@ -2,59 +2,88 @@
 @tailwind components;
 @tailwind utilities;
 
-/* LIGHT MODE */
+/* LIGHT MODE - Premium Automotive Finance Color System */
 :root {
   --button-outline: rgba(0,0,0, .10);
   --badge-outline: rgba(0,0,0, .05);
   --opaque-button-border-intensity: -8;
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
-  --background: 210 5% 98%;
-  --foreground: 210 6% 12%;
-  --border: 210 5% 88%;
-  --card: 210 5% 96%;
-  --card-foreground: 210 6% 12%;
-  --card-border: 210 5% 92%;
-  --sidebar: 210 5% 94%;
-  --sidebar-foreground: 210 6% 12%;
-  --sidebar-border: 210 5% 89%;
-  --sidebar-primary: 217 91% 42%;
-  --sidebar-primary-foreground: 217 91% 98%;
-  --sidebar-accent: 210 6% 86%;
-  --sidebar-accent-foreground: 210 6% 12%;
-  --sidebar-ring: 217 91% 42%;
-  --popover: 210 6% 92%;
-  --popover-foreground: 210 6% 12%;
-  --popover-border: 210 6% 86%;
-  --primary: 217 91% 42%;
-  --primary-foreground: 217 91% 98%;
-  --secondary: 210 7% 88%;
-  --secondary-foreground: 210 7% 12%;
-  --muted: 210 8% 90%;
-  --muted-foreground: 210 8% 30%;
-  --accent: 210 10% 91%;
-  --accent-foreground: 210 10% 12%;
-  --destructive: 0 84% 38%;
-  --destructive-foreground: 0 84% 98%;
-  --input: 210 6% 75%;
-  --ring: 217 91% 42%;
-  --chart-1: 217 91% 35%;
-  --chart-2: 195 75% 32%;
-  --chart-3: 160 65% 28%;
-  --chart-4: 280 70% 35%;
-  --chart-5: 25 85% 35%;
-  --font-sans: Open Sans, sans-serif;
+  
+  /* Surface Colors - Deep Graphite Foundation */
+  --background: 220 15% 97%;
+  --foreground: 220 18% 15%;
+  --border: 220 12% 88%;
+  --card: 220 14% 99%;
+  --card-foreground: 220 18% 15%;
+  --card-border: 220 12% 92%;
+  
+  /* Sidebar - Subtle Depth */
+  --sidebar: 220 14% 96%;
+  --sidebar-foreground: 220 18% 15%;
+  --sidebar-border: 220 12% 90%;
+  --sidebar-primary: 217 88% 48%;
+  --sidebar-primary-foreground: 220 14% 99%;
+  --sidebar-accent: 220 12% 90%;
+  --sidebar-accent-foreground: 220 18% 15%;
+  --sidebar-ring: 217 88% 48%;
+  
+  /* Popover */
+  --popover: 220 14% 98%;
+  --popover-foreground: 220 18% 15%;
+  --popover-border: 220 12% 88%;
+  
+  /* Electric Blue Primary - Brand Identity */
+  --primary: 217 88% 48%;
+  --primary-foreground: 220 14% 99%;
+  
+  /* Secondary - Graphite Undertones */
+  --secondary: 220 12% 90%;
+  --secondary-foreground: 220 18% 15%;
+  
+  /* Muted - Three-Tone Hierarchy */
+  --muted: 220 10% 92%;
+  --muted-foreground: 220 12% 45%;
+  
+  /* Warm Accent - Deal Health Indicator */
+  --accent: 35 85% 95%;
+  --accent-foreground: 35 88% 35%;
+  
+  /* Semantic State Colors */
+  --destructive: 358 75% 50%;
+  --destructive-foreground: 358 75% 98%;
+  --success: 158 64% 42%;
+  --success-foreground: 158 64% 98%;
+  --warning: 35 88% 52%;
+  --warning-foreground: 35 88% 15%;
+  
+  /* Input States */
+  --input: 220 12% 75%;
+  --ring: 217 88% 48%;
+  
+  /* Chart Colors - Rich & Expressive */
+  --chart-1: 217 88% 48%;
+  --chart-2: 195 75% 45%;
+  --chart-3: 158 64% 42%;
+  --chart-4: 280 65% 50%;
+  --chart-5: 35 88% 52%;
+  
+  /* Typography */
+  --font-sans: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
   --font-serif: Georgia, serif;
-  --font-mono: Menlo, monospace;
+  --font-mono: SF Mono, Menlo, Monaco, Consolas, monospace;
   --radius: .5rem;
-  --shadow-2xs: 0px 2px 0px 0px hsl(210 5% 12% / 0.00);
-  --shadow-xs: 0px 2px 0px 0px hsl(210 5% 12% / 0.00);
-  --shadow-sm: 0px 2px 0px 0px hsl(210 5% 12% / 0.00), 0px 1px 2px -1px hsl(210 5% 12% / 0.00);
-  --shadow: 0px 2px 0px 0px hsl(210 5% 12% / 0.00), 0px 1px 2px -1px hsl(210 5% 12% / 0.00);
-  --shadow-md: 0px 2px 0px 0px hsl(210 5% 12% / 0.00), 0px 2px 4px -1px hsl(210 5% 12% / 0.00);
-  --shadow-lg: 0px 2px 0px 0px hsl(210 5% 12% / 0.00), 0px 4px 6px -1px hsl(210 5% 12% / 0.00);
-  --shadow-xl: 0px 2px 0px 0px hsl(210 5% 12% / 0.00), 0px 8px 10px -1px hsl(210 5% 12% / 0.00);
-  --shadow-2xl: 0px 2px 0px 0px hsl(210 5% 12% / 0.00);
+  
+  /* Premium Elevation System - Layered Shadows */
+  --shadow-2xs: 0px 1px 2px 0px hsl(220 18% 15% / 0.04);
+  --shadow-xs: 0px 1px 3px 0px hsl(220 18% 15% / 0.06), 0px 1px 2px -1px hsl(220 18% 15% / 0.04);
+  --shadow-sm: 0px 2px 4px -1px hsl(220 18% 15% / 0.06), 0px 4px 6px -1px hsl(220 18% 15% / 0.08);
+  --shadow: 0px 4px 6px -2px hsl(220 18% 15% / 0.08), 0px 8px 12px -4px hsl(220 18% 15% / 0.10);
+  --shadow-md: 0px 8px 12px -4px hsl(220 18% 15% / 0.10), 0px 12px 16px -4px hsl(220 18% 15% / 0.12);
+  --shadow-lg: 0px 12px 24px -6px hsl(220 18% 15% / 0.12), 0px 16px 32px -8px hsl(220 18% 15% / 0.14);
+  --shadow-xl: 0px 16px 32px -8px hsl(220 18% 15% / 0.14), 0px 24px 48px -12px hsl(220 18% 15% / 0.16);
+  --shadow-2xl: 0px 24px 48px -12px hsl(220 18% 15% / 0.16), 0px 32px 64px -16px hsl(220 18% 15% / 0.20);
+  
   --tracking-normal: 0em;
   --spacing: 0.25rem;
 
@@ -85,6 +114,13 @@
   /* Fallback for older browsers */
   --destructive-border: hsl(var(--destructive));
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  
+  /* Semantic state borders */
+  --success-border: hsl(var(--success));
+  --success-border: hsl(from hsl(var(--success)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  
+  --warning-border: hsl(var(--warning));
+  --warning-border: hsl(from hsl(var(--warning)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
 .dark {
@@ -93,48 +129,74 @@
   --opaque-button-border-intensity: 9;
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
-  --background: 210 6% 8%;
-  --foreground: 210 6% 96%;
-  --border: 210 6% 18%;
-  --card: 210 6% 10%;
-  --card-foreground: 210 6% 96%;
-  --card-border: 210 6% 13%;
-  --sidebar: 210 6% 12%;
-  --sidebar-foreground: 210 6% 96%;
-  --sidebar-border: 210 6% 16%;
-  --sidebar-primary: 217 91% 55%;
-  --sidebar-primary-foreground: 217 91% 98%;
-  --sidebar-accent: 210 8% 16%;
-  --sidebar-accent-foreground: 210 8% 96%;
-  --sidebar-ring: 217 91% 55%;
-  --popover: 210 7% 14%;
-  --popover-foreground: 210 7% 96%;
-  --popover-border: 210 7% 18%;
-  --primary: 217 91% 48%;
-  --primary-foreground: 217 91% 98%;
-  --secondary: 210 8% 18%;
-  --secondary-foreground: 210 8% 96%;
-  --muted: 210 9% 16%;
-  --muted-foreground: 210 9% 70%;
-  --accent: 210 10% 15%;
-  --accent-foreground: 210 10% 96%;
-  --destructive: 0 84% 35%;
-  --destructive-foreground: 0 84% 98%;
-  --input: 210 7% 28%;
-  --ring: 217 91% 55%;
-  --chart-1: 217 91% 65%;
+  
+  /* Surface Colors - Deep Graphite Foundation */
+  --background: 220 20% 10%;
+  --foreground: 220 10% 92%;
+  --border: 220 16% 20%;
+  --card: 220 18% 13%;
+  --card-foreground: 220 10% 92%;
+  --card-border: 220 16% 16%;
+  
+  /* Sidebar - Subtle Depth */
+  --sidebar: 220 18% 15%;
+  --sidebar-foreground: 220 10% 92%;
+  --sidebar-border: 220 16% 18%;
+  --sidebar-primary: 217 88% 60%;
+  --sidebar-primary-foreground: 220 18% 13%;
+  --sidebar-accent: 220 16% 20%;
+  --sidebar-accent-foreground: 220 10% 92%;
+  --sidebar-ring: 217 88% 60%;
+  
+  /* Popover */
+  --popover: 220 18% 16%;
+  --popover-foreground: 220 10% 92%;
+  --popover-border: 220 16% 20%;
+  
+  /* Electric Blue Primary - Brand Identity */
+  --primary: 217 88% 60%;
+  --primary-foreground: 220 18% 13%;
+  
+  /* Secondary - Graphite Undertones */
+  --secondary: 220 16% 20%;
+  --secondary-foreground: 220 10% 92%;
+  
+  /* Muted - Three-Tone Hierarchy */
+  --muted: 220 14% 18%;
+  --muted-foreground: 220 10% 65%;
+  
+  /* Warm Accent - Deal Health Indicator */
+  --accent: 35 85% 18%;
+  --accent-foreground: 35 88% 88%;
+  
+  /* Semantic State Colors */
+  --destructive: 358 75% 55%;
+  --destructive-foreground: 358 75% 98%;
+  --success: 158 64% 50%;
+  --success-foreground: 158 64% 10%;
+  --warning: 35 88% 58%;
+  --warning-foreground: 35 88% 15%;
+  
+  /* Input States */
+  --input: 220 16% 28%;
+  --ring: 217 88% 60%;
+  
+  /* Chart Colors - Rich & Expressive */
+  --chart-1: 217 88% 65%;
   --chart-2: 195 75% 68%;
-  --chart-3: 160 65% 72%;
-  --chart-4: 280 70% 70%;
-  --chart-5: 25 85% 68%;
-  --shadow-2xs: 0px 2px 0px 0px hsl(210 6% 96% / 0.00);
-  --shadow-xs: 0px 2px 0px 0px hsl(210 6% 96% / 0.00);
-  --shadow-sm: 0px 2px 0px 0px hsl(210 6% 96% / 0.00), 0px 1px 2px -1px hsl(210 6% 96% / 0.00);
-  --shadow: 0px 2px 0px 0px hsl(210 6% 96% / 0.00), 0px 1px 2px -1px hsl(210 6% 96% / 0.00);
-  --shadow-md: 0px 2px 0px 0px hsl(210 6% 96% / 0.00), 0px 2px 4px -1px hsl(210 6% 96% / 0.00);
-  --shadow-lg: 0px 2px 0px 0px hsl(210 6% 96% / 0.00), 0px 4px 6px -1px hsl(210 6% 96% / 0.00);
-  --shadow-xl: 0px 2px 0px 0px hsl(210 6% 96% / 0.00), 0px 8px 10px -1px hsl(210 6% 96% / 0.00);
-  --shadow-2xl: 0px 2px 0px 0px hsl(210 6% 96% / 0.00);
+  --chart-3: 158 64% 72%;
+  --chart-4: 280 65% 70%;
+  --chart-5: 35 88% 68%;
+  
+  /* Premium Elevation System - Layered Shadows (darker in dark mode) */
+  --shadow-2xs: 0px 1px 2px 0px hsl(220 20% 5% / 0.20);
+  --shadow-xs: 0px 1px 3px 0px hsl(220 20% 5% / 0.30), 0px 1px 2px -1px hsl(220 20% 5% / 0.20);
+  --shadow-sm: 0px 2px 4px -1px hsl(220 20% 5% / 0.30), 0px 4px 6px -1px hsl(220 20% 5% / 0.40);
+  --shadow: 0px 4px 6px -2px hsl(220 20% 5% / 0.40), 0px 8px 12px -4px hsl(220 20% 5% / 0.50);
+  --shadow-md: 0px 8px 12px -4px hsl(220 20% 5% / 0.50), 0px 12px 16px -4px hsl(220 20% 5% / 0.60);
+  --shadow-lg: 0px 12px 24px -6px hsl(220 20% 5% / 0.60), 0px 16px 32px -8px hsl(220 20% 5% / 0.70);
+  --shadow-xl: 0px 16px 32px -8px hsl(220 20% 5% / 0.70), 0px 24px 48px -12px hsl(220 20% 5% / 0.80);
+  --shadow-2xl: 0px 24px 48px -12px hsl(220 20% 5% / 0.80), 0px 32px 64px -16px hsl(220 20% 5% / 0.90);
 
 /* Fallback for older browsers */
   --sidebar-primary-border: hsl(var(--sidebar-primary));
@@ -163,6 +225,13 @@
   /* Fallback for older browsers */
   --destructive-border: hsl(var(--destructive));
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  
+  /* Semantic state borders */
+  --success-border: hsl(var(--success));
+  --success-border: hsl(from hsl(var(--success)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  
+  --warning-border: hsl(var(--warning));
+  --warning-border: hsl(from hsl(var(--warning)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
 @layer base {
