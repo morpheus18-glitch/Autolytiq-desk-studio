@@ -56,7 +56,9 @@ export function NumbersTab() {
     fieldName: string
   ) => {
     setFocusedField(null);
-    const num = parseFloat(value);
+    // Strip commas and any other non-numeric characters except decimal point
+    const cleaned = value.replace(/[^\d.]/g, '');
+    const num = parseFloat(cleaned);
     if (!isNaN(num) && num >= 0) {
       updateField(field, num.toFixed(2));
     }
