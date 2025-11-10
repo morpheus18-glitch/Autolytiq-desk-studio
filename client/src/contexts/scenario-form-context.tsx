@@ -111,6 +111,7 @@ export function ScenarioFormProvider({
     }
     
     setAutoSaveStatus('pending');
+    console.log('[ScenarioFormContext] Auto-save pending for fields:', Array.from(dirtyFields));
     saveTimerRef.current = setTimeout(() => {
       if (scenario.id && dirtyFields.size > 0) {
         // Only save changed fields
@@ -119,6 +120,7 @@ export function ScenarioFormProvider({
           const key = field as keyof DealScenario;
           updates[key] = scenario[key] as any;
         });
+        console.log('[ScenarioFormContext] Triggering auto-save with updates:', updates);
         saveScenario(updates);
       }
     }, 1000);

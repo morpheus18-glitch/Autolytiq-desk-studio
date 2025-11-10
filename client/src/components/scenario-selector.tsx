@@ -100,9 +100,9 @@ export function ScenarioSelector({
       name: `Scenario ${scenarios.length + 1}`,
       vehiclePrice: baseScenario.vehiclePrice || '0',
       downPayment: baseScenario.downPayment || '0',
-      apr: '5.99',
-      term: 60,
-      moneyFactor: '0.00125',
+      apr: baseScenario.apr ?? '5.99', // Inherit APR from base scenario
+      term: baseScenario.term || 60,
+      moneyFactor: baseScenario.moneyFactor || '0.00125',
       residualValue: '0',
       residualPercent: '0',
       tradeAllowance: baseScenario.tradeAllowance || '0',

@@ -29,23 +29,25 @@ export function FinanceLeaseForm() {
   
   const switchToFinance = () => {
     updateField('scenarioType', 'FINANCE_DEAL');
-    if (!scenario.apr || scenario.apr === '0') {
+    // Only set defaults if truly undefined/null (preserves fetched server values including '0')
+    if (scenario.apr === undefined || scenario.apr === null) {
       updateField('apr', '5.99');
     }
-    if (!scenario.term || scenario.term === 0) {
+    if (scenario.term === undefined || scenario.term === null || scenario.term === 0) {
       updateField('term', 60);
     }
   };
   
   const switchToLease = () => {
     updateField('scenarioType', 'LEASE_DEAL');
-    if (!scenario.moneyFactor || scenario.moneyFactor === '0') {
+    // Only set defaults if truly undefined/null (preserves fetched server values)
+    if (scenario.moneyFactor === undefined || scenario.moneyFactor === null) {
       updateField('moneyFactor', '0.00125');
     }
-    if (!scenario.term || scenario.term === 0) {
+    if (scenario.term === undefined || scenario.term === null || scenario.term === 0) {
       updateField('term', 36);
     }
-    if (!scenario.residualPercent || scenario.residualPercent === '0') {
+    if (scenario.residualPercent === undefined || scenario.residualPercent === null) {
       updateField('residualPercent', '50');
     }
   };
