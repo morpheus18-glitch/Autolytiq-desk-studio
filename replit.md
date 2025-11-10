@@ -14,7 +14,11 @@ NextGen Automotive Desking Platform is a comprehensive automotive finance and le
 - ✅ **MobileActionButton**: 56px floating action button (FAB) at bottom-right with Sheet-based action menu for History/Print/Export, compliant with Shadcn usage rules (custom button, no size overrides)
 - ✅ **Touch-Optimized Accordions**: DeskSection with 68px min-height headers, larger icons (40x40px) on mobile, enhanced padding (p-5), smooth 300ms ease-out transitions, touch-manipulation class for better responsiveness
 - ✅ **Responsive LayoutShell**: Separate summaryDesktop and mobileSummary props, dynamic bottom padding via CSS variable (--mobile-summary-offset: 3.5rem), safe-area-inset-bottom support for notched devices, correct z-index layering (z-40 bar, z-50 sheets/FAB, z-60 auto-save)
-- ✅ **All Touch Targets ≥44px**: Payment bar (56px), sheet handle (16x8px), accordion headers (68px), action buttons (56px), FAB (56px)
+- ✅ **Responsive Header & Layout**: Tiered font sizes (text-lg md:text-xl lg:text-2xl), flex wrapping with min-w-0, reduced gaps on mobile (gap-2 md:gap-3), vehicle info stacks on small screens
+- ✅ **Mobile Forms Optimization**: All inputs min-h-11 (44px touch targets), inputMode="decimal" for numeric keyboards, size="lg" buttons (40px), responsive grid layouts (1→2→3 columns), better spacing (gap-4 md:gap-6)
+- ✅ **F&I Grid Mobile**: Single-column quick-add buttons on mobile, 2-col on tablet, flex-wrap on desktop; product cards with responsive padding (p-3 md:p-4); full-width margin badge on mobile
+- ✅ **Design System Compliance**: Removed all manual height overrides from Button components, using proper size variants exclusively; min-h-* only on Input/SelectTrigger components
+- ✅ **All Touch Targets ≥44px**: Payment bar (56px), inputs/selects (44px), buttons (40px with padding), accordion headers (68px), FAB (56px)
 
 **Complete DealWorksheetV2 Integration** - Replaced legacy ScenarioCalculator with modular, context-driven architecture:
 
