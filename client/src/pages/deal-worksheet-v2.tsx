@@ -22,6 +22,7 @@ import { ScenarioSelector } from '@/components/scenario-selector';
 import { DealWorkflowControls } from '@/components/deal-workflow-controls';
 import { MobilePaymentSheet } from '@/components/mobile-payment-sheet';
 import { MobileActionButton } from '@/components/mobile-action-button';
+import { VehicleSwitcher } from '@/components/vehicle-switcher';
 
 const DEAL_STATE_COLORS: Record<string, string> = {
   DRAFT: 'bg-muted text-muted-foreground',
@@ -34,6 +35,7 @@ export default function DealWorksheetV2() {
   const [, params] = useRoute('/deals/:id');
   const dealId = params?.id;
   const [activeScenarioId, setActiveScenarioId] = useState<string>('');
+  const [vehicleSwitcherOpen, setVehicleSwitcherOpen] = useState(false);
   const setActiveDealId = useStore(state => state.setActiveDealId);
   
   const { data: deal, isLoading } = useQuery<DealWithRelations>({
@@ -169,8 +171,8 @@ export default function DealWorksheetV2() {
           </DeskSection>
           
           <DeskSection title="Vehicle Details" icon={Car}>
-            <div className="space-y-4 text-sm">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <div className="text-xs text-muted-foreground mb-1">Year/Make/Model</div>
                   <div className="font-medium">{deal.vehicle.year} {deal.vehicle.make} {deal.vehicle.model}</div>
@@ -188,6 +190,15 @@ export default function DealWorksheetV2() {
                   <div className="font-mono">{deal.vehicle.mileage.toLocaleString()} mi</div>
                 </div>
               </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setVehicleSwitcherOpen(true)}
+                data-testid="button-switch-vehicle"
+              >
+                <Car className="w-4 h-4 mr-2" />
+                Switch Vehicle
+              </Button>
             </div>
           </DeskSection>
           
@@ -253,7 +264,18 @@ export default function DealWorksheetV2() {
             </div>
             
             <div className="space-y-4">
-              <SectionHeader icon={Car} title="Vehicle Details" />
+              <div className="flex items-center justify-between">
+                <SectionHeader icon={Car} title="Vehicle Details" />
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setVehicleSwitcherOpen(true)}
+                  data-testid="button-switch-vehicle-desktop"
+                >
+                  <Car className="w-4 h-4 mr-2" />
+                  Switch Vehicle
+                </Button>
+              </div>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <div className="text-xs text-muted-foreground mb-1">Year/Make/Model</div>
@@ -328,6 +350,15 @@ export default function DealWorksheetV2() {
 
         {/* Mobile Action Button */}
         <MobileActionButton />
+
+        {/* Vehicle Switcher Modal */}
+        <VehicleSwitcher
+          open={vehicleSwitcherOpen}
+          onOpenChange={setVehicleSwitcherOpen}
+          currentVehicleId={deal.vehicle.id}
+          dealId={deal.id}
+          scenarioId={activeScenarioId}
+        />
       </LayoutShell>
     </ScenarioFormProvider>
   );

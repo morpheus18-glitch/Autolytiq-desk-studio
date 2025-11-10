@@ -8,6 +8,14 @@ NextGen Automotive Desking Platform is a comprehensive automotive finance and le
 
 ## Recent Changes (November 2024)
 
+**Mobile-First Optimization** - World-class mobile experience with Apple/Nike quality standards:
+
+- ✅ **MobilePaymentSheet**: Expandable bottom sheet (Sheet component) with 56px collapsed trigger showing monthly payment + APR, 85vh expanded view with full payment details + scenario selector, smooth slide-up animation, auto-closes after scenario change
+- ✅ **MobileActionButton**: 56px floating action button (FAB) at bottom-right with Sheet-based action menu for History/Print/Export, compliant with Shadcn usage rules (custom button, no size overrides)
+- ✅ **Touch-Optimized Accordions**: DeskSection with 68px min-height headers, larger icons (40x40px) on mobile, enhanced padding (p-5), smooth 300ms ease-out transitions, touch-manipulation class for better responsiveness
+- ✅ **Responsive LayoutShell**: Separate summaryDesktop and mobileSummary props, dynamic bottom padding via CSS variable (--mobile-summary-offset: 3.5rem), safe-area-inset-bottom support for notched devices, correct z-index layering (z-40 bar, z-50 sheets/FAB, z-60 auto-save)
+- ✅ **All Touch Targets ≥44px**: Payment bar (56px), sheet handle (16x8px), accordion headers (68px), action buttons (56px), FAB (56px)
+
 **Complete DealWorksheetV2 Integration** - Replaced legacy ScenarioCalculator with modular, context-driven architecture:
 
 - ✅ **ScenarioFormContext**: Centralized state management with intelligent server sync, dirty tracking, and safe scenario switching
