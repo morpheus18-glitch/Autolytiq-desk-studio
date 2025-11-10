@@ -8,7 +8,8 @@ import { useStore } from '@/lib/store';
 import type { DealWithRelations } from '@shared/schema';
 import { PaymentHero } from '@/components/payment-hero';
 import { DealWorksheetTabs } from '@/components/deal-worksheet-tabs';
-import { ScenarioFormProvider } from '@/contexts/scenario-form-context';
+import { NumbersTab } from '@/components/numbers-tab';
+import { ScenarioFormProvider, useScenarioForm } from '@/contexts/scenario-form-context';
 import Decimal from 'decimal.js';
 
 const DEAL_STATE_COLORS: Record<string, string> = {
@@ -80,10 +81,6 @@ export default function DealWorksheetTabsPage() {
   // Use calculated values from activeScenario
   const amountFinanced = activeScenario?.amountFinanced || '0';
   const totalCost = activeScenario?.totalCost || '0';
-  const totalTax = activeScenario?.totalTax || '0';
-  const totalFees = activeScenario?.totalFees || '0';
-  const totalTaxFees = new Decimal(totalTax).plus(totalFees).toFixed(2);
-  
   const cssVars = {
     '--header-height': '73px',
     '--hero-height': `${heroHeight}px`,
@@ -95,7 +92,34 @@ export default function DealWorksheetTabsPage() {
       tradeVehicle={deal.tradeVehicle || null}
       dealId={deal.id}
     >
-      <div className="h-screen flex flex-col bg-background" style={cssVars}>
+      <DealWorksheetTabsContent 
+        deal={deal}
+        heroRef={heroRef}
+        heroHeight={heroHeight}
+        cssVars={cssVars}
+      />
+    </ScenarioFormProvider>
+  );
+}
+
+function DealWorksheetTabsContent({ 
+  deal, 
+  heroRef, 
+  heroHeight,
+  cssVars 
+}: {
+  deal: DealWithRelations;
+  heroRef: React.RefObject<HTMLDivElement>;
+  heroHeight: number;
+  cssVars: React.CSSProperties;
+}) {
+  // Now we can use ScenarioFormContext inside the provider
+  const { scenario, calculations } = useScenarioForm();
+  
+  const totalTaxFees = calculations.totalTax.plus(calculations.totalFees).toFixed(2);
+  
+  return (
+    <div className="h-screen flex flex-col bg-background" style={cssVars}>
         {/* Sticky Header */}
         <div className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80" style={{ height: 'var(--header-height, 73px)' } as React.CSSProperties}>
           <div className="px-4 md:px-6 py-3 md:py-4 h-full">
@@ -142,12 +166,12 @@ export default function DealWorksheetTabsPage() {
           style={{ top: 'var(--header-height, 73px)' } as React.CSSProperties}
         >
           <PaymentHero
-            monthlyPayment={monthlyPayment}
-            apr={apr}
-            term={term}
-            downPayment={downPayment}
-            amountFinanced={amountFinanced}
-            totalCost={totalCost}
+            monthlyPayment={calculations.monthlyPayment.toFixed(2)}
+            apr={scenario.apr || '5.99'}
+            term={scenario.term}
+            downPayment={calculations.downPayment.toFixed(2)}
+            amountFinanced={calculations.amountFinanced.toFixed(2)}
+            totalCost={calculations.totalCost.toFixed(2)}
             totalTaxFees={totalTaxFees}
           />
         </div>
@@ -159,31 +183,7 @@ export default function DealWorksheetTabsPage() {
             className="h-full"
           >
             {{
-              numbers: (
-                <div className="p-6 space-y-6">
-                  <h2 className="text-xl font-semibold">Deal Numbers</h2>
-                  <div className="grid gap-4">
-                    <div className="p-4 border rounded-lg">
-                      <div className="text-sm text-muted-foreground mb-1">Vehicle Price</div>
-                      <div className="text-2xl font-bold font-mono" data-testid="text-vehicle-price">
-                        ${parseFloat(deal.vehicle.price as string).toLocaleString()}
-                      </div>
-                    </div>
-                    <div className="p-4 border rounded-lg">
-                      <div className="text-sm text-muted-foreground mb-1">Down Payment</div>
-                      <div className="text-2xl font-bold font-mono" data-testid="text-down-payment-display">
-                        ${parseFloat(downPayment).toLocaleString()}
-                      </div>
-                    </div>
-                    <div className="p-4 border rounded-lg">
-                      <div className="text-sm text-muted-foreground mb-1">Trade-In Value</div>
-                      <div className="text-2xl font-bold font-mono" data-testid="text-trade-value">
-                        ${parseFloat(deal.tradeVehicle?.allowance || '0').toLocaleString()}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ),
+              numbers: <NumbersTab />,
               customer: (
                 <div className="p-6 space-y-6">
                   <h2 className="text-xl font-semibold">Customer Information</h2>
@@ -275,6 +275,5 @@ export default function DealWorksheetTabsPage() {
           </div>
         </div>
       </div>
-    </ScenarioFormProvider>
   );
 }
