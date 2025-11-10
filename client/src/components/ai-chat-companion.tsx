@@ -22,7 +22,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { aiService, type ChatMessage, type DealContext } from '@/lib/ai-service';
-import { useScenarioForm } from '@/contexts/scenario-form-context';
+import { ScenarioFormContext } from '@/contexts/scenario-form-context';
+import { useContext } from 'react';
 import { format } from 'date-fns';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -38,8 +39,8 @@ export function AIChatCompanion() {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   
-  // Get deal context if available
-  const scenarioContext = useGetScenarioContext();
+  // Get deal context if available (only in deal worksheet)
+  const scenarioContext = useContext(ScenarioFormContext);
   
   // Build deal context for AI service
   const dealContext = useMemo<DealContext | undefined>(() => {
@@ -70,8 +71,14 @@ export function AIChatCompanion() {
   }, [dealContext]);
   
   // Get suggested questions based on context
-  const suggestedQuestions = useMemo(() => {
-    return aiService.getSuggestedQuestions(dealContext);
+  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
+  
+  useEffect(() => {
+    const loadSuggestions = async () => {
+      const suggestions = await aiService.getSuggestedQuestions(dealContext);
+      setSuggestedQuestions(suggestions);
+    };
+    loadSuggestions();
   }, [dealContext]);
   
   // Load chat history on mount

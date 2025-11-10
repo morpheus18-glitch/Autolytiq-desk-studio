@@ -5,6 +5,7 @@ import rateLimit from "express-rate-limit";
 import { insertCustomerSchema, insertVehicleSchema, insertDealSchema, insertDealScenarioSchema, insertTradeVehicleSchema, insertTaxJurisdictionSchema } from "@shared/schema";
 import { calculateFinancePayment, calculateLeasePayment, calculateSalesTax } from "./calculations";
 import { z } from "zod";
+import { aiService, type ChatMessage, type DealContext } from "./ai-service";
 
 // Rate limiting middleware - 100 requests per minute per IP
 const limiter = rateLimit({
@@ -2246,6 +2247,132 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message || 'Failed to get deal lender history' });
+    }
+  });
+
+  // ===== AI CHAT =====
+  
+  // POST /api/ai/chat - Handle chat messages with streaming
+  app.post('/api/ai/chat', async (req, res) => {
+    try {
+      const chatRequestSchema = z.object({
+        message: z.string().min(1),
+        conversationHistory: z.array(z.object({
+          id: z.string(),
+          role: z.enum(['user', 'assistant', 'system']),
+          content: z.string(),
+          timestamp: z.string().transform(str => new Date(str)),
+          metadata: z.object({
+            dealId: z.string().optional(),
+            scenarioId: z.string().optional(),
+            suggestions: z.array(z.string()).optional()
+          }).optional()
+        })).default([]),
+        context: z.object({
+          scenario: z.any().optional(),
+          vehicle: z.any().optional(),
+          tradeVehicle: z.any().optional(),
+          calculations: z.object({
+            monthlyPayment: z.string(),
+            totalCost: z.string(),
+            amountFinanced: z.string(),
+            tradeEquity: z.string(),
+            totalTax: z.string(),
+            totalFees: z.string()
+          }).optional()
+        }).optional()
+      });
+      
+      const { message, conversationHistory, context } = chatRequestSchema.parse(req.body);
+      
+      // Set up SSE headers
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no' // Disable Nginx buffering
+      });
+      
+      // Send initial connection event
+      res.write('event: connected\n');
+      res.write('data: {"type":"connected"}\n\n');
+      
+      // Handle streaming response
+      const chunks: string[] = [];
+      const response = await aiService.sendMessage(
+        message,
+        conversationHistory as ChatMessage[],
+        context as DealContext,
+        (chunk: string) => {
+          chunks.push(chunk);
+          // Send chunk as SSE event
+          const data = JSON.stringify({ type: 'chunk', content: chunk });
+          res.write(`data: ${data}\n\n`);
+        }
+      );
+      
+      // Send complete message
+      const completeData = JSON.stringify({
+        type: 'complete',
+        message: response
+      });
+      res.write(`data: ${completeData}\n\n`);
+      
+      // Close the connection
+      res.write('event: done\n');
+      res.write('data: {"type":"done"}\n\n');
+      res.end();
+      
+    } catch (error: any) {
+      console.error('AI Chat Error:', error);
+      
+      // If headers haven't been sent yet, send error response
+      if (!res.headersSent) {
+        res.status(500).json({ 
+          error: 'Failed to process chat request',
+          message: error.message 
+        });
+      } else {
+        // If we're already streaming, send error event
+        const errorData = JSON.stringify({
+          type: 'error',
+          error: 'Failed to process request'
+        });
+        res.write(`data: ${errorData}\n\n`);
+        res.end();
+      }
+    }
+  });
+  
+  // GET /api/ai/suggestions - Get suggested questions based on context
+  app.post('/api/ai/suggestions', async (req, res) => {
+    try {
+      const suggestionsRequestSchema = z.object({
+        context: z.object({
+          scenario: z.any().optional(),
+          vehicle: z.any().optional(),
+          tradeVehicle: z.any().optional(),
+          calculations: z.object({
+            monthlyPayment: z.string(),
+            totalCost: z.string(),
+            amountFinanced: z.string(),
+            tradeEquity: z.string(),
+            totalTax: z.string(),
+            totalFees: z.string()
+          }).optional()
+        }).optional()
+      });
+      
+      const { context } = suggestionsRequestSchema.parse(req.body);
+      const suggestions = aiService.getSuggestedQuestions(context as DealContext);
+      
+      res.json({ suggestions });
+      
+    } catch (error: any) {
+      res.status(400).json({ 
+        error: 'Failed to get suggestions',
+        message: error.message 
+      });
     }
   });
 

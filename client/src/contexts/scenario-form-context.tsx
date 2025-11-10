@@ -38,7 +38,7 @@ interface ScenarioFormContextValue {
   lastSaved: Date | null;
 }
 
-const ScenarioFormContext = createContext<ScenarioFormContextValue | null>(null);
+export const ScenarioFormContext = createContext<ScenarioFormContextValue | null>(null);
 
 interface ScenarioFormProviderProps {
   scenario: DealScenario;

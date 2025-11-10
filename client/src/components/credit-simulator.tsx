@@ -137,9 +137,10 @@ export function CreditSimulator() {
   const [simulationResult, setSimulationResult] = useState<CreditSimulationResult | null>(null);
   const [activeScenario, setActiveScenario] = useState<string | null>(null);
   const [previousScore, setPreviousScore] = useState<number | null>(null);
+  const [isCalculating, setIsCalculating] = useState(false);
 
   // Use animated value for score display
-  const animatedScore = useValueTransition(simulationResult?.score || 650, 600);
+  const animatedScore = useValueTransition(simulationResult?.score || 650, { duration: 600 });
 
   // Simulate credit score mutation
   const simulateMutation = useMutation({
@@ -147,11 +148,26 @@ export function CreditSimulator() {
       const response = await apiRequest('POST', '/api/credit/simulate', input);
       return response;
     },
+    onMutate: () => {
+      setIsCalculating(true);
+    },
     onSuccess: (data) => {
-      if (simulationResult?.score) {
+      // Store previous score for comparison
+      if (simulationResult?.score && simulationResult.score !== data.score) {
         setPreviousScore(simulationResult.score);
       }
+      
+      // Update simulation result with new data
       setSimulationResult(data);
+      
+      // Force a small delay to ensure UI updates
+      setTimeout(() => {
+        setIsCalculating(false);
+      }, 100);
+    },
+    onError: (error) => {
+      console.error('Failed to simulate credit score:', error);
+      setIsCalculating(false);
     },
   });
 
@@ -165,17 +181,35 @@ export function CreditSimulator() {
       });
       return response;
     },
+    onMutate: () => {
+      setIsCalculating(true);
+    },
     onSuccess: (data) => {
-      if (simulationResult?.score) {
+      // Store previous score for comparison
+      if (simulationResult?.score && data?.score && simulationResult.score !== data.score) {
         setPreviousScore(simulationResult.score);
       }
-      setSimulationResult(data);
+      
+      // Update simulation result with new data
+      if (data) {
+        setSimulationResult(data);
+      }
+      
+      // Force a small delay to ensure UI updates
+      setTimeout(() => {
+        setIsCalculating(false);
+      }, 100);
+    },
+    onError: (error) => {
+      console.error('Failed to simulate scenario:', error);
+      setIsCalculating(false);
     },
   });
 
   // Run initial simulation on mount
   useEffect(() => {
     simulateMutation.mutate(simulationInput);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
 
   // Update utilization ratio when balance or limit changes
@@ -214,13 +248,16 @@ export function CreditSimulator() {
               <p className="text-sm font-medium text-muted-foreground">Your Credit Score</p>
               <div className="flex items-baseline gap-4">
                 <span 
-                  className={`text-5xl md:text-6xl font-bold font-mono ${getScoreColor(animatedScore)}`}
+                  key={simulationResult?.score}
+                  className={`text-5xl md:text-6xl font-bold font-mono transition-colors duration-300 ${
+                    isCalculating ? 'opacity-50 animate-pulse' : ''
+                  } ${getScoreColor(simulationResult?.score || animatedScore)}`}
                   data-testid="credit-score-display"
                 >
                   {Math.round(animatedScore)}
                 </span>
-                {previousScore && previousScore !== simulationResult?.score && (
-                  <div className="flex items-center gap-1">
+                {previousScore && previousScore !== simulationResult?.score && !isCalculating && (
+                  <div className="flex items-center gap-1 animate-in fade-in slide-in-from-left duration-500">
                     {(simulationResult?.score || 0) > previousScore ? (
                       <TrendingUp className="w-4 h-4 text-green-600" />
                     ) : (
@@ -234,7 +271,11 @@ export function CreditSimulator() {
               </div>
               {simulationResult && (
                 <div className="flex items-center gap-3">
-                  <Badge className={`${getScoreBgColor(simulationResult.score)} border-0`}>
+                  <Badge 
+                    key={`tier-${simulationResult.tier}`}
+                    className={`${getScoreBgColor(simulationResult.score)} border-0 transition-all duration-300`}
+                    data-testid="credit-tier-badge"
+                  >
                     {simulationResult.tier}
                   </Badge>
                   <span className="text-sm text-muted-foreground">
@@ -521,13 +562,25 @@ export function CreditSimulator() {
               {/* Calculate Button */}
               <div className="flex justify-end pt-4">
                 <Button 
-                  onClick={() => simulateMutation.mutate(simulationInput)}
-                  disabled={simulateMutation.isPending}
-                  className="gap-2"
+                  onClick={() => {
+                    console.log('Recalculating with input:', simulationInput);
+                    simulateMutation.mutate(simulationInput);
+                  }}
+                  disabled={simulateMutation.isPending || isCalculating}
+                  className="gap-2 min-w-[160px]"
                   data-testid="button-recalculate"
                 >
-                  <Calculator className="w-4 h-4" />
-                  Recalculate Score
+                  {(simulateMutation.isPending || isCalculating) ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
+                      Calculating...
+                    </>
+                  ) : (
+                    <>
+                      <Calculator className="w-4 h-4" />
+                      Recalculate Score
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
