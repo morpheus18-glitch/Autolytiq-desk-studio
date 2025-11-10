@@ -57,10 +57,10 @@ async function seed() {
     const insertedCustomers = await db.insert(customers).values(customersData).returning();
     console.log('✓ Created customers');
     
-    // Create vehicles
+    // Create vehicles with comprehensive data
     const vehiclesData = [
+      // New vehicles
       {
-        stockNumber: 'V2024-001',
         vin: '1HGBH41JXMN109186',
         year: 2024,
         make: 'Honda',
@@ -69,13 +69,96 @@ async function seed() {
         mileage: 12,
         exteriorColor: 'Modern Steel Metallic',
         interiorColor: 'Black Leather',
+        engineType: '1.5L Turbo I4',
+        transmission: 'CVT',
+        drivetrain: 'FWD',
+        fuelType: 'Gasoline',
+        mpgCity: 32,
+        mpgHighway: 42,
         price: '32500',
         msrp: '35000',
-        invoice: '30000',
+        invoicePrice: '30000',
+        internetPrice: '31900',
+        condition: 'new',
+        status: 'available',
         isNew: true,
+        images: JSON.stringify([
+          'https://placeholder.pics/svg/800x600/DEDEDE/555555/2024%20Honda%20Accord',
+          'https://placeholder.pics/svg/800x600/DEDEDE/555555/Interior',
+          'https://placeholder.pics/svg/800x600/DEDEDE/555555/Dashboard',
+          'https://placeholder.pics/svg/800x600/DEDEDE/555555/Engine'
+        ]),
+        features: JSON.stringify([
+          { category: 'Safety', name: 'Honda Sensing®', description: 'Collision Mitigation Braking System™' },
+          { category: 'Technology', name: 'Apple CarPlay®', description: 'Wireless connectivity' },
+          { category: 'Comfort', name: 'Leather-Trimmed Seats', description: 'Premium leather upholstery' },
+          { category: 'Technology', name: '12-Speaker Bose® Audio', description: 'Premium sound system' }
+        ])
       },
       {
-        stockNumber: 'V2023-045',
+        vin: '1N4BL4CV1NC456789',
+        year: 2024,
+        make: 'Nissan',
+        model: 'Altima',
+        trim: 'SL',
+        mileage: 8,
+        exteriorColor: 'Pearl White',
+        interiorColor: 'Tan Leather',
+        engineType: '2.0L VC-Turbo I4',
+        transmission: 'CVT',
+        drivetrain: 'FWD',
+        fuelType: 'Gasoline',
+        mpgCity: 25,
+        mpgHighway: 34,
+        price: '31200',
+        msrp: '32900',
+        invoicePrice: '29500',
+        internetPrice: '30900',
+        condition: 'new',
+        status: 'available',
+        isNew: true,
+        images: JSON.stringify([
+          'https://placeholder.pics/svg/800x600/DEDEDE/555555/2024%20Nissan%20Altima'
+        ]),
+        features: JSON.stringify([
+          { category: 'Safety', name: 'ProPILOT Assist', description: 'Semi-autonomous driving' },
+          { category: 'Technology', name: '9" Touch Screen', description: 'Navigation system included' }
+        ])
+      },
+      {
+        vin: '1FTFW1E89NFA12345',
+        year: 2024,
+        make: 'Ford',
+        model: 'F-150',
+        trim: 'XLT',
+        mileage: 15,
+        exteriorColor: 'Race Red',
+        interiorColor: 'Black Cloth',
+        engineType: '3.5L EcoBoost V6',
+        transmission: 'Automatic',
+        drivetrain: '4WD',
+        fuelType: 'Gasoline',
+        mpgCity: 18,
+        mpgHighway: 25,
+        price: '52900',
+        msrp: '55000',
+        invoicePrice: '50000',
+        internetPrice: '52500',
+        condition: 'new',
+        status: 'available',
+        isNew: true,
+        images: JSON.stringify([
+          'https://placeholder.pics/svg/800x600/DEDEDE/555555/2024%20Ford%20F-150',
+          'https://placeholder.pics/svg/800x600/DEDEDE/555555/Truck%20Bed'
+        ]),
+        features: JSON.stringify([
+          { category: 'Performance', name: 'Max Towing Package', description: '13,000 lbs capacity' },
+          { category: 'Technology', name: 'SYNC® 4', description: '12" touchscreen with navigation' },
+          { category: 'Safety', name: 'Co-Pilot360™', description: 'Advanced driver assistance' }
+        ])
+      },
+      // Used/Certified vehicles
+      {
         vin: '5YJSA1E26KF123456',
         year: 2023,
         make: 'Tesla',
@@ -84,26 +167,274 @@ async function seed() {
         mileage: 8500,
         exteriorColor: 'Midnight Silver',
         interiorColor: 'White Premium',
+        engineType: 'Dual Motor Electric',
+        transmission: 'Single-Speed',
+        drivetrain: 'AWD',
+        fuelType: 'Electric',
+        mpgCity: 142,
+        mpgHighway: 132,
         price: '42900',
         msrp: '47000',
-        invoice: '40000',
+        invoicePrice: '40000',
+        internetPrice: '42500',
+        condition: 'used',
+        status: 'available',
         isNew: false,
+        images: JSON.stringify([
+          'https://placeholder.pics/svg/800x600/DEDEDE/555555/2023%20Tesla%20Model%203',
+          'https://placeholder.pics/svg/800x600/DEDEDE/555555/Tesla%20Interior',
+          'https://placeholder.pics/svg/800x600/DEDEDE/555555/Tesla%20Frunk'
+        ]),
+        features: JSON.stringify([
+          { category: 'Technology', name: 'Full Self-Driving', description: 'Advanced Autopilot features' },
+          { category: 'Performance', name: 'Long Range Battery', description: '353 miles EPA range' },
+          { category: 'Technology', name: 'Premium Connectivity', description: 'Streaming and live traffic' }
+        ])
       },
       {
-        stockNumber: 'V2024-012',
-        vin: '3VWDX7AJ5KM123789',
+        vin: '1C4HJXDG5MW567890',
+        year: 2022,
+        make: 'Jeep',
+        model: 'Wrangler',
+        trim: 'Rubicon',
+        mileage: 18500,
+        exteriorColor: 'Sting-Gray',
+        interiorColor: 'Black Leather',
+        engineType: '3.6L V6',
+        transmission: 'Automatic',
+        drivetrain: '4WD',
+        fuelType: 'Gasoline',
+        mpgCity: 17,
+        mpgHighway: 23,
+        price: '45900',
+        msrp: '52000',
+        invoicePrice: '43000',
+        internetPrice: '45500',
+        condition: 'certified',
+        status: 'available',
+        isNew: false,
+        images: JSON.stringify([
+          'https://placeholder.pics/svg/800x600/DEDEDE/555555/2022%20Jeep%20Wrangler'
+        ]),
+        features: JSON.stringify([
+          { category: 'Performance', name: 'Rock-Trac® 4WD', description: 'Heavy-duty off-road system' },
+          { category: 'Technology', name: 'Uconnect® 5', description: '8.4" touchscreen display' }
+        ])
+      },
+      {
+        vin: '2C3CDXBG5NH123456',
+        year: 2023,
+        make: 'Dodge',
+        model: 'Charger',
+        trim: 'R/T',
+        mileage: 12300,
+        exteriorColor: 'Pitch Black',
+        interiorColor: 'Red/Black Sport',
+        engineType: '5.7L HEMI V8',
+        transmission: 'Automatic',
+        drivetrain: 'RWD',
+        fuelType: 'Gasoline',
+        mpgCity: 16,
+        mpgHighway: 25,
+        price: '38900',
+        msrp: '42000',
+        invoicePrice: '36000',
+        internetPrice: '38500',
+        condition: 'used',
+        status: 'available',
+        isNew: false,
+        images: JSON.stringify([
+          'https://placeholder.pics/svg/800x600/DEDEDE/555555/2023%20Dodge%20Charger'
+        ]),
+        features: JSON.stringify([
+          { category: 'Performance', name: 'HEMI® V8', description: '370 horsepower' },
+          { category: 'Technology', name: 'Harman Kardon® Audio', description: 'Premium 19-speaker system' }
+        ])
+      },
+      {
+        vin: '1G1YY2D78P5678901',
+        year: 2023,
+        make: 'Chevrolet',
+        model: 'Corvette',
+        trim: 'Stingray 2LT',
+        mileage: 3200,
+        exteriorColor: 'Torch Red',
+        interiorColor: 'Jet Black Leather',
+        engineType: '6.2L V8',
+        transmission: 'Automatic',
+        drivetrain: 'RWD',
+        fuelType: 'Gasoline',
+        mpgCity: 15,
+        mpgHighway: 27,
+        price: '72900',
+        msrp: '75000',
+        invoicePrice: '68000',
+        internetPrice: '72500',
+        condition: 'used',
+        status: 'available',
+        isNew: false,
+        images: JSON.stringify([
+          'https://placeholder.pics/svg/800x600/DEDEDE/555555/2023%20Chevrolet%20Corvette',
+          'https://placeholder.pics/svg/800x600/DEDEDE/555555/Corvette%20Engine'
+        ]),
+        features: JSON.stringify([
+          { category: 'Performance', name: 'LT2 V8 Engine', description: '495 horsepower' },
+          { category: 'Technology', name: 'Performance Data Recorder', description: 'Track telemetry system' },
+          { category: 'Performance', name: 'Magnetic Ride Control', description: 'Adaptive suspension' }
+        ])
+      },
+      {
+        vin: '4JGFB4KB9PA789012',
+        year: 2023,
+        make: 'Mercedes-Benz',
+        model: 'GLC',
+        trim: '300 4MATIC',
+        mileage: 6800,
+        exteriorColor: 'Polar White',
+        interiorColor: 'Macchiato Beige',
+        engineType: '2.0L Turbo I4',
+        transmission: 'Automatic',
+        drivetrain: 'AWD',
+        fuelType: 'Gasoline',
+        mpgCity: 23,
+        mpgHighway: 31,
+        price: '48900',
+        msrp: '52000',
+        invoicePrice: '46000',
+        internetPrice: '48500',
+        condition: 'certified',
+        status: 'available',
+        isNew: false,
+        images: JSON.stringify([
+          'https://placeholder.pics/svg/800x600/DEDEDE/555555/2023%20Mercedes-Benz%20GLC'
+        ]),
+        features: JSON.stringify([
+          { category: 'Technology', name: 'MBUX Infotainment', description: 'Voice-activated controls' },
+          { category: 'Comfort', name: 'Panoramic Sunroof', description: 'Dual-pane glass roof' },
+          { category: 'Safety', name: 'Driver Assistance Package', description: 'Active brake assist' }
+        ])
+      },
+      {
+        vin: 'WBA13BJ09PCB23456',
+        year: 2022,
+        make: 'BMW',
+        model: '330i',
+        trim: 'xDrive',
+        mileage: 22000,
+        exteriorColor: 'Alpine White',
+        interiorColor: 'Black SensaTec',
+        engineType: '2.0L TwinPower Turbo I4',
+        transmission: 'Automatic',
+        drivetrain: 'AWD',
+        fuelType: 'Gasoline',
+        mpgCity: 26,
+        mpgHighway: 36,
+        price: '39900',
+        msrp: '45000',
+        invoicePrice: '37000',
+        internetPrice: '39500',
+        condition: 'certified',
+        status: 'available',
+        isNew: false,
+        images: JSON.stringify([
+          'https://placeholder.pics/svg/800x600/DEDEDE/555555/2022%20BMW%20330i'
+        ]),
+        features: JSON.stringify([
+          { category: 'Technology', name: 'iDrive 7.0', description: 'Latest infotainment system' },
+          { category: 'Performance', name: 'Sport Package', description: 'Sport suspension and steering' }
+        ])
+      },
+      {
+        vin: 'JTDBAMDE0PJ345678',
+        year: 2024,
+        make: 'Toyota',
+        model: 'Camry',
+        trim: 'XSE',
+        mileage: 5,
+        exteriorColor: 'Supersonic Red',
+        interiorColor: 'Black Sport',
+        engineType: '2.5L I4',
+        transmission: 'Automatic',
+        drivetrain: 'FWD',
+        fuelType: 'Gasoline',
+        mpgCity: 28,
+        mpgHighway: 39,
+        price: '32900',
+        msrp: '34500',
+        invoicePrice: '31000',
+        internetPrice: '32500',
+        condition: 'new',
+        status: 'available',
+        isNew: true,
+        images: JSON.stringify([
+          'https://placeholder.pics/svg/800x600/DEDEDE/555555/2024%20Toyota%20Camry'
+        ]),
+        features: JSON.stringify([
+          { category: 'Safety', name: 'Toyota Safety Sense 2.5+', description: 'Pre-collision system' },
+          { category: 'Technology', name: '9" Touch Screen', description: 'JBL® premium audio' }
+        ])
+      },
+      {
+        vin: 'KMHLN4AG3PU456789',
+        year: 2024,
+        make: 'Hyundai',
+        model: 'Elantra',
+        trim: 'Limited',
+        mileage: 10,
+        exteriorColor: 'Phantom Black',
+        interiorColor: 'Gray Leather',
+        engineType: '1.6L Turbo I4',
+        transmission: 'Automatic',
+        drivetrain: 'FWD',
+        fuelType: 'Gasoline',
+        mpgCity: 28,
+        mpgHighway: 37,
+        price: '27900',
+        msrp: '29500',
+        invoicePrice: '26000',
+        internetPrice: '27500',
+        condition: 'new',
+        status: 'available',
+        isNew: true,
+        images: JSON.stringify([
+          'https://placeholder.pics/svg/800x600/DEDEDE/555555/2024%20Hyundai%20Elantra'
+        ]),
+        features: JSON.stringify([
+          { category: 'Technology', name: 'Digital Key 2', description: 'Smartphone car key' },
+          { category: 'Comfort', name: 'Heated & Ventilated Seats', description: 'Front seats' }
+        ])
+      },
+      // In-transit vehicle
+      {
+        vin: '3VW2B7AJ8PM567890',
         year: 2024,
         make: 'Volkswagen',
-        model: 'Atlas',
-        trim: 'SEL Premium',
-        mileage: 5,
-        exteriorColor: 'Pure White',
+        model: 'Jetta',
+        trim: 'GLI',
+        mileage: 0,
+        exteriorColor: 'Pure Gray',
         interiorColor: 'Titan Black',
-        price: '45800',
-        msrp: '48500',
-        invoice: '43000',
+        engineType: '2.0L Turbo I4',
+        transmission: 'Manual',
+        drivetrain: 'FWD',
+        fuelType: 'Gasoline',
+        mpgCity: 25,
+        mpgHighway: 33,
+        price: '31900',
+        msrp: '33500',
+        invoicePrice: '30000',
+        internetPrice: '31500',
+        condition: 'new',
+        status: 'in_transit',
         isNew: true,
-      },
+        images: JSON.stringify([
+          'https://placeholder.pics/svg/800x600/DEDEDE/555555/2024%20Volkswagen%20Jetta%20GLI'
+        ]),
+        features: JSON.stringify([
+          { category: 'Performance', name: 'DCC® Adaptive Chassis', description: 'Adjustable suspension' },
+          { category: 'Technology', name: 'Digital Cockpit Pro', description: 'Fully digital gauges' }
+        ])
+      }
     ];
     
     const insertedVehicles = await db.insert(vehicles).values(vehiclesData).returning();

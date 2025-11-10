@@ -12,7 +12,7 @@ import {
   type DealWithRelations,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, or, like, sql } from "drizzle-orm";
+import { eq, desc, and, or, like, sql, gte, lte, asc } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -33,6 +33,37 @@ export interface IStorage {
   searchVehicles(query: string): Promise<Vehicle[]>;
   createVehicle(vehicle: InsertVehicle): Promise<Vehicle>;
   updateVehicle(id: string, vehicle: Partial<InsertVehicle>): Promise<Vehicle>;
+  
+  // Inventory Management
+  getInventory(options: {
+    page?: number;
+    pageSize?: number;
+    status?: string;
+    condition?: string;
+    make?: string;
+    model?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    minYear?: number;
+    maxYear?: number;
+  }): Promise<{ vehicles: Vehicle[]; total: number; pages: number }>;
+  getVehicleByStockNumber(stockNumber: string): Promise<Vehicle | undefined>;
+  updateVehicleStatus(stockNumber: string, status: string): Promise<Vehicle>;
+  searchInventory(filters: {
+    query?: string;
+    make?: string;
+    model?: string;
+    yearMin?: number;
+    yearMax?: number;
+    priceMin?: number;
+    priceMax?: number;
+    mileageMax?: number;
+    condition?: string;
+    status?: string;
+    fuelType?: string;
+    drivetrain?: string;
+    transmission?: string;
+  }): Promise<Vehicle[]>;
   
   // Trade Vehicles
   getTradeVehiclesByDeal(dealId: string): Promise<TradeVehicle[]>;
@@ -152,6 +183,135 @@ export class DatabaseStorage implements IStorage {
       .where(eq(vehicles.id, id))
       .returning();
     return vehicle;
+  }
+  
+  // Inventory Management
+  async getInventory(options: {
+    page?: number;
+    pageSize?: number;
+    status?: string;
+    condition?: string;
+    make?: string;
+    model?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    minYear?: number;
+    maxYear?: number;
+  }): Promise<{ vehicles: Vehicle[]; total: number; pages: number }> {
+    const {
+      page = 1,
+      pageSize = 20,
+      status = 'available',
+      condition,
+      make,
+      model,
+      minPrice,
+      maxPrice,
+      minYear,
+      maxYear
+    } = options;
+    
+    const offset = (page - 1) * pageSize;
+    const conditions: any[] = [];
+    
+    if (status) conditions.push(eq(vehicles.status, status));
+    if (condition) conditions.push(eq(vehicles.condition, condition));
+    if (make) conditions.push(like(vehicles.make, `%${make}%`));
+    if (model) conditions.push(like(vehicles.model, `%${model}%`));
+    if (minPrice) conditions.push(gte(vehicles.price, String(minPrice)));
+    if (maxPrice) conditions.push(lte(vehicles.price, String(maxPrice)));
+    if (minYear) conditions.push(gte(vehicles.year, minYear));
+    if (maxYear) conditions.push(lte(vehicles.year, maxYear));
+    
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    
+    const [totalResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(vehicles)
+      .where(whereClause);
+    
+    const total = Number(totalResult.count);
+    const pages = Math.ceil(total / pageSize);
+    
+    const vehicleList = await db
+      .select()
+      .from(vehicles)
+      .where(whereClause)
+      .orderBy(desc(vehicles.createdAt))
+      .limit(pageSize)
+      .offset(offset);
+    
+    return { vehicles: vehicleList, total, pages };
+  }
+  
+  async getVehicleByStockNumber(stockNumber: string): Promise<Vehicle | undefined> {
+    const [vehicle] = await db.select().from(vehicles).where(eq(vehicles.stockNumber, stockNumber));
+    return vehicle || undefined;
+  }
+  
+  async updateVehicleStatus(stockNumber: string, status: string): Promise<Vehicle> {
+    const [vehicle] = await db
+      .update(vehicles)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(vehicles.stockNumber, stockNumber))
+      .returning();
+    
+    if (!vehicle) {
+      throw new Error('Vehicle not found');
+    }
+    
+    return vehicle;
+  }
+  
+  async searchInventory(filters: {
+    query?: string;
+    make?: string;
+    model?: string;
+    yearMin?: number;
+    yearMax?: number;
+    priceMin?: number;
+    priceMax?: number;
+    mileageMax?: number;
+    condition?: string;
+    status?: string;
+    fuelType?: string;
+    drivetrain?: string;
+    transmission?: string;
+  }): Promise<Vehicle[]> {
+    const conditions: any[] = [];
+    
+    if (filters.query) {
+      conditions.push(
+        or(
+          like(vehicles.make, `%${filters.query}%`),
+          like(vehicles.model, `%${filters.query}%`),
+          like(vehicles.trim, `%${filters.query}%`),
+          like(vehicles.vin, `%${filters.query}%`)
+        )
+      );
+    }
+    
+    if (filters.make) conditions.push(eq(vehicles.make, filters.make));
+    if (filters.model) conditions.push(eq(vehicles.model, filters.model));
+    if (filters.yearMin) conditions.push(gte(vehicles.year, filters.yearMin));
+    if (filters.yearMax) conditions.push(lte(vehicles.year, filters.yearMax));
+    if (filters.priceMin) conditions.push(gte(vehicles.price, String(filters.priceMin)));
+    if (filters.priceMax) conditions.push(lte(vehicles.price, String(filters.priceMax)));
+    if (filters.mileageMax) conditions.push(lte(vehicles.mileage, filters.mileageMax));
+    if (filters.condition) conditions.push(eq(vehicles.condition, filters.condition));
+    if (filters.status) conditions.push(eq(vehicles.status, filters.status));
+    if (filters.fuelType) conditions.push(eq(vehicles.fuelType, filters.fuelType));
+    if (filters.drivetrain) conditions.push(eq(vehicles.drivetrain, filters.drivetrain));
+    if (filters.transmission) conditions.push(eq(vehicles.transmission, filters.transmission));
+    
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    
+    return await db
+      .select()
+      .from(vehicles)
+      .where(whereClause)
+      .orderBy(asc(vehicles.price))
+      .limit(100);
   }
   
   // Trade Vehicles

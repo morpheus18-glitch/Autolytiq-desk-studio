@@ -42,29 +42,98 @@ export type Customer = typeof customers.$inferSelect;
 // ===== VEHICLES TABLE =====
 export const vehicles = pgTable("vehicles", {
   id: uuid("id").primaryKey().defaultRandom(),
-  stockNumber: text("stock_number").notNull().unique(),
+  stockNumber: uuid("stock_number").notNull().unique().defaultRandom(), // UUID for stock numbers
   vin: text("vin").notNull().unique(),
   year: integer("year").notNull(),
   make: text("make").notNull(),
   model: text("model").notNull(),
   trim: text("trim"),
   mileage: integer("mileage").notNull(),
+  
+  // Colors
   exteriorColor: text("exterior_color"),
   interiorColor: text("interior_color"),
-  price: decimal("price", { precision: 12, scale: 2 }).notNull(),
+  
+  // Engine & Drivetrain
+  engineType: text("engine_type"), // e.g., "3.5L V6", "2.0L Turbo I4"
+  transmission: text("transmission"), // e.g., "Automatic", "Manual", "CVT"
+  drivetrain: text("drivetrain"), // e.g., "FWD", "RWD", "AWD", "4WD"
+  fuelType: text("fuel_type"), // e.g., "Gasoline", "Hybrid", "Electric", "Diesel"
+  
+  // Fuel Economy
+  mpgCity: integer("mpg_city"),
+  mpgHighway: integer("mpg_highway"),
+  
+  // Pricing
+  price: decimal("price", { precision: 12, scale: 2 }).notNull(), // Selling price
   msrp: decimal("msrp", { precision: 12, scale: 2 }),
-  invoice: decimal("invoice", { precision: 12, scale: 2 }),
+  invoicePrice: decimal("invoice_price", { precision: 12, scale: 2 }),
+  internetPrice: decimal("internet_price", { precision: 12, scale: 2 }), // Online advertised price
+  
+  // Condition & Status
+  condition: text("condition").notNull().default("new"), // "new", "used", "certified"
+  status: text("status").notNull().default("available"), // "available", "hold", "sold", "in_transit"
+  
+  // Arrays stored as JSONB
+  images: jsonb("images").notNull().default('[]'), // Array of image URLs
+  features: jsonb("features").notNull().default('[]'), // Array of features/options
+  
+  // Legacy field for compatibility
   isNew: boolean("is_new").notNull().default(false),
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
   stockIdx: index("vehicles_stock_idx").on(table.stockNumber),
   vinIdx: index("vehicles_vin_idx").on(table.vin),
+  makeModelIdx: index("vehicles_make_model_idx").on(table.make, table.model),
+  statusIdx: index("vehicles_status_idx").on(table.status),
+  conditionIdx: index("vehicles_condition_idx").on(table.condition),
+  yearIdx: index("vehicles_year_idx").on(table.year),
+  priceIdx: index("vehicles_price_idx").on(table.price),
 }));
 
-export const insertVehicleSchema = createInsertSchema(vehicles).omit({ id: true, createdAt: true, updatedAt: true });
+// ===== VEHICLE IMAGES TABLE =====
+export const vehicleImages = pgTable("vehicle_images", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  vehicleId: uuid("vehicle_id").notNull().references(() => vehicles.id, { onDelete: "cascade" }),
+  url: text("url").notNull(),
+  isPrimary: boolean("is_primary").notNull().default(false),
+  displayOrder: integer("display_order").notNull().default(0),
+  caption: text("caption"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  vehicleIdx: index("vehicle_images_vehicle_idx").on(table.vehicleId),
+  primaryIdx: index("vehicle_images_primary_idx").on(table.vehicleId, table.isPrimary),
+}));
+
+// ===== VEHICLE FEATURES TABLE =====
+export const vehicleFeatures = pgTable("vehicle_features", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  vehicleId: uuid("vehicle_id").notNull().references(() => vehicles.id, { onDelete: "cascade" }),
+  category: text("category").notNull(), // e.g., "Safety", "Technology", "Comfort", "Performance"
+  name: text("name").notNull(), // e.g., "Blind Spot Monitoring", "Apple CarPlay"
+  description: text("description"),
+  isStandard: boolean("is_standard").notNull().default(true), // Standard vs Optional
+  packageName: text("package_name"), // If part of a package
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  vehicleIdx: index("vehicle_features_vehicle_idx").on(table.vehicleId),
+  categoryIdx: index("vehicle_features_category_idx").on(table.category),
+}));
+
+// Schema types
+export const insertVehicleSchema = createInsertSchema(vehicles).omit({ id: true, stockNumber: true, createdAt: true, updatedAt: true });
 export type InsertVehicle = z.infer<typeof insertVehicleSchema>;
 export type Vehicle = typeof vehicles.$inferSelect;
+
+export const insertVehicleImageSchema = createInsertSchema(vehicleImages).omit({ id: true, createdAt: true });
+export type InsertVehicleImage = z.infer<typeof insertVehicleImageSchema>;
+export type VehicleImage = typeof vehicleImages.$inferSelect;
+
+export const insertVehicleFeatureSchema = createInsertSchema(vehicleFeatures).omit({ id: true, createdAt: true });
+export type InsertVehicleFeature = z.infer<typeof insertVehicleFeatureSchema>;
+export type VehicleFeature = typeof vehicleFeatures.$inferSelect;
 
 // ===== TRADE VEHICLES TABLE =====
 export const tradeVehicles = pgTable("trade_vehicles", {

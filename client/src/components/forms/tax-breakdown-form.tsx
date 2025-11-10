@@ -1,187 +1,122 @@
-import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect, useMemo } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Receipt, MapPin, Info } from 'lucide-react';
 import { useScenarioForm } from '@/contexts/scenario-form-context';
-import { TaxJurisdictionSelector } from '@/components/tax-jurisdiction-selector';
+import { StateTaxSelector } from '@/components/state-tax-selector';
+import { TaxBreakdown } from '@/components/tax-breakdown';
+import { calculateDealTax, type TaxCalculationResult } from '@/lib/tax-calculator';
+import { apiRequest } from '@/lib/queryClient';
 import type { TaxJurisdiction } from '@shared/schema';
 import Decimal from 'decimal.js';
 
 export function TaxBreakdownForm() {
-  const { scenario, updateField, calculations } = useScenarioForm();
-  const [selectedJurisdiction, setSelectedJurisdiction] = useState<TaxJurisdiction | null>(null);
-
-  const { data: jurisdictions } = useQuery<TaxJurisdiction[]>({
-    queryKey: ['/api/tax-jurisdictions'],
+  const { scenario, tradeVehicle, updateField, updateMultipleFields, calculations } = useScenarioForm();
+  const [stateCode, setStateCode] = useState<string>(scenario.taxState || '');
+  const [zipCode, setZipCode] = useState<string>(scenario.taxZipCode || '');
+  const [taxResult, setTaxResult] = useState<TaxCalculationResult | null>(null);
+  
+  // Calculate tax using the API
+  const { mutate: calculateTax, isPending: isCalculating } = useMutation({
+    mutationFn: async (params: any) => {
+      return apiRequest('POST', '/api/tax/calculate', params);
+    },
+    onSuccess: (data: TaxCalculationResult) => {
+      setTaxResult(data);
+      // Update scenario with calculated tax values
+      updateMultipleFields({
+        totalTax: data.totalTax.toString(),
+        totalFees: data.totalFees.toString(),
+      });
+    },
   });
-
+  
+  // Recalculate tax when relevant fields change
   useEffect(() => {
-    if (jurisdictions && scenario.taxJurisdictionId) {
-      const jurisdiction = jurisdictions.find(j => j.id === scenario.taxJurisdictionId);
-      setSelectedJurisdiction(jurisdiction || null);
+    if (stateCode && scenario.vehiclePrice) {
+      const params = {
+        vehiclePrice: Number(scenario.vehiclePrice),
+        stateCode,
+        zipCode: zipCode || undefined,
+        tradeValue: Number(scenario.tradeAllowance) || undefined,
+        tradePayoff: Number(scenario.tradePayoff) || undefined,
+        docFee: Number(scenario.docFee) || undefined,
+        dealerFees: Number(scenario.dealerFees) || undefined,
+        aftermarketProducts: Number(scenario.aftermarketTotal) || undefined,
+        warrantyAmount: Number(scenario.warrantyAmount) || undefined,
+        gapInsurance: Number(scenario.gapInsurance) || undefined,
+        maintenanceAmount: Number(scenario.maintenanceAmount) || undefined,
+        accessoriesAmount: Number(scenario.accessoriesAmount) || undefined,
+        rebates: Number(scenario.rebates) || undefined,
+        dealerDiscount: Number(scenario.dealerDiscount) || undefined,
+        fuelType: scenario.fuelType as any || 'gasoline',
+        vehicleType: scenario.vehicleCondition as any || 'new',
+      };
+      
+      calculateTax(params);
     }
-  }, [jurisdictions, scenario.taxJurisdictionId]);
+  }, [
+    stateCode,
+    zipCode,
+    scenario.vehiclePrice,
+    scenario.tradeAllowance,
+    scenario.tradePayoff,
+    scenario.docFee,
+    scenario.dealerFees,
+    scenario.aftermarketTotal,
+    scenario.warrantyAmount,
+    scenario.gapInsurance,
+    scenario.maintenanceAmount,
+    scenario.accessoriesAmount,
+    scenario.rebates,
+    scenario.dealerDiscount,
+    calculateTax
+  ]);
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
+  const handleStateChange = (newState: string) => {
+    setStateCode(newState);
+    updateField('taxState', newState);
   };
 
-  const formatPercent = (value: string | number) => {
-    const num = typeof value === 'string' ? parseFloat(value) : value;
-    return (num * 100).toFixed(4) + '%';
+  const handleZipCodeChange = (newZipCode: string) => {
+    setZipCode(newZipCode);
+    updateField('taxZipCode', newZipCode);
   };
-
-  const handleJurisdictionChange = (jurisdiction: TaxJurisdiction | null) => {
-    setSelectedJurisdiction(jurisdiction);
-    updateField('taxJurisdictionId', jurisdiction?.id || null);
-  };
-
-  // Calculate taxable amount: vehicle price - trade allowance + taxable fees + taxable accessories
-  const calculateTaxableAmount = () => {
-    const vehiclePrice = new Decimal(scenario.vehiclePrice || 0);
-    const tradeAllowance = new Decimal(scenario.tradeAllowance || 0);
-    
-    // Taxable dealer fees
-    const dealerFees = (scenario.dealerFees || []) as Array<{ amount: number; taxable: boolean }>;
-    const taxableFees = dealerFees
-      .filter(f => f.taxable)
-      .reduce((sum, f) => sum.plus(f.amount), new Decimal(0));
-    
-    // Taxable accessories
-    const accessories = (scenario.accessories || []) as Array<{ amount: number; taxable: boolean }>;
-    const taxableAccessories = accessories
-      .filter(a => a.taxable)
-      .reduce((sum, a) => sum.plus(a.amount), new Decimal(0));
-    
-    const taxableAmount = vehiclePrice
-      .minus(tradeAllowance)
-      .plus(taxableFees)
-      .plus(taxableAccessories);
-    
-    return taxableAmount.greaterThan(0) ? taxableAmount.toNumber() : 0;
-  };
-
-  const taxableAmount = calculateTaxableAmount();
 
   return (
     <div className="space-y-4">
-      {/* Tax Jurisdiction Selector */}
+      {/* State Tax Selector */}
       <div>
         <div className="flex items-center gap-2 mb-3">
           <MapPin className="w-4 h-4 text-muted-foreground" />
           <h3 className="font-semibold">Tax Jurisdiction</h3>
         </div>
-        <TaxJurisdictionSelector
-          selectedJurisdictionId={scenario.taxJurisdictionId || undefined}
-          onSelect={handleJurisdictionChange}
+        <StateTaxSelector
+          value={stateCode}
+          onValueChange={handleStateChange}
+          zipCode={zipCode}
+          onZipCodeChange={handleZipCodeChange}
+          showDetails={true}
+          disabled={isCalculating}
         />
       </div>
 
       <Separator />
 
-      {/* Tax Breakdown */}
+      {/* Tax Breakdown Display */}
       <div>
         <div className="flex items-center gap-2 mb-3">
           <Receipt className="w-4 h-4 text-muted-foreground" />
-          <h3 className="font-semibold">Tax Breakdown</h3>
+          <h3 className="font-semibold">Tax & Fees Calculation</h3>
         </div>
-
-        <Card className="p-4">
-          <div className="space-y-3">
-            {/* Taxable Amount */}
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Taxable Amount</span>
-                <Info className="w-3 h-3 text-muted-foreground" />
-              </div>
-              <span className="font-mono font-medium tabular-nums" data-testid="text-taxable-amount">
-                {formatCurrency(taxableAmount)}
-              </span>
-            </div>
-
-            <Separator />
-
-            {/* Tax Rates */}
-            {selectedJurisdiction ? (
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-muted-foreground">State Tax Rate</span>
-                  <Badge variant="outline" className="font-mono text-xs tabular-nums">
-                    {formatPercent(selectedJurisdiction.stateTaxRate || 0)}
-                  </Badge>
-                </div>
-
-                {parseFloat(selectedJurisdiction.countyTaxRate as string || '0') > 0 && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-muted-foreground">County Tax Rate</span>
-                    <Badge variant="outline" className="font-mono text-xs tabular-nums">
-                      {formatPercent(selectedJurisdiction.countyTaxRate || 0)}
-                    </Badge>
-                  </div>
-                )}
-
-                {parseFloat(selectedJurisdiction.cityTaxRate as string || '0') > 0 && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-muted-foreground">City Tax Rate</span>
-                    <Badge variant="outline" className="font-mono text-xs tabular-nums">
-                      {formatPercent(selectedJurisdiction.cityTaxRate || 0)}
-                    </Badge>
-                  </div>
-                )}
-
-                {parseFloat(selectedJurisdiction.townshipTaxRate as string || '0') > 0 && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-muted-foreground">Township Tax Rate</span>
-                    <Badge variant="outline" className="font-mono text-xs tabular-nums">
-                      {formatPercent(selectedJurisdiction.townshipTaxRate || 0)}
-                    </Badge>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="p-3 bg-muted/50 rounded-md text-center text-sm text-muted-foreground">
-                Select a tax jurisdiction above to view detailed rate breakdown
-              </div>
-            )}
-
-            <Separator />
-
-            {/* Total Tax */}
-            <div className="flex justify-between items-center pt-2">
-              <span className="font-semibold">Total Sales Tax</span>
-              <span className="text-lg font-mono font-bold tabular-nums" data-testid="text-total-tax">
-                {formatCurrency(calculations.totalTax.toNumber())}
-              </span>
-            </div>
-
-            <Separator />
-
-            {/* Total Fees */}
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Total Dealer Fees</span>
-              <span className="font-mono font-medium tabular-nums" data-testid="text-total-fees-summary">
-                {formatCurrency(calculations.totalFees.toNumber())}
-              </span>
-            </div>
-
-            <Separator />
-
-            {/* Grand Total */}
-            <div className="flex justify-between items-center pt-2">
-              <span className="font-bold">Tax + Fees Total</span>
-              <span className="text-xl font-mono font-bold tabular-nums text-primary" data-testid="text-tax-fees-total">
-                {formatCurrency(calculations.totalTax.plus(calculations.totalFees).toNumber())}
-              </span>
-            </div>
-          </div>
-        </Card>
+        
+        <TaxBreakdown
+          taxResult={taxResult}
+          loading={isCalculating}
+          showDetails={true}
+        />
       </div>
     </div>
   );

@@ -597,4 +597,136 @@
       scroll-behavior: auto !important;
     }
   }
+
+  /* AI Chat Companion - Glassmorphic Styles */
+  .glassmorphic {
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    background: hsl(var(--background) / 0.85);
+    border: 1px solid hsl(var(--border) / 0.5);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .dark .glassmorphic {
+    background: hsl(var(--background) / 0.75);
+    border: 1px solid hsl(var(--border) / 0.3);
+  }
+
+  /* Chat message animations */
+  @keyframes message-slide-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .message-animate {
+    animation: message-slide-in 0.3s ease-out;
+  }
+
+  /* Typing indicator dots */
+  @keyframes typing-bounce {
+    0%, 60%, 100% {
+      transform: translateY(0);
+    }
+    30% {
+      transform: translateY(-10px);
+    }
+  }
+
+  /* AI Sparkle effect */
+  @keyframes sparkle-pulse {
+    0%, 100% {
+      opacity: 0.5;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.2);
+    }
+  }
+
+  .sparkle-animate {
+    animation: sparkle-pulse 2s ease-in-out infinite;
+  }
+
+  /* Chat bubble float effect */
+  @keyframes float-bubble {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-5px);
+    }
+  }
+
+  .chat-bubble-float {
+    animation: float-bubble 3s ease-in-out infinite;
+  }
+
+  /* Smooth scroll for chat messages */
+  .chat-scroll-area {
+    scroll-behavior: smooth;
+  }
+
+  /* Markdown prose styling for chat */
+  .prose-chat {
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  .prose-chat h1,
+  .prose-chat h2,
+  .prose-chat h3 {
+    margin-top: 1em;
+    margin-bottom: 0.5em;
+    font-weight: 600;
+  }
+
+  .prose-chat p {
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+  }
+
+  .prose-chat ul,
+  .prose-chat ol {
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+    padding-left: 1.25em;
+  }
+
+  .prose-chat li {
+    margin-top: 0.25em;
+    margin-bottom: 0.25em;
+  }
+
+  .prose-chat code {
+    font-size: 0.875em;
+    padding: 0.125em 0.25em;
+    border-radius: 0.25rem;
+  }
+
+  .prose-chat pre {
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+    padding: 0.75em;
+    border-radius: 0.375rem;
+    overflow-x: auto;
+  }
+
+  .prose-chat strong {
+    font-weight: 600;
+  }
+
+  /* AI gradient text effect */
+  .ai-gradient-text {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--chart-2)));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
 }
