@@ -32,6 +32,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // ===== CUSTOMERS =====
+  app.get('/api/customers', async (req, res) => {
+    try {
+      const customers = await storage.searchCustomers('');
+      res.json(customers);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get customers' });
+    }
+  });
+  
   app.get('/api/customers/search', async (req, res) => {
     try {
       const query = String(req.query.q || '');
