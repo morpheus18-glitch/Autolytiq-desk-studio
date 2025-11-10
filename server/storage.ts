@@ -1,6 +1,7 @@
 // Referenced from javascript_database blueprint integration
 import { 
   users, customers, vehicles, tradeVehicles, deals, dealScenarios, auditLog, taxJurisdictions, taxRuleGroups,
+  lenders, lenderPrograms, rateRequests, approvedLenders,
   type User, type InsertUser,
   type Customer, type InsertCustomer,
   type Vehicle, type InsertVehicle,
@@ -10,6 +11,10 @@ import {
   type AuditLog, type InsertAuditLog,
   type TaxJurisdiction, type InsertTaxJurisdiction, type TaxJurisdictionWithRules,
   type DealWithRelations,
+  type Lender, type InsertLender,
+  type LenderProgram, type InsertLenderProgram,
+  type RateRequest, type InsertRateRequest,
+  type ApprovedLender, type InsertApprovedLender,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, like, sql, gte, lte, asc } from "drizzle-orm";
@@ -93,6 +98,30 @@ export interface IStorage {
   // Audit Log
   createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
   getDealAuditLogs(dealId: string): Promise<AuditLog[]>;
+  
+  // Lenders
+  getLenders(active?: boolean): Promise<Lender[]>;
+  getLender(id: string): Promise<Lender | undefined>;
+  createLender(lender: InsertLender): Promise<Lender>;
+  updateLender(id: string, lender: Partial<InsertLender>): Promise<Lender>;
+  
+  // Lender Programs
+  getLenderPrograms(lenderId: string, active?: boolean): Promise<LenderProgram[]>;
+  getLenderProgram(id: string): Promise<LenderProgram | undefined>;
+  createLenderProgram(program: InsertLenderProgram): Promise<LenderProgram>;
+  updateLenderProgram(id: string, program: Partial<InsertLenderProgram>): Promise<LenderProgram>;
+  
+  // Rate Requests
+  createRateRequest(request: InsertRateRequest): Promise<RateRequest>;
+  getRateRequest(id: string): Promise<RateRequest | undefined>;
+  getRateRequestsByDeal(dealId: string): Promise<RateRequest[]>;
+  updateRateRequest(id: string, request: Partial<InsertRateRequest>): Promise<RateRequest>;
+  
+  // Approved Lenders
+  createApprovedLenders(lenders: InsertApprovedLender[]): Promise<ApprovedLender[]>;
+  getApprovedLenders(rateRequestId: string): Promise<ApprovedLender[]>;
+  selectApprovedLender(id: string, userId: string): Promise<ApprovedLender>;
+  getSelectedLenderForDeal(dealId: string): Promise<ApprovedLender | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -535,6 +564,139 @@ export class DatabaseStorage implements IStorage {
       orderBy: desc(auditLog.timestamp),
       limit: 100,
     });
+  }
+  
+  // Lenders
+  async getLenders(active?: boolean): Promise<Lender[]> {
+    if (active !== undefined) {
+      return await db.select().from(lenders).where(eq(lenders.active, active));
+    }
+    return await db.select().from(lenders);
+  }
+  
+  async getLender(id: string): Promise<Lender | undefined> {
+    const [lender] = await db.select().from(lenders).where(eq(lenders.id, id));
+    return lender || undefined;
+  }
+  
+  async createLender(insertLender: InsertLender): Promise<Lender> {
+    const [lender] = await db.insert(lenders).values(insertLender).returning();
+    return lender;
+  }
+  
+  async updateLender(id: string, data: Partial<InsertLender>): Promise<Lender> {
+    const [lender] = await db.update(lenders)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(lenders.id, id))
+      .returning();
+    return lender;
+  }
+  
+  // Lender Programs
+  async getLenderPrograms(lenderId: string, active?: boolean): Promise<LenderProgram[]> {
+    const conditions = [eq(lenderPrograms.lenderId, lenderId)];
+    if (active !== undefined) {
+      conditions.push(eq(lenderPrograms.active, active));
+    }
+    return await db.select().from(lenderPrograms).where(and(...conditions));
+  }
+  
+  async getLenderProgram(id: string): Promise<LenderProgram | undefined> {
+    const [program] = await db.select().from(lenderPrograms).where(eq(lenderPrograms.id, id));
+    return program || undefined;
+  }
+  
+  async createLenderProgram(insertProgram: InsertLenderProgram): Promise<LenderProgram> {
+    const [program] = await db.insert(lenderPrograms).values(insertProgram).returning();
+    return program;
+  }
+  
+  async updateLenderProgram(id: string, data: Partial<InsertLenderProgram>): Promise<LenderProgram> {
+    const [program] = await db.update(lenderPrograms)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(lenderPrograms.id, id))
+      .returning();
+    return program;
+  }
+  
+  // Rate Requests
+  async createRateRequest(insertRequest: InsertRateRequest): Promise<RateRequest> {
+    const [request] = await db.insert(rateRequests).values(insertRequest).returning();
+    return request;
+  }
+  
+  async getRateRequest(id: string): Promise<RateRequest | undefined> {
+    const [request] = await db.select().from(rateRequests).where(eq(rateRequests.id, id));
+    return request || undefined;
+  }
+  
+  async getRateRequestsByDeal(dealId: string): Promise<RateRequest[]> {
+    return await db.select()
+      .from(rateRequests)
+      .where(eq(rateRequests.dealId, dealId))
+      .orderBy(desc(rateRequests.createdAt));
+  }
+  
+  async updateRateRequest(id: string, data: Partial<InsertRateRequest>): Promise<RateRequest> {
+    const [request] = await db.update(rateRequests)
+      .set(data)
+      .where(eq(rateRequests.id, id))
+      .returning();
+    return request;
+  }
+  
+  // Approved Lenders
+  async createApprovedLenders(insertLenders: InsertApprovedLender[]): Promise<ApprovedLender[]> {
+    const results = await db.insert(approvedLenders).values(insertLenders).returning();
+    return results;
+  }
+  
+  async getApprovedLenders(rateRequestId: string): Promise<ApprovedLender[]> {
+    return await db.select()
+      .from(approvedLenders)
+      .where(eq(approvedLenders.rateRequestId, rateRequestId))
+      .orderBy(asc(approvedLenders.apr));
+  }
+  
+  async selectApprovedLender(id: string, userId: string): Promise<ApprovedLender> {
+    // First, deselect any previously selected lenders for the same rate request
+    const [lender] = await db.select().from(approvedLenders).where(eq(approvedLenders.id, id));
+    
+    if (lender) {
+      await db.update(approvedLenders)
+        .set({ selected: false, selectedAt: null, selectedBy: null })
+        .where(and(
+          eq(approvedLenders.rateRequestId, lender.rateRequestId),
+          eq(approvedLenders.selected, true)
+        ));
+    }
+    
+    // Now select the new lender
+    const [selected] = await db.update(approvedLenders)
+      .set({ 
+        selected: true, 
+        selectedAt: new Date(), 
+        selectedBy: userId,
+        updatedAt: new Date()
+      })
+      .where(eq(approvedLenders.id, id))
+      .returning();
+    
+    return selected;
+  }
+  
+  async getSelectedLenderForDeal(dealId: string): Promise<ApprovedLender | undefined> {
+    const [result] = await db.select()
+      .from(approvedLenders)
+      .innerJoin(rateRequests, eq(approvedLenders.rateRequestId, rateRequests.id))
+      .where(and(
+        eq(rateRequests.dealId, dealId),
+        eq(approvedLenders.selected, true)
+      ))
+      .orderBy(desc(approvedLenders.selectedAt))
+      .limit(1);
+    
+    return result?.approved_lenders || undefined;
   }
 }
 

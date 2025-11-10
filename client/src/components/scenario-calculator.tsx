@@ -7,12 +7,15 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Calculator, Plus, Trash2, DollarSign } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Calculator, Plus, Trash2, DollarSign, Search, TrendingUp } from 'lucide-react';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useStore } from '@/lib/store';
 import { debounce } from 'lodash';
-import type { DealScenario, TradeVehicle, DealerFee, Accessory, TaxJurisdictionWithRules, AftermarketProduct } from '@shared/schema';
+import type { DealScenario, TradeVehicle, DealerFee, Accessory, TaxJurisdictionWithRules, AftermarketProduct, Deal } from '@shared/schema';
 import { calculateFinancePayment, calculateLeasePayment, calculateSalesTax, moneyFactorToAPR, aprToMoneyFactor } from '@/lib/calculations';
+import { LenderRateShop } from './lender-rate-shop';
+import { useToast } from '@/hooks/use-toast';
 
 interface ScenarioCalculatorProps {
   scenario: DealScenario;
@@ -22,8 +25,10 @@ interface ScenarioCalculatorProps {
 
 export function ScenarioCalculator({ scenario, dealId, tradeVehicle }: ScenarioCalculatorProps) {
   const { setIsSaving, setLastSaved, setSaveError } = useStore();
+  const { toast } = useToast();
   const [formData, setFormData] = useState(scenario);
   const [selectedTaxJurisdiction, setSelectedTaxJurisdiction] = useState<TaxJurisdictionWithRules | null>(null);
+  const [showRateShop, setShowRateShop] = useState(false);
   
   // Parse JSONB fields
   const dealerFees: DealerFee[] = Array.isArray(formData.dealerFees) ? formData.dealerFees : [];
@@ -380,9 +385,23 @@ export function ScenarioCalculator({ scenario, dealId, tradeVehicle }: ScenarioC
             {/* Finance/Lease Terms */}
             {formData.scenarioType !== 'CASH_DEAL' && (
               <div>
-                <h3 className="text-lg font-semibold mb-4">
-                  {formData.scenarioType === 'FINANCE_DEAL' ? 'Finance' : 'Lease'} Terms
-                </h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">
+                    {formData.scenarioType === 'FINANCE_DEAL' ? 'Finance' : 'Lease'} Terms
+                  </h3>
+                  {formData.scenarioType === 'FINANCE_DEAL' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowRateShop(true)}
+                      className="gap-2"
+                      data-testid="button-shop-rates"
+                    >
+                      <Search className="w-4 h-4" />
+                      Shop Rates
+                    </Button>
+                  )}
+                </div>
                 
                 <div className="grid grid-cols-2 gap-4">
                   {formData.scenarioType === 'FINANCE_DEAL' ? (
@@ -630,6 +649,71 @@ export function ScenarioCalculator({ scenario, dealId, tradeVehicle }: ScenarioC
           </TabsContent>
         </Tabs>
       </Card>
+      
+      {/* Rate Shopping Dialog */}
+      <Dialog open={showRateShop} onOpenChange={setShowRateShop}>
+        <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Shop Competitive Rates</DialogTitle>
+            <DialogDescription>
+              Compare financing options from multiple lenders in real-time
+            </DialogDescription>
+          </DialogHeader>
+          
+          {/* Get customer credit score - for now using a placeholder */}
+          <LenderRateShop
+            dealId={dealId}
+            scenarioId={scenario.id}
+            creditScore={700} // In production, get from customer record
+            vehiclePrice={parseFloat(formData.vehiclePrice as any) || 0}
+            downPayment={parseFloat(formData.downPayment as any) || 0}
+            tradeValue={parseFloat(formData.tradeAllowance as any) || 0}
+            tradePayoff={parseFloat(formData.tradePayoff as any) || 0}
+            term={formData.term || 60}
+            vehicleType="used"
+            monthlyIncome={5000} // Placeholder - get from customer
+            monthlyDebt={1500} // Placeholder - get from customer
+            state="CA"
+            onSelectRate={(offer) => {
+              // Update the scenario with the selected rate
+              handleFieldChange('apr', offer.apr);
+              handleFieldChange('term', offer.term);
+              
+              // Calculate new payment with the selected rate
+              const newPayment = calculateFinancePayment({
+                vehiclePrice: parseFloat(formData.vehiclePrice as any) || 0,
+                downPayment: parseFloat(formData.downPayment as any) || 0,
+                tradeAllowance: parseFloat(formData.tradeAllowance as any) || 0,
+                tradePayoff: parseFloat(formData.tradePayoff as any) || 0,
+                apr: parseFloat(offer.apr),
+                term: offer.term,
+                dealerFees: dealerFees.map(f => ({ amount: f.amount, taxable: f.taxable })),
+                accessories: accessories.map(a => ({ amount: a.amount, taxable: a.taxable })),
+                tax: parseFloat(formData.totalTax as any) || 0,
+              });
+              
+              // Update the form data
+              setFormData({
+                ...formData,
+                apr: offer.apr,
+                term: offer.term,
+                monthlyPayment: newPayment.monthlyPayment.toFixed(2),
+                amountFinanced: newPayment.amountFinanced.toFixed(2),
+              });
+              
+              // Show success message
+              toast({
+                title: 'Rate Applied',
+                description: `${offer.lenderName} rate of ${offer.apr}% APR has been applied to the scenario.`,
+              });
+              
+              // Close the dialog
+              setShowRateShop(false);
+            }}
+            onClose={() => setShowRateShop(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

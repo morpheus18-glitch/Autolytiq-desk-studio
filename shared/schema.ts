@@ -356,6 +356,210 @@ export const insertAuditLogSchema = createInsertSchema(auditLog).omit({ id: true
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 export type AuditLog = typeof auditLog.$inferSelect;
 
+// ===== LENDERS TABLE =====
+export const lenders = pgTable("lenders", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  logo: text("logo"), // URL to logo image
+  type: text("type").notNull(), // prime, captive, credit_union, subprime, bhph
+  minCreditScore: integer("min_credit_score").notNull().default(300),
+  maxLtv: decimal("max_ltv", { precision: 5, scale: 2 }).notNull().default("125.00"), // Maximum loan-to-value ratio
+  maxDti: decimal("max_dti", { precision: 5, scale: 2 }).notNull().default("50.00"), // Maximum debt-to-income ratio
+  states: jsonb("states").notNull().default('[]'), // Array of state codes where lender operates
+  active: boolean("active").notNull().default(true),
+  dealerReserveMaxBps: integer("dealer_reserve_max_bps").notNull().default(250), // Max dealer reserve in basis points
+  flatMaxBps: integer("flat_max_bps").notNull().default(200), // Max flat fee in basis points
+  
+  // Integration settings
+  apiEndpoint: text("api_endpoint"),
+  apiKey: text("api_key"),
+  routingCode: text("routing_code"), // RouteOne, Dealertrack, etc.
+  
+  // Business rules
+  maxFinanceAmount: decimal("max_finance_amount", { precision: 12, scale: 2 }),
+  minFinanceAmount: decimal("min_finance_amount", { precision: 12, scale: 2 }).notNull().default("5000.00"),
+  maxTerm: integer("max_term").notNull().default(84), // Maximum term in months
+  minTerm: integer("min_term").notNull().default(12),
+  newVehicleMaxAge: integer("new_vehicle_max_age").notNull().default(1), // Years
+  usedVehicleMaxAge: integer("used_vehicle_max_age").notNull().default(10), // Years
+  usedVehicleMaxMileage: integer("used_vehicle_max_mileage").notNull().default(150000),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  typeIdx: index("lenders_type_idx").on(table.type),
+  activeIdx: index("lenders_active_idx").on(table.active),
+  nameIdx: index("lenders_name_idx").on(table.name),
+}));
+
+export const insertLenderSchema = createInsertSchema(lenders).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertLender = z.infer<typeof insertLenderSchema>;
+export type Lender = typeof lenders.$inferSelect;
+
+// ===== LENDER PROGRAMS TABLE =====
+export const lenderPrograms = pgTable("lender_programs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  lenderId: uuid("lender_id").notNull().references(() => lenders.id, { onDelete: "cascade" }),
+  name: text("name").notNull(), // e.g., "New Auto Standard", "Used Auto Preferred", "Lease Special"
+  type: text("type").notNull(), // retail, lease, balloon, promotional
+  vehicleType: text("vehicle_type").notNull(), // new, used, certified
+  
+  // Term configuration
+  minTerm: integer("min_term").notNull().default(12),
+  maxTerm: integer("max_term").notNull().default(72),
+  availableTerms: jsonb("available_terms").notNull().default('[]'), // [36, 48, 60, 72]
+  
+  // Rate tiers based on credit score
+  rateTiers: jsonb("rate_tiers").notNull().default('[]'), // Array of {minScore, maxScore, apr, buyRate}
+  
+  // Requirements
+  minCreditScore: integer("min_credit_score").notNull().default(580),
+  maxLtv: decimal("max_ltv", { precision: 5, scale: 2 }).notNull().default("120.00"),
+  maxDti: decimal("max_dti", { precision: 5, scale: 2 }).notNull().default("45.00"),
+  minDownPercent: decimal("min_down_percent", { precision: 5, scale: 2 }).notNull().default("0.00"),
+  
+  // Special conditions
+  requirements: jsonb("requirements").notNull().default('[]'), // Array of requirement strings
+  incentives: jsonb("incentives").notNull().default('[]'), // Current promotional rates or cash back
+  
+  // Fees
+  originationFee: decimal("origination_fee", { precision: 12, scale: 2 }).notNull().default("0.00"),
+  maxAdvance: decimal("max_advance", { precision: 12, scale: 2 }), // Maximum amount to finance
+  
+  // Lease-specific (if applicable)
+  moneyFactor: decimal("money_factor", { precision: 8, scale: 6 }), // For lease calculations
+  residualPercents: jsonb("residual_percents").notNull().default('{}'), // {36: 0.58, 48: 0.45, ...}
+  acquisitionFee: decimal("acquisition_fee", { precision: 12, scale: 2 }),
+  
+  active: boolean("active").notNull().default(true),
+  effectiveDate: timestamp("effective_date").notNull().defaultNow(),
+  expirationDate: timestamp("expiration_date"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  lenderIdx: index("lender_programs_lender_idx").on(table.lenderId),
+  typeIdx: index("lender_programs_type_idx").on(table.type),
+  activeIdx: index("lender_programs_active_idx").on(table.active),
+}));
+
+export const insertLenderProgramSchema = createInsertSchema(lenderPrograms).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertLenderProgram = z.infer<typeof insertLenderProgramSchema>;
+export type LenderProgram = typeof lenderPrograms.$inferSelect;
+
+// ===== RATE REQUESTS TABLE =====
+export const rateRequests = pgTable("rate_requests", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  dealId: uuid("deal_id").notNull().references(() => deals.id, { onDelete: "cascade" }),
+  scenarioId: uuid("scenario_id").references(() => dealScenarios.id, { onDelete: "set null" }),
+  
+  // Request data
+  creditScore: integer("credit_score").notNull(),
+  cobuyerCreditScore: integer("cobuyer_credit_score"),
+  requestedAmount: decimal("requested_amount", { precision: 12, scale: 2 }).notNull(),
+  downPayment: decimal("down_payment", { precision: 12, scale: 2 }).notNull(),
+  tradeValue: decimal("trade_value", { precision: 12, scale: 2 }).notNull().default("0.00"),
+  tradePayoff: decimal("trade_payoff", { precision: 12, scale: 2 }).notNull().default("0.00"),
+  term: integer("term").notNull(), // Requested term in months
+  
+  // Income/DTI data
+  monthlyIncome: decimal("monthly_income", { precision: 12, scale: 2 }),
+  monthlyDebt: decimal("monthly_debt", { precision: 12, scale: 2 }),
+  calculatedDti: decimal("calculated_dti", { precision: 5, scale: 2 }),
+  
+  // Vehicle data snapshot
+  vehicleData: jsonb("vehicle_data").notNull(), // Snapshot of vehicle details
+  
+  // Request metadata
+  requestType: text("request_type").notNull().default("soft_pull"), // soft_pull, hard_pull, manual
+  requestData: jsonb("request_data").notNull().default('{}'), // Full request payload
+  
+  // Response data
+  responseData: jsonb("response_data").notNull().default('{}'), // Raw response from all lenders
+  responseCount: integer("response_count").notNull().default(0),
+  
+  // Status tracking
+  status: text("status").notNull().default("pending"), // pending, processing, completed, failed
+  errorMessage: text("error_message"),
+  
+  // Timing
+  requestedAt: timestamp("requested_at").notNull().defaultNow(),
+  respondedAt: timestamp("responded_at"),
+  expiresAt: timestamp("expires_at"), // Rate lock expiration
+  
+  createdBy: uuid("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  dealIdx: index("rate_requests_deal_idx").on(table.dealId),
+  statusIdx: index("rate_requests_status_idx").on(table.status),
+  createdAtIdx: index("rate_requests_created_at_idx").on(table.createdAt),
+}));
+
+export const insertRateRequestSchema = createInsertSchema(rateRequests).omit({ id: true, createdAt: true });
+export type InsertRateRequest = z.infer<typeof insertRateRequestSchema>;
+export type RateRequest = typeof rateRequests.$inferSelect;
+
+// ===== APPROVED LENDERS TABLE =====
+export const approvedLenders = pgTable("approved_lenders", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  rateRequestId: uuid("rate_request_id").notNull().references(() => rateRequests.id, { onDelete: "cascade" }),
+  lenderId: uuid("lender_id").notNull().references(() => lenders.id),
+  programId: uuid("program_id").references(() => lenderPrograms.id),
+  
+  // Approval details
+  approvalStatus: text("approval_status").notNull(), // approved, conditional, declined, counter_offer
+  approvalAmount: decimal("approval_amount", { precision: 12, scale: 2 }).notNull(),
+  
+  // Rate details
+  apr: decimal("apr", { precision: 5, scale: 3 }).notNull(), // Annual Percentage Rate
+  buyRate: decimal("buy_rate", { precision: 5, scale: 3 }).notNull(), // Lender's buy rate
+  dealerReserve: decimal("dealer_reserve", { precision: 5, scale: 3 }).notNull().default("0.00"), // Dealer markup
+  flatFee: decimal("flat_fee", { precision: 12, scale: 2 }).notNull().default("0.00"),
+  
+  // Payment calculation
+  term: integer("term").notNull(), // Approved term in months
+  monthlyPayment: decimal("monthly_payment", { precision: 12, scale: 2 }).notNull(),
+  totalFinanceCharge: decimal("total_finance_charge", { precision: 12, scale: 2 }).notNull(),
+  totalOfPayments: decimal("total_of_payments", { precision: 12, scale: 2 }).notNull(),
+  
+  // LTV/DTI at approval
+  ltv: decimal("ltv", { precision: 5, scale: 2 }).notNull(), // Loan-to-value ratio
+  dti: decimal("dti", { precision: 5, scale: 2 }), // Debt-to-income ratio
+  pti: decimal("pti", { precision: 5, scale: 2 }), // Payment-to-income ratio
+  
+  // Conditions and stipulations
+  stipulations: jsonb("stipulations").notNull().default('[]'), // Array of required documents/conditions
+  specialConditions: text("special_conditions"),
+  
+  // Scoring and likelihood
+  approvalScore: integer("approval_score"), // Internal scoring 0-100
+  approvalLikelihood: text("approval_likelihood"), // high, medium, low
+  
+  // Incentives
+  incentives: jsonb("incentives").notNull().default('[]'), // Rebates, cash back, etc.
+  specialRate: boolean("special_rate").notNull().default(false), // Flag for promotional rates
+  
+  // Selection tracking
+  selected: boolean("selected").notNull().default(false),
+  selectedAt: timestamp("selected_at"),
+  selectedBy: uuid("selected_by").references(() => users.id),
+  
+  // Expiration
+  offerExpiresAt: timestamp("offer_expires_at"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  rateRequestIdx: index("approved_lenders_rate_request_idx").on(table.rateRequestId),
+  lenderIdx: index("approved_lenders_lender_idx").on(table.lenderId),
+  selectedIdx: index("approved_lenders_selected_idx").on(table.selected),
+  aprIdx: index("approved_lenders_apr_idx").on(table.apr),
+}));
+
+export const insertApprovedLenderSchema = createInsertSchema(approvedLenders).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertApprovedLender = z.infer<typeof insertApprovedLenderSchema>;
+export type ApprovedLender = typeof approvedLenders.$inferSelect;
+
 // ===== RELATIONS =====
 export const usersRelations = relations(users, ({ many }) => ({
   dealsAsSalesperson: many(deals, { relationName: "salesperson" }),

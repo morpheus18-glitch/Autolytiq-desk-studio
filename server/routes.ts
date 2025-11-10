@@ -1580,6 +1580,288 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: error.message || 'Failed to get team performance data' });
     }
   });
+  
+  // ===== LENDER ENDPOINTS =====
+  
+  // GET /api/lenders - List all available lenders
+  app.get('/api/lenders', async (req, res) => {
+    try {
+      const { active } = req.query;
+      const lenders = await storage.getLenders(active === 'true' ? true : active === 'false' ? false : undefined);
+      res.json(lenders);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to get lenders' });
+    }
+  });
+  
+  // GET /api/lenders/:id - Get specific lender
+  app.get('/api/lenders/:id', async (req, res) => {
+    try {
+      const lender = await storage.getLender(req.params.id);
+      if (!lender) {
+        return res.status(404).json({ error: 'Lender not found' });
+      }
+      res.json(lender);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to get lender' });
+    }
+  });
+  
+  // GET /api/lenders/:id/programs - Get lender's programs
+  app.get('/api/lenders/:id/programs', async (req, res) => {
+    try {
+      const { active } = req.query;
+      const programs = await storage.getLenderPrograms(
+        req.params.id,
+        active === 'true' ? true : active === 'false' ? false : undefined
+      );
+      res.json(programs);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to get lender programs' });
+    }
+  });
+  
+  // POST /api/lenders/shop - Get rates from all lenders
+  app.post('/api/lenders/shop', async (req, res) => {
+    try {
+      const shopRatesSchema = z.object({
+        dealId: z.string().uuid(),
+        scenarioId: z.string().uuid().optional(),
+        creditScore: z.number().min(300).max(850),
+        cobuyerCreditScore: z.number().min(300).max(850).optional(),
+        vehiclePrice: z.number().positive(),
+        requestedAmount: z.number().positive(),
+        downPayment: z.number().min(0),
+        tradeValue: z.number().min(0).default(0),
+        tradePayoff: z.number().min(0).default(0),
+        requestedTerm: z.number().min(12).max(84),
+        vehicleType: z.enum(['new', 'used', 'certified']).default('used'),
+        vehicleYear: z.number().optional(),
+        vehicleMileage: z.number().optional(),
+        monthlyIncome: z.number().positive().optional(),
+        monthlyDebt: z.number().min(0).optional(),
+        state: z.string().length(2).default('CA'),
+        requestType: z.enum(['soft_pull', 'hard_pull', 'manual']).default('soft_pull'),
+      });
+      
+      const data = shopRatesSchema.parse(req.body);
+      
+      // Get the deal to verify it exists
+      const deal = await storage.getDeal(data.dealId);
+      if (!deal) {
+        return res.status(404).json({ error: 'Deal not found' });
+      }
+      
+      // Create rate request record
+      const rateRequest = await storage.createRateRequest({
+        dealId: data.dealId,
+        scenarioId: data.scenarioId || null,
+        creditScore: data.creditScore,
+        cobuyerCreditScore: data.cobuyerCreditScore || null,
+        requestedAmount: data.requestedAmount.toFixed(2),
+        downPayment: data.downPayment.toFixed(2),
+        tradeValue: data.tradeValue.toFixed(2),
+        tradePayoff: data.tradePayoff.toFixed(2),
+        term: data.requestedTerm,
+        monthlyIncome: data.monthlyIncome?.toFixed(2) || null,
+        monthlyDebt: data.monthlyDebt?.toFixed(2) || null,
+        calculatedDti: data.monthlyIncome && data.monthlyDebt
+          ? ((data.monthlyDebt / data.monthlyIncome) * 100).toFixed(2)
+          : null,
+        vehicleData: {
+          price: data.vehiclePrice,
+          type: data.vehicleType,
+          year: data.vehicleYear,
+          mileage: data.vehicleMileage,
+        },
+        requestType: data.requestType,
+        requestData: data,
+        responseData: {},
+        responseCount: 0,
+        status: 'processing',
+        errorMessage: null,
+        createdBy: deal.salespersonId,
+      });
+      
+      try {
+        // In a real system, this would call actual lender APIs
+        // For now, we use our mock service with realistic data
+        const { shopRates: mockShopRates } = await import('../client/src/lib/lender-service');
+        
+        const loanAmount = data.vehiclePrice - data.downPayment - (data.tradeValue - data.tradePayoff);
+        
+        const approvedOffers = await mockShopRates(
+          data.creditScore,
+          loanAmount,
+          data.vehiclePrice,
+          data.downPayment,
+          data.tradeValue,
+          data.tradePayoff,
+          data.requestedTerm,
+          data.vehicleType === 'new' ? 'new' : 'used',
+          data.monthlyIncome,
+          data.monthlyDebt,
+          data.state
+        );
+        
+        // Save approved lenders to database
+        if (approvedOffers.length > 0) {
+          const approvedLendersData = approvedOffers.map((offer: any) => ({
+            rateRequestId: rateRequest.id,
+            lenderId: offer.lenderId,
+            programId: offer.programId || null,
+            approvalStatus: offer.approvalStatus,
+            approvalAmount: offer.approvalAmount,
+            apr: offer.apr,
+            buyRate: offer.buyRate,
+            dealerReserve: offer.dealerReserve,
+            flatFee: offer.flatFee,
+            term: offer.term,
+            monthlyPayment: offer.monthlyPayment,
+            totalFinanceCharge: offer.totalFinanceCharge,
+            totalOfPayments: offer.totalOfPayments,
+            ltv: offer.ltv,
+            dti: offer.dti,
+            pti: offer.pti,
+            stipulations: offer.stipulations,
+            specialConditions: offer.specialConditions,
+            approvalScore: offer.approvalScore,
+            approvalLikelihood: offer.approvalLikelihood,
+            incentives: offer.incentives,
+            specialRate: offer.specialRate,
+            selected: false,
+            selectedAt: null,
+            selectedBy: null,
+            offerExpiresAt: offer.offerExpiresAt,
+          }));
+          
+          await storage.createApprovedLenders(approvedLendersData);
+        }
+        
+        // Update rate request with response
+        await storage.updateRateRequest(rateRequest.id, {
+          responseData: { offers: approvedOffers },
+          responseCount: approvedOffers.length,
+          status: 'completed',
+          respondedAt: new Date(),
+        });
+        
+        // Return the offers with additional metadata
+        res.json({
+          rateRequestId: rateRequest.id,
+          requestedAt: rateRequest.requestedAt,
+          offerCount: approvedOffers.length,
+          offers: approvedOffers,
+          bestRate: approvedOffers[0] || null,
+          averageRate: approvedOffers.length > 0
+            ? (approvedOffers.reduce((sum: number, o: any) => sum + parseFloat(o.apr), 0) / approvedOffers.length).toFixed(3)
+            : null,
+        });
+        
+      } catch (shopError: any) {
+        // Update rate request with error
+        await storage.updateRateRequest(rateRequest.id, {
+          status: 'failed',
+          errorMessage: shopError.message || 'Failed to shop rates',
+          respondedAt: new Date(),
+        });
+        throw shopError;
+      }
+      
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || 'Failed to shop rates' });
+    }
+  });
+  
+  // GET /api/lenders/rates/:rateRequestId - Get saved rate request and offers
+  app.get('/api/lenders/rates/:rateRequestId', async (req, res) => {
+    try {
+      const rateRequest = await storage.getRateRequest(req.params.rateRequestId);
+      if (!rateRequest) {
+        return res.status(404).json({ error: 'Rate request not found' });
+      }
+      
+      const offers = await storage.getApprovedLenders(req.params.rateRequestId);
+      
+      res.json({
+        rateRequest,
+        offers,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to get rate request' });
+    }
+  });
+  
+  // POST /api/lenders/select - Select a lender offer
+  app.post('/api/lenders/select', async (req, res) => {
+    try {
+      const selectLenderSchema = z.object({
+        approvedLenderId: z.string().uuid(),
+        userId: z.string().uuid(),
+      });
+      
+      const { approvedLenderId, userId } = selectLenderSchema.parse(req.body);
+      
+      const selected = await storage.selectApprovedLender(approvedLenderId, userId);
+      
+      res.json(selected);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || 'Failed to select lender' });
+    }
+  });
+  
+  // POST /api/lenders/submit - Submit application (placeholder)
+  app.post('/api/lenders/submit', async (req, res) => {
+    try {
+      const submitApplicationSchema = z.object({
+        approvedLenderId: z.string().uuid(),
+        dealId: z.string().uuid(),
+        applicantInfo: z.object({
+          ssn: z.string().optional(),
+          employerName: z.string().optional(),
+          employmentYears: z.number().optional(),
+          housingPayment: z.number().optional(),
+          references: z.array(z.object({
+            name: z.string(),
+            phone: z.string(),
+            relationship: z.string(),
+          })).optional(),
+        }).optional(),
+      });
+      
+      const data = submitApplicationSchema.parse(req.body);
+      
+      // In a real system, this would submit to the lender's API
+      // For now, we just return a success message
+      res.json({
+        success: true,
+        message: 'Application submitted successfully (placeholder)',
+        applicationId: `APP-${Date.now()}`,
+        status: 'pending_review',
+        estimatedResponseTime: '15-30 minutes',
+      });
+      
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || 'Failed to submit application' });
+    }
+  });
+  
+  // GET /api/deals/:id/lenders - Get lender history for a deal
+  app.get('/api/deals/:id/lenders', async (req, res) => {
+    try {
+      const rateRequests = await storage.getRateRequestsByDeal(req.params.id);
+      const selected = await storage.getSelectedLenderForDeal(req.params.id);
+      
+      res.json({
+        rateRequests,
+        selectedLender: selected || null,
+        totalRequests: rateRequests.length,
+        lastRequestedAt: rateRequests[0]?.requestedAt || null,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to get deal lender history' });
+    }
+  });
 
   const httpServer = createServer(app);
 
