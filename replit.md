@@ -31,6 +31,18 @@ NextGen Automotive Desking Platform is a comprehensive automotive finance and le
 - `/deals/:id` now uses DealWorksheetV2 (production-ready implementation)
 - Old deal-worksheet.tsx and scenario-calculator.tsx are deprecated (dead code)
 
+**Trade Garage Implementation** - Complete trade-in vehicle management system:
+
+- ✅ **Backend CRUD**: 5 storage methods (getTradeVehiclesByDeal, getTradeVehicle, createTradeVehicle, updateTradeVehicle, deleteTradeVehicle)
+- ✅ **API Routes**: GET/POST/PATCH/DELETE at /api/deals/:dealId/trades with deal ownership guards
+- ✅ **Schema Validation**: .merge() pattern for numeric field coercion (allowance/payoff) with string conversion before persistence
+- ✅ **TradeGarageSheet**: 580-line mobile-first Sheet component (85vh height, md:640px width)
+- ✅ **Trade Cards**: Equity calculation (allowance - payoff) with color-coded badges (green positive, red negative, gray zero)
+- ✅ **Apply to Scenario**: updateMultipleFields({ tradeVehicleId, tradeAllowance, tradePayoff }) triggers auto-save
+- ✅ **Delete Cleanup**: Automatically clears scenario reference when applied trade is deleted
+- ✅ **Audit Logging**: Tracks trade creation, updates, and deletions with field-level changes
+- ✅ **Integration**: "Manage Trades" button in Trade section (mobile + desktop)
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
