@@ -36,7 +36,7 @@ export function PaymentSummaryPanel({ variant = 'full', className }: PaymentSumm
   };
 
   return (
-    <Card className={cn("", className)}>
+    <Card className={cn("glass overflow-hidden", className)}>
       <div className="p-4 md:p-6 space-y-4">
         {/* Scenario Type Badge */}
         <div className="flex items-center justify-between">
@@ -47,7 +47,7 @@ export function PaymentSummaryPanel({ variant = 'full', className }: PaymentSumm
           {scenario.apr && scenario.scenarioType === 'FINANCE_DEAL' && (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Percent className="w-3 h-3" />
-              {formatDecimal(scenario.apr)}% APR
+              <span data-percentage>{formatDecimal(scenario.apr)}% APR</span>
             </div>
           )}
         </div>
@@ -55,15 +55,15 @@ export function PaymentSummaryPanel({ variant = 'full', className }: PaymentSumm
         {/* Monthly Payment - Hero */}
         <div className="space-y-2">
           <div className="flex items-baseline gap-2">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <span className="text-step--1 font-medium text-muted-foreground uppercase tracking-wide">
               Monthly Payment
             </span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl md:text-4xl font-mono font-bold tabular-nums transition-all duration-200" data-testid="text-payment-summary-monthly">
+            <span className="hero-metric transition-smooth" data-testid="text-payment-summary-monthly" data-currency>
               {formatCurrency(monthlyPayment)}
             </span>
-            <span className="text-sm text-muted-foreground">/mo</span>
+            <span className="text-step--1 text-muted-foreground">/mo</span>
           </div>
         </div>
 
@@ -75,44 +75,44 @@ export function PaymentSummaryPanel({ variant = 'full', className }: PaymentSumm
             <div className="grid grid-cols-2 gap-4">
               {/* Down Payment */}
               <div className="space-y-1">
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1.5 text-step--2 text-muted-foreground">
                   <DollarSign className="w-3 h-3" />
                   Down Payment
                 </div>
-                <div className="text-lg font-mono font-semibold tabular-nums">
+                <div className="text-step-1 font-semibold" data-currency>
                   {formatCurrency(calculations.downPayment.toNumber())}
                 </div>
               </div>
 
               {/* Term */}
               <div className="space-y-1">
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1.5 text-step--2 text-muted-foreground">
                   <Calendar className="w-3 h-3" />
                   Term
                 </div>
-                <div className="text-lg font-mono font-semibold tabular-nums">
+                <div className="text-step-1 font-semibold" data-numeric>
                   {scenario.term} mo
                 </div>
               </div>
 
               {/* Amount Financed */}
               <div className="space-y-1">
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1.5 text-step--2 text-muted-foreground">
                   <TrendingUp className="w-3 h-3" />
                   Financed
                 </div>
-                <div className="text-lg font-mono font-semibold tabular-nums transition-all duration-200">
+                <div className="text-step-1 font-semibold transition-smooth" data-currency>
                   {formatCurrency(amountFinanced)}
                 </div>
               </div>
 
               {/* Total Cost */}
               <div className="space-y-1">
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1.5 text-step--2 text-muted-foreground">
                   <DollarSign className="w-3 h-3" />
                   Total Cost
                 </div>
-                <div className="text-lg font-mono font-semibold tabular-nums transition-all duration-200">
+                <div className="text-step-1 font-semibold transition-smooth" data-currency>
                   {formatCurrency(totalCost)}
                 </div>
               </div>
@@ -122,13 +122,13 @@ export function PaymentSummaryPanel({ variant = 'full', className }: PaymentSumm
 
             {/* Tax Breakdown */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center justify-between text-step--2">
                 <span className="text-muted-foreground">Sales Tax</span>
-                <span className="font-mono font-semibold tabular-nums">{formatCurrency(calculations.totalTax.toNumber())}</span>
+                <span className="font-semibold" data-currency>{formatCurrency(calculations.totalTax.toNumber())}</span>
               </div>
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center justify-between text-step--2">
                 <span className="text-muted-foreground">Fees</span>
-                <span className="font-mono font-semibold tabular-nums">{formatCurrency(calculations.totalFees.toNumber())}</span>
+                <span className="font-semibold" data-currency>{formatCurrency(calculations.totalFees.toNumber())}</span>
               </div>
             </div>
           </>
