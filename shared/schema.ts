@@ -148,6 +148,7 @@ export const tradeVehicles = pgTable("trade_vehicles", {
   condition: text("condition"), // excellent, good, fair, poor
   allowance: decimal("allowance", { precision: 12, scale: 2 }).notNull(),
   payoff: decimal("payoff", { precision: 12, scale: 2 }).notNull().default("0"),
+  payoffTo: text("payoff_to"), // Lender/bank that receives the payoff
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

@@ -51,6 +51,7 @@ const tradeFormSchema = insertTradeVehicleSchema.extend({
   mileage: z.coerce.number().min(0),
   allowance: z.coerce.number().min(0),
   payoff: z.coerce.number().min(0).default(0),
+  payoffTo: z.string().optional(),
 }).omit({ dealId: true });
 
 type TradeFormData = z.infer<typeof tradeFormSchema>;
@@ -84,6 +85,7 @@ export function TradeGarageSheet({ dealId, trigger }: TradeGarageSheetProps) {
       condition: 'good',
       allowance: 0,
       payoff: 0,
+      payoffTo: '',
     },
   });
 
@@ -99,6 +101,7 @@ export function TradeGarageSheet({ dealId, trigger }: TradeGarageSheetProps) {
         condition: selectedTrade.condition || 'good',
         allowance: parseFloat(selectedTrade.allowance),
         payoff: parseFloat(selectedTrade.payoff),
+        payoffTo: selectedTrade.payoffTo || '',
       });
     } else {
       form.reset({
@@ -111,6 +114,7 @@ export function TradeGarageSheet({ dealId, trigger }: TradeGarageSheetProps) {
         condition: 'good',
         allowance: 0,
         payoff: 0,
+        payoffTo: '',
       });
     }
   }, [selectedTrade, form]);
@@ -330,6 +334,11 @@ export function TradeGarageSheet({ dealId, trigger }: TradeGarageSheetProps) {
                     <div>
                       <div className="text-xs text-muted-foreground mb-1">Payoff</div>
                       <div className="font-mono tabular-nums">{formatCurrency(trade.payoff)}</div>
+                      {trade.payoffTo && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          to <span className="font-medium">{trade.payoffTo}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -541,6 +550,27 @@ export function TradeGarageSheet({ dealId, trigger }: TradeGarageSheetProps) {
                     )}
                   />
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="payoffTo"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Payoff Recipient (Lender/Bank)</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          value={field.value || ''}
+                          className="h-9"
+                          placeholder="e.g., Chase Auto Finance, Wells Fargo"
+                          data-testid="input-trade-payoff-to"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                      <p className="text-xs text-muted-foreground">Who receives the payoff amount</p>
+                    </FormItem>
+                  )}
+                />
 
                 <Button
                   type="submit"

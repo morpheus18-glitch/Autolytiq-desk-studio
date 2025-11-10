@@ -427,6 +427,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           mileage: z.coerce.number(),
           allowance: z.coerce.number(),
           payoff: z.coerce.number().default(0),
+          payoffTo: z.string().optional(),
         }));
       
       const input = tradeVehicleInputSchema.parse(req.body);
@@ -482,6 +483,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           mileage: z.coerce.number(),
           allowance: z.coerce.number(),
           payoff: z.coerce.number(),
+          payoffTo: z.string().optional(),
         }))
         .partial();
       
