@@ -95,7 +95,7 @@ export function VehicleSwitcher({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-2rem)] max-w-4xl max-h-[85vh] p-0 overflow-hidden flex flex-col">
+      <DialogContent className="w-full max-w-4xl max-h-[85vh] p-0 overflow-hidden flex flex-col">
         <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-4">
           <DialogTitle>Switch Vehicle</DialogTitle>
           <DialogDescription>

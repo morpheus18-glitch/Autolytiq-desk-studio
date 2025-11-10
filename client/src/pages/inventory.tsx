@@ -952,7 +952,7 @@ export default function InventoryPage() {
   }, [filters]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background max-w-full overflow-x-clip">
       {/* Header */}
       <div className="sticky top-0 z-40 backdrop-blur-md bg-background/80 border-b">
         <div className="container mx-auto px-4 py-4">
