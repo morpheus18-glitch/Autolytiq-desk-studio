@@ -8,6 +8,7 @@ import DealsList from "@/pages/deals-list";
 import DealWorksheetV2 from "@/pages/deal-worksheet-v2";
 import NewDeal from "@/pages/new-deal";
 import Inventory from "@/pages/inventory";
+import VINDecoder from "@/pages/vin-decoder";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -15,6 +16,7 @@ function Router() {
     <Switch>
       <Route path="/" component={() => <Redirect to="/inventory" />} />
       <Route path="/inventory" component={Inventory} />
+      <Route path="/vin-decoder" component={VINDecoder} />
       <Route path="/deals" component={DealsList} />
       <Route path="/deals/new" component={NewDeal} />
       <Route path="/deals/:id" component={DealWorksheetV2} />

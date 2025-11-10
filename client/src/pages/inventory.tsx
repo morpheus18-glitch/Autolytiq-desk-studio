@@ -38,7 +38,9 @@ import {
   SlidersHorizontal,
   Package,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  Hash,
+  Scan
 } from "lucide-react";
 import { useDebouncedCallback } from "use-debounce";
 
@@ -130,10 +132,18 @@ function VehicleCard({ vehicle, onViewDetails, onStartDeal }: {
           </Badge>
         </div>
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
-          <p className="text-white/80 text-xs font-medium flex items-center gap-1">
-            <Package className="w-3 h-3" />
-            Stock: {stockDisplay}
-          </p>
+          <div className="space-y-1">
+            <p className="text-white/80 text-xs font-medium flex items-center gap-1">
+              <Package className="w-3 h-3" />
+              Stock: {stockDisplay}
+            </p>
+            {vehicle.vin && (
+              <p className="text-white/70 text-xs font-mono flex items-center gap-1">
+                <Hash className="w-3 h-3" />
+                {vehicle.vin.substring(0, 11)}...
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
@@ -949,6 +959,14 @@ export default function InventoryPage() {
             <div className="flex items-center justify-between">
               <h1 className="text-2xl md:text-3xl font-semibold">Vehicle Inventory</h1>
               <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setLocation('/vin-decoder')}
+                  data-testid="button-vin-decoder"
+                >
+                  <Scan className="w-4 h-4 mr-2" />
+                  VIN Decoder
+                </Button>
                 <Select value={filters.sortBy || ''} onValueChange={handleSortChange}>
                   <SelectTrigger className="w-[180px]" data-testid="select-sort">
                     <ArrowUpDown className="w-4 h-4 mr-2" />

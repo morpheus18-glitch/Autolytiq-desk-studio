@@ -117,6 +117,157 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // ===== VIN DECODER =====
+  // POST /api/vin/decode - Decode VIN using NHTSA API
+  app.post('/api/vin/decode', async (req, res) => {
+    try {
+      const { vin } = req.body;
+      
+      if (!vin || typeof vin !== 'string') {
+        return res.status(400).json({ error: 'VIN is required' });
+      }
+      
+      const cleanVIN = vin.toUpperCase().trim();
+      
+      // Basic VIN format validation
+      if (cleanVIN.length !== 17) {
+        return res.status(400).json({ error: 'VIN must be exactly 17 characters' });
+      }
+      
+      // Check if VIN contains invalid characters (I, O, Q are not allowed)
+      if (!/^[A-HJ-NPR-Z0-9]{17}$/.test(cleanVIN)) {
+        return res.status(400).json({ error: 'VIN contains invalid characters' });
+      }
+      
+      // Simple in-memory cache
+      const cacheKey = `vin:${cleanVIN}`;
+      const cached = (global as any).vinCache?.get(cacheKey);
+      
+      if (cached && Date.now() - cached.timestamp < 24 * 60 * 60 * 1000) {
+        return res.json(cached.data);
+      }
+      
+      try {
+        // Call NHTSA API
+        const nhtsa_response = await fetch(
+          `https://vpic.nhtsa.dot.gov/api/vehicles/decodevinvaluesextended/${cleanVIN}?format=json`,
+          {
+            method: 'GET',
+            headers: {
+              'Accept': 'application/json',
+              'User-Agent': 'NextGen-Automotive-Platform/1.0'
+            }
+          }
+        );
+        
+        if (!nhtsa_response.ok) {
+          throw new Error(`NHTSA API returned ${nhtsa_response.status}`);
+        }
+        
+        const nhtsa_data = await nhtsa_response.json();
+        
+        // Parse the response
+        const results = nhtsa_data.Results || [];
+        
+        const getValue = (name: string): string | undefined => {
+          const result = results.find((r: any) => r.Variable === name);
+          return result?.Value && result.Value !== 'Not Applicable' && result.Value !== '' 
+            ? result.Value 
+            : undefined;
+        };
+        
+        // Parse safety features
+        const airbags: string[] = [];
+        const airbagTypes = [
+          'Air Bag-Frontal-Driver',
+          'Air Bag-Frontal-Passenger',
+          'Air Bag-Knee-Driver',
+          'Air Bag-Knee-Passenger',
+          'Air Bag-Side Body-Front',
+          'Air Bag-Side Head-Front',
+          'Curtain Air Bag Locations',
+          'Seat Belt Air Bag Locations'
+        ];
+        
+        for (const type of airbagTypes) {
+          const value = getValue(type);
+          if (value && value !== 'Not Applicable') {
+            airbags.push(value);
+          }
+        }
+        
+        // Build response
+        const decodedData = {
+          vin: cleanVIN,
+          make: getValue('Make'),
+          model: getValue('Model'),
+          year: getValue('Model Year') ? parseInt(getValue('Model Year')!) : undefined,
+          trim: getValue('Trim') || getValue('Trim2') || getValue('Series') || getValue('Series2'),
+          bodyClass: getValue('Body Class'),
+          bodyType: getValue('Body Class'),
+          doors: getValue('Doors') ? parseInt(getValue('Doors')!) : undefined,
+          drivetrain: getValue('Drive Type'),
+          engineDisplacement: getValue('Displacement (L)'),
+          engineCylinders: getValue('Engine Number of Cylinders') ? parseInt(getValue('Engine Number of Cylinders')!) : undefined,
+          engineModel: getValue('Engine Model'),
+          fuelType: getValue('Fuel Type - Primary') || getValue('Fuel Type - Secondary'),
+          transmission: getValue('Transmission Style'),
+          gvwr: getValue('Gross Vehicle Weight Rating From'),
+          manufacturer: getValue('Manufacturer Name'),
+          plant: [
+            getValue('Plant City'),
+            getValue('Plant State'),
+            getValue('Plant Country')
+          ].filter(Boolean).join(', '),
+          vehicleType: getValue('Vehicle Type'),
+          series: getValue('Series'),
+          
+          // Safety features
+          airbags: airbags.length > 0 ? airbags : undefined,
+          abs: getValue('ABS') === 'Standard',
+          tpms: getValue('TPMS') === 'Direct' || getValue('TPMS') === 'Indirect',
+          esc: getValue('Electronic Stability Control (ESC)') === 'Standard',
+          
+          // Additional info
+          suggestedVIN: getValue('Suggested VIN'),
+          errorCode: getValue('Error Code'),
+          errorText: getValue('Error Text'),
+          decodedAt: new Date().toISOString()
+        };
+        
+        // Remove undefined values
+        const cleanedData = Object.fromEntries(
+          Object.entries(decodedData).filter(([_, v]) => v !== undefined && v !== '')
+        );
+        
+        // Initialize cache if not exists
+        if (!(global as any).vinCache) {
+          (global as any).vinCache = new Map();
+        }
+        
+        // Cache the result
+        (global as any).vinCache.set(cacheKey, {
+          data: cleanedData,
+          timestamp: Date.now()
+        });
+        
+        // Limit cache size
+        if ((global as any).vinCache.size > 100) {
+          const firstKey = (global as any).vinCache.keys().next().value;
+          (global as any).vinCache.delete(firstKey);
+        }
+        
+        res.json(cleanedData);
+      } catch (fetchError: any) {
+        console.error('NHTSA API error:', fetchError);
+        res.status(502).json({ error: 'Failed to decode VIN from NHTSA API' });
+      }
+    } catch (error: any) {
+      console.error('VIN decode error:', error);
+      res.status(400).json({ error: error.message || 'Failed to decode VIN' });
+    }
+  });
+  
   // ===== INVENTORY MANAGEMENT =====
   // GET /api/inventory - list vehicles with pagination and filters
   app.get('/api/inventory', async (req, res) => {
