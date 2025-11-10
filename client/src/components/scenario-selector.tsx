@@ -27,6 +27,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useScenarioForm } from '@/contexts/scenario-form-context';
 import Decimal from 'decimal.js';
 import { useOptimisticCreate, useOptimisticDelete, generateTempId } from '@/lib/optimistic-mutations';
+import { createUndoAction, showSuccessToast, showErrorToast } from '@/lib/toast-actions';
 
 interface ScenarioSelectorProps {
   dealId: string;
@@ -45,6 +46,7 @@ export function ScenarioSelector({
   const { calculations } = useScenarioForm();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [scenarioToDelete, setScenarioToDelete] = useState<string | null>(null);
+  const [deletedScenarioSnapshot, setDeletedScenarioSnapshot] = useState<DealScenario | null>(null);
 
   const createScenarioMutation = useOptimisticCreate<any, any>({
     queryKey: ['/api/deals', dealId],
@@ -62,16 +64,15 @@ export function ScenarioSelector({
     },
     onSuccess: (newScenario) => {
       onScenarioChange(newScenario.id);
-      toast({
+      showSuccessToast(toast, {
         title: 'Scenario created',
-        description: `${newScenario.name} has been created.`,
+        description: `${newScenario.name} is ready to configure.`,
       });
     },
     onError: () => {
-      toast({
-        title: 'Error',
+      showErrorToast(toast, {
+        title: 'Creation failed',
         description: 'Failed to create scenario. Please try again.',
-        variant: 'destructive',
       });
     },
   });
@@ -85,25 +86,47 @@ export function ScenarioSelector({
     mutationFn: async (scenarioId: string) => {
       await apiRequest('DELETE', `/api/deals/${dealId}/scenarios/${scenarioId}`);
     },
-    onSuccess: () => {
+    onSuccess: (_, deletedScenarioId) => {
       if (scenarioToDelete === activeScenarioId && scenarios.length > 1) {
         const remainingScenario = scenarios.find(s => s.id !== scenarioToDelete);
         if (remainingScenario) {
           onScenarioChange(remainingScenario.id);
         }
       }
+      
+      const scenarioName = deletedScenarioSnapshot?.name || 'Scenario';
+      
       toast({
         title: 'Scenario deleted',
-        description: 'The scenario has been removed.',
+        description: `${scenarioName} has been removed from this deal.`,
+        variant: 'destructive',
+        action: createUndoAction({
+          onClick: () => {
+            if (deletedScenarioSnapshot) {
+              const restoreData = {
+                ...deletedScenarioSnapshot,
+                id: undefined,
+                createdAt: undefined,
+                updatedAt: undefined,
+              };
+              createScenarioMutation.mutate(restoreData);
+              setDeletedScenarioSnapshot(null);
+            }
+          }
+        })
       });
       setDeleteDialogOpen(false);
       setScenarioToDelete(null);
     },
     onError: () => {
-      toast({
-        title: 'Error',
+      showErrorToast(toast, {
+        title: 'Delete failed',
         description: 'Failed to delete scenario. Please try again.',
-        variant: 'destructive',
+        onRetry: () => {
+          if (scenarioToDelete) {
+            deleteScenarioMutation.mutate(scenarioToDelete);
+          }
+        }
       });
     },
   });
@@ -147,8 +170,9 @@ export function ScenarioSelector({
     });
   };
 
-  const confirmDelete = (scenarioId: string) => {
-    setScenarioToDelete(scenarioId);
+  const confirmDelete = (scenario: DealScenario) => {
+    setScenarioToDelete(scenario.id);
+    setDeletedScenarioSnapshot(scenario); // Capture full scenario before deletion
     setDeleteDialogOpen(true);
   };
 
@@ -238,7 +262,7 @@ export function ScenarioSelector({
                         <DropdownMenuItem
                           onClick={(e) => {
                             e.stopPropagation();
-                            confirmDelete(scenario.id);
+                            confirmDelete(scenario);
                           }}
                           className="text-destructive"
                           data-testid={`button-delete-scenario-${scenario.id}`}

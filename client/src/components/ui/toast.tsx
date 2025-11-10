@@ -1,7 +1,7 @@
 import * as React from "react"
 import * as ToastPrimitives from "@radix-ui/react-toast"
 import { cva, type VariantProps } from "class-variance-authority"
-import { X } from "lucide-react"
+import { X, CheckCircle, AlertCircle, Info, AlertTriangle } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -23,13 +23,19 @@ const ToastViewport = React.forwardRef<
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
+  "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-visible rounded-md p-6 pr-8 shadow-lg transition-all glass-strong scale-in data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
   {
     variants: {
       variant: {
-        default: "border bg-background text-foreground",
+        default: "border bg-background/95 text-foreground backdrop-blur-xl",
         destructive:
-          "destructive group border-destructive bg-destructive text-destructive-foreground",
+          "destructive group border-destructive/50 bg-destructive/10 text-destructive dark:bg-destructive/20 backdrop-blur-xl",
+        success:
+          "success group border-green-500/50 bg-green-500/10 text-green-600 dark:bg-green-500/20 dark:text-green-400 backdrop-blur-xl",
+        info:
+          "info group border-blue-500/50 bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 backdrop-blur-xl",
+        warning:
+          "warning group border-yellow-500/50 bg-yellow-500/10 text-yellow-600 dark:bg-yellow-500/20 dark:text-yellow-400 backdrop-blur-xl",
       },
     },
     defaultVariants: {
@@ -43,12 +49,30 @@ const Toast = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> &
     VariantProps<typeof toastVariants>
 >(({ className, variant, ...props }, ref) => {
+  const getIcon = () => {
+    switch (variant) {
+      case 'success':
+        return <CheckCircle className="w-5 h-5 flex-shrink-0" data-testid="icon-toast-success" />
+      case 'destructive':
+        return <AlertCircle className="w-5 h-5 flex-shrink-0" data-testid="icon-toast-error" />
+      case 'info':
+        return <Info className="w-5 h-5 flex-shrink-0" data-testid="icon-toast-info" />
+      case 'warning':
+        return <AlertTriangle className="w-5 h-5 flex-shrink-0" data-testid="icon-toast-warning" />
+      default:
+        return null
+    }
+  }
+
   return (
     <ToastPrimitives.Root
       ref={ref}
       className={cn(toastVariants({ variant }), className)}
       {...props}
-    />
+    >
+      {getIcon()}
+      {props.children}
+    </ToastPrimitives.Root>
   )
 })
 Toast.displayName = ToastPrimitives.Root.displayName
