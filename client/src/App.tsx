@@ -10,6 +10,7 @@ import NewDeal from "@/pages/new-deal";
 import Inventory from "@/pages/inventory";
 import VINDecoder from "@/pages/vin-decoder";
 import Analytics from "@/pages/analytics";
+import CreditCenter from "@/pages/credit-center";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -19,6 +20,7 @@ function Router() {
       <Route path="/inventory" component={Inventory} />
       <Route path="/analytics" component={Analytics} />
       <Route path="/vin-decoder" component={VINDecoder} />
+      <Route path="/credit" component={CreditCenter} />
       <Route path="/deals" component={DealsList} />
       <Route path="/deals/new" component={NewDeal} />
       <Route path="/deals/:id" component={DealWorksheetV2} />

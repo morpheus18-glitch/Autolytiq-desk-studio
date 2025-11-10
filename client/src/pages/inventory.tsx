@@ -40,7 +40,8 @@ import {
   AlertCircle,
   RefreshCw,
   Hash,
-  Scan
+  Scan,
+  CreditCard
 } from "lucide-react";
 import { useDebouncedCallback } from "use-debounce";
 
@@ -959,6 +960,14 @@ export default function InventoryPage() {
             <div className="flex items-center justify-between">
               <h1 className="text-2xl md:text-3xl font-semibold">Vehicle Inventory</h1>
               <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setLocation('/credit')}
+                  data-testid="button-credit-center"
+                >
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  Credit Center
+                </Button>
                 <Button
                   variant="outline"
                   onClick={() => setLocation('/vin-decoder')}

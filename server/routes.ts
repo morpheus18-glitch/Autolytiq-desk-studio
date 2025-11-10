@@ -1016,6 +1016,255 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== CREDIT SIMULATION API ENDPOINTS =====
+  
+  // POST /api/credit/simulate - Simulate credit score based on factors
+  app.post('/api/credit/simulate', async (req, res) => {
+    try {
+      const { calculateCreditScore } = await import('../client/src/lib/credit-simulator');
+      
+      const simulationSchema = z.object({
+        currentScore: z.number().min(300).max(850).optional(),
+        paymentHistory: z.object({
+          onTimePayments: z.number().optional(),
+          totalPayments: z.number().optional(),
+          delinquencies30Days: z.number().optional(),
+          delinquencies60Days: z.number().optional(),
+          delinquencies90Days: z.number().optional(),
+          collections: z.number().optional(),
+          bankruptcies: z.number().optional(),
+        }).optional(),
+        creditUtilization: z.object({
+          totalBalance: z.number().optional(),
+          totalLimit: z.number().optional(),
+          utilizationRatio: z.number().optional(),
+        }).optional(),
+        creditHistory: z.object({
+          averageAccountAge: z.number().optional(),
+          oldestAccountAge: z.number().optional(),
+        }).optional(),
+        creditMix: z.object({
+          creditCards: z.number().optional(),
+          autoLoans: z.number().optional(),
+          mortgages: z.number().optional(),
+          studentLoans: z.number().optional(),
+          otherLoans: z.number().optional(),
+          totalAccounts: z.number().optional(),
+        }).optional(),
+        newCredit: z.object({
+          hardInquiries: z.number().optional(),
+          newAccounts: z.number().optional(),
+          inquiriesLast6Months: z.number().optional(),
+        }).optional(),
+      });
+      
+      const input = simulationSchema.parse(req.body);
+      const result = calculateCreditScore(input);
+      
+      res.json(result);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        res.status(400).json({ error: 'Invalid simulation data', details: error.errors });
+      } else {
+        res.status(500).json({ error: error.message || 'Failed to simulate credit score' });
+      }
+    }
+  });
+  
+  // POST /api/credit/prequalify - Pre-qualification check
+  app.post('/api/credit/prequalify', async (req, res) => {
+    try {
+      const { calculatePreQualification } = await import('../client/src/lib/credit-simulator');
+      
+      const preQualSchema = z.object({
+        creditScore: z.number().min(300).max(850),
+        annualIncome: z.number().min(0),
+        monthlyDebtPayments: z.number().min(0),
+        employmentStatus: z.enum(['Employed', 'Self-Employed', 'Retired', 'Other']),
+        employmentDuration: z.number().min(0),
+        housingPayment: z.number().min(0),
+        downPayment: z.number().min(0),
+        requestedLoanAmount: z.number().min(0),
+        vehiclePrice: z.number().min(0),
+      });
+      
+      const input = preQualSchema.parse(req.body);
+      const result = calculatePreQualification(input);
+      
+      res.json(result);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        res.status(400).json({ error: 'Invalid pre-qualification data', details: error.errors });
+      } else {
+        res.status(500).json({ error: error.message || 'Failed to process pre-qualification' });
+      }
+    }
+  });
+  
+  // GET /api/credit/factors - Get credit factor definitions
+  app.get('/api/credit/factors', async (req, res) => {
+    try {
+      res.json({
+        factors: {
+          paymentHistory: {
+            weight: 0.35,
+            description: 'Your track record of paying bills on time',
+            components: [
+              'On-time payments',
+              'Late payments (30/60/90+ days)',
+              'Collections',
+              'Bankruptcies',
+              'Public records',
+            ],
+            tips: [
+              'Always pay at least the minimum by the due date',
+              'Set up automatic payments to avoid missed payments',
+              'Contact creditors if you cannot make a payment',
+            ],
+          },
+          creditUtilization: {
+            weight: 0.30,
+            description: 'How much of your available credit you use',
+            components: [
+              'Total balance vs. total credit limit',
+              'Individual card utilization',
+              'Number of cards with balances',
+            ],
+            tips: [
+              'Keep utilization below 30% (ideally below 10%)',
+              'Pay down high-balance cards first',
+              'Request credit limit increases on existing cards',
+              'Don\'t close old cards - it reduces available credit',
+            ],
+          },
+          creditHistory: {
+            weight: 0.15,
+            description: 'The length of your credit history',
+            components: [
+              'Age of oldest account',
+              'Average age of all accounts',
+              'Age of specific account types',
+            ],
+            tips: [
+              'Keep old accounts open even if unused',
+              'Become an authorized user on older accounts',
+              'Start building credit early with secured cards',
+            ],
+          },
+          creditMix: {
+            weight: 0.10,
+            description: 'Variety of credit account types',
+            components: [
+              'Credit cards (revolving credit)',
+              'Auto loans',
+              'Mortgages',
+              'Student loans',
+              'Personal loans',
+            ],
+            tips: [
+              'Maintain a healthy mix of credit types',
+              'Don\'t open new accounts just for mix',
+              'Focus on managing existing accounts well',
+            ],
+          },
+          newCredit: {
+            weight: 0.10,
+            description: 'Recent credit inquiries and new accounts',
+            components: [
+              'Hard inquiries in last 12 months',
+              'New accounts opened recently',
+              'Rate shopping for same loan type',
+            ],
+            tips: [
+              'Limit applications for new credit',
+              'Rate shop within 14-45 day window',
+              'Only apply for credit when needed',
+              'Space out credit applications over time',
+            ],
+          },
+        },
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to get credit factors' });
+    }
+  });
+  
+  // GET /api/credit/recommendations/:score - Get improvement recommendations
+  app.get('/api/credit/recommendations/:score', async (req, res) => {
+    try {
+      const { getCreditEducation } = await import('../client/src/lib/credit-simulator');
+      const score = parseInt(req.params.score);
+      
+      if (isNaN(score) || score < 300 || score > 850) {
+        return res.status(400).json({ error: 'Invalid credit score' });
+      }
+      
+      const education = getCreditEducation(score);
+      
+      res.json({
+        score,
+        ...education,
+        quickActions: [
+          {
+            title: 'Check for errors',
+            description: 'Review your credit report for mistakes and dispute any errors',
+            timeframe: '1-2 months',
+            impact: 'Varies',
+          },
+          {
+            title: 'Pay down credit cards',
+            description: 'Focus on cards with highest utilization first',
+            timeframe: '1-3 months',
+            impact: '10-40 points',
+          },
+          {
+            title: 'Become an authorized user',
+            description: 'Get added to a family member\'s account with good payment history',
+            timeframe: '1-2 months',
+            impact: '10-30 points',
+          },
+          {
+            title: 'Set up autopay',
+            description: 'Ensure all bills are paid on time going forward',
+            timeframe: 'Immediate',
+            impact: 'Prevents negative marks',
+          },
+        ],
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to get recommendations' });
+    }
+  });
+  
+  // POST /api/credit/scenario - Simulate what-if scenarios
+  app.post('/api/credit/scenario', async (req, res) => {
+    try {
+      const { simulateScenario } = await import('../client/src/lib/credit-simulator');
+      
+      const scenarioSchema = z.object({
+        currentFactors: z.any(), // Using the full CreditFactors type from the service
+        scenario: z.enum([
+          'payoff-cards',
+          'authorized-user',
+          'dispute-collections',
+          'wait-6-months',
+          'pay-down-50',
+        ]),
+      });
+      
+      const { currentFactors, scenario } = scenarioSchema.parse(req.body);
+      const result = simulateScenario(currentFactors, scenario);
+      
+      res.json(result);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        res.status(400).json({ error: 'Invalid scenario data', details: error.errors });
+      } else {
+        res.status(500).json({ error: error.message || 'Failed to simulate scenario' });
+      }
+    }
+  });
+
   // ===== ANALYTICS API ENDPOINTS =====
   
   // Helper function to generate analytics data
