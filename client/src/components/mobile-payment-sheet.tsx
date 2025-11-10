@@ -54,7 +54,7 @@ export function MobilePaymentSheet({
       {/* Collapsed Bottom Bar - Always Visible (44px+ Touch Target) */}
       <button
         onClick={() => setIsOpen(true)}
-        className="w-full flex items-center justify-between gap-4 px-4 min-h-14 hover-elevate active-elevate-2 touch-manipulation"
+        className="glass-strong w-full flex items-center justify-between gap-4 px-4 min-h-14 hover-elevate active-elevate-2 touch-manipulation"
         data-testid="button-expand-payment-sheet"
       >
         <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -62,21 +62,21 @@ export function MobilePaymentSheet({
             <TrendingUp className="w-5 h-5 text-primary" />
           </div>
           <div className="flex-1 min-w-0 text-left">
-            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-0.5">
+            <div className="text-step--2 font-medium text-muted-foreground uppercase tracking-wide mb-0.5">
               Monthly Payment
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-mono font-bold tabular-nums transition-all duration-200">
+              <span className="text-step-2 font-bold transition-smooth" data-currency>
                 {formatCurrency(monthlyPayment)}
               </span>
-              <span className="text-sm text-muted-foreground">/mo</span>
+              <span className="text-step--1 text-muted-foreground">/mo</span>
             </div>
           </div>
         </div>
         
         <div className="flex items-center gap-2 flex-shrink-0">
           {scenario.apr && scenario.scenarioType === 'FINANCE_DEAL' && (
-            <Badge variant="outline" className="text-xs font-mono">
+            <Badge variant="outline" className="text-xs" data-percentage>
               {formatDecimal(scenario.apr)}% APR
             </Badge>
           )}
@@ -119,14 +119,14 @@ export function MobilePaymentSheet({
 
               {/* Monthly Payment - Hero */}
               <div className="space-y-2">
-                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                <div className="text-step--1 font-medium text-muted-foreground uppercase tracking-wide">
                   Monthly Payment
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-4xl font-mono font-bold tabular-nums transition-all duration-200">
+                  <span className="hero-metric transition-smooth" data-currency>
                     {formatCurrency(monthlyPayment)}
                   </span>
-                  <span className="text-base text-muted-foreground">/mo</span>
+                  <span className="text-step-0 text-muted-foreground">/mo</span>
                 </div>
               </div>
 
@@ -136,40 +136,40 @@ export function MobilePaymentSheet({
               <div className="grid grid-cols-2 gap-4">
                 {/* Down Payment */}
                 <div className="space-y-1.5">
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-step--2 text-muted-foreground">
                     Down Payment
                   </div>
-                  <div className="text-xl font-mono font-semibold tabular-nums">
+                  <div className="text-step-1 font-semibold" data-currency>
                     {formatCurrency(calculations.downPayment.toNumber())}
                   </div>
                 </div>
 
                 {/* Term */}
                 <div className="space-y-1.5">
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-step--2 text-muted-foreground">
                     Term
                   </div>
-                  <div className="text-xl font-mono font-semibold tabular-nums">
+                  <div className="text-step-1 font-semibold" data-numeric>
                     {scenario.term} mo
                   </div>
                 </div>
 
                 {/* Amount Financed */}
                 <div className="space-y-1.5">
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-step--2 text-muted-foreground">
                     Financed
                   </div>
-                  <div className="text-xl font-mono font-semibold tabular-nums transition-all duration-200">
+                  <div className="text-step-1 font-semibold transition-smooth" data-currency>
                     {formatCurrency(calculations.amountFinanced.toNumber())}
                   </div>
                 </div>
 
                 {/* Total Cost */}
                 <div className="space-y-1.5">
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-step--2 text-muted-foreground">
                     Total Cost
                   </div>
-                  <div className="text-xl font-mono font-semibold tabular-nums transition-all duration-200">
+                  <div className="text-step-1 font-semibold transition-smooth" data-currency>
                     {formatCurrency(calculations.totalCost.toNumber())}
                   </div>
                 </div>
@@ -179,15 +179,15 @@ export function MobilePaymentSheet({
 
               {/* Tax Breakdown */}
               <div className="space-y-3">
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center justify-between text-step--1">
                   <span className="text-muted-foreground">Sales Tax</span>
-                  <span className="font-mono font-semibold tabular-nums">
+                  <span className="font-semibold" data-currency>
                     {formatCurrency(calculations.totalTax.toNumber())}
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center justify-between text-step--1">
                   <span className="text-muted-foreground">Fees</span>
-                  <span className="font-mono font-semibold tabular-nums">
+                  <span className="font-semibold" data-currency>
                     {formatCurrency(calculations.totalFees.toNumber())}
                   </span>
                 </div>
@@ -198,7 +198,7 @@ export function MobilePaymentSheet({
 
             {/* Scenarios Section */}
             <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+              <h3 className="text-step--1 font-semibold text-muted-foreground uppercase tracking-wide">
                 Scenarios
               </h3>
               <ScenarioSelector

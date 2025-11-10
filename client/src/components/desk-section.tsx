@@ -36,7 +36,7 @@ export function DeskSection({
       <button
         type="button"
         onClick={handleToggle}
-        className={`w-full flex items-center justify-between p-5 md:p-6 text-left hover-elevate active-elevate-2 touch-manipulation min-h-[68px] ${
+        className={`w-full flex items-center justify-between p-5 md:p-6 text-left hover-elevate active-elevate-2 touch-manipulation min-h-[68px] transition-smooth ${
           alwaysExpanded ? 'cursor-default' : 'cursor-pointer'
         } ${isExpanded ? 'bg-primary/5' : ''}`}
         data-testid={testId ? `${testId}-header` : undefined}
@@ -44,22 +44,22 @@ export function DeskSection({
       >
         <div className="flex items-center gap-3 flex-1 min-w-0">
           {Icon && (
-            <div className={`flex items-center justify-center flex-shrink-0 w-10 h-10 md:w-9 md:h-9 rounded-lg transition-colors duration-200 ${
+            <div className={`flex items-center justify-center flex-shrink-0 w-10 h-10 md:w-9 md:h-9 rounded-lg transition-smooth ${
               isExpanded ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary'
             }`}>
               <Icon className="w-5 h-5 md:w-4 md:h-4" />
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <h2 className="text-lg md:text-xl font-semibold truncate">{title}</h2>
+            <h2 className="text-step-1 font-semibold truncate">{title}</h2>
             {summary && !isExpanded && (
-              <p className="text-xs md:text-sm text-muted-foreground mt-1 truncate">{summary}</p>
+              <p className="text-step--2 text-muted-foreground mt-1 truncate">{summary}</p>
             )}
           </div>
         </div>
         {!alwaysExpanded && (
           <ChevronDown 
-            className={`w-5 h-5 text-muted-foreground flex-shrink-0 transition-all duration-300 ease-out ${
+            className={`w-5 h-5 text-muted-foreground flex-shrink-0 transition-spring ${
               isExpanded ? 'rotate-180' : ''
             }`}
           />
@@ -67,7 +67,7 @@ export function DeskSection({
       </button>
       
       <div 
-        className={`transition-all duration-300 ease-out ${
+        className={`transition-spring ${
           isExpanded ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'
         }`}
       >
