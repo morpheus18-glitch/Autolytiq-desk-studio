@@ -36,7 +36,7 @@ export function DeskSection({
       <button
         type="button"
         onClick={handleToggle}
-        className={`w-full flex items-center justify-between p-4 md:p-6 text-left hover-elevate active-elevate-2 ${
+        className={`w-full flex items-center justify-between p-5 md:p-6 text-left hover-elevate active-elevate-2 touch-manipulation min-h-[68px] ${
           alwaysExpanded ? 'cursor-default' : 'cursor-pointer'
         } ${isExpanded ? 'border-l-4 border-l-primary' : ''}`}
         data-testid={testId ? `${testId}-header` : undefined}
@@ -44,8 +44,8 @@ export function DeskSection({
       >
         <div className="flex items-center gap-3 flex-1">
           {Icon && (
-            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 text-primary">
-              <Icon className="w-4 h-4" />
+            <div className="flex items-center justify-center w-10 h-10 md:w-9 md:h-9 rounded-lg bg-primary/10 text-primary">
+              <Icon className="w-5 h-5 md:w-4 md:h-4" />
             </div>
           )}
           <div className="flex-1">
@@ -57,7 +57,7 @@ export function DeskSection({
         </div>
         {!alwaysExpanded && (
           <ChevronDown 
-            className={`w-5 h-5 text-muted-foreground transition-transform duration-200 ${
+            className={`w-5 h-5 text-muted-foreground transition-all duration-300 ease-out ${
               isExpanded ? 'rotate-180' : ''
             }`}
           />
@@ -65,11 +65,11 @@ export function DeskSection({
       </button>
       
       <div 
-        className={`transition-all duration-200 ${
+        className={`transition-all duration-300 ease-out ${
           isExpanded ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'
         }`}
       >
-        <div className="p-4 md:p-6 pt-0 md:pt-0 space-y-4">
+        <div className="p-5 md:p-6 pt-0 md:pt-0 space-y-4">
           {children}
         </div>
       </div>

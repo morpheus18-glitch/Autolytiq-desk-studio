@@ -20,6 +20,8 @@ import { DealerFeesForm } from '@/components/forms/dealer-fees-form';
 import { AccessoriesForm } from '@/components/forms/accessories-form';
 import { ScenarioSelector } from '@/components/scenario-selector';
 import { DealWorkflowControls } from '@/components/deal-workflow-controls';
+import { MobilePaymentSheet } from '@/components/mobile-payment-sheet';
+import { MobileActionButton } from '@/components/mobile-action-button';
 
 const DEAL_STATE_COLORS: Record<string, string> = {
   DRAFT: 'bg-muted text-muted-foreground',
@@ -102,34 +104,24 @@ export default function DealWorksheetV2() {
     </div>
   );
   
-  // Summary component - will be rendered inside ScenarioFormProvider
-  const SummaryContent = () => {
-    const { calculations } = useScenarioForm();
-    
+  // Desktop Summary - Full view with scenario selector
+  const SummaryDesktop = () => {
     return (
-      <div className="space-y-4">
-        {/* Mobile: Compact View */}
-        <div className="lg:hidden">
-          <PaymentSummaryPanel variant="compact" />
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4">
+            Payment Summary
+          </h3>
+          <PaymentSummaryPanel variant="full" />
         </div>
         
-        {/* Desktop: Full View */}
-        <div className="hidden lg:block space-y-6">
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4">
-              Payment Summary
-            </h3>
-            <PaymentSummaryPanel variant="full" />
-          </div>
-          
-          {/* Scenario Selector - Desktop Only */}
-          <ScenarioSelector
-            dealId={deal.id}
-            scenarios={deal.scenarios}
-            activeScenarioId={activeScenarioId}
-            onScenarioChange={setActiveScenarioId}
-          />
-        </div>
+        {/* Scenario Selector - Desktop Only */}
+        <ScenarioSelector
+          dealId={deal.id}
+          scenarios={deal.scenarios}
+          activeScenarioId={activeScenarioId}
+          onScenarioChange={setActiveScenarioId}
+        />
       </div>
     );
   };
@@ -140,7 +132,18 @@ export default function DealWorksheetV2() {
       tradeVehicle={deal.tradeVehicle || null}
       dealId={deal.id}
     >
-      <LayoutShell header={header} summary={<SummaryContent />}>
+      <LayoutShell 
+        header={header} 
+        summaryDesktop={<SummaryDesktop />}
+        mobileSummary={
+          <MobilePaymentSheet
+            dealId={deal.id}
+            scenarios={deal.scenarios}
+            activeScenarioId={activeScenarioId}
+            onScenarioChange={setActiveScenarioId}
+          />
+        }
+      >
         {/* Workflow Controls */}
         <DealWorkflowControls deal={deal} activeScenarioId={activeScenarioId} />
         
@@ -322,6 +325,9 @@ export default function DealWorksheetV2() {
             </div>
           </div>
         </div>
+
+        {/* Mobile Action Button */}
+        <MobileActionButton />
       </LayoutShell>
     </ScenarioFormProvider>
   );
