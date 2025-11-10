@@ -1016,6 +1016,571 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== ANALYTICS API ENDPOINTS =====
+  
+  // Helper function to generate analytics data
+  function generateAnalyticsData() {
+    const now = new Date();
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+    
+    // Generate daily data for the last 6 months
+    const days: Date[] = [];
+    const current = new Date(sixMonthsAgo);
+    while (current <= now) {
+      days.push(new Date(current));
+      current.setDate(current.getDate() + 1);
+    }
+    
+    // Sales team members
+    const salesTeam = [
+      { id: '1', name: 'Alex Johnson', role: 'Senior Sales', avatar: '/api/placeholder/40/40' },
+      { id: '2', name: 'Sarah Williams', role: 'Sales Manager', avatar: '/api/placeholder/40/40' },
+      { id: '3', name: 'Mike Chen', role: 'Sales Associate', avatar: '/api/placeholder/40/40' },
+      { id: '4', name: 'Emily Davis', role: 'Finance Manager', avatar: '/api/placeholder/40/40' },
+      { id: '5', name: 'James Wilson', role: 'Sales Associate', avatar: '/api/placeholder/40/40' },
+      { id: '6', name: 'Lisa Brown', role: 'Internet Sales', avatar: '/api/placeholder/40/40' },
+    ];
+    
+    // Generate realistic deal data with seasonal variation
+    const generateDealData = (date: Date) => {
+      const month = date.getMonth();
+      const dayOfWeek = date.getDay();
+      const dayOfMonth = date.getDate();
+      
+      // Seasonal multipliers (higher in spring/summer)
+      const seasonalMultiplier = 1 + (Math.sin((month - 3) * Math.PI / 6) * 0.3);
+      
+      // Weekend boost
+      const weekendMultiplier = (dayOfWeek === 0 || dayOfWeek === 6) ? 1.4 : 1;
+      
+      // End of month push
+      const endOfMonthMultiplier = dayOfMonth > 25 ? 1.3 : 1;
+      
+      // Base deals per day
+      const baseDeals = 8;
+      const dealsCount = Math.round(
+        baseDeals * seasonalMultiplier * weekendMultiplier * endOfMonthMultiplier + 
+        (Math.random() * 4 - 2)
+      );
+      
+      const deals = [];
+      for (let i = 0; i < dealsCount; i++) {
+        const salesperson = salesTeam[Math.floor(Math.random() * salesTeam.length)];
+        const isNew = Math.random() > 0.4;
+        const isLease = Math.random() > 0.7;
+        const hasTradeIn = Math.random() > 0.5;
+        const financeType = Math.random() > 0.3 ? 'finance' : 'cash';
+        
+        const basePrice = isNew ? 35000 + Math.random() * 40000 : 15000 + Math.random() * 30000;
+        const downPayment = financeType === 'finance' ? basePrice * (0.1 + Math.random() * 0.15) : 0;
+        const tradeValue = hasTradeIn ? 5000 + Math.random() * 20000 : 0;
+        const grossProfit = basePrice * (0.08 + Math.random() * 0.07);
+        
+        deals.push({
+          date: date.toISOString(),
+          salespersonId: salesperson.id,
+          salesperson: salesperson.name,
+          vehicleType: isNew ? 'new' : 'used',
+          dealType: isLease ? 'lease' : 'purchase',
+          financeType,
+          vehiclePrice: basePrice,
+          downPayment,
+          tradeInValue: tradeValue,
+          grossProfit,
+          hasTradeIn,
+          fiProductsRevenue: financeType === 'finance' ? 800 + Math.random() * 2000 : 0,
+          apr: financeType === 'finance' ? 3.9 + Math.random() * 8 : 0,
+          term: financeType === 'finance' ? (isLease ? 36 : 60 + Math.floor(Math.random() * 3) * 12) : 0,
+          creditScore: 580 + Math.floor(Math.random() * 270),
+          responseTimeMinutes: 5 + Math.floor(Math.random() * 120),
+          status: Math.random() > 0.15 ? 'completed' : 'cancelled',
+        });
+      }
+      
+      return deals;
+    };
+    
+    // Generate all historical data
+    let allDeals: any[] = [];
+    days.forEach(day => {
+      const dayDeals = generateDealData(day);
+      allDeals = allDeals.concat(dayDeals);
+    });
+    
+    // Generate inventory data
+    const makes = ['Toyota', 'Honda', 'Ford', 'Chevrolet', 'BMW', 'Mercedes-Benz', 'Audi', 'Mazda', 'Nissan', 'Volkswagen'];
+    const inventory = makes.flatMap(make => {
+      const modelCount = 3 + Math.floor(Math.random() * 5);
+      return Array(modelCount).fill(0).map((_, i) => ({
+        make,
+        model: `Model ${String.fromCharCode(65 + i)}`,
+        count: Math.floor(5 + Math.random() * 20),
+        avgDaysOnLot: Math.floor(15 + Math.random() * 60),
+        turnoverRate: 0.3 + Math.random() * 0.5,
+      }));
+    });
+    
+    return { deals: allDeals, inventory, salesTeam };
+  }
+  
+  // GET /api/analytics/kpis - Key Performance Indicators
+  app.get('/api/analytics/kpis', async (req, res) => {
+    try {
+      const { period = 'month' } = req.query;
+      const { deals } = generateAnalyticsData();
+      
+      const now = new Date();
+      let startDate = new Date();
+      let previousStartDate = new Date();
+      
+      switch (period) {
+        case 'today':
+          startDate.setHours(0, 0, 0, 0);
+          previousStartDate = new Date(startDate);
+          previousStartDate.setDate(previousStartDate.getDate() - 1);
+          break;
+        case 'week':
+          startDate.setDate(now.getDate() - 7);
+          previousStartDate = new Date(startDate);
+          previousStartDate.setDate(previousStartDate.getDate() - 7);
+          break;
+        case 'month':
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          previousStartDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          break;
+        case 'quarter':
+          const currentQuarter = Math.floor(now.getMonth() / 3);
+          startDate = new Date(now.getFullYear(), currentQuarter * 3, 1);
+          previousStartDate = new Date(now.getFullYear(), (currentQuarter - 1) * 3, 1);
+          break;
+        case 'year':
+          startDate = new Date(now.getFullYear(), 0, 1);
+          previousStartDate = new Date(now.getFullYear() - 1, 0, 1);
+          break;
+      }
+      
+      const currentDeals = deals.filter(d => new Date(d.date) >= startDate && d.status === 'completed');
+      const previousDeals = deals.filter(d => 
+        new Date(d.date) >= previousStartDate && 
+        new Date(d.date) < startDate && 
+        d.status === 'completed'
+      );
+      
+      const totalRevenue = currentDeals.reduce((sum, d) => sum + d.vehiclePrice, 0);
+      const previousRevenue = previousDeals.reduce((sum, d) => sum + d.vehiclePrice, 0);
+      const revenueChange = previousRevenue > 0 ? ((totalRevenue - previousRevenue) / previousRevenue) * 100 : 0;
+      
+      const totalProfit = currentDeals.reduce((sum, d) => sum + d.grossProfit + d.fiProductsRevenue, 0);
+      const previousProfit = previousDeals.reduce((sum, d) => sum + d.grossProfit + d.fiProductsRevenue, 0);
+      const profitChange = previousProfit > 0 ? ((totalProfit - previousProfit) / previousProfit) * 100 : 0;
+      
+      const avgDealValue = currentDeals.length > 0 ? totalRevenue / currentDeals.length : 0;
+      const previousAvgDealValue = previousDeals.length > 0 ? previousRevenue / previousDeals.length : 0;
+      const avgDealChange = previousAvgDealValue > 0 ? ((avgDealValue - previousAvgDealValue) / previousAvgDealValue) * 100 : 0;
+      
+      const conversionRate = deals.filter(d => new Date(d.date) >= startDate).length > 0 
+        ? (currentDeals.length / deals.filter(d => new Date(d.date) >= startDate).length) * 100 
+        : 0;
+      
+      const financeDeals = currentDeals.filter(d => d.financeType === 'finance');
+      const financeRate = currentDeals.length > 0 ? (financeDeals.length / currentDeals.length) * 100 : 0;
+      
+      const leaseDeals = currentDeals.filter(d => d.dealType === 'lease');
+      const leaseRate = currentDeals.length > 0 ? (leaseDeals.length / currentDeals.length) * 100 : 0;
+      
+      const tradeInRate = currentDeals.length > 0 
+        ? (currentDeals.filter(d => d.hasTradeIn).length / currentDeals.length) * 100 
+        : 0;
+      
+      const avgResponseTime = currentDeals.length > 0 
+        ? currentDeals.reduce((sum, d) => sum + d.responseTimeMinutes, 0) / currentDeals.length 
+        : 0;
+      
+      const fiAttachmentRate = financeDeals.length > 0 
+        ? (financeDeals.filter(d => d.fiProductsRevenue > 0).length / financeDeals.length) * 100 
+        : 0;
+      
+      res.json({
+        totalDeals: currentDeals.length,
+        dealsChange: previousDeals.length > 0 ? ((currentDeals.length - previousDeals.length) / previousDeals.length) * 100 : 0,
+        totalRevenue,
+        revenueChange,
+        totalProfit,
+        profitChange,
+        avgDealValue,
+        avgDealChange,
+        conversionRate,
+        financeRate,
+        leaseRate,
+        tradeInRate,
+        avgResponseTime,
+        fiAttachmentRate,
+        grossProfitMargin: totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0,
+        avgFinanceAPR: financeDeals.length > 0 
+          ? financeDeals.reduce((sum, d) => sum + d.apr, 0) / financeDeals.length 
+          : 0,
+        avgCreditScore: currentDeals.length > 0 
+          ? Math.round(currentDeals.reduce((sum, d) => sum + d.creditScore, 0) / currentDeals.length)
+          : 0,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to get KPIs' });
+    }
+  });
+  
+  // GET /api/analytics/revenue - Revenue data by period
+  app.get('/api/analytics/revenue', async (req, res) => {
+    try {
+      const { period = 'month', groupBy = 'day' } = req.query;
+      const { deals } = generateAnalyticsData();
+      
+      const now = new Date();
+      let startDate = new Date();
+      
+      switch (period) {
+        case 'week':
+          startDate.setDate(now.getDate() - 7);
+          break;
+        case 'month':
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          break;
+        case 'quarter':
+          const currentQuarter = Math.floor(now.getMonth() / 3);
+          startDate = new Date(now.getFullYear(), currentQuarter * 3, 1);
+          break;
+        case 'year':
+          startDate = new Date(now.getFullYear(), 0, 1);
+          break;
+        default:
+          startDate.setDate(now.getDate() - 30);
+      }
+      
+      const filteredDeals = deals.filter(d => 
+        new Date(d.date) >= startDate && 
+        d.status === 'completed'
+      );
+      
+      // Group data
+      const grouped = new Map();
+      filteredDeals.forEach(deal => {
+        const date = new Date(deal.date);
+        let key: string;
+        
+        switch (groupBy) {
+          case 'day':
+            key = date.toISOString().split('T')[0];
+            break;
+          case 'week':
+            const weekStart = new Date(date);
+            weekStart.setDate(date.getDate() - date.getDay());
+            key = weekStart.toISOString().split('T')[0];
+            break;
+          case 'month':
+            key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            break;
+          default:
+            key = date.toISOString().split('T')[0];
+        }
+        
+        if (!grouped.has(key)) {
+          grouped.set(key, {
+            date: key,
+            revenue: 0,
+            profit: 0,
+            deals: 0,
+            newVehicles: 0,
+            usedVehicles: 0,
+            financeRevenue: 0,
+            cashRevenue: 0,
+          });
+        }
+        
+        const group = grouped.get(key);
+        group.revenue += deal.vehiclePrice;
+        group.profit += deal.grossProfit + deal.fiProductsRevenue;
+        group.deals += 1;
+        if (deal.vehicleType === 'new') group.newVehicles += 1;
+        else group.usedVehicles += 1;
+        if (deal.financeType === 'finance') group.financeRevenue += deal.vehiclePrice;
+        else group.cashRevenue += deal.vehiclePrice;
+      });
+      
+      const data = Array.from(grouped.values()).sort((a, b) => 
+        new Date(a.date).getTime() - new Date(b.date).getTime()
+      );
+      
+      res.json(data);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to get revenue data' });
+    }
+  });
+  
+  // GET /api/analytics/deals - Deal analytics
+  app.get('/api/analytics/deals', async (req, res) => {
+    try {
+      const { period = 'month' } = req.query;
+      const { deals } = generateAnalyticsData();
+      
+      const now = new Date();
+      let startDate = new Date();
+      
+      switch (period) {
+        case 'week':
+          startDate.setDate(now.getDate() - 7);
+          break;
+        case 'month':
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          break;
+        case 'quarter':
+          const currentQuarter = Math.floor(now.getMonth() / 3);
+          startDate = new Date(now.getFullYear(), currentQuarter * 3, 1);
+          break;
+        case 'year':
+          startDate = new Date(now.getFullYear(), 0, 1);
+          break;
+        default:
+          startDate.setDate(now.getDate() - 30);
+      }
+      
+      const filteredDeals = deals.filter(d => new Date(d.date) >= startDate);
+      const completedDeals = filteredDeals.filter(d => d.status === 'completed');
+      
+      // Pipeline funnel data
+      const pipeline = {
+        leads: filteredDeals.length + Math.floor(filteredDeals.length * 0.3),
+        qualified: filteredDeals.length,
+        proposals: Math.floor(filteredDeals.length * 0.8),
+        negotiations: Math.floor(filteredDeals.length * 0.6),
+        closed: completedDeals.length,
+      };
+      
+      // Payment distribution
+      const paymentRanges = [
+        { range: '< $300', count: 0 },
+        { range: '$300-$500', count: 0 },
+        { range: '$500-$700', count: 0 },
+        { range: '$700-$900', count: 0 },
+        { range: '> $900', count: 0 },
+      ];
+      
+      completedDeals.forEach(deal => {
+        if (deal.financeType === 'finance') {
+          const payment = (deal.vehiclePrice - deal.downPayment) / deal.term;
+          if (payment < 300) paymentRanges[0].count++;
+          else if (payment < 500) paymentRanges[1].count++;
+          else if (payment < 700) paymentRanges[2].count++;
+          else if (payment < 900) paymentRanges[3].count++;
+          else paymentRanges[4].count++;
+        }
+      });
+      
+      // Vehicle type breakdown
+      const vehicleTypes = {
+        new: completedDeals.filter(d => d.vehicleType === 'new').length,
+        used: completedDeals.filter(d => d.vehicleType === 'used').length,
+        certified: Math.floor(completedDeals.filter(d => d.vehicleType === 'used').length * 0.3),
+      };
+      
+      // Finance type breakdown
+      const financeTypes = {
+        cash: completedDeals.filter(d => d.financeType === 'cash').length,
+        finance: completedDeals.filter(d => d.financeType === 'finance' && d.dealType === 'purchase').length,
+        lease: completedDeals.filter(d => d.dealType === 'lease').length,
+      };
+      
+      // Credit score distribution
+      const creditDistribution = [
+        { range: '< 600', count: completedDeals.filter(d => d.creditScore < 600).length },
+        { range: '600-650', count: completedDeals.filter(d => d.creditScore >= 600 && d.creditScore < 650).length },
+        { range: '650-700', count: completedDeals.filter(d => d.creditScore >= 650 && d.creditScore < 700).length },
+        { range: '700-750', count: completedDeals.filter(d => d.creditScore >= 700 && d.creditScore < 750).length },
+        { range: '> 750', count: completedDeals.filter(d => d.creditScore >= 750).length },
+      ];
+      
+      res.json({
+        pipeline,
+        paymentDistribution: paymentRanges,
+        vehicleTypes,
+        financeTypes,
+        creditDistribution,
+        avgDownPayment: completedDeals.filter(d => d.financeType === 'finance').length > 0
+          ? completedDeals.filter(d => d.financeType === 'finance').reduce((sum, d) => sum + d.downPayment, 0) / 
+            completedDeals.filter(d => d.financeType === 'finance').length
+          : 0,
+        avgTradeValue: completedDeals.filter(d => d.hasTradeIn).length > 0
+          ? completedDeals.filter(d => d.hasTradeIn).reduce((sum, d) => sum + d.tradeInValue, 0) / 
+            completedDeals.filter(d => d.hasTradeIn).length
+          : 0,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to get deal analytics' });
+    }
+  });
+  
+  // GET /api/analytics/inventory - Inventory metrics
+  app.get('/api/analytics/inventory', async (req, res) => {
+    try {
+      const { inventory } = generateAnalyticsData();
+      
+      // Calculate inventory metrics
+      const totalUnits = inventory.reduce((sum, item) => sum + item.count, 0);
+      const avgDaysOnLot = inventory.reduce((sum, item) => sum + item.avgDaysOnLot * item.count, 0) / totalUnits;
+      const avgTurnoverRate = inventory.reduce((sum, item) => sum + item.turnoverRate * item.count, 0) / totalUnits;
+      
+      // Top performers (low days on lot, high turnover)
+      const hotInventory = [...inventory]
+        .sort((a, b) => b.turnoverRate - a.turnoverRate)
+        .slice(0, 5)
+        .map(item => ({
+          ...item,
+          performance: 'hot',
+        }));
+      
+      // Slow movers (high days on lot, low turnover)
+      const coldInventory = [...inventory]
+        .sort((a, b) => a.turnoverRate - b.turnoverRate)
+        .slice(0, 5)
+        .map(item => ({
+          ...item,
+          performance: 'cold',
+        }));
+      
+      // Make/Model popularity
+      const makePopularity = inventory.reduce((acc: any[], item) => {
+        const existing = acc.find(m => m.make === item.make);
+        if (existing) {
+          existing.count += item.count;
+          existing.models.push({ model: item.model, count: item.count });
+        } else {
+          acc.push({
+            make: item.make,
+            count: item.count,
+            models: [{ model: item.model, count: item.count }],
+          });
+        }
+        return acc;
+      }, []).sort((a, b) => b.count - a.count);
+      
+      // Age distribution (simulated)
+      const ageDistribution = [
+        { range: '0-30 days', count: Math.floor(totalUnits * 0.35), percentage: 35 },
+        { range: '31-60 days', count: Math.floor(totalUnits * 0.30), percentage: 30 },
+        { range: '61-90 days', count: Math.floor(totalUnits * 0.20), percentage: 20 },
+        { range: '> 90 days', count: Math.floor(totalUnits * 0.15), percentage: 15 },
+      ];
+      
+      res.json({
+        totalUnits,
+        avgDaysOnLot: Math.round(avgDaysOnLot),
+        avgTurnoverRate,
+        optimalInventoryLevel: Math.round(totalUnits * 1.1),
+        currentUtilization: 87 + Math.random() * 10,
+        hotInventory,
+        coldInventory,
+        makePopularity,
+        ageDistribution,
+        projectedShortages: [
+          { make: 'Toyota', model: 'Camry', daysUntilShortage: 5 },
+          { make: 'Honda', model: 'CR-V', daysUntilShortage: 8 },
+        ],
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to get inventory metrics' });
+    }
+  });
+  
+  // GET /api/analytics/team - Team performance data
+  app.get('/api/analytics/team', async (req, res) => {
+    try {
+      const { period = 'month' } = req.query;
+      const { deals, salesTeam } = generateAnalyticsData();
+      
+      const now = new Date();
+      let startDate = new Date();
+      
+      switch (period) {
+        case 'week':
+          startDate.setDate(now.getDate() - 7);
+          break;
+        case 'month':
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          break;
+        case 'quarter':
+          const currentQuarter = Math.floor(now.getMonth() / 3);
+          startDate = new Date(now.getFullYear(), currentQuarter * 3, 1);
+          break;
+        case 'year':
+          startDate = new Date(now.getFullYear(), 0, 1);
+          break;
+        default:
+          startDate.setDate(now.getDate() - 30);
+      }
+      
+      const filteredDeals = deals.filter(d => 
+        new Date(d.date) >= startDate && 
+        d.status === 'completed'
+      );
+      
+      // Calculate performance metrics for each team member
+      const performance = salesTeam.map(member => {
+        const memberDeals = filteredDeals.filter(d => d.salespersonId === member.id);
+        const revenue = memberDeals.reduce((sum, d) => sum + d.vehiclePrice, 0);
+        const profit = memberDeals.reduce((sum, d) => sum + d.grossProfit + d.fiProductsRevenue, 0);
+        const avgResponseTime = memberDeals.length > 0
+          ? memberDeals.reduce((sum, d) => sum + d.responseTimeMinutes, 0) / memberDeals.length
+          : 0;
+        
+        return {
+          id: member.id,
+          name: member.name,
+          role: member.role,
+          avatar: member.avatar,
+          deals: memberDeals.length,
+          revenue,
+          profit,
+          avgDealValue: memberDeals.length > 0 ? revenue / memberDeals.length : 0,
+          avgProfit: memberDeals.length > 0 ? profit / memberDeals.length : 0,
+          conversionRate: 75 + Math.random() * 20,
+          avgResponseTime: Math.round(avgResponseTime),
+          customerSatisfaction: 4.2 + Math.random() * 0.7,
+          fiAttachmentRate: memberDeals.filter(d => d.financeType === 'finance' && d.fiProductsRevenue > 0).length /
+                          Math.max(memberDeals.filter(d => d.financeType === 'finance').length, 1) * 100,
+        };
+      }).sort((a, b) => b.revenue - a.revenue);
+      
+      // Activity metrics
+      const activities = {
+        calls: performance.map(p => ({ name: p.name, count: Math.floor(50 + Math.random() * 100) })),
+        emails: performance.map(p => ({ name: p.name, count: Math.floor(30 + Math.random() * 70) })),
+        appointments: performance.map(p => ({ name: p.name, count: Math.floor(10 + Math.random() * 30) })),
+        testDrives: performance.map(p => ({ name: p.name, count: Math.floor(5 + Math.random() * 20) })),
+      };
+      
+      // Goals vs actual
+      const goals = performance.map(p => ({
+        name: p.name,
+        dealsGoal: 20,
+        dealsActual: p.deals,
+        revenueGoal: 500000,
+        revenueActual: p.revenue,
+        profitGoal: 40000,
+        profitActual: p.profit,
+      }));
+      
+      res.json({
+        leaderboard: performance,
+        activities,
+        goals,
+        teamAvgResponseTime: Math.round(performance.reduce((sum, p) => sum + p.avgResponseTime, 0) / performance.length),
+        teamAvgSatisfaction: (performance.reduce((sum, p) => sum + p.customerSatisfaction, 0) / performance.length).toFixed(1),
+        topPerformer: performance[0],
+        mostImproved: performance[Math.floor(Math.random() * performance.length)],
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to get team performance data' });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
