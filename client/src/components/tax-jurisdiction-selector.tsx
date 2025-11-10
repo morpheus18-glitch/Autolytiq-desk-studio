@@ -149,12 +149,6 @@ export function TaxJurisdictionSelector({
                 ${parseFloat(selectedJurisdiction.titleFee as any).toFixed(2)}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Trade-In Credit:</span>
-              <span className="capitalize" data-testid="text-trade-in-credit-type">
-                {selectedJurisdiction.tradeInCreditType.replace('_', ' ')}
-              </span>
-            </div>
           </div>
         </div>
       )}
