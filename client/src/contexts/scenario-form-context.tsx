@@ -172,7 +172,11 @@ export function ScenarioFormProvider({
     
     // Monthly Payment calculation (simplified - actual would use APR)
     const term = new Decimal(scenario.term || 60);
-    const apr = new Decimal(scenario.apr || 0).dividedBy(100);
+    // Parse APR safely - handle empty strings, null, undefined, and invalid inputs
+    const aprValue = scenario.apr && scenario.apr.toString().trim() !== '' 
+      ? parseFloat(scenario.apr.toString()) 
+      : 0;
+    const apr = new Decimal(isNaN(aprValue) ? 0 : aprValue).dividedBy(100);
     
     let monthlyPayment = new Decimal(0);
     if (scenario.scenarioType === 'FINANCE_DEAL' && term.greaterThan(0)) {
@@ -188,8 +192,10 @@ export function ScenarioFormProvider({
       }
     } else if (scenario.scenarioType === 'LEASE_DEAL' && term.greaterThan(0)) {
       // Simplified lease calculation
-      const residualValue = new Decimal(scenario.residualValue || 0);
-      const moneyFactor = new Decimal(scenario.moneyFactor || 0.00125);
+      const residualValueStr = scenario.residualValue?.toString().trim() || '0';
+      const residualValue = new Decimal(parseFloat(residualValueStr) || 0);
+      const moneyFactorStr = scenario.moneyFactor?.toString().trim() || '0.00125';
+      const moneyFactor = new Decimal(parseFloat(moneyFactorStr) || 0.00125);
       const depreciation = amountFinanced.minus(residualValue).dividedBy(term);
       const finance = amountFinanced.plus(residualValue).times(moneyFactor);
       monthlyPayment = depreciation.plus(finance);

@@ -19,6 +19,7 @@ import { TaxBreakdownForm } from '@/components/forms/tax-breakdown-form';
 import { DealerFeesForm } from '@/components/forms/dealer-fees-form';
 import { AccessoriesForm } from '@/components/forms/accessories-form';
 import { ScenarioSelector } from '@/components/scenario-selector';
+import { DealWorkflowControls } from '@/components/deal-workflow-controls';
 
 const DEAL_STATE_COLORS: Record<string, string> = {
   DRAFT: 'bg-muted text-muted-foreground',
@@ -140,6 +141,9 @@ export default function DealWorksheetV2() {
       dealId={deal.id}
     >
       <LayoutShell header={header} summary={<SummaryContent />}>
+        {/* Workflow Controls */}
+        <DealWorkflowControls deal={deal} activeScenarioId={activeScenarioId} />
+        
         {/* Mobile: Collapsible Sections */}
         <div className="lg:hidden space-y-4">
           <DeskSection title="Customer Information" icon={User} defaultOpen>
