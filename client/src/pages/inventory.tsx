@@ -1111,37 +1111,17 @@ export default function InventoryPage() {
               </Card>
             ) : (
               <>
-                {/* Mobile: Horizontal Snap Scroll */}
-                {isMobile ? (
-                  <div className="overflow-x-auto snap-x snap-mandatory -mx-3 px-3 pb-4 scrollbar-hide">
-                    <div className="flex gap-3">
-                      {sortedVehicles.map((vehicle) => (
-                        <div
-                          key={vehicle.id}
-                          className="snap-center shrink-0 basis-[calc(100%-1.5rem)] max-w-[20rem]"
-                        >
-                          <VehicleCard
-                            vehicle={vehicle}
-                            onViewDetails={() => handleViewDetails(vehicle)}
-                            onStartDeal={() => handleStartDeal(vehicle)}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  /* Desktop/Tablet: Grid */
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {sortedVehicles.map((vehicle) => (
-                      <VehicleCard
-                        key={vehicle.id}
-                        vehicle={vehicle}
-                        onViewDetails={() => handleViewDetails(vehicle)}
-                        onStartDeal={() => handleStartDeal(vehicle)}
-                      />
-                    ))}
-                  </div>
-                )}
+                {/* Responsive Grid - All Viewports */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {sortedVehicles.map((vehicle) => (
+                    <VehicleCard
+                      key={vehicle.id}
+                      vehicle={vehicle}
+                      onViewDetails={() => handleViewDetails(vehicle)}
+                      onStartDeal={() => handleStartDeal(vehicle)}
+                    />
+                  ))}
+                </div>
                 
                 {/* Pagination */}
                 {data && data.pages > 1 && (
