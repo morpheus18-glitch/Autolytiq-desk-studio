@@ -35,7 +35,11 @@ export interface IStorage {
   updateVehicle(id: string, vehicle: Partial<InsertVehicle>): Promise<Vehicle>;
   
   // Trade Vehicles
+  getTradeVehiclesByDeal(dealId: string): Promise<TradeVehicle[]>;
+  getTradeVehicle(id: string): Promise<TradeVehicle | undefined>;
   createTradeVehicle(tradeVehicle: InsertTradeVehicle): Promise<TradeVehicle>;
+  updateTradeVehicle(id: string, tradeVehicle: Partial<InsertTradeVehicle>): Promise<TradeVehicle>;
+  deleteTradeVehicle(id: string): Promise<void>;
   
   // Tax Jurisdictions
   getAllTaxJurisdictions(): Promise<TaxJurisdictionWithRules[]>;
@@ -151,9 +155,30 @@ export class DatabaseStorage implements IStorage {
   }
   
   // Trade Vehicles
+  async getTradeVehiclesByDeal(dealId: string): Promise<TradeVehicle[]> {
+    return await db.select().from(tradeVehicles).where(eq(tradeVehicles.dealId, dealId));
+  }
+
+  async getTradeVehicle(id: string): Promise<TradeVehicle | undefined> {
+    const [tradeVehicle] = await db.select().from(tradeVehicles).where(eq(tradeVehicles.id, id));
+    return tradeVehicle || undefined;
+  }
+
   async createTradeVehicle(insertTradeVehicle: InsertTradeVehicle): Promise<TradeVehicle> {
     const [tradeVehicle] = await db.insert(tradeVehicles).values(insertTradeVehicle).returning();
     return tradeVehicle;
+  }
+
+  async updateTradeVehicle(id: string, data: Partial<InsertTradeVehicle>): Promise<TradeVehicle> {
+    const [tradeVehicle] = await db.update(tradeVehicles)
+      .set(data)
+      .where(eq(tradeVehicles.id, id))
+      .returning();
+    return tradeVehicle;
+  }
+
+  async deleteTradeVehicle(id: string): Promise<void> {
+    await db.delete(tradeVehicles).where(eq(tradeVehicles.id, id));
   }
   
   // Tax Jurisdictions

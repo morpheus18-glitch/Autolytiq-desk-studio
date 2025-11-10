@@ -23,6 +23,7 @@ import { DealWorkflowControls } from '@/components/deal-workflow-controls';
 import { MobilePaymentSheet } from '@/components/mobile-payment-sheet';
 import { MobileActionButton } from '@/components/mobile-action-button';
 import { VehicleSwitcher } from '@/components/vehicle-switcher';
+import { TradeGarageSheet } from '@/components/trade-garage-sheet';
 
 const DEAL_STATE_COLORS: Record<string, string> = {
   DRAFT: 'bg-muted text-muted-foreground',
@@ -206,8 +207,16 @@ export default function DealWorksheetV2() {
             <PricingForm />
           </DeskSection>
           
-          <DeskSection title="Trade-In" icon={TrendingUp}>
-            <TradeForm />
+          <DeskSection 
+            title="Trade-In" 
+            icon={TrendingUp}
+          >
+            <div className="space-y-4">
+              <div className="flex justify-end">
+                <TradeGarageSheet dealId={dealId!} />
+              </div>
+              <TradeForm />
+            </div>
           </DeskSection>
           
           <DeskSection title="Finance Terms" icon={Calculator} defaultOpen>
@@ -316,7 +325,10 @@ export default function DealWorksheetV2() {
               </div>
               
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Trade-In</h3>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Trade-In</h3>
+                  <TradeGarageSheet dealId={dealId!} />
+                </div>
                 <TradeForm />
               </div>
               

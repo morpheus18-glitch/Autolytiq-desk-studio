@@ -69,6 +69,7 @@ export type Vehicle = typeof vehicles.$inferSelect;
 // ===== TRADE VEHICLES TABLE =====
 export const tradeVehicles = pgTable("trade_vehicles", {
   id: uuid("id").primaryKey().defaultRandom(),
+  dealId: uuid("deal_id").notNull(),
   year: integer("year").notNull(),
   make: text("make").notNull(),
   model: text("model").notNull(),
@@ -211,6 +212,7 @@ export const dealScenarios = pgTable("deal_scenarios", {
   id: uuid("id").primaryKey().defaultRandom(),
   dealId: uuid("deal_id").notNull().references(() => deals.id, { onDelete: "cascade" }),
   vehicleId: uuid("vehicle_id").references(() => vehicles.id), // Each scenario can reference a different vehicle
+  tradeVehicleId: uuid("trade_vehicle_id"), // Each scenario can reference a specific trade vehicle
   scenarioType: text("scenario_type").notNull(), // CASH_DEAL, FINANCE_DEAL, LEASE_DEAL
   name: text("name").notNull(),
   
@@ -301,8 +303,12 @@ export const vehiclesRelations = relations(vehicles, ({ many }) => ({
   deals: many(deals),
 }));
 
-export const tradeVehiclesRelations = relations(tradeVehicles, ({ many }) => ({
-  deals: many(deals),
+export const tradeVehiclesRelations = relations(tradeVehicles, ({ one, many }) => ({
+  deal: one(deals, {
+    fields: [tradeVehicles.dealId],
+    references: [deals.id],
+  }),
+  scenarios: many(dealScenarios),
 }));
 
 export const dealsRelations = relations(deals, ({ one, many }) => ({
@@ -333,6 +339,7 @@ export const dealsRelations = relations(deals, ({ one, many }) => ({
     fields: [deals.tradeVehicleId],
     references: [tradeVehicles.id],
   }),
+  tradeVehicles: many(tradeVehicles),
   scenarios: many(dealScenarios),
   auditLogs: many(auditLog),
 }));
@@ -365,6 +372,10 @@ export const dealScenariosRelations = relations(dealScenarios, ({ one, many }) =
   vehicle: one(vehicles, {
     fields: [dealScenarios.vehicleId],
     references: [vehicles.id],
+  }),
+  tradeVehicle: one(tradeVehicles, {
+    fields: [dealScenarios.tradeVehicleId],
+    references: [tradeVehicles.id],
   }),
   taxJurisdiction: one(taxJurisdictions, {
     fields: [dealScenarios.taxJurisdictionId],

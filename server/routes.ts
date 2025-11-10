@@ -116,6 +116,164 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // ===== TRADE VEHICLES =====
+  app.get('/api/deals/:dealId/trades', async (req, res) => {
+    try {
+      const { dealId } = req.params;
+      
+      const deal = await storage.getDeal(dealId);
+      if (!deal) {
+        return res.status(404).json({ error: 'Deal not found' });
+      }
+      
+      const trades = await storage.getTradeVehiclesByDeal(dealId);
+      res.json(trades);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to get trade vehicles' });
+    }
+  });
+
+  app.post('/api/deals/:dealId/trades', async (req, res) => {
+    try {
+      const { dealId } = req.params;
+      
+      const deal = await storage.getDeal(dealId);
+      if (!deal) {
+        return res.status(404).json({ error: 'Deal not found' });
+      }
+      
+      const tradeVehicleInputSchema = insertTradeVehicleSchema
+        .omit({ dealId: true })
+        .merge(z.object({
+          year: z.coerce.number(),
+          mileage: z.coerce.number(),
+          allowance: z.coerce.number(),
+          payoff: z.coerce.number().default(0),
+        }));
+      
+      const input = tradeVehicleInputSchema.parse(req.body);
+      
+      const data = {
+        ...input,
+        dealId,
+        allowance: String(input.allowance),
+        payoff: String(input.payoff),
+      };
+      
+      const tradeVehicle = await storage.createTradeVehicle(data);
+      
+      await storage.createAuditLog({
+        dealId,
+        userId: deal.salespersonId,
+        action: 'create',
+        entityType: 'trade_vehicle',
+        entityId: tradeVehicle.id,
+        fieldName: 'trade_vehicle',
+        oldValue: '',
+        newValue: `${tradeVehicle.year} ${tradeVehicle.make} ${tradeVehicle.model}`,
+      });
+      
+      res.status(201).json(tradeVehicle);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || 'Failed to create trade vehicle' });
+    }
+  });
+
+  app.patch('/api/deals/:dealId/trades/:tradeId', async (req, res) => {
+    try {
+      const { dealId, tradeId } = req.params;
+      
+      const deal = await storage.getDeal(dealId);
+      if (!deal) {
+        return res.status(404).json({ error: 'Deal not found' });
+      }
+      
+      const oldTrade = await storage.getTradeVehicle(tradeId);
+      if (!oldTrade) {
+        return res.status(404).json({ error: 'Trade vehicle not found' });
+      }
+      
+      if (oldTrade.dealId !== dealId) {
+        return res.status(403).json({ error: 'Trade vehicle does not belong to this deal' });
+      }
+      
+      const tradeVehicleUpdateSchema = insertTradeVehicleSchema
+        .omit({ dealId: true })
+        .merge(z.object({
+          year: z.coerce.number(),
+          mileage: z.coerce.number(),
+          allowance: z.coerce.number(),
+          payoff: z.coerce.number(),
+        }))
+        .partial();
+      
+      const input = tradeVehicleUpdateSchema.parse(req.body);
+      
+      const data: any = { ...input };
+      if (input.allowance !== undefined) data.allowance = String(input.allowance);
+      if (input.payoff !== undefined) data.payoff = String(input.payoff);
+      
+      const tradeVehicle = await storage.updateTradeVehicle(tradeId, data);
+      
+      const significantFields = ['allowance', 'payoff', 'year', 'make', 'model', 'mileage'];
+      for (const field of significantFields) {
+        if (req.body[field] !== undefined && String((oldTrade as any)[field]) !== String((tradeVehicle as any)[field])) {
+          await storage.createAuditLog({
+            dealId,
+            userId: deal.salespersonId,
+            action: 'update',
+            entityType: 'trade_vehicle',
+            entityId: tradeVehicle.id,
+            fieldName: field,
+            oldValue: String((oldTrade as any)[field] || ''),
+            newValue: String((tradeVehicle as any)[field] || ''),
+          });
+        }
+      }
+      
+      res.json(tradeVehicle);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || 'Failed to update trade vehicle' });
+    }
+  });
+
+  app.delete('/api/deals/:dealId/trades/:tradeId', async (req, res) => {
+    try {
+      const { dealId, tradeId } = req.params;
+      
+      const deal = await storage.getDeal(dealId);
+      if (!deal) {
+        return res.status(404).json({ error: 'Deal not found' });
+      }
+      
+      const tradeVehicle = await storage.getTradeVehicle(tradeId);
+      if (!tradeVehicle) {
+        return res.status(404).json({ error: 'Trade vehicle not found' });
+      }
+      
+      if (tradeVehicle.dealId !== dealId) {
+        return res.status(403).json({ error: 'Trade vehicle does not belong to this deal' });
+      }
+      
+      await storage.deleteTradeVehicle(tradeId);
+      
+      await storage.createAuditLog({
+        dealId,
+        userId: deal.salespersonId,
+        action: 'delete',
+        entityType: 'trade_vehicle',
+        entityId: tradeId,
+        fieldName: 'trade_vehicle',
+        oldValue: `${tradeVehicle.year} ${tradeVehicle.make} ${tradeVehicle.model}`,
+        newValue: '',
+      });
+      
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to delete trade vehicle' });
+    }
+  });
+  
   // ===== TAX JURISDICTIONS =====
   app.get('/api/tax-jurisdictions', async (req, res) => {
     try {
@@ -303,7 +461,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const scenario = await storage.updateScenario(scenarioId, req.body);
       
       // Create audit log for significant changes
-      const significantFields = ['vehicleId', 'vehiclePrice', 'apr', 'term', 'moneyFactor', 'residualValue', 'downPayment'];
+      const significantFields = ['vehicleId', 'tradeVehicleId', 'vehiclePrice', 'apr', 'term', 'moneyFactor', 'residualValue', 'downPayment', 'tradeAllowance', 'tradePayoff'];
       for (const field of significantFields) {
         if (req.body[field] !== undefined && String((oldScenario as any)[field]) !== String((scenario as any)[field])) {
           await storage.createAuditLog({
