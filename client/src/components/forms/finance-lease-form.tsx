@@ -96,7 +96,7 @@ export function FinanceLeaseForm() {
                 id="apr"
                 type="text"
                 inputMode="decimal"
-                value={formatPercent(scenario.apr)}
+                value={scenario.apr || ''}
                 onChange={(e) => handlePercentChange('apr', e.target.value)}
                 className="pl-9 font-mono tabular-nums min-h-11 text-base"
                 placeholder="5.99"
@@ -198,7 +198,7 @@ export function FinanceLeaseForm() {
                   id="residualPercent"
                   type="text"
                   inputMode="decimal"
-                  value={formatPercent(scenario.residualPercent)}
+                  value={scenario.residualPercent || ''}
                   onChange={(e) => handlePercentChange('residualPercent', e.target.value)}
                   className="pl-9 font-mono tabular-nums min-h-11 text-base"
                   placeholder="50.00"
