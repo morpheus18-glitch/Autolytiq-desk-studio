@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AIChatCompanion } from "@/components/ai-chat-companion";
 import DealsList from "@/pages/deals-list";
 import DealWorksheetV2 from "@/pages/deal-worksheet-v2";
+import DealWorksheetTabsPage from "@/pages/deal-worksheet-tabs";
 import NewDeal from "@/pages/new-deal";
 import Inventory from "@/pages/inventory";
 import Customers from "@/pages/customers";
@@ -25,6 +26,7 @@ function Router() {
       <Route path="/credit-center" component={CreditCenter} />
       <Route path="/deals" component={DealsList} />
       <Route path="/deals/new" component={NewDeal} />
+      <Route path="/deals/:id/tabs" component={DealWorksheetTabsPage} />
       <Route path="/deals/:id" component={DealWorksheetV2} />
       <Route component={NotFound} />
     </Switch>

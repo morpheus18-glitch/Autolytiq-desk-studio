@@ -18,7 +18,6 @@ interface PaymentHeroProps {
   onTermChange?: (term: number) => void;
   className?: string;
   alwaysExpanded?: boolean;
-  sticky?: boolean;
 }
 
 export function PaymentHero({
@@ -33,7 +32,6 @@ export function PaymentHero({
   onTermChange,
   className,
   alwaysExpanded = false,
-  sticky = false,
 }: PaymentHeroProps) {
   const [isExpanded, setIsExpanded] = useState(alwaysExpanded);
   const [aprValue, setAprValue] = useState(Number(apr));
@@ -110,7 +108,6 @@ export function PaymentHero({
   };
 
   return (
-    <div className={cn(sticky && "sticky top-0 z-40", className)}>
       <Card 
         className={cn(
           "overflow-hidden border-2 border-primary/20 bg-gradient-to-br from-primary/5 via-background to-background shadow-xl transition-all duration-300",
@@ -296,6 +293,5 @@ export function PaymentHero({
         </div>
       )}
     </Card>
-    </div>
   );
 }
