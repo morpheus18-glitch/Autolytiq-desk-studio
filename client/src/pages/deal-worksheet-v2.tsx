@@ -18,6 +18,7 @@ import { FIGrid } from '@/components/forms/fi-grid';
 import { TaxBreakdownForm } from '@/components/forms/tax-breakdown-form';
 import { DealerFeesForm } from '@/components/forms/dealer-fees-form';
 import { AccessoriesForm } from '@/components/forms/accessories-form';
+import { ScenarioSelector } from '@/components/scenario-selector';
 
 const DEAL_STATE_COLORS: Record<string, string> = {
   DRAFT: 'bg-muted text-muted-foreground',
@@ -121,45 +122,12 @@ export default function DealWorksheetV2() {
           </div>
           
           {/* Scenario Selector - Desktop Only */}
-          {deal.scenarios.length > 1 && (
-            <div className="space-y-2">
-              <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Compare Scenarios
-              </h4>
-              <div className="space-y-2">
-                {deal.scenarios.map((scenario) => {
-                  // Show live calculation for active scenario, server value for others
-                  const isActive = scenario.id === activeScenarioId;
-                  const displayPayment = isActive 
-                    ? calculations.monthlyPayment.toNumber()
-                    : parseFloat(scenario.monthlyPayment);
-                  
-                  return (
-                    <button
-                      key={scenario.id}
-                      onClick={() => setActiveScenarioId(scenario.id)}
-                      className={`w-full text-left p-3 rounded-md border transition-all ${
-                        isActive
-                          ? 'bg-primary/10 border-primary text-primary'
-                          : 'bg-card border-border hover-elevate active-elevate-2'
-                      }`}
-                      data-testid={`button-scenario-${scenario.id}`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium">
-                          {scenario.scenarioType === 'FINANCE_DEAL' ? 'Finance' : 
-                           scenario.scenarioType === 'LEASE_DEAL' ? 'Lease' : 'Cash'}
-                        </span>
-                        <span className="text-sm font-mono font-semibold tabular-nums">
-                          ${displayPayment.toFixed(0)}/mo
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          <ScenarioSelector
+            dealId={deal.id}
+            scenarios={deal.scenarios}
+            activeScenarioId={activeScenarioId}
+            onScenarioChange={setActiveScenarioId}
+          />
         </div>
       </div>
     );
