@@ -52,6 +52,7 @@ export function NumbersTab() {
 
   const handleCurrencyBlur = (
     value: string,
+    setter: (v: string) => void,
     field: keyof typeof scenario,
     fieldName: string
   ) => {
@@ -60,7 +61,9 @@ export function NumbersTab() {
     const cleaned = value.replace(/[^\d.]/g, '');
     const num = parseFloat(cleaned);
     if (!isNaN(num) && num >= 0) {
-      updateField(field, num.toFixed(2));
+      const formatted = num.toFixed(2);
+      setter(formatted); // Update local state with clean value
+      updateField(field, formatted);
     }
   };
 
@@ -104,7 +107,7 @@ export function NumbersTab() {
                 value={formatCurrency(vehiclePrice, focusedField === 'vehicle-price')}
                 onChange={(e) => handleCurrencyChange(e.target.value, setVehiclePrice)}
                 onFocus={() => handleCurrencyFocus('vehicle-price')}
-                onBlur={() => handleCurrencyBlur(vehiclePrice, 'vehiclePrice', 'vehicle-price')}
+                onBlur={() => handleCurrencyBlur(vehiclePrice, setVehiclePrice, 'vehiclePrice', 'vehicle-price')}
                 className="pl-7 font-mono text-lg"
                 data-testid="input-vehicle-price"
               />
@@ -127,7 +130,7 @@ export function NumbersTab() {
                 value={formatCurrency(downPayment, focusedField === 'down-payment')}
                 onChange={(e) => handleCurrencyChange(e.target.value, setDownPayment)}
                 onFocus={() => handleCurrencyFocus('down-payment')}
-                onBlur={() => handleCurrencyBlur(downPayment, 'downPayment', 'down-payment')}
+                onBlur={() => handleCurrencyBlur(downPayment, setDownPayment, 'downPayment', 'down-payment')}
                 className="pl-7 font-mono text-lg"
                 data-testid="input-down-payment"
               />
@@ -150,7 +153,7 @@ export function NumbersTab() {
                 value={formatCurrency(tradeAllowance, focusedField === 'trade-allowance')}
                 onChange={(e) => handleCurrencyChange(e.target.value, setTradeAllowance)}
                 onFocus={() => handleCurrencyFocus('trade-allowance')}
-                onBlur={() => handleCurrencyBlur(tradeAllowance, 'tradeAllowance', 'trade-allowance')}
+                onBlur={() => handleCurrencyBlur(tradeAllowance, setTradeAllowance, 'tradeAllowance', 'trade-allowance')}
                 className="pl-7 font-mono text-lg"
                 data-testid="input-trade-allowance"
               />
@@ -173,7 +176,7 @@ export function NumbersTab() {
                 value={formatCurrency(tradePayoff, focusedField === 'trade-payoff')}
                 onChange={(e) => handleCurrencyChange(e.target.value, setTradePayoff)}
                 onFocus={() => handleCurrencyFocus('trade-payoff')}
-                onBlur={() => handleCurrencyBlur(tradePayoff, 'tradePayoff', 'trade-payoff')}
+                onBlur={() => handleCurrencyBlur(tradePayoff, setTradePayoff, 'tradePayoff', 'trade-payoff')}
                 className="pl-7 font-mono text-lg"
                 data-testid="input-trade-payoff"
               />
