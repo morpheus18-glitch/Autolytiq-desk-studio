@@ -108,7 +108,7 @@ function VehicleCard({ vehicle, onViewDetails, onStartDeal }: {
 
   return (
     <Card 
-      className="group overflow-hidden backdrop-blur-md bg-card/40 border-card-border hover-elevate transition-all duration-200"
+      className="group overflow-hidden shadow-sm hover:shadow-md transition-all duration-300"
       data-testid={`card-vehicle-${vehicle.id}`}
     >
       <div className="aspect-[4/3] relative overflow-hidden bg-gradient-to-b from-muted/20 to-muted/40">
@@ -118,7 +118,7 @@ function VehicleCard({ vehicle, onViewDetails, onStartDeal }: {
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           loading="lazy"
         />
-        <div className="absolute top-2 left-2 right-2 flex justify-between items-start">
+        <div className="absolute top-3 left-3 right-3 flex justify-between items-start gap-2">
           <Badge 
             className={cn("font-semibold", getConditionColor(vehicle.condition))}
             data-testid={`badge-condition-${vehicle.id}`}
@@ -132,15 +132,15 @@ function VehicleCard({ vehicle, onViewDetails, onStartDeal }: {
             {vehicle.status.replace('_', ' ').toUpperCase()}
           </Badge>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
-          <div className="space-y-1">
-            <p className="text-white/80 text-xs font-medium flex items-center gap-1">
-              <Package className="w-3 h-3" />
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
+          <div className="space-y-1.5">
+            <p className="text-white text-sm font-semibold flex items-center gap-1.5">
+              <Package className="w-4 h-4" />
               Stock: {stockDisplay}
             </p>
             {vehicle.vin && (
-              <p className="text-white/70 text-xs font-mono flex items-center gap-1">
-                <Hash className="w-3 h-3" />
+              <p className="text-white/80 text-xs font-mono flex items-center gap-1.5">
+                <Hash className="w-3.5 h-3.5" />
                 {vehicle.vin.substring(0, 11)}...
               </p>
             )}
@@ -148,23 +148,23 @@ function VehicleCard({ vehicle, onViewDetails, onStartDeal }: {
         </div>
       </div>
 
-      <CardContent className="p-4 space-y-3">
+      <CardContent className="p-6 space-y-4">
         <div>
-          <h3 className="font-semibold text-lg leading-tight" data-testid={`text-vehicle-title-${vehicle.id}`}>
+          <h3 className="font-bold text-xl text-neutral-900 leading-tight" data-testid={`text-vehicle-title-${vehicle.id}`}>
             {vehicle.year} {vehicle.make} {vehicle.model}
           </h3>
           {vehicle.trim && (
-            <p className="text-sm text-muted-foreground">{vehicle.trim}</p>
+            <p className="text-base text-neutral-600 mt-1">{vehicle.trim}</p>
           )}
         </div>
 
         <div className="flex items-baseline gap-3">
           {vehicle.msrp && Number(vehicle.msrp) > Number(vehicle.price) && (
-            <span className="text-sm text-muted-foreground line-through">
+            <span className="text-lg text-neutral-400 line-through font-mono">
               {formatPrice(vehicle.msrp)}
             </span>
           )}
-          <span className="text-xl font-bold font-mono tabular-nums text-primary" data-testid={`text-price-${vehicle.id}`}>
+          <span className="text-2xl font-bold font-mono tabular-nums text-blue-600" data-testid={`text-price-${vehicle.id}`}>
             {formatPrice(vehicle.internetPrice || vehicle.price)}
           </span>
         </div>
