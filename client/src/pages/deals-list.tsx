@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/select';
 import { Plus, Search, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { DealWithRelations } from '@shared/schema';
+import { TableRowSkeleton } from '@/components/skeletons';
 
 const DEAL_STATE_COLORS: Record<string, string> = {
   DRAFT: 'bg-muted text-muted-foreground',
@@ -121,12 +122,8 @@ export default function DealsList() {
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell colSpan={7}>
-                        <div className="h-12 bg-muted/20 animate-pulse rounded" />
-                      </TableCell>
-                    </TableRow>
+                  Array.from({ length: 6 }).map((_, i) => (
+                    <TableRowSkeleton key={i} />
                   ))
                 ) : deals.length === 0 ? (
                   <TableRow>

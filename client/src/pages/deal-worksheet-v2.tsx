@@ -6,6 +6,13 @@ import { Badge } from '@/components/ui/badge';
 import { Car, User, History, Printer, FileText, DollarSign, Calculator, Receipt, TrendingUp } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import type { DealWithRelations, DealScenario } from '@shared/schema';
+import { 
+  DealHeaderSkeleton, 
+  PaymentCardSkeleton, 
+  FormSectionSkeleton, 
+  ScenarioCardSkeleton,
+  PremiumSkeleton 
+} from '@/components/skeletons';
 import { LayoutShell } from '@/components/layout-shell';
 import { SectionHeader } from '@/components/section-header';
 import { PaymentSummaryPanel } from '@/components/payment-summary-panel';
@@ -59,10 +66,38 @@ export default function DealWorksheetV2() {
   
   if (isLoading || !deal) {
     return (
-      <div className="h-screen flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 rounded-full bg-muted animate-pulse mx-auto" />
-          <p className="text-muted-foreground">Loading deal...</p>
+      <div className="h-screen flex flex-col bg-background">
+        {/* Header Skeleton */}
+        <div className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
+          <div className="max-w-[1800px] mx-auto px-4 md:px-6 lg:px-8 py-3 md:py-4">
+            <DealHeaderSkeleton />
+          </div>
+        </div>
+        
+        {/* Content Skeleton */}
+        <div className="flex-1 overflow-hidden">
+          <div className="max-w-[1800px] mx-auto px-4 md:px-6 lg:px-8 py-6 md:py-8">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-6 md:gap-8">
+              {/* Main Content */}
+              <div className="space-y-6">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="space-y-4">
+                    <PremiumSkeleton className="h-6 w-32" />
+                    <FormSectionSkeleton />
+                  </div>
+                ))}
+              </div>
+              
+              {/* Sidebar Skeleton - Desktop Only */}
+              <div className="hidden lg:block sticky top-[73px] self-start space-y-6">
+                <PaymentCardSkeleton />
+                <div className="space-y-3">
+                  <PremiumSkeleton className="h-5 w-28" />
+                  <ScenarioCardSkeleton />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
