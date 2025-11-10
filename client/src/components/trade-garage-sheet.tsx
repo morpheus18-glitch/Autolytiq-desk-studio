@@ -237,7 +237,7 @@ export function TradeGarageSheet({ dealId, trigger }: TradeGarageSheetProps) {
 
         <SheetContent
           side="bottom"
-          className="h-[85vh] overflow-hidden flex flex-col p-0 md:w-[640px] md:left-1/2 md:-translate-x-1/2"
+          className="h-[85vh] overflow-hidden flex flex-col p-0 w-full md:w-[min(640px,calc(100vw-2rem))] md:left-1/2 md:-translate-x-1/2"
         >
           <div className="flex justify-center pt-4 pb-2">
             <div className="w-16 h-2 rounded-full bg-muted" />

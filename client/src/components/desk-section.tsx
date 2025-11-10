@@ -32,32 +32,34 @@ export function DeskSection({
   };
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden transition-shadow duration-200">
       <button
         type="button"
         onClick={handleToggle}
         className={`w-full flex items-center justify-between p-5 md:p-6 text-left hover-elevate active-elevate-2 touch-manipulation min-h-[68px] ${
           alwaysExpanded ? 'cursor-default' : 'cursor-pointer'
-        } ${isExpanded ? 'border-l-4 border-l-primary' : ''}`}
+        } ${isExpanded ? 'bg-primary/5' : ''}`}
         data-testid={testId ? `${testId}-header` : undefined}
         disabled={alwaysExpanded}
       >
-        <div className="flex items-center gap-3 flex-1">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
           {Icon && (
-            <div className="flex items-center justify-center w-10 h-10 md:w-9 md:h-9 rounded-lg bg-primary/10 text-primary">
+            <div className={`flex items-center justify-center flex-shrink-0 w-10 h-10 md:w-9 md:h-9 rounded-lg transition-colors duration-200 ${
+              isExpanded ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary'
+            }`}>
               <Icon className="w-5 h-5 md:w-4 md:h-4" />
             </div>
           )}
-          <div className="flex-1">
-            <h2 className="text-lg md:text-xl font-semibold">{title}</h2>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-lg md:text-xl font-semibold truncate">{title}</h2>
             {summary && !isExpanded && (
-              <p className="text-xs md:text-sm text-muted-foreground mt-1">{summary}</p>
+              <p className="text-xs md:text-sm text-muted-foreground mt-1 truncate">{summary}</p>
             )}
           </div>
         </div>
         {!alwaysExpanded && (
           <ChevronDown 
-            className={`w-5 h-5 text-muted-foreground transition-all duration-300 ease-out ${
+            className={`w-5 h-5 text-muted-foreground flex-shrink-0 transition-all duration-300 ease-out ${
               isExpanded ? 'rotate-180' : ''
             }`}
           />
