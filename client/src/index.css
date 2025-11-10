@@ -418,6 +418,28 @@
       transition-delay: 0ms;
     }
   }
+  
+  /* Optimistic UI - Visual Affordances for Pending Operations */
+  [data-optimistic="true"] {
+    opacity: 0.75;
+    animation: optimistic-pulse 1.5s ease-in-out infinite;
+  }
+  
+  @keyframes optimistic-pulse {
+    0%, 100% {
+      opacity: 0.75;
+    }
+    50% {
+      opacity: 0.9;
+    }
+  }
+  
+  @media (prefers-reduced-motion: reduce) {
+    [data-optimistic="true"] {
+      animation: none;
+      opacity: 0.85;
+    }
+  }
 }
 
 @layer base {

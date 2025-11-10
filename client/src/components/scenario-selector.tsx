@@ -26,6 +26,7 @@ import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useScenarioForm } from '@/contexts/scenario-form-context';
 import Decimal from 'decimal.js';
+import { useOptimisticCreate, useOptimisticDelete, generateTempId } from '@/lib/optimistic-mutations';
 
 interface ScenarioSelectorProps {
   dealId: string;
@@ -45,27 +46,46 @@ export function ScenarioSelector({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [scenarioToDelete, setScenarioToDelete] = useState<string | null>(null);
 
-  const createScenarioMutation = useMutation({
+  const createScenarioMutation = useOptimisticCreate<any, any>({
+    queryKey: ['/api/deals', dealId],
+    updateCache: (old, variables, tempId) => ({
+      ...old,
+      scenarios: [...(old?.scenarios || []), {
+        ...variables,
+        id: tempId,
+        optimistic: true,
+      }]
+    }),
     mutationFn: async (scenarioData: any) => {
       const response = await apiRequest('POST', `/api/deals/${dealId}/scenarios`, scenarioData);
       return response.json();
     },
     onSuccess: (newScenario) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/deals', dealId] });
       onScenarioChange(newScenario.id);
       toast({
         title: 'Scenario created',
         description: `${newScenario.name} has been created.`,
       });
     },
+    onError: () => {
+      toast({
+        title: 'Error',
+        description: 'Failed to create scenario. Please try again.',
+        variant: 'destructive',
+      });
+    },
   });
 
-  const deleteScenarioMutation = useMutation({
+  const deleteScenarioMutation = useOptimisticDelete<void, string>({
+    queryKey: ['/api/deals', dealId],
+    updateCache: (old, scenarioId) => ({
+      ...old,
+      scenarios: old?.scenarios?.filter((s: DealScenario) => s.id !== scenarioId) || []
+    }),
     mutationFn: async (scenarioId: string) => {
       await apiRequest('DELETE', `/api/deals/${dealId}/scenarios/${scenarioId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/deals', dealId] });
       if (scenarioToDelete === activeScenarioId && scenarios.length > 1) {
         const remainingScenario = scenarios.find(s => s.id !== scenarioToDelete);
         if (remainingScenario) {
@@ -78,6 +98,13 @@ export function ScenarioSelector({
       });
       setDeleteDialogOpen(false);
       setScenarioToDelete(null);
+    },
+    onError: () => {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete scenario. Please try again.',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -163,6 +190,7 @@ export function ScenarioSelector({
               }`}
               onClick={() => onScenarioChange(scenario.id)}
               data-testid={`card-scenario-${scenario.id}`}
+              data-optimistic={(scenario as any).optimistic ? 'true' : undefined}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
