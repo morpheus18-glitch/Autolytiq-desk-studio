@@ -303,7 +303,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const scenario = await storage.updateScenario(scenarioId, req.body);
       
       // Create audit log for significant changes
-      const significantFields = ['vehiclePrice', 'apr', 'term', 'moneyFactor', 'residualValue', 'downPayment'];
+      const significantFields = ['vehicleId', 'vehiclePrice', 'apr', 'term', 'moneyFactor', 'residualValue', 'downPayment'];
       for (const field of significantFields) {
         if (req.body[field] !== undefined && String((oldScenario as any)[field]) !== String((scenario as any)[field])) {
           await storage.createAuditLog({

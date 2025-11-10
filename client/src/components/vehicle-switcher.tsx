@@ -49,16 +49,17 @@ export function VehicleSwitcher({
     },
   });
 
-  // Update deal with new vehicle
+  // Update deal and scenario with new vehicle
   const updateScenarioMutation = useMutation({
     mutationFn: async (vehicle: Vehicle) => {
-      // Update the deal's vehicleId
+      // Update the deal's vehicleId (for overall deal reference)
       await apiRequest('PATCH', `/api/deals/${dealId}`, {
         vehicleId: vehicle.id,
       });
       
-      // Update the current scenario's vehiclePrice to match the new vehicle
+      // Update the current scenario's vehicle reference and price
       await apiRequest('PATCH', `/api/deals/${dealId}/scenarios/${scenarioId}`, {
+        vehicleId: vehicle.id,
         vehiclePrice: vehicle.price,
       });
     },

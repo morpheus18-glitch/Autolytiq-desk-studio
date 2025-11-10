@@ -210,6 +210,7 @@ export type Deal = typeof deals.$inferSelect;
 export const dealScenarios = pgTable("deal_scenarios", {
   id: uuid("id").primaryKey().defaultRandom(),
   dealId: uuid("deal_id").notNull().references(() => deals.id, { onDelete: "cascade" }),
+  vehicleId: uuid("vehicle_id").references(() => vehicles.id), // Each scenario can reference a different vehicle
   scenarioType: text("scenario_type").notNull(), // CASH_DEAL, FINANCE_DEAL, LEASE_DEAL
   name: text("name").notNull(),
   
@@ -360,6 +361,10 @@ export const dealScenariosRelations = relations(dealScenarios, ({ one, many }) =
   deal: one(deals, {
     fields: [dealScenarios.dealId],
     references: [deals.id],
+  }),
+  vehicle: one(vehicles, {
+    fields: [dealScenarios.vehicleId],
+    references: [vehicles.id],
   }),
   taxJurisdiction: one(taxJurisdictions, {
     fields: [dealScenarios.taxJurisdictionId],
