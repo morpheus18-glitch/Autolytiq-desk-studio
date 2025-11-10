@@ -57,7 +57,8 @@ export function ScenarioFormProvider({
 }: ScenarioFormProviderProps) {
   const [scenario, setScenario] = useState<DealScenario>(initialScenario);
   const [dirtyFields, setDirtyFields] = useState<Set<string>>(new Set());
-  const { setAutoSaveStatus } = useStore();
+  // Use selector to ONLY get the function, not subscribe to state changes
+  const setAutoSaveStatus = useStore(state => state.setAutoSaveStatus);
   const saveTimerRef = useRef<NodeJS.Timeout>();
   const scenarioIdRef = useRef<string>(initialScenario.id);
   
@@ -86,10 +87,7 @@ export function ScenarioFormProvider({
   // Auto-save mutation using existing infrastructure
   const { mutate: saveScenario, isPending: isSaving } = useMutation({
     mutationFn: async (updates: Partial<DealScenario>) => {
-      return apiRequest(`/api/deals/${dealId}/scenarios/${scenario.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(updates),
-      });
+      return apiRequest('PATCH', `/api/deals/${dealId}/scenarios/${scenario.id}`, updates);
     },
     onMutate: () => {
       setAutoSaveStatus('saving');
@@ -118,7 +116,8 @@ export function ScenarioFormProvider({
         // Only save changed fields
         const updates: Partial<DealScenario> = {};
         dirtyFields.forEach(field => {
-          updates[field as keyof DealScenario] = scenario[field as keyof DealScenario];
+          const key = field as keyof DealScenario;
+          updates[key] = scenario[key] as any;
         });
         saveScenario(updates);
       }

@@ -30,7 +30,7 @@ export default function DealWorksheetV2() {
   const [, params] = useRoute('/deals/:id');
   const dealId = params?.id;
   const [activeScenarioId, setActiveScenarioId] = useState<string>('');
-  const { setActiveDealId } = useStore();
+  const setActiveDealId = useStore(state => state.setActiveDealId);
   
   const { data: deal, isLoading } = useQuery<DealWithRelations>({
     queryKey: ['/api/deals', dealId],

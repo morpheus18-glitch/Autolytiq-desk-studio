@@ -20,6 +20,7 @@ interface DeskingStore {
   setIsSaving: (saving: boolean) => void;
   setLastSaved: (date: Date) => void;
   setSaveError: (error: string | null) => void;
+  setAutoSaveStatus: (status: 'idle' | 'pending' | 'saving' | 'saved' | 'error') => void;
   setActiveDealId: (id: string | null) => void;
   setActiveScenarioId: (id: string | null) => void;
   toggleSidebar: () => void;
@@ -41,6 +42,25 @@ export const useStore = create<DeskingStore>()(
     setIsSaving: (saving) => set({ isSaving: saving }),
     setLastSaved: (date) => set({ lastSaved: date, isSaving: false, saveError: null }),
     setSaveError: (error) => set({ saveError: error, isSaving: false }),
+    setAutoSaveStatus: (status) => {
+      switch (status) {
+        case 'idle':
+          set({ isSaving: false, saveError: null });
+          break;
+        case 'pending':
+          set({ isSaving: false, saveError: null });
+          break;
+        case 'saving':
+          set({ isSaving: true, saveError: null });
+          break;
+        case 'saved':
+          set({ isSaving: false, lastSaved: new Date(), saveError: null });
+          break;
+        case 'error':
+          set({ isSaving: false, saveError: 'Failed to save changes' });
+          break;
+      }
+    },
     setActiveDealId: (id) => set({ activeDealId: id }),
     setActiveScenarioId: (id) => set({ activeScenarioId: id }),
     toggleSidebar: () => set((state) => { state.sidebarCollapsed = !state.sidebarCollapsed; }),
