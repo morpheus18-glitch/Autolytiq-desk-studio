@@ -14,7 +14,7 @@ export function AutoSaveIndicator() {
   const lastSavedDate = lastSaved instanceof Date ? lastSaved : lastSaved ? new Date(lastSaved) : null;
   
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div data-testid="autosave-indicator">
       {isSaving ? (
         <Badge variant="secondary" className="gap-2 shadow-lg" data-testid="badge-saving">
           <Loader2 className="w-3 h-3 animate-spin" />
