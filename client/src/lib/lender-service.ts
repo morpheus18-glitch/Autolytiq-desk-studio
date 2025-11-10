@@ -1,6 +1,9 @@
 import type { Lender, LenderProgram, ApprovedLender, RateRequest } from "@shared/schema";
 import Decimal from "decimal.js";
 
+// Configure Decimal for financial precision
+Decimal.set({ precision: 20, rounding: Decimal.ROUND_HALF_UP });
+
 // Credit score tiers for rate calculation
 export const CREDIT_TIERS = {
   SUPER_PRIME: { min: 800, max: 850, label: "Super Prime", tier: 1 },
@@ -605,15 +608,22 @@ export function calculateMonthlyPayment(
   apr: number,
   termMonths: number
 ): number {
+  const principalDec = new Decimal(principal);
+  const aprDec = new Decimal(apr);
+  
   if (apr === 0) {
-    return principal / termMonths;
+    return principalDec.dividedBy(termMonths).toDP(2).toNumber();
   }
   
-  const monthlyRate = apr / 100 / 12;
-  const payment = principal * (monthlyRate * Math.pow(1 + monthlyRate, termMonths)) / 
-    (Math.pow(1 + monthlyRate, termMonths) - 1);
+  const monthlyRate = aprDec.dividedBy(100).dividedBy(12);
+  const onePlusRate = monthlyRate.plus(1);
+  const powerTerm = onePlusRate.pow(termMonths);
   
-  return Math.round(payment * 100) / 100;
+  const payment = principalDec
+    .times(monthlyRate.times(powerTerm))
+    .dividedBy(powerTerm.minus(1));
+  
+  return payment.toDP(2).toNumber();
 }
 
 // Calculate total finance charge
@@ -622,7 +632,9 @@ export function calculateFinanceCharge(
   monthlyPayment: number,
   termMonths: number
 ): number {
-  return Math.round((monthlyPayment * termMonths - principal) * 100) / 100;
+  const totalPayments = new Decimal(monthlyPayment).times(termMonths);
+  const principalDec = new Decimal(principal);
+  return totalPayments.minus(principalDec).toDP(2).toNumber();
 }
 
 // Calculate LTV ratio
@@ -630,7 +642,9 @@ export function calculateLTV(
   loanAmount: number,
   vehicleValue: number
 ): number {
-  return Math.round((loanAmount / vehicleValue) * 10000) / 100;
+  const loanDec = new Decimal(loanAmount);
+  const valueDec = new Decimal(vehicleValue);
+  return loanDec.dividedBy(valueDec).times(100).toDP(2).toNumber();
 }
 
 // Calculate DTI ratio
@@ -639,8 +653,9 @@ export function calculateDTI(
   monthlyIncome: number,
   monthlyDebt: number = 0
 ): number {
-  const totalDebt = monthlyPayment + monthlyDebt;
-  return Math.round((totalDebt / monthlyIncome) * 10000) / 100;
+  const totalDebt = new Decimal(monthlyPayment).plus(monthlyDebt);
+  const incomeDec = new Decimal(monthlyIncome);
+  return totalDebt.dividedBy(incomeDec).times(100).toDP(2).toNumber();
 }
 
 // Calculate approval likelihood
@@ -744,18 +759,20 @@ export function calculateDealerReserve(
   creditScore: number
 ): number {
   // Higher credit scores get more reserve opportunity
-  let reserveMultiplier = 1.0;
-  if (creditScore >= 740) reserveMultiplier = 1.0;
-  else if (creditScore >= 670) reserveMultiplier = 0.8;
-  else if (creditScore >= 600) reserveMultiplier = 0.6;
-  else reserveMultiplier = 0.4;
+  let reserveMultiplier = new Decimal(1.0);
+  if (creditScore >= 740) reserveMultiplier = new Decimal(1.0);
+  else if (creditScore >= 670) reserveMultiplier = new Decimal(0.8);
+  else if (creditScore >= 600) reserveMultiplier = new Decimal(0.6);
+  else reserveMultiplier = new Decimal(0.4);
   
-  const maxReserve = (maxReserveBps / 100) * reserveMultiplier;
+  const maxReserve = new Decimal(maxReserveBps)
+    .dividedBy(100)
+    .times(reserveMultiplier);
   
   // Can't exceed rate caps (typically 2-2.5% markup)
-  const actualReserve = Math.min(maxReserve, 2.5);
+  const actualReserve = Decimal.min(maxReserve, new Decimal(2.5));
   
-  return Math.round(actualReserve * 100) / 100;
+  return actualReserve.toDP(2).toNumber();
 }
 
 // Mock function to shop rates from all lenders
@@ -773,7 +790,10 @@ export async function shopRates(
   state: string = "CA"
 ): Promise<ApprovedLender[]> {
   const approvedLenders: ApprovedLender[] = [];
-  const loanAmount = vehiclePrice - downPayment - (tradeValue - tradePayoff);
+  const loanAmount = new Decimal(vehiclePrice)
+    .minus(downPayment)
+    .minus(new Decimal(tradeValue).minus(tradePayoff))
+    .toNumber();
   const ltv = calculateLTV(loanAmount, vehiclePrice);
   
   // Simulate processing delay
@@ -812,7 +832,7 @@ export async function shopRates(
           if (tier.moneyFactor) {
             moneyFactor = tier.moneyFactor;
             // Convert money factor to APR for display
-            apr = moneyFactor * 2400;
+            apr = new Decimal(moneyFactor).times(2400).toNumber();
           }
           break;
         }
@@ -823,10 +843,15 @@ export async function shopRates(
       
       // Calculate dealer reserve
       const dealerReserve = calculateDealerReserve(buyRate, lender.dealerReserveMaxBps, creditScore);
-      const customerApr = Math.min(apr + dealerReserve, 29.99); // Legal max in most states
+      const customerApr = Decimal.min(
+        new Decimal(apr).plus(dealerReserve), 
+        new Decimal(29.99)
+      ).toNumber(); // Legal max in most states
       
       // Calculate payment
-      const amountFinanced = loanAmount + parseFloat(program.originationFee || "0");
+      const amountFinanced = new Decimal(loanAmount)
+        .plus(parseFloat(program.originationFee || "0"))
+        .toNumber();
       const monthlyPayment = calculateMonthlyPayment(amountFinanced, customerApr, requestedTerm);
       const financeCharge = calculateFinanceCharge(amountFinanced, monthlyPayment, requestedTerm);
       
@@ -835,7 +860,11 @@ export async function shopRates(
       let pti = null;
       if (monthlyIncome && monthlyIncome > 0) {
         dti = calculateDTI(monthlyPayment, monthlyIncome, monthlyDebt);
-        pti = Math.round((monthlyPayment / monthlyIncome) * 10000) / 100;
+        pti = new Decimal(monthlyPayment)
+          .dividedBy(monthlyIncome)
+          .times(100)
+          .toDP(2)
+          .toNumber();
         
         // Skip if DTI exceeds program limits
         if (dti > parseFloat(program.maxDti)) continue;
@@ -867,7 +896,7 @@ export async function shopRates(
         term: requestedTerm,
         monthlyPayment: monthlyPayment.toFixed(2),
         totalFinanceCharge: financeCharge.toFixed(2),
-        totalOfPayments: (monthlyPayment * requestedTerm).toFixed(2),
+        totalOfPayments: new Decimal(monthlyPayment).times(requestedTerm).toFixed(2),
         ltv: ltv.toFixed(2),
         dti: dti ? dti.toFixed(2) : null,
         pti: pti ? pti.toFixed(2) : null,
@@ -912,10 +941,14 @@ export function calculateBackendGross(
   term: number
 ): number {
   // Reserve is annual percentage, so calculate total over loan term
-  const reserveIncome = (dealerReserve / 100) * loanAmount * (term / 12);
-  const totalBackend = reserveIncome + flatFee;
+  const reserveDec = new Decimal(dealerReserve).dividedBy(100);
+  const loanDec = new Decimal(loanAmount);
+  const termYears = new Decimal(term).dividedBy(12);
   
-  return Math.round(totalBackend * 100) / 100;
+  const reserveIncome = reserveDec.times(loanDec).times(termYears);
+  const totalBackend = reserveIncome.plus(flatFee);
+  
+  return totalBackend.toDP(2).toNumber();
 }
 
 // Cache for rate requests (in production, use Redis or similar)

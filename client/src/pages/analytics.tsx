@@ -22,6 +22,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { ErrorBoundary, SectionErrorBoundary } from '@/components/error-boundary';
+import { ChartSkeleton, TableSkeleton } from '@/components/skeletons/chart-skeleton';
 
 // Color palette for charts
 const CHART_COLORS = {
@@ -83,29 +85,77 @@ export default function Analytics() {
     refetchInterval: autoRefresh ? 30000 : false,
   });
 
-  // Generate sparkline data for KPI cards
-  const generateSparklineData = (count: number = 30) => {
-    return Array.from({ length: count }, (_, i) => ({
-      value: Math.random() * 100 + 50,
-    }));
+  // Get sparkline data from backend KPI response
+  const getSparklineData = (metric: 'revenue' | 'deals' | 'conversionRate' | 'avgDealValue') => {
+    if (!kpis?.sparklineData?.[metric]) {
+      // Return empty array if data not available yet
+      return [];
+    }
+    return kpis.sparklineData[metric];
   };
 
-  // Handle refresh
-  const handleRefresh = () => {
-    refetchKpis();
-    toast({
-      title: 'Data Refreshed',
-      description: 'Analytics data has been updated.',
-    });
+  // Handle refresh with error handling
+  const handleRefresh = async () => {
+    try {
+      await refetchKpis();
+      toast({
+        title: 'Data Refreshed',
+        description: 'Analytics data has been updated.',
+      });
+    } catch (error) {
+      console.error('Failed to refresh data:', error);
+      toast({
+        title: 'Refresh Failed',
+        description: 'Unable to refresh analytics data. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
-  // Handle export
-  const handleExportAll = () => {
-    toast({
-      title: 'Export Started',
-      description: 'Preparing analytics report for download...',
-    });
-    // Implement actual export logic here
+  // Handle export with error handling
+  const handleExportAll = async () => {
+    try {
+      toast({
+        title: 'Export Started',
+        description: 'Preparing analytics report for download...',
+      });
+      
+      // Collect all data for export
+      const exportData = {
+        kpis: kpis || {},
+        revenue: revenueData || [],
+        deals: dealAnalytics || {},
+        inventory: inventoryMetrics || {},
+        team: teamPerformance || {},
+        exportDate: new Date().toISOString(),
+        period,
+      };
+      
+      // Convert to JSON and download
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { 
+        type: 'application/json' 
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `analytics-export-${format(new Date(), 'yyyy-MM-dd')}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: 'Export Complete',
+        description: 'Analytics report downloaded successfully.',
+      });
+    } catch (error) {
+      console.error('Failed to export data:', error);
+      toast({
+        title: 'Export Failed',
+        description: 'Unable to export analytics data. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   // Auto-refresh effect
@@ -216,45 +266,47 @@ export default function Analytics() {
           {/* Main Content Area */}
           <div className="px-4 md:px-6 lg:px-8 py-6 space-y-6">
             {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <MetricCard
-                title="Total Revenue"
-                value={kpis?.totalRevenue || 0}
-                previousValue={kpis?.totalRevenue ? kpis.totalRevenue / (1 + kpis.revenueChange / 100) : 0}
-                format="currency"
-                changePercentage={kpis?.revenueChange || 0}
-                sparklineData={generateSparklineData()}
-                icon={DollarSign}
-                loading={kpisLoading}
-              />
-              <MetricCard
-                title="Deals Closed"
-                value={kpis?.totalDeals || 0}
-                format="number"
-                changePercentage={kpis?.dealsChange || 0}
-                sparklineData={generateSparklineData()}
-                icon={ShoppingCart}
-                loading={kpisLoading}
-              />
-              <MetricCard
-                title="Conversion Rate"
-                value={kpis?.conversionRate || 0}
-                format="percentage"
-                trend={kpis?.conversionRate > 70 ? 'up' : 'down'}
-                sparklineData={generateSparklineData()}
-                icon={Target}
-                loading={kpisLoading}
-              />
-              <MetricCard
-                title="Avg Deal Value"
-                value={kpis?.avgDealValue || 0}
-                format="currency"
-                changePercentage={kpis?.avgDealChange || 0}
-                sparklineData={generateSparklineData()}
-                icon={TrendingUp}
-                loading={kpisLoading}
-              />
-            </div>
+            <SectionErrorBoundary sectionName="KPI Metrics">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <MetricCard
+                  title="Total Revenue"
+                  value={kpis?.totalRevenue || 0}
+                  previousValue={kpis?.totalRevenue ? kpis.totalRevenue / (1 + kpis.revenueChange / 100) : 0}
+                  format="currency"
+                  changePercentage={kpis?.revenueChange || 0}
+                  sparklineData={getSparklineData('revenue')}
+                  icon={DollarSign}
+                  loading={kpisLoading}
+                />
+                <MetricCard
+                  title="Deals Closed"
+                  value={kpis?.totalDeals || 0}
+                  format="number"
+                  changePercentage={kpis?.dealsChange || 0}
+                  sparklineData={getSparklineData('deals')}
+                  icon={ShoppingCart}
+                  loading={kpisLoading}
+                />
+                <MetricCard
+                  title="Conversion Rate"
+                  value={kpis?.conversionRate || 0}
+                  format="percentage"
+                  trend={kpis?.conversionRate > 70 ? 'up' : 'down'}
+                  sparklineData={getSparklineData('conversionRate')}
+                  icon={Target}
+                  loading={kpisLoading}
+                />
+                <MetricCard
+                  title="Avg Deal Value"
+                  value={kpis?.avgDealValue || 0}
+                  format="currency"
+                  changePercentage={kpis?.avgDealChange || 0}
+                  sparklineData={getSparklineData('avgDealValue')}
+                  icon={TrendingUp}
+                  loading={kpisLoading}
+                />
+              </div>
+            </SectionErrorBoundary>
 
             {/* Main Charts Tabs */}
             <Tabs defaultValue="revenue" className="space-y-4">

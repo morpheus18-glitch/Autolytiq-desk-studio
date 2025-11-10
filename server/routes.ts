@@ -1267,6 +1267,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ===== ANALYTICS API ENDPOINTS =====
   
+  // Deterministic pseudo-random number generator based on seed
+  function deterministicRandom(seed: string, index: number): number {
+    // Simple hash function to create a deterministic value
+    let hash = 0;
+    const str = `${seed}-${index}`;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash |= 0; // Convert to 32bit integer
+    }
+    // Normalize to 0-1 range
+    return Math.abs(hash) / 2147483647;
+  }
+  
   // Helper function to generate analytics data
   function generateAnalyticsData() {
     const now = new Date();
@@ -1280,14 +1294,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       current.setDate(current.getDate() + 1);
     }
     
-    // Sales team members
+    // Sales team members with performance characteristics
     const salesTeam = [
-      { id: '1', name: 'Alex Johnson', role: 'Senior Sales', avatar: '/api/placeholder/40/40' },
-      { id: '2', name: 'Sarah Williams', role: 'Sales Manager', avatar: '/api/placeholder/40/40' },
-      { id: '3', name: 'Mike Chen', role: 'Sales Associate', avatar: '/api/placeholder/40/40' },
-      { id: '4', name: 'Emily Davis', role: 'Finance Manager', avatar: '/api/placeholder/40/40' },
-      { id: '5', name: 'James Wilson', role: 'Sales Associate', avatar: '/api/placeholder/40/40' },
-      { id: '6', name: 'Lisa Brown', role: 'Internet Sales', avatar: '/api/placeholder/40/40' },
+      { id: '1', name: 'Alex Johnson', role: 'Senior Sales', avatar: '/api/placeholder/40/40', performanceIndex: 0.95 },
+      { id: '2', name: 'Sarah Williams', role: 'Sales Manager', avatar: '/api/placeholder/40/40', performanceIndex: 0.90 },
+      { id: '3', name: 'Mike Chen', role: 'Sales Associate', avatar: '/api/placeholder/40/40', performanceIndex: 0.75 },
+      { id: '4', name: 'Emily Davis', role: 'Finance Manager', avatar: '/api/placeholder/40/40', performanceIndex: 0.85 },
+      { id: '5', name: 'James Wilson', role: 'Sales Associate', avatar: '/api/placeholder/40/40', performanceIndex: 0.70 },
+      { id: '6', name: 'Lisa Brown', role: 'Internet Sales', avatar: '/api/placeholder/40/40', performanceIndex: 0.80 },
     ];
     
     // Generate realistic deal data with seasonal variation
@@ -1295,6 +1309,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const month = date.getMonth();
       const dayOfWeek = date.getDay();
       const dayOfMonth = date.getDate();
+      const dateStr = date.toISOString().split('T')[0];
       
       // Seasonal multipliers (higher in spring/summer)
       const seasonalMultiplier = 1 + (Math.sin((month - 3) * Math.PI / 6) * 0.3);
@@ -1305,25 +1320,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // End of month push
       const endOfMonthMultiplier = dayOfMonth > 25 ? 1.3 : 1;
       
-      // Base deals per day
+      // Base deals per day with deterministic variation
       const baseDeals = 8;
+      const dailyVariation = deterministicRandom(dateStr, 0) * 4 - 2;
       const dealsCount = Math.round(
-        baseDeals * seasonalMultiplier * weekendMultiplier * endOfMonthMultiplier + 
-        (Math.random() * 4 - 2)
+        baseDeals * seasonalMultiplier * weekendMultiplier * endOfMonthMultiplier + dailyVariation
       );
       
       const deals = [];
       for (let i = 0; i < dealsCount; i++) {
-        const salesperson = salesTeam[Math.floor(Math.random() * salesTeam.length)];
-        const isNew = Math.random() > 0.4;
-        const isLease = Math.random() > 0.7;
-        const hasTradeIn = Math.random() > 0.5;
-        const financeType = Math.random() > 0.3 ? 'finance' : 'cash';
+        const dealSeed = `${dateStr}-deal-${i}`;
         
-        const basePrice = isNew ? 35000 + Math.random() * 40000 : 15000 + Math.random() * 30000;
-        const downPayment = financeType === 'finance' ? basePrice * (0.1 + Math.random() * 0.15) : 0;
-        const tradeValue = hasTradeIn ? 5000 + Math.random() * 20000 : 0;
-        const grossProfit = basePrice * (0.08 + Math.random() * 0.07);
+        // Assign salesperson based on weighted performance
+        const salesIndex = Math.floor(deterministicRandom(dealSeed, 1) * salesTeam.length);
+        const salesperson = salesTeam[salesIndex];
+        
+        // Vehicle and deal characteristics
+        const isNew = deterministicRandom(dealSeed, 2) > 0.4;
+        const isLease = deterministicRandom(dealSeed, 3) > 0.7;
+        const hasTradeIn = deterministicRandom(dealSeed, 4) > 0.5;
+        const financeType = deterministicRandom(dealSeed, 5) > 0.3 ? 'finance' : 'cash';
+        
+        // Pricing based on vehicle type with deterministic variation
+        const priceRandom = deterministicRandom(dealSeed, 6);
+        const basePrice = isNew 
+          ? 35000 + priceRandom * 40000 
+          : 15000 + priceRandom * 30000;
+          
+        // Down payment for financed deals
+        const downPaymentRatio = financeType === 'finance' 
+          ? 0.1 + deterministicRandom(dealSeed, 7) * 0.15 
+          : 0;
+        const downPayment = basePrice * downPaymentRatio;
+        
+        // Trade-in value
+        const tradeValue = hasTradeIn 
+          ? 5000 + deterministicRandom(dealSeed, 8) * 20000 
+          : 0;
+          
+        // Gross profit influenced by salesperson performance
+        const profitMargin = 0.08 + (deterministicRandom(dealSeed, 9) * 0.07 * salesperson.performanceIndex);
+        const grossProfit = basePrice * profitMargin;
+        
+        // F&I products revenue for financed deals
+        const fiRevenue = financeType === 'finance' 
+          ? 800 + deterministicRandom(dealSeed, 10) * 2000 * salesperson.performanceIndex
+          : 0;
+          
+        // APR based on credit tier
+        const creditRandom = deterministicRandom(dealSeed, 11);
+        const creditScore = 580 + Math.floor(creditRandom * 270);
+        const aprBase = creditScore > 720 ? 3.9 : creditScore > 650 ? 5.9 : 7.9;
+        const apr = financeType === 'finance' 
+          ? aprBase + deterministicRandom(dealSeed, 12) * 4 
+          : 0;
+          
+        // Term selection
+        const termOptions = isLease ? [36] : [48, 60, 72];
+        const termIndex = Math.floor(deterministicRandom(dealSeed, 13) * termOptions.length);
+        const term = financeType === 'finance' ? termOptions[termIndex] : 0;
+        
+        // Response time influenced by salesperson performance  
+        const responseTime = 5 + Math.floor(deterministicRandom(dealSeed, 14) * 120 / salesperson.performanceIndex);
+        
+        // Deal completion influenced by salesperson performance
+        const completionThreshold = 0.15 - (salesperson.performanceIndex - 0.7) * 0.1;
+        const status = deterministicRandom(dealSeed, 15) > completionThreshold ? 'completed' : 'cancelled';
         
         deals.push({
           date: date.toISOString(),
@@ -1332,17 +1394,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           vehicleType: isNew ? 'new' : 'used',
           dealType: isLease ? 'lease' : 'purchase',
           financeType,
-          vehiclePrice: basePrice,
-          downPayment,
-          tradeInValue: tradeValue,
-          grossProfit,
+          vehiclePrice: Math.round(basePrice),
+          downPayment: Math.round(downPayment),
+          tradeInValue: Math.round(tradeValue),
+          grossProfit: Math.round(grossProfit),
           hasTradeIn,
-          fiProductsRevenue: financeType === 'finance' ? 800 + Math.random() * 2000 : 0,
-          apr: financeType === 'finance' ? 3.9 + Math.random() * 8 : 0,
-          term: financeType === 'finance' ? (isLease ? 36 : 60 + Math.floor(Math.random() * 3) * 12) : 0,
-          creditScore: 580 + Math.floor(Math.random() * 270),
-          responseTimeMinutes: 5 + Math.floor(Math.random() * 120),
-          status: Math.random() > 0.15 ? 'completed' : 'cancelled',
+          fiProductsRevenue: Math.round(fiRevenue),
+          apr: Math.round(apr * 100) / 100,
+          term,
+          creditScore,
+          responseTimeMinutes: responseTime,
+          status,
         });
       }
       
@@ -1358,15 +1420,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     // Generate inventory data
     const makes = ['Toyota', 'Honda', 'Ford', 'Chevrolet', 'BMW', 'Mercedes-Benz', 'Audi', 'Mazda', 'Nissan', 'Volkswagen'];
-    const inventory = makes.flatMap(make => {
-      const modelCount = 3 + Math.floor(Math.random() * 5);
-      return Array(modelCount).fill(0).map((_, i) => ({
-        make,
-        model: `Model ${String.fromCharCode(65 + i)}`,
-        count: Math.floor(5 + Math.random() * 20),
-        avgDaysOnLot: Math.floor(15 + Math.random() * 60),
-        turnoverRate: 0.3 + Math.random() * 0.5,
-      }));
+    const inventory = makes.flatMap((make, makeIndex) => {
+      const makeSeed = `inventory-${make}`;
+      const modelCount = 3 + Math.floor(deterministicRandom(makeSeed, 0) * 5);
+      
+      // Popular makes have better turnover rates
+      const popularityFactor = ['Toyota', 'Honda', 'Ford'].includes(make) ? 1.2 : 1.0;
+      const luxuryFactor = ['BMW', 'Mercedes-Benz', 'Audi'].includes(make) ? 0.8 : 1.0; // Luxury cars move slower
+      
+      return Array(modelCount).fill(0).map((_, modelIndex) => {
+        const modelSeed = `${makeSeed}-model-${modelIndex}`;
+        
+        // Base inventory count influenced by popularity
+        const baseCount = 5 + deterministicRandom(modelSeed, 1) * 15;
+        const count = Math.floor(baseCount * popularityFactor);
+        
+        // Days on lot influenced by luxury factor
+        const baseDaysOnLot = 15 + deterministicRandom(modelSeed, 2) * 45;
+        const avgDaysOnLot = Math.floor(baseDaysOnLot * luxuryFactor);
+        
+        // Turnover rate inversely related to days on lot
+        const baseTurnoverRate = 0.3 + deterministicRandom(modelSeed, 3) * 0.4;
+        const turnoverRate = baseTurnoverRate * popularityFactor / luxuryFactor;
+        
+        return {
+          make,
+          model: `Model ${String.fromCharCode(65 + modelIndex)}`,
+          count,
+          avgDaysOnLot,
+          turnoverRate: Math.round(turnoverRate * 1000) / 1000,
+        };
+      });
     });
     
     return { deals: allDeals, inventory, salesTeam };
@@ -1449,6 +1533,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? (financeDeals.filter(d => d.fiProductsRevenue > 0).length / financeDeals.length) * 100 
         : 0;
       
+      // Generate sparkline data for last 30 days
+      const sparklineDays = 30;
+      const sparklineEnd = new Date(now);
+      const sparklineStart = new Date(now);
+      sparklineStart.setDate(sparklineEnd.getDate() - sparklineDays);
+      
+      const sparklineData: { [key: string]: Array<{ value: number }> } = {
+        revenue: [],
+        deals: [],
+        conversionRate: [],
+        avgDealValue: [],
+      };
+      
+      // Generate daily sparkline values
+      for (let i = 0; i < sparklineDays; i++) {
+        const dayDate = new Date(sparklineStart);
+        dayDate.setDate(sparklineStart.getDate() + i);
+        
+        const dayDeals = deals.filter(d => {
+          const dealDate = new Date(d.date);
+          return dealDate.toDateString() === dayDate.toDateString() && d.status === 'completed';
+        });
+        
+        const dayRevenue = dayDeals.reduce((sum, d) => sum + d.vehiclePrice, 0);
+        const dayAvgDealValue = dayDeals.length > 0 ? dayRevenue / dayDeals.length : 0;
+        const allDayDeals = deals.filter(d => {
+          const dealDate = new Date(d.date);
+          return dealDate.toDateString() === dayDate.toDateString();
+        });
+        const dayConversion = allDayDeals.length > 0 
+          ? (dayDeals.length / allDayDeals.length) * 100 
+          : 0;
+        
+        sparklineData.revenue.push({ value: dayRevenue });
+        sparklineData.deals.push({ value: dayDeals.length });
+        sparklineData.conversionRate.push({ value: dayConversion });
+        sparklineData.avgDealValue.push({ value: dayAvgDealValue });
+      }
+      
       res.json({
         totalDeals: currentDeals.length,
         dealsChange: previousDeals.length > 0 ? ((currentDeals.length - previousDeals.length) / previousDeals.length) * 100 : 0,
@@ -1471,6 +1594,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         avgCreditScore: currentDeals.length > 0 
           ? Math.round(currentDeals.reduce((sum, d) => sum + d.creditScore, 0) / currentDeals.length)
           : 0,
+        sparklineData, // Include historical sparkline data
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message || 'Failed to get KPIs' });
@@ -1723,7 +1847,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         avgDaysOnLot: Math.round(avgDaysOnLot),
         avgTurnoverRate,
         optimalInventoryLevel: Math.round(totalUnits * 1.1),
-        currentUtilization: 87 + Math.random() * 10,
+        currentUtilization: 87 + deterministicRandom('inventory-utilization', 0) * 10,
         hotInventory,
         coldInventory,
         makePopularity,
@@ -1789,20 +1913,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
           profit,
           avgDealValue: memberDeals.length > 0 ? revenue / memberDeals.length : 0,
           avgProfit: memberDeals.length > 0 ? profit / memberDeals.length : 0,
-          conversionRate: 75 + Math.random() * 20,
+          conversionRate: 75 + (member.performanceIndex - 0.7) * 50, // Performance-based conversion rate
           avgResponseTime: Math.round(avgResponseTime),
-          customerSatisfaction: 4.2 + Math.random() * 0.7,
+          customerSatisfaction: 4.2 + member.performanceIndex * 0.7, // Performance-based satisfaction
           fiAttachmentRate: memberDeals.filter(d => d.financeType === 'finance' && d.fiProductsRevenue > 0).length /
                           Math.max(memberDeals.filter(d => d.financeType === 'finance').length, 1) * 100,
         };
       }).sort((a, b) => b.revenue - a.revenue);
       
-      // Activity metrics
+      // Activity metrics - based on performance index and deals
       const activities = {
-        calls: performance.map(p => ({ name: p.name, count: Math.floor(50 + Math.random() * 100) })),
-        emails: performance.map(p => ({ name: p.name, count: Math.floor(30 + Math.random() * 70) })),
-        appointments: performance.map(p => ({ name: p.name, count: Math.floor(10 + Math.random() * 30) })),
-        testDrives: performance.map(p => ({ name: p.name, count: Math.floor(5 + Math.random() * 20) })),
+        calls: performance.map((p, idx) => ({ 
+          name: p.name, 
+          count: Math.floor(50 + deterministicRandom(`activity-calls-${p.id}`, idx) * 100 * p.conversionRate / 100) 
+        })),
+        emails: performance.map((p, idx) => ({ 
+          name: p.name, 
+          count: Math.floor(30 + deterministicRandom(`activity-emails-${p.id}`, idx) * 70 * p.conversionRate / 100) 
+        })),
+        appointments: performance.map((p, idx) => ({ 
+          name: p.name, 
+          count: Math.floor(10 + deterministicRandom(`activity-appt-${p.id}`, idx) * 30 * p.conversionRate / 100) 
+        })),
+        testDrives: performance.map((p, idx) => ({ 
+          name: p.name, 
+          count: Math.floor(5 + deterministicRandom(`activity-test-${p.id}`, idx) * 20 * p.conversionRate / 100) 
+        })),
       };
       
       // Goals vs actual
@@ -1823,7 +1959,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         teamAvgResponseTime: Math.round(performance.reduce((sum, p) => sum + p.avgResponseTime, 0) / performance.length),
         teamAvgSatisfaction: (performance.reduce((sum, p) => sum + p.customerSatisfaction, 0) / performance.length).toFixed(1),
         topPerformer: performance[0],
-        mostImproved: performance[Math.floor(Math.random() * performance.length)],
+        // Most improved: middle performer with good recent performance
+        mostImproved: performance[Math.floor(performance.length / 2)] || performance[0],
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message || 'Failed to get team performance data' });

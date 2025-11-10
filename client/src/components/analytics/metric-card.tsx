@@ -1,8 +1,10 @@
+import { memo, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useValueTransition } from '@/hooks/use-value-transition';
 import { Line, LineChart, ResponsiveContainer } from 'recharts';
+import { MetricCardSkeleton } from '@/components/skeletons/metric-card-skeleton';
 
 interface MetricCardProps {
   title: string;
@@ -18,7 +20,7 @@ interface MetricCardProps {
   testId?: string;
 }
 
-export function MetricCard({
+export const MetricCard = memo(function MetricCard({
   title,
   value,
   previousValue,
@@ -91,17 +93,7 @@ export function MetricCard({
   }[actualTrend];
   
   if (loading) {
-    return (
-      <Card className={cn('relative overflow-hidden', className)}>
-        <CardContent className="p-6">
-          <div className="animate-pulse space-y-3">
-            <div className="h-4 w-24 bg-muted rounded" />
-            <div className="h-8 w-32 bg-muted rounded" />
-            <div className="h-3 w-20 bg-muted rounded" />
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <MetricCardSkeleton />;
   }
   
   return (
@@ -171,4 +163,4 @@ export function MetricCard({
       </CardContent>
     </Card>
   );
-}
+});

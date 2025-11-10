@@ -220,7 +220,7 @@ export function calculateAutomotiveTax(options: TaxCalculationOptions): TaxCalcu
   // Add taxable fees and products based on state rules
   if (stateTax.docFeeTaxable && options.docFee) {
     const docFee = stateTax.maxDocFee 
-      ? Math.min(options.docFee, stateTax.maxDocFee)
+      ? Decimal.min(new Decimal(options.docFee), new Decimal(stateTax.maxDocFee)).toNumber()
       : options.docFee;
     taxableAmount = taxableAmount.plus(docFee);
     result.notes.push(`Documentation fee ($${docFee}) is taxable`);
@@ -254,12 +254,14 @@ export function calculateAutomotiveTax(options: TaxCalculationOptions): TaxCalcu
       if (localRate) {
         result.localTaxRate = localRate.localTaxRate;
         result.localTax = taxableAmount.times(localRate.localTaxRate).toNumber();
-        result.notes.push(`Local tax rate for ${localRate.city || localRate.county || options.zipCode}: ${(localRate.localTaxRate * 100).toFixed(3)}%`);
+        const localTaxPercent = new Decimal(localRate.localTaxRate).times(100).toFixed(3);
+        result.notes.push(`Local tax rate for ${localRate.city || localRate.county || options.zipCode}: ${localTaxPercent}%`);
       } else {
         // Use average local tax if ZIP not found
         result.localTaxRate = stateTax.averageLocalTax;
         result.localTax = taxableAmount.times(stateTax.averageLocalTax).toNumber();
-        result.warnings.push(`Using average local tax rate for ${stateTax.stateName}: ${(stateTax.averageLocalTax * 100).toFixed(3)}%`);
+        const avgTaxPercent = new Decimal(stateTax.averageLocalTax).times(100).toFixed(3);
+        result.warnings.push(`Using average local tax rate for ${stateTax.stateName}: ${avgTaxPercent}%`);
       }
     } else {
       // No ZIP provided, use average
@@ -278,7 +280,10 @@ export function calculateAutomotiveTax(options: TaxCalculationOptions): TaxCalcu
   }
   
   // Calculate total tax
-  result.totalTax = result.stateTax + result.localTax + result.luxuryTax;
+  result.totalTax = new Decimal(result.stateTax)
+    .plus(result.localTax)
+    .plus(result.luxuryTax)
+    .toNumber();
   
   // Apply tax cap if applicable
   if (stateTax.capOnTax && result.totalTax > stateTax.capOnTax) {
@@ -290,14 +295,16 @@ export function calculateAutomotiveTax(options: TaxCalculationOptions): TaxCalcu
   
   // Calculate effective tax rate
   if (result.taxableAmount > 0) {
-    result.effectiveTaxRate = result.totalTax / result.taxableAmount;
+    result.effectiveTaxRate = new Decimal(result.totalTax)
+      .dividedBy(result.taxableAmount)
+      .toNumber();
   }
   
   // Handle documentation fee
   let docFeeAmount = 0;
   if (options.docFee) {
     docFeeAmount = stateTax.maxDocFee 
-      ? Math.min(options.docFee, stateTax.maxDocFee)
+      ? Decimal.min(new Decimal(options.docFee), new Decimal(stateTax.maxDocFee)).toNumber()
       : options.docFee;
     if (stateTax.maxDocFee && options.docFee > stateTax.maxDocFee) {
       result.warnings.push(`Documentation fee limited to $${stateTax.maxDocFee} (requested: $${options.docFee})`);
@@ -312,10 +319,13 @@ export function calculateAutomotiveTax(options: TaxCalculationOptions): TaxCalcu
   // Apply special state rules for registration
   if (options.stateCode === 'IA' && options.vehiclePrice) {
     // Iowa: 1% of vehicle value up to $400
-    result.registrationFee = Math.min(options.vehiclePrice * 0.01, 400);
+    const iowaFee = new Decimal(options.vehiclePrice).times(0.01);
+    result.registrationFee = Decimal.min(iowaFee, new Decimal(400)).toNumber();
   } else if (options.stateCode === 'CA' && options.vehiclePrice) {
     // California: Based on vehicle value
-    result.registrationFee = stateTax.registrationFeeBase + (options.vehiclePrice * 0.0065);
+    result.registrationFee = new Decimal(stateTax.registrationFeeBase)
+      .plus(new Decimal(options.vehiclePrice).times(0.0065))
+      .toNumber();
   }
   
   // Electric vehicle considerations
@@ -348,10 +358,17 @@ export function calculateAutomotiveTax(options: TaxCalculationOptions): TaxCalcu
   }
   
   // Calculate total fees
-  result.totalFees = result.titleFee + result.registrationFee + docFeeAmount + result.evAdditionalFee;
+  result.totalFees = new Decimal(result.titleFee)
+    .plus(result.registrationFee)
+    .plus(docFeeAmount)
+    .plus(result.evAdditionalFee)
+    .toNumber();
   
   // Calculate grand total
-  result.totalTaxAndFees = result.totalTax + result.totalFees - result.evIncentive;
+  result.totalTaxAndFees = new Decimal(result.totalTax)
+    .plus(result.totalFees)
+    .minus(result.evIncentive)
+    .toNumber();
   
   // Build detailed breakdown
   result.breakdown = buildTaxBreakdown(result, stateTax, docFeeAmount);
@@ -371,22 +388,24 @@ function buildTaxBreakdown(
   
   // Tax items
   if (result.stateTax > 0) {
+    const stateTaxPercent = new Decimal(result.stateTaxRate).times(100).toFixed(3);
     breakdown.push({
       label: `${stateTax.stateName} State Tax`,
       amount: result.stateTax,
       rate: result.stateTaxRate,
       type: 'tax',
-      description: `${(result.stateTaxRate * 100).toFixed(3)}% of $${result.taxableAmount.toLocaleString()}`
+      description: `${stateTaxPercent}% of $${result.taxableAmount.toLocaleString()}`
     });
   }
   
   if (result.localTax > 0) {
+    const localTaxPercent = new Decimal(result.localTaxRate).times(100).toFixed(3);
     breakdown.push({
       label: 'Local Tax',
       amount: result.localTax,
       rate: result.localTaxRate,
       type: 'tax',
-      description: `${(result.localTaxRate * 100).toFixed(3)}% local rate`
+      description: `${localTaxPercent}% local rate`
     });
   }
   
@@ -529,5 +548,5 @@ export function formatCurrency(amount: number): string {
  * Format percentage for display
  */
 export function formatPercentage(rate: number, decimals: number = 3): string {
-  return `${(rate * 100).toFixed(decimals)}%`;
+  return `${new Decimal(rate).times(100).toFixed(decimals)}%`;
 }

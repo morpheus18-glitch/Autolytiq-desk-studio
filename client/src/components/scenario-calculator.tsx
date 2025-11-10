@@ -12,10 +12,14 @@ import { Calculator, Plus, Trash2, DollarSign, Search, TrendingUp } from 'lucide
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useStore } from '@/lib/store';
 import { debounce } from 'lodash';
+import Decimal from 'decimal.js';
 import type { DealScenario, TradeVehicle, DealerFee, Accessory, TaxJurisdictionWithRules, AftermarketProduct, Deal } from '@shared/schema';
 import { calculateFinancePayment, calculateLeasePayment, calculateSalesTax, moneyFactorToAPR, aprToMoneyFactor } from '@/lib/calculations';
 import { LenderRateShop } from './lender-rate-shop';
 import { useToast } from '@/hooks/use-toast';
+
+// Configure Decimal for financial precision
+Decimal.set({ precision: 20, rounding: Decimal.ROUND_HALF_UP });
 
 interface ScenarioCalculatorProps {
   scenario: DealScenario;
@@ -114,9 +118,10 @@ export function ScenarioCalculator({ scenario, dealId, tradeVehicle }: ScenarioC
     });
     
     // Total fees = dealer fees + accessories + ALL aftermarket products
-    const totalFees = dealerFees.reduce((sum, f) => sum + f.amount, 0) +
-                     accessories.reduce((sum, a) => sum + a.amount, 0) +
-                     aftermarketProducts.reduce((sum, p) => sum + p.price, 0);
+    const totalFees = dealerFees.reduce((sum, f) => sum.plus(f.amount), new Decimal(0))
+      .plus(accessories.reduce((sum, a) => sum.plus(a.amount), new Decimal(0)))
+      .plus(aftermarketProducts.reduce((sum, p) => sum.plus(p.price), new Decimal(0)))
+      .toNumber();
     
     let monthlyPayment = 0;
     let amountFinanced = 0;
@@ -156,12 +161,17 @@ export function ScenarioCalculator({ scenario, dealId, tradeVehicle }: ScenarioC
       totalCost = result.totalCost;
       cashDueAtSigning = parseFloat(formData.downPayment as any) || 0;
     } else {
-      // Cash deal: Total = Vehicle + Tax + Fees - Trade Allowance - Trade Payoff
-      // (Trade payoff is subtracted because it's an amount the customer owes on their trade)
-      const vehiclePrice = parseFloat(formData.vehiclePrice as any) || 0;
-      const tradeAllowance = parseFloat(formData.tradeAllowance as any) || 0;
-      const tradePayoff = parseFloat(formData.tradePayoff as any) || 0;
-      totalCost = vehiclePrice + taxCalc + totalFees - tradeAllowance - tradePayoff;
+      // Cash deal: Total = Vehicle + Tax + Fees - Trade Allowance + Trade Payoff
+      // (Trade payoff is added because it's an amount the customer owes on their trade)
+      const vehiclePrice = new Decimal(formData.vehiclePrice || 0);
+      const tradeAllowance = new Decimal(formData.tradeAllowance || 0);
+      const tradePayoff = new Decimal(formData.tradePayoff || 0);
+      totalCost = vehiclePrice
+        .plus(taxCalc)
+        .plus(totalFees)
+        .minus(tradeAllowance)
+        .plus(tradePayoff)
+        .toNumber();
       cashDueAtSigning = totalCost;
     }
     
