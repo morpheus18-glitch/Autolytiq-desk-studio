@@ -71,26 +71,24 @@ export default function DealWorksheetV2() {
   const activeScenario = deal.scenarios.find(s => s.id === activeScenarioId) || deal.scenarios[0];
   
   const header = (
-    <div className="flex items-center justify-between gap-4">
-      <div className="flex items-center gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl md:text-2xl font-semibold font-mono tracking-tight">{deal.dealNumber}</h1>
-            <Badge className={DEAL_STATE_COLORS[deal.dealState]} data-testid="badge-deal-state">
-              {deal.dealState.replace('_', ' ')}
-            </Badge>
-          </div>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs md:text-sm text-muted-foreground">
-            <span className="font-medium">{deal.customer.firstName} {deal.customer.lastName}</span>
-            <span className="text-border">•</span>
-            <span>{deal.vehicle.year} {deal.vehicle.make} {deal.vehicle.model}</span>
-            <span className="text-border">•</span>
-            <span className="font-mono">#{deal.vehicle.stockNumber}</span>
-          </div>
+    <div className="flex items-start md:items-center justify-between gap-3 md:gap-4">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <h1 className="text-lg md:text-xl lg:text-2xl font-semibold font-mono tracking-tight">{deal.dealNumber}</h1>
+          <Badge className={DEAL_STATE_COLORS[deal.dealState]} data-testid="badge-deal-state">
+            {deal.dealState.replace('_', ' ')}
+          </Badge>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-2 md:gap-x-3 gap-y-1 mt-1.5 text-xs md:text-sm text-muted-foreground">
+          <span className="font-medium">{deal.customer.firstName} {deal.customer.lastName}</span>
+          <span className="hidden sm:inline text-border">•</span>
+          <span className="sm:contents w-full sm:w-auto">{deal.vehicle.year} {deal.vehicle.make} {deal.vehicle.model}</span>
+          <span className="hidden sm:inline text-border">•</span>
+          <span className="font-mono">#{deal.vehicle.stockNumber}</span>
         </div>
       </div>
       
-      <div className="hidden md:flex items-center gap-2">
+      <div className="hidden md:flex items-center gap-2 flex-shrink-0">
         <Button variant="outline" size="sm" data-testid="button-history">
           <History className="w-4 h-4 mr-2" />
           History
@@ -153,19 +151,19 @@ export default function DealWorksheetV2() {
         {/* Mobile: Collapsible Sections */}
         <div className="lg:hidden space-y-4">
           <DeskSection title="Customer Information" icon={User} defaultOpen>
-            <div className="space-y-4 text-sm">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <div className="text-xs text-muted-foreground mb-1">Name</div>
-                  <div className="font-medium">{deal.customer.firstName} {deal.customer.lastName}</div>
+                  <div className="text-xs text-muted-foreground mb-1.5">Name</div>
+                  <div className="font-medium text-sm">{deal.customer.firstName} {deal.customer.lastName}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-muted-foreground mb-1">Phone</div>
-                  <div className="font-medium font-mono">{deal.customer.phone || 'N/A'}</div>
+                  <div className="text-xs text-muted-foreground mb-1.5">Phone</div>
+                  <div className="font-medium font-mono text-sm">{deal.customer.phone || 'N/A'}</div>
                 </div>
-                <div className="col-span-2">
-                  <div className="text-xs text-muted-foreground mb-1">Email</div>
-                  <div className="font-medium">{deal.customer.email || 'N/A'}</div>
+                <div className="sm:col-span-2">
+                  <div className="text-xs text-muted-foreground mb-1.5">Email</div>
+                  <div className="font-medium text-sm break-all">{deal.customer.email || 'N/A'}</div>
                 </div>
               </div>
             </div>
@@ -173,27 +171,27 @@ export default function DealWorksheetV2() {
           
           <DeskSection title="Vehicle Details" icon={Car}>
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1">Year/Make/Model</div>
-                  <div className="font-medium">{deal.vehicle.year} {deal.vehicle.make} {deal.vehicle.model}</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="sm:col-span-2">
+                  <div className="text-xs text-muted-foreground mb-1.5">Year/Make/Model</div>
+                  <div className="font-medium text-sm">{deal.vehicle.year} {deal.vehicle.make} {deal.vehicle.model}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-muted-foreground mb-1">Stock #</div>
-                  <div className="font-medium font-mono">{deal.vehicle.stockNumber}</div>
+                  <div className="text-xs text-muted-foreground mb-1.5">Stock #</div>
+                  <div className="font-medium font-mono text-sm">{deal.vehicle.stockNumber}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-muted-foreground mb-1">Price</div>
-                  <div className="font-mono font-semibold text-base">${parseFloat(deal.vehicle.price as string).toLocaleString()}</div>
+                  <div className="text-xs text-muted-foreground mb-1.5">Mileage</div>
+                  <div className="font-mono text-sm">{deal.vehicle.mileage.toLocaleString()} mi</div>
                 </div>
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1">Mileage</div>
-                  <div className="font-mono">{deal.vehicle.mileage.toLocaleString()} mi</div>
+                <div className="sm:col-span-2">
+                  <div className="text-xs text-muted-foreground mb-1.5">Price</div>
+                  <div className="font-mono font-semibold text-lg">${parseFloat(deal.vehicle.price as string).toLocaleString()}</div>
                 </div>
               </div>
               <Button 
                 variant="outline" 
-                size="sm" 
+                className="w-full sm:w-auto"
                 onClick={() => setVehicleSwitcherOpen(true)}
                 data-testid="button-switch-vehicle"
               >

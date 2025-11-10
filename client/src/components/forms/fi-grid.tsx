@@ -70,21 +70,20 @@ export function FIGrid() {
   };
   
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Quick Add Buttons */}
       <div className="space-y-3">
         <Label className="text-sm font-medium">Quick Add Common Products</Label>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:flex md:flex-wrap gap-2">
           {COMMON_PRODUCTS.map((product, idx) => (
             <Button
               key={idx}
               variant="outline"
-              size="sm"
               onClick={() => addProduct(product)}
-              className="text-xs"
+              className="text-xs justify-start sm:justify-center"
               data-testid={`button-add-${product.name.toLowerCase().replace(/\s+/g, '-')}`}
             >
-              <Plus className="w-3 h-3 mr-1" />
+              <Plus className="w-3 h-3 mr-1 flex-shrink-0" />
               {product.name}
             </Button>
           ))}
@@ -97,11 +96,11 @@ export function FIGrid() {
           <Label className="text-sm font-medium">Added Products</Label>
           <div className="space-y-3">
             {products.map((product, index) => (
-              <Card key={index} className="p-4" data-testid={`card-product-${index}`}>
-                <div className="space-y-4">
+              <Card key={index} className="p-3 md:p-4" data-testid={`card-product-${index}`}>
+                <div className="space-y-3 md:space-y-4">
                   {/* Product Name & Remove Button */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1">
+                  <div className="flex items-start justify-between gap-2 md:gap-3">
+                    <div className="flex-1 min-w-0">
                       <Label htmlFor={`product-name-${index}`} className="text-xs text-muted-foreground">
                         Product Name
                       </Label>
@@ -109,36 +108,39 @@ export function FIGrid() {
                         id={`product-name-${index}`}
                         value={product.name}
                         onChange={(e) => updateProduct(index, 'name', e.target.value)}
-                        className="mt-1"
+                        className="mt-1 min-h-11 text-base"
                         data-testid={`input-product-name-${index}`}
                       />
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeProduct(index)}
-                      className="text-destructive hover:text-destructive"
-                      data-testid={`button-remove-product-${index}`}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    <div className="pt-5">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeProduct(index)}
+                        className="text-destructive hover:text-destructive flex-shrink-0"
+                        data-testid={`button-remove-product-${index}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                   
                   {/* Cost, Price, Margin Grid */}
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {/* Cost */}
                     <div>
                       <Label htmlFor={`product-cost-${index}`} className="text-xs text-muted-foreground">
                         Dealer Cost
                       </Label>
                       <div className="relative mt-1">
-                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                        <DollarSign className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground pointer-events-none" />
                         <Input
                           id={`product-cost-${index}`}
                           type="text"
+                          inputMode="decimal"
                           value={product.cost}
                           onChange={(e) => updateProduct(index, 'cost', e.target.value.replace(/[^0-9.]/g, ''))}
-                          className="pl-9 font-mono tabular-nums"
+                          className="pl-7 sm:pl-9 font-mono tabular-nums min-h-11 text-sm sm:text-base"
                           data-testid={`input-product-cost-${index}`}
                         />
                       </div>
@@ -150,25 +152,26 @@ export function FIGrid() {
                         Selling Price
                       </Label>
                       <div className="relative mt-1">
-                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                        <DollarSign className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground pointer-events-none" />
                         <Input
                           id={`product-price-${index}`}
                           type="text"
+                          inputMode="decimal"
                           value={product.price}
                           onChange={(e) => updateProduct(index, 'price', e.target.value.replace(/[^0-9.]/g, ''))}
-                          className="pl-9 font-mono tabular-nums"
+                          className="pl-7 sm:pl-9 font-mono tabular-nums min-h-11 text-sm sm:text-base"
                           data-testid={`input-product-price-${index}`}
                         />
                       </div>
                     </div>
                     
                     {/* Margin (derived) */}
-                    <div>
+                    <div className="col-span-2 sm:col-span-1">
                       <Label className="text-xs text-muted-foreground">Margin</Label>
-                      <div className="mt-1 flex items-center h-9">
+                      <div className="mt-1 flex items-center min-h-11">
                         <Badge
                           variant={calculateMargin(product) >= 40 ? 'default' : calculateMargin(product) >= 20 ? 'secondary' : 'outline'}
-                          className="text-sm font-mono tabular-nums"
+                          className="text-sm font-mono tabular-nums px-3 py-1.5"
                           data-testid={`text-product-margin-${index}`}
                         >
                           {calculateMargin(product).toFixed(1)}%
@@ -186,6 +189,7 @@ export function FIGrid() {
       {/* Add Custom Product Button */}
       <Button
         variant="outline"
+        size="lg"
         onClick={() => addProduct()}
         className="w-full"
         data-testid="button-add-custom-product"

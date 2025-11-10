@@ -53,7 +53,7 @@ export function FinanceLeaseForm() {
   };
   
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Deal Type Toggle */}
       <div className="space-y-2">
         <Label className="text-sm font-medium">Deal Type</Label>
@@ -61,22 +61,22 @@ export function FinanceLeaseForm() {
           <Button
             type="button"
             variant={isFinance ? 'default' : 'outline'}
-            size="sm"
-            onClick={switchToFinance}
+            size="lg"
             className="flex-1 toggle-elevate"
             data-class={isFinance ? 'toggle-elevated' : ''}
             data-testid="button-finance-deal"
+            onClick={switchToFinance}
           >
             Finance
           </Button>
           <Button
             type="button"
             variant={isLease ? 'default' : 'outline'}
-            size="sm"
-            onClick={switchToLease}
+            size="lg"
             className="flex-1 toggle-elevate"
             data-class={isLease ? 'toggle-elevated' : ''}
             data-testid="button-lease-deal"
+            onClick={switchToLease}
           >
             Lease
           </Button>
@@ -84,7 +84,7 @@ export function FinanceLeaseForm() {
       </div>
       
       {isFinance && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           {/* APR */}
           <div className="space-y-2">
             <Label htmlFor="apr" className="text-sm font-medium">
@@ -95,9 +95,10 @@ export function FinanceLeaseForm() {
               <Input
                 id="apr"
                 type="text"
+                inputMode="decimal"
                 value={formatPercent(scenario.apr)}
                 onChange={(e) => handlePercentChange('apr', e.target.value)}
-                className="pl-9 font-mono tabular-nums"
+                className="pl-9 font-mono tabular-nums min-h-11 text-base"
                 placeholder="5.99"
                 data-testid="input-apr"
               />
@@ -116,7 +117,7 @@ export function FinanceLeaseForm() {
                 value={scenario.term?.toString() || '60'}
                 onValueChange={(value) => updateField('term', parseInt(value))}
               >
-                <SelectTrigger className="pl-9" data-testid="select-term">
+                <SelectTrigger className="pl-9 min-h-11" data-testid="select-term">
                   <SelectValue placeholder="Select term" />
                 </SelectTrigger>
                 <SelectContent>
@@ -136,8 +137,8 @@ export function FinanceLeaseForm() {
       )}
       
       {isLease && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-4 md:space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
             {/* Money Factor */}
             <div className="space-y-2">
               <Label htmlFor="moneyFactor" className="text-sm font-medium">
@@ -146,9 +147,10 @@ export function FinanceLeaseForm() {
               <Input
                 id="moneyFactor"
                 type="text"
+                inputMode="decimal"
                 value={scenario.moneyFactor || '0.00125'}
                 onChange={(e) => updateField('moneyFactor', e.target.value)}
-                className="font-mono tabular-nums"
+                className="font-mono tabular-nums min-h-11 text-base"
                 placeholder="0.00125"
                 data-testid="input-money-factor"
               />
@@ -168,7 +170,7 @@ export function FinanceLeaseForm() {
                   value={scenario.term?.toString() || '36'}
                   onValueChange={(value) => updateField('term', parseInt(value))}
                 >
-                  <SelectTrigger className="pl-9" data-testid="select-lease-term">
+                  <SelectTrigger className="pl-9 min-h-11" data-testid="select-lease-term">
                     <SelectValue placeholder="Select term" />
                   </SelectTrigger>
                   <SelectContent>
@@ -195,9 +197,10 @@ export function FinanceLeaseForm() {
                 <Input
                   id="residualPercent"
                   type="text"
+                  inputMode="decimal"
                   value={formatPercent(scenario.residualPercent)}
                   onChange={(e) => handlePercentChange('residualPercent', e.target.value)}
-                  className="pl-9 font-mono tabular-nums"
+                  className="pl-9 font-mono tabular-nums min-h-11 text-base"
                   placeholder="50.00"
                   data-testid="input-residual-percent"
                 />
@@ -217,9 +220,10 @@ export function FinanceLeaseForm() {
                 <Input
                   id="residualValue"
                   type="text"
+                  inputMode="decimal"
                   value={scenario.residualValue || ''}
                   onChange={(e) => updateField('residualValue', e.target.value.replace(/[^0-9.]/g, ''))}
-                  className="pl-9 font-mono tabular-nums"
+                  className="pl-9 font-mono tabular-nums min-h-11 text-base"
                   placeholder="18000.00"
                   data-testid="input-residual-value"
                 />
