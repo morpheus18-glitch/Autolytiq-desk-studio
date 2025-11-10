@@ -86,28 +86,28 @@ export function TradeForm() {
       </div>
       
       {/* Trade Equity Indicator */}
-      <div className={`p-4 rounded-lg border ${
+      <div className={`calc-surface border p-4 ${
         hasPositiveEquity ? 'bg-green-500/10 border-green-500/20' :
         hasNegativeEquity ? 'bg-red-500/10 border-red-500/20' :
-        'bg-muted/50'
+        ''
       }`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             {hasPositiveEquity && <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-400" />}
             {hasNegativeEquity && <TrendingDown className="w-4 h-4 text-red-600 dark:text-red-400" />}
-            <span className="text-sm font-medium">
+            <span className="text-step--1 font-medium">
               {hasPositiveEquity ? 'Positive Equity' : hasNegativeEquity ? 'Negative Equity' : 'No Trade'}
             </span>
           </div>
-          <div className={`text-lg font-mono font-bold tabular-nums ${
+          <div className={`text-step-1 font-bold ${
             hasPositiveEquity ? 'text-green-600 dark:text-green-400' :
             hasNegativeEquity ? 'text-red-600 dark:text-red-400' :
             'text-muted-foreground'
-          }`} data-testid="text-trade-equity">
+          }`} data-testid="text-trade-equity" data-currency>
             ${Math.abs(calculations.tradeEquity.toNumber()).toFixed(2)}
           </div>
         </div>
-        <p className="text-xs text-muted-foreground mt-2">
+        <p className="text-step--2 text-muted-foreground mt-2">
           {hasPositiveEquity && 'Customer has equity that reduces amount financed'}
           {hasNegativeEquity && 'Negative equity will be added to amount financed'}
           {!hasPositiveEquity && !hasNegativeEquity && 'Allowance = Payoff (zero equity)'}

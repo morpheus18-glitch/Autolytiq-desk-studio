@@ -235,25 +235,25 @@ export function FinanceLeaseForm() {
       )}
       
       {/* Payment Summary */}
-      <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+      <div className="calc-surface p-4 bg-primary/5 border-primary/20">
         <div className="flex items-baseline justify-between">
-          <span className="text-sm font-medium text-muted-foreground">Monthly Payment</span>
-          <span className="text-2xl font-mono font-bold tabular-nums text-primary" data-testid="text-monthly-payment">
+          <span className="text-step--1 font-medium text-muted-foreground">Monthly Payment</span>
+          <span className="text-step-2 font-bold text-primary transition-smooth" data-testid="text-monthly-payment" data-currency>
             ${calculations.monthlyPayment.toFixed(2)}
           </span>
         </div>
-        <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t text-xs">
+        <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t">
           <div>
-            <div className="text-muted-foreground mb-1">Term</div>
-            <div className="font-mono font-semibold tabular-nums">{scenario.term || 0} mo</div>
+            <div className="text-step--2 text-muted-foreground mb-1">Term</div>
+            <div className="text-step--1 font-semibold" data-numeric>{scenario.term || 0} mo</div>
           </div>
           <div>
-            <div className="text-muted-foreground mb-1">Financed</div>
-            <div className="font-mono font-semibold tabular-nums">${calculations.amountFinanced.toFixed(0)}</div>
+            <div className="text-step--2 text-muted-foreground mb-1">Financed</div>
+            <div className="text-step--1 font-semibold" data-currency>${calculations.amountFinanced.toFixed(0)}</div>
           </div>
           <div>
-            <div className="text-muted-foreground mb-1">Total Cost</div>
-            <div className="font-mono font-semibold tabular-nums">${calculations.totalCost.toFixed(0)}</div>
+            <div className="text-step--2 text-muted-foreground mb-1">Total Cost</div>
+            <div className="text-step--1 font-semibold" data-currency>${calculations.totalCost.toFixed(0)}</div>
           </div>
         </div>
       </div>

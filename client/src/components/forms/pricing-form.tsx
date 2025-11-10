@@ -63,29 +63,29 @@ export function PricingForm() {
       </div>
       
       {/* Calculated Summary */}
-      <div className="md:col-span-2 p-3 md:p-4 rounded-lg bg-muted/50 border">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 text-sm">
+      <div className="md:col-span-2 calc-surface p-3 md:p-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           <div>
-            <div className="text-xs text-muted-foreground mb-1">Selling Price</div>
-            <div className="font-mono font-semibold tabular-nums text-sm md:text-base" data-testid="text-selling-price">
+            <div className="text-step--2 text-muted-foreground mb-1">Selling Price</div>
+            <div className="text-step-0 font-semibold" data-testid="text-selling-price" data-currency>
               ${calculations.sellingPrice.toFixed(2)}
             </div>
           </div>
           <div>
-            <div className="text-xs text-muted-foreground mb-1">Down Payment</div>
-            <div className="font-mono font-semibold tabular-nums text-sm md:text-base" data-testid="text-down-payment">
+            <div className="text-step--2 text-muted-foreground mb-1">Down Payment</div>
+            <div className="text-step-0 font-semibold" data-testid="text-down-payment" data-currency>
               ${calculations.downPayment.toFixed(2)}
             </div>
           </div>
           <div>
-            <div className="text-xs text-muted-foreground mb-1">Net After Down</div>
-            <div className="font-mono font-semibold tabular-nums text-sm md:text-base">
+            <div className="text-step--2 text-muted-foreground mb-1">Net After Down</div>
+            <div className="text-step-0 font-semibold" data-currency>
               ${calculations.sellingPrice.minus(calculations.downPayment).toFixed(2)}
             </div>
           </div>
           <div>
-            <div className="text-xs text-muted-foreground mb-1">To Finance</div>
-            <div className="font-mono font-semibold tabular-nums text-primary text-sm md:text-base" data-testid="text-amount-financed">
+            <div className="text-step--2 text-muted-foreground mb-1">To Finance</div>
+            <div className="text-step-0 font-semibold text-primary" data-testid="text-amount-financed" data-currency>
               ${calculations.amountFinanced.toFixed(2)}
             </div>
           </div>
