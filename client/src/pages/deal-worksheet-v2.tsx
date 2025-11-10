@@ -15,6 +15,9 @@ import { PricingForm } from '@/components/forms/pricing-form';
 import { TradeForm } from '@/components/forms/trade-form';
 import { FinanceLeaseForm } from '@/components/forms/finance-lease-form';
 import { FIGrid } from '@/components/forms/fi-grid';
+import { TaxBreakdownForm } from '@/components/forms/tax-breakdown-form';
+import { DealerFeesForm } from '@/components/forms/dealer-fees-form';
+import { AccessoriesForm } from '@/components/forms/accessories-form';
 
 const DEAL_STATE_COLORS: Record<string, string> = {
   DRAFT: 'bg-muted text-muted-foreground',
@@ -217,14 +220,24 @@ export default function DealWorksheetV2() {
             <PricingForm />
           </DeskSection>
           
-          {deal.tradeVehicle && (
-            <DeskSection title="Trade-In" icon={TrendingUp}>
-              <TradeForm />
-            </DeskSection>
-          )}
+          <DeskSection title="Trade-In" icon={TrendingUp}>
+            <TradeForm />
+          </DeskSection>
           
           <DeskSection title="Finance Terms" icon={Calculator} defaultOpen>
             <FinanceLeaseForm />
+          </DeskSection>
+          
+          <DeskSection title="Tax & Fees" icon={Receipt}>
+            <TaxBreakdownForm />
+          </DeskSection>
+          
+          <DeskSection title="Dealer Fees" icon={Receipt}>
+            <DealerFeesForm />
+          </DeskSection>
+          
+          <DeskSection title="Accessories" icon={Receipt}>
+            <AccessoriesForm />
           </DeskSection>
           
           <DeskSection title="F&I Products" icon={Receipt}>
@@ -305,16 +318,29 @@ export default function DealWorksheetV2() {
                 <PricingForm />
               </div>
               
-              {deal.tradeVehicle && (
-                <div className="space-y-3">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Trade-In</h3>
-                  <TradeForm />
-                </div>
-              )}
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Trade-In</h3>
+                <TradeForm />
+              </div>
               
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Finance Terms</h3>
                 <FinanceLeaseForm />
+              </div>
+              
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Tax & Fees</h3>
+                <TaxBreakdownForm />
+              </div>
+              
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Dealer Fees</h3>
+                <DealerFeesForm />
+              </div>
+              
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Accessories</h3>
+                <AccessoriesForm />
               </div>
               
               <div className="space-y-3">
