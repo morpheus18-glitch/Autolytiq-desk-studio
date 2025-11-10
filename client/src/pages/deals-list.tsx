@@ -20,9 +20,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Search, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, Filter, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 import type { DealWithRelations } from '@shared/schema';
 import { TableRowSkeleton } from '@/components/skeletons';
+import { EmptyState } from '@/components/ui/empty-state';
+import { useLocation } from 'wouter';
 
 const DEAL_STATE_COLORS: Record<string, string> = {
   DRAFT: 'bg-muted text-muted-foreground',
@@ -32,6 +34,7 @@ const DEAL_STATE_COLORS: Record<string, string> = {
 };
 
 export default function DealsList() {
+  const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [page, setPage] = useState(1);
@@ -127,28 +130,26 @@ export default function DealsList() {
                   ))
                 ) : deals.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-64 text-center">
-                      <div className="flex flex-col items-center justify-center gap-4">
-                        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
-                          <Filter className="w-8 h-8 text-muted-foreground" />
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-medium">No deals found</h3>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {searchQuery || statusFilter !== 'all'
-                              ? 'Try adjusting your filters'
-                              : 'Get started by creating your first deal'}
-                          </p>
-                        </div>
-                        {!searchQuery && statusFilter === 'all' && (
-                          <Link href="/deals/new">
-                            <Button data-testid="button-create-first-deal">
-                              <Plus className="w-4 h-4 mr-2" />
-                              Create Deal
-                            </Button>
-                          </Link>
-                        )}
-                      </div>
+                    <TableCell colSpan={7} className="p-0">
+                      <EmptyState
+                        icon={searchQuery || statusFilter !== 'all' ? Filter : FileText}
+                        title={searchQuery || statusFilter !== 'all' ? 'No deals found' : 'No deals yet'}
+                        description={
+                          searchQuery || statusFilter !== 'all'
+                            ? 'Try adjusting your search query or filter settings to find what you\'re looking for.'
+                            : 'Create your first deal to start managing customer transactions and building your deal pipeline.'
+                        }
+                        containerTestId="empty-state-deals"
+                        action={
+                          !searchQuery && statusFilter === 'all'
+                            ? {
+                                label: 'Create Deal',
+                                onClick: () => setLocation('/deals/new'),
+                                testId: 'button-create-first-deal',
+                              }
+                            : undefined
+                        }
+                      />
                     </TableCell>
                   </TableRow>
                 ) : (

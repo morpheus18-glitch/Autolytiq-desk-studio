@@ -3,8 +3,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, DollarSign, TrendingUp } from 'lucide-react';
+import { Plus, Trash2, DollarSign, TrendingUp, Package } from 'lucide-react';
 import { useScenarioForm } from '@/contexts/scenario-form-context';
+import { EmptyState } from '@/components/ui/empty-state';
 
 interface AftermarketProduct {
   name: string;
@@ -89,6 +90,17 @@ export function FIGrid() {
           ))}
         </div>
       </div>
+      
+      {/* Empty State */}
+      {products.length === 0 && (
+        <EmptyState
+          icon={Package}
+          title="No F&I Products Added"
+          description="Increase deal profitability by adding aftermarket products like extended warranties, GAP insurance, and protection plans. Use the quick-add buttons above to get started."
+          containerTestId="empty-state-fi-products"
+          className="py-8 md:py-12"
+        />
+      )}
       
       {/* Products Grid */}
       {products.length > 0 && (

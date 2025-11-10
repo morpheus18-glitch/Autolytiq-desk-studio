@@ -3,7 +3,8 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Car, Plus, Pencil, Trash2, DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
+import { Car, Plus, Pencil, Trash2, DollarSign, TrendingUp, TrendingDown, Inbox } from 'lucide-react';
+import { EmptyState } from '@/components/ui/empty-state';
 import {
   Sheet,
   SheetContent,
@@ -255,15 +256,12 @@ export function TradeGarageSheet({ dealId, trigger }: TradeGarageSheetProps) {
             )}
 
             {!isLoading && trades.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                  <Car className="w-8 h-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-medium mb-2">No Trade Vehicles</h3>
-                <p className="text-sm text-muted-foreground max-w-sm">
-                  Add a trade-in vehicle to this deal using the form below.
-                </p>
-              </div>
+              <EmptyState
+                icon={Inbox}
+                title="No Trade Vehicles"
+                description="Add trade-in vehicles to this deal to accurately calculate customer equity and net deal value. All trades are stored in the garage for quick access."
+                containerTestId="empty-state-trades"
+              />
             )}
 
             {trades.map((trade) => {
