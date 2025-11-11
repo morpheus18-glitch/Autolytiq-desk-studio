@@ -3,34 +3,43 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, DollarSign, TrendingUp, Package } from 'lucide-react';
+import { CurrencyField } from '@/components/ui/currency-field';
+import { formatCurrency } from '@/lib/currency';
+import { Plus, Trash2, TrendingUp, Package } from 'lucide-react';
 import { useScenarioForm } from '@/contexts/scenario-form-context';
 import { EmptyState } from '@/components/ui/empty-state';
 
 interface AftermarketProduct {
   name: string;
-  cost: string;
-  price: string;
+  cost: number;
+  price: number;
 }
 
 const COMMON_PRODUCTS = [
-  { name: 'Extended Warranty', cost: '800', price: '1500' },
-  { name: 'Gap Insurance', cost: '300', price: '695' },
-  { name: 'Tire & Wheel Protection', cost: '200', price: '495' },
-  { name: 'Paint Protection', cost: '150', price: '495' },
-  { name: 'Maintenance Plan', cost: '400', price: '995' },
+  { name: 'Extended Warranty', cost: 800, price: 1500 },
+  { name: 'Gap Insurance', cost: 300, price: 695 },
+  { name: 'Tire & Wheel Protection', cost: 200, price: 495 },
+  { name: 'Paint Protection', cost: 150, price: 495 },
+  { name: 'Maintenance Plan', cost: 400, price: 995 },
 ];
 
 export function FIGrid() {
   const { scenario, updateField } = useScenarioForm();
   
+  // Normalize products: convert legacy string cost/price to numbers for backward compatibility
+  const normalizeProduct = (p: any): AftermarketProduct => ({
+    name: p.name,
+    cost: typeof p.cost === 'string' ? parseFloat(p.cost || '0') : (p.cost ?? 0),
+    price: typeof p.price === 'string' ? parseFloat(p.price || '0') : (p.price ?? 0),
+  });
+  
   // Derive products from context (no local state)
-  const products: AftermarketProduct[] = (scenario.aftermarketProducts as AftermarketProduct[]) || [];
+  const products: AftermarketProduct[] = ((scenario.aftermarketProducts as any[]) || []).map(normalizeProduct);
   
   // Helper to calculate margin (derived, not stored)
   const calculateMargin = (product: AftermarketProduct): number => {
-    const cost = parseFloat(product.cost || '0');
-    const price = parseFloat(product.price || '0');
+    const cost = product.cost ?? 0;
+    const price = product.price ?? 0;
     const margin = price > 0 ? ((price - cost) / price) * 100 : 0;
     return isNaN(margin) ? 0 : margin;
   };
@@ -38,8 +47,8 @@ export function FIGrid() {
   const addProduct = (template?: typeof COMMON_PRODUCTS[0]) => {
     const newProduct: AftermarketProduct = {
       name: template?.name || 'New Product',
-      cost: template?.cost || '0',
-      price: template?.price || '0',
+      cost: template?.cost ?? 0,
+      price: template?.price ?? 0,
     };
     
     const updated = [...products, newProduct];
@@ -51,24 +60,15 @@ export function FIGrid() {
     updateField('aftermarketProducts', updated);
   };
   
-  const updateProduct = (index: number, field: keyof AftermarketProduct, value: string) => {
+  const updateProduct = (index: number, field: keyof AftermarketProduct, value: string | number) => {
     const updated = [...products];
     updated[index] = { ...updated[index], [field]: value };
     updateField('aftermarketProducts', updated);
   };
   
-  const totalCost = products.reduce((sum, p) => sum + parseFloat(p.cost || '0'), 0);
-  const totalPrice = products.reduce((sum, p) => sum + parseFloat(p.price || '0'), 0);
+  const totalCost = products.reduce((sum, p) => sum + (p.cost ?? 0), 0);
+  const totalPrice = products.reduce((sum, p) => sum + (p.price ?? 0), 0);
   const totalMargin = totalPrice > 0 ? ((totalPrice - totalCost) / totalPrice) * 100 : 0;
-  
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
   
   return (
     <div className="space-y-4 md:space-y-6">
@@ -141,40 +141,22 @@ export function FIGrid() {
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {/* Cost */}
                     <div>
-                      <Label htmlFor={`product-cost-${index}`} className="text-xs text-muted-foreground">
-                        Dealer Cost
-                      </Label>
-                      <div className="relative mt-1">
-                        <DollarSign className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground pointer-events-none" />
-                        <Input
-                          id={`product-cost-${index}`}
-                          type="text"
-                          inputMode="decimal"
-                          value={product.cost}
-                          onChange={(e) => updateProduct(index, 'cost', e.target.value.replace(/[^0-9.]/g, ''))}
-                          className="pl-7 sm:pl-9 font-mono tabular-nums min-h-11 text-sm sm:text-base"
-                          data-testid={`input-product-cost-${index}`}
-                        />
-                      </div>
+                      <CurrencyField
+                        label="Dealer Cost"
+                        value={product.cost ?? null}
+                        onChange={(value) => updateProduct(index, 'cost', value ?? 0)}
+                        testId={`input-product-cost-${index}`}
+                      />
                     </div>
                     
                     {/* Price */}
                     <div>
-                      <Label htmlFor={`product-price-${index}`} className="text-xs text-muted-foreground">
-                        Selling Price
-                      </Label>
-                      <div className="relative mt-1">
-                        <DollarSign className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground pointer-events-none" />
-                        <Input
-                          id={`product-price-${index}`}
-                          type="text"
-                          inputMode="decimal"
-                          value={product.price}
-                          onChange={(e) => updateProduct(index, 'price', e.target.value.replace(/[^0-9.]/g, ''))}
-                          className="pl-7 sm:pl-9 font-mono tabular-nums min-h-11 text-sm sm:text-base"
-                          data-testid={`input-product-price-${index}`}
-                        />
-                      </div>
+                      <CurrencyField
+                        label="Selling Price"
+                        value={product.price ?? null}
+                        onChange={(value) => updateProduct(index, 'price', value ?? 0)}
+                        testId={`input-product-price-${index}`}
+                      />
                     </div>
                     
                     {/* Margin (derived) */}
