@@ -12,6 +12,7 @@ import { apiRequest } from "@/lib/queryClient";
 import Decimal from "decimal.js";
 import { calculateMonthlyPayment } from "@/lib/lender-service";
 import { TextQuoteDialog } from "@/components/mobile/text-quote-dialog";
+import { StockNumberQuickAdd } from "@/components/stock-number-quick-add";
 import type { Vehicle } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
 
@@ -134,7 +135,18 @@ export default function QuickQuote() {
 
   const handleSelectVehicle = (v: Vehicle) => {
     setVehicle(v);
+    setVehiclePrice(parseFloat(v.price));
     setShowVehicleDialog(false);
+  };
+
+  const handleStockNumberSelect = (v: Vehicle) => {
+    setVehicle(v);
+    setVehiclePrice(parseFloat(v.price));
+  };
+
+  const handleClearVehicle = () => {
+    setVehicle(null);
+    setVehiclePrice(0);
   };
 
   const handleConvert = async () => {
@@ -202,14 +214,14 @@ export default function QuickQuote() {
         {/* Vehicle (Optional) */}
         <Card>
           <CardContent className="p-4 space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-2">
               <h2 className="text-lg font-semibold">Vehicle (Optional)</h2>
               <div className="flex gap-2">
                 {vehicle && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setVehicle(null)}
+                    onClick={handleClearVehicle}
                     data-testid="button-clear-vehicle"
                   >
                     Clear
@@ -222,15 +234,18 @@ export default function QuickQuote() {
                   data-testid="button-select-vehicle"
                 >
                   <Car className="h-4 w-4 mr-2" />
-                  {vehicle ? "Change" : "Select"}
+                  {vehicle ? "Change" : "Browse"}
                 </Button>
               </div>
             </div>
-            {vehicle && (
-              <p className="text-sm text-muted-foreground">
-                {vehicle.year} {vehicle.make} {vehicle.model}
-              </p>
-            )}
+            
+            {/* Stock Number Quick Add - Primary Entry Method */}
+            <StockNumberQuickAdd 
+              onVehicleSelect={handleStockNumberSelect}
+              onClear={handleClearVehicle}
+              selectedVehicle={vehicle}
+              placeholder="Type stock# for quick add..."
+            />
           </CardContent>
         </Card>
 

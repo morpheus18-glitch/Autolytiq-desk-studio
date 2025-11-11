@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { Search, Plus, ArrowLeft } from 'lucide-react';
+import { StockNumberQuickAdd } from '@/components/stock-number-quick-add';
 import {
   Form,
   FormControl,
@@ -42,6 +43,7 @@ export default function NewDeal() {
   const { toast } = useToast();
   const [customerSearch, setCustomerSearch] = useState('');
   const [vehicleSearch, setVehicleSearch] = useState('');
+  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   
   // Get all users for selecting salesperson
   const { data: users } = useQuery<User[]>({
@@ -75,7 +77,8 @@ export default function NewDeal() {
         ...data,
         salesManagerId: data.salesManagerId || undefined,
       };
-      return await apiRequest('POST', '/api/deals', dealData);
+      const response = await apiRequest('POST', '/api/deals', dealData);
+      return await response.json();
     },
     onSuccess: (deal) => {
       toast({ title: 'Deal created successfully!' });
@@ -281,11 +284,36 @@ export default function NewDeal() {
                       <FormItem>
                         <FormLabel>Vehicle *</FormLabel>
                         <FormControl>
-                          <div className="space-y-2">
+                          <div className="space-y-4">
+                            {/* Stock Number Quick Add - Primary Method */}
+                            <StockNumberQuickAdd 
+                              onVehicleSelect={(vehicle) => {
+                                field.onChange(vehicle.id);
+                                setSelectedVehicle(vehicle);
+                              }}
+                              onClear={() => {
+                                field.onChange('');
+                                setSelectedVehicle(null);
+                              }}
+                              selectedVehicle={selectedVehicle}
+                              placeholder="Type stock# for quick add..."
+                            />
+                            
+                            {/* Divider */}
+                            <div className="relative">
+                              <div className="absolute inset-0 flex items-center">
+                                <span className="w-full border-t" />
+                              </div>
+                              <div className="relative flex justify-center text-xs uppercase">
+                                <span className="bg-background px-2 text-muted-foreground">or search</span>
+                              </div>
+                            </div>
+                            
+                            {/* Text Search */}
                             <div className="relative">
                               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                               <Input
-                                placeholder="Search by stock #, VIN, make, or model..."
+                                placeholder="Search by VIN, make, or model..."
                                 value={vehicleSearch}
                                 onChange={(e) => setVehicleSearch(e.target.value)}
                                 className="pl-10"
@@ -300,7 +328,10 @@ export default function NewDeal() {
                                     className={`p-3 cursor-pointer hover-elevate ${
                                       field.value === vehicle.id ? 'bg-primary/10' : ''
                                     }`}
-                                    onClick={() => field.onChange(vehicle.id)}
+                                    onClick={() => {
+                                      field.onChange(vehicle.id);
+                                      setSelectedVehicle(vehicle);
+                                    }}
                                   >
                                     <div className="font-medium">
                                       {vehicle.year} {vehicle.make} {vehicle.model} {vehicle.trim}
