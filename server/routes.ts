@@ -702,20 +702,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastName: 'Quote Customer',
       });
 
-      // Create deal
+      // Create deal (vehicle is optional for blank desking)
       const deal = await storage.createDeal({
         salespersonId,
         customerId: customer.id,
-        vehicleId: quote.vehicleId!,
+        vehicleId: quote.vehicleId || null,
       });
 
       // Create scenario with quote data
       await storage.createScenario({
         dealId: deal.id,
-        vehicleId: quote.vehicleId!,
+        vehicleId: quote.vehicleId || null,
         scenarioType: 'FINANCE_DEAL',
         name: 'Quick Quote Conversion',
-        vehiclePrice: payload.vehicle?.price || 0,
+        vehiclePrice: payload.vehiclePrice || 0,
         downPayment: payload.downPayment || 0,
         apr: payload.apr || 12.9,
         term: payload.termMonths || 60,

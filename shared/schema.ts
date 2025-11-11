@@ -292,7 +292,7 @@ export const deals = pgTable("deals", {
   salesManagerId: uuid("sales_manager_id").references(() => users.id),
   financeManagerId: uuid("finance_manager_id").references(() => users.id),
   customerId: uuid("customer_id").notNull().references(() => customers.id),
-  vehicleId: uuid("vehicle_id").notNull().references(() => vehicles.id),
+  vehicleId: uuid("vehicle_id").references(() => vehicles.id),
   tradeVehicleId: uuid("trade_vehicle_id").references(() => tradeVehicles.id),
   dealState: text("deal_state").notNull().default("DRAFT"), // DRAFT, IN_PROGRESS, APPROVED, CANCELLED
   activeScenarioId: uuid("active_scenario_id"),

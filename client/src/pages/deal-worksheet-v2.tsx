@@ -116,10 +116,21 @@ export default function DealWorksheetV2() {
         </div>
         <div className="flex flex-wrap items-center gap-x-2 md:gap-x-3 gap-y-1 mt-1.5 text-xs md:text-sm text-muted-foreground">
           <span className="font-medium">{deal.customer.firstName} {deal.customer.lastName}</span>
-          <span className="hidden sm:inline text-border">•</span>
-          <span className="sm:contents w-full sm:w-auto">{deal.vehicle.year} {deal.vehicle.make} {deal.vehicle.model}</span>
-          <span className="hidden sm:inline text-border">•</span>
-          <span className="font-mono">#{deal.vehicle.stockNumber}</span>
+          {deal.vehicle ? (
+            <>
+              <span className="hidden sm:inline text-border">•</span>
+              <span className="sm:contents w-full sm:w-auto">{deal.vehicle.year} {deal.vehicle.make} {deal.vehicle.model}</span>
+              <span className="hidden sm:inline text-border">•</span>
+              <span className="font-mono">#{deal.vehicle.stockNumber}</span>
+            </>
+          ) : (
+            <>
+              <span className="hidden sm:inline text-border">•</span>
+              <Badge variant="outline" className="text-xs" data-testid="badge-no-vehicle">
+                No Vehicle Selected
+              </Badge>
+            </>
+          )}
         </div>
       </div>
       
@@ -206,33 +217,49 @@ export default function DealWorksheetV2() {
           
           <DeskSection title="Vehicle Details" icon={Car}>
             <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div className="sm:col-span-2">
-                  <div className="text-xs text-muted-foreground mb-1.5">Year/Make/Model</div>
-                  <div className="font-medium text-sm">{deal.vehicle.year} {deal.vehicle.make} {deal.vehicle.model}</div>
+              {deal.vehicle ? (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div className="sm:col-span-2">
+                      <div className="text-xs text-muted-foreground mb-1.5">Year/Make/Model</div>
+                      <div className="font-medium text-sm">{deal.vehicle.year} {deal.vehicle.make} {deal.vehicle.model}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground mb-1.5">Stock #</div>
+                      <div className="font-medium font-mono text-sm">{deal.vehicle.stockNumber}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground mb-1.5">Mileage</div>
+                      <div className="font-mono text-sm">{deal.vehicle.mileage.toLocaleString()} mi</div>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <div className="text-xs text-muted-foreground mb-1.5">Price</div>
+                      <div className="font-mono font-semibold text-lg">${parseFloat(deal.vehicle.price as string).toLocaleString()}</div>
+                    </div>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    className="w-full sm:w-auto"
+                    onClick={() => setVehicleSwitcherOpen(true)}
+                    data-testid="button-switch-vehicle"
+                  >
+                    <Car className="w-4 h-4 mr-2" />
+                    Switch Vehicle
+                  </Button>
+                </>
+              ) : (
+                <div className="text-center py-6">
+                  <p className="text-muted-foreground mb-4">No vehicle selected for this deal</p>
+                  <Button 
+                    variant="outline"
+                    onClick={() => setVehicleSwitcherOpen(true)}
+                    data-testid="button-select-vehicle"
+                  >
+                    <Car className="w-4 h-4 mr-2" />
+                    Select Vehicle
+                  </Button>
                 </div>
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1.5">Stock #</div>
-                  <div className="font-medium font-mono text-sm">{deal.vehicle.stockNumber}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1.5">Mileage</div>
-                  <div className="font-mono text-sm">{deal.vehicle.mileage.toLocaleString()} mi</div>
-                </div>
-                <div className="sm:col-span-2">
-                  <div className="text-xs text-muted-foreground mb-1.5">Price</div>
-                  <div className="font-mono font-semibold text-lg">${parseFloat(deal.vehicle.price as string).toLocaleString()}</div>
-                </div>
-              </div>
-              <Button 
-                variant="outline" 
-                className="w-full sm:w-auto"
-                onClick={() => setVehicleSwitcherOpen(true)}
-                data-testid="button-switch-vehicle"
-              >
-                <Car className="w-4 h-4 mr-2" />
-                Switch Vehicle
-              </Button>
+              )}
             </div>
           </DeskSection>
           
@@ -315,35 +342,41 @@ export default function DealWorksheetV2() {
                   data-testid="button-switch-vehicle-desktop"
                 >
                   <Car className="w-4 h-4 mr-2" />
-                  Switch Vehicle
+                  {deal.vehicle ? "Switch" : "Select"} Vehicle
                 </Button>
               </div>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1">Year/Make/Model</div>
-                  <div className="font-medium">{deal.vehicle.year} {deal.vehicle.make} {deal.vehicle.model}</div>
+              {deal.vehicle ? (
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-1">Year/Make/Model</div>
+                    <div className="font-medium">{deal.vehicle.year} {deal.vehicle.make} {deal.vehicle.model}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-1">Stock #</div>
+                    <div className="font-medium font-mono">{deal.vehicle.stockNumber}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-1">VIN</div>
+                    <div className="font-mono text-xs">{deal.vehicle.vin}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-1">Mileage</div>
+                    <div className="font-mono">{deal.vehicle.mileage.toLocaleString()} mi</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-1">Price</div>
+                    <div className="font-mono font-semibold text-lg">${parseFloat(deal.vehicle.price as string).toLocaleString()}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-1">Color</div>
+                    <div className="font-medium">{deal.vehicle.exteriorColor || 'N/A'}</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1">Stock #</div>
-                  <div className="font-medium font-mono">{deal.vehicle.stockNumber}</div>
+              ) : (
+                <div className="text-center py-6 text-muted-foreground">
+                  <p>No vehicle selected for this deal</p>
                 </div>
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1">VIN</div>
-                  <div className="font-mono text-xs">{deal.vehicle.vin}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1">Mileage</div>
-                  <div className="font-mono">{deal.vehicle.mileage.toLocaleString()} mi</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1">Price</div>
-                  <div className="font-mono font-semibold text-lg">${parseFloat(deal.vehicle.price as string).toLocaleString()}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1">Color</div>
-                  <div className="font-medium">{deal.vehicle.exteriorColor || 'N/A'}</div>
-                </div>
-              </div>
+              )}
             </div>
           </div>
           
@@ -400,7 +433,7 @@ export default function DealWorksheetV2() {
         <VehicleSwitcher
           open={vehicleSwitcherOpen}
           onOpenChange={setVehicleSwitcherOpen}
-          currentVehicleId={deal.vehicle.id}
+          currentVehicleId={deal.vehicle?.id || null}
           dealId={deal.id}
           scenarioId={activeScenarioId}
         />

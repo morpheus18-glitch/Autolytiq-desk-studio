@@ -104,10 +104,10 @@ export function DealWorkflowControls({ deal, activeScenarioId }: DealWorkflowCon
     }
     
     // Vehicle validation - only error when trying to approve, warning otherwise
-    if (!deal.vehicle.vin) {
+    if (!deal.vehicle?.vin) {
       issues.push({
         field: 'Vehicle VIN',
-        message: 'VIN is required for final approval',
+        message: deal.vehicle ? 'VIN is required for final approval' : 'Vehicle must be selected',
         severity: deal.dealState === 'IN_PROGRESS' ? 'error' : 'warning',
       });
     }

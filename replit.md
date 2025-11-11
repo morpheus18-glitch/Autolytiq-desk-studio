@@ -20,6 +20,15 @@ The NextGen Automotive Desking Platform is a **mobile-first** desking tool for a
 
 ## Recent Changes (November 2024)
 
+**Quick Quote Blank Desking Redesign** - OPTIONAL vehicle architecture (✅ COMPLETE):
+
+- ✅ **Single-Screen Blank Desking Form**: Complete redesign from stepped wizard to single-screen form with all pricing fields (vehicle price, down payment, trade value/payoff, APR, term) as direct inputs
+- ✅ **Optional Vehicle Architecture**: Database schema updated to make vehicle_id NULLABLE in deals and deal_scenarios tables; quotes can be created, saved, texted, and converted without vehicle selection
+- ✅ **Null-Safe Deal Worksheet**: Comprehensive null handling across all components (header, mobile sections, desktop sections, workflow controls, vehicle switcher) with "No Vehicle Selected" badges and "Select Vehicle" CTAs
+- ✅ **Auto-Save System**: Triggers when vehiclePrice is entered (not dependent on vehicle selection); PATCH updates work correctly when navigating back to change values
+- ✅ **Conversion Flow**: "Take to Desk" creates deals with vehicle_id=NULL, marks quote as 'converted', navigates to fully functional Deal Worksheet
+- ✅ **End-to-End Validation**: Playwright tests confirm complete flow from blank form through auto-save, text quote, and conversion with NULL vehicle database verification
+
 **Professional-Grade Polish** - Apple/Nike quality UI/UX enhancements (✅ COMPLETE):
 
 - ✅ **Premium Skeleton Loading**: 6 reusable glassmorphic skeleton components (SkeletonCard, SkeletonForm, SkeletonPayment, SkeletonAccordion, SkeletonMetricGrid, SkeletonFullWorksheet) replace all spinner-based loading with layout-faithful placeholders; integrated into deals list, deal worksheet, scenarios with smooth 200ms transitions
