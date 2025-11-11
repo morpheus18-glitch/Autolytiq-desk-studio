@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AIChatCompanion } from "@/components/ai-chat-companion";
+import Dashboard from "@/pages/dashboard";
 import DealsList from "@/pages/deals-list";
 import DealWorksheetV2 from "@/pages/deal-worksheet-v2";
 import DealWorksheetTabsPage from "@/pages/deal-worksheet-tabs";
@@ -18,10 +19,8 @@ import NotFound from "@/pages/not-found";
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={DealsList} />
-      <Route path="/deals">
-        <Redirect to="/" />
-      </Route>
+      <Route path="/" component={Dashboard} />
+      <Route path="/deals" component={DealsList} />
       <Route path="/quick-quote">
         <Redirect to="/" />
       </Route>

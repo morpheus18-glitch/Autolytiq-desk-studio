@@ -736,6 +736,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // ===== DEALS =====
+  app.get('/api/deals/stats', async (req, res) => {
+    try {
+      const stats = await storage.getDealsStats();
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get deal statistics' });
+    }
+  });
+  
   app.get('/api/deals', async (req, res) => {
     try {
       const page = parseInt(String(req.query.page || '1'));

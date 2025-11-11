@@ -780,3 +780,14 @@ export type AftermarketProduct = {
   term?: number; // Term in months (for warranties, maintenance, etc.)
   taxable: boolean; // Whether this product is taxed (varies by state/product type)
 };
+
+export type DealStats = {
+  total: number;
+  draft: number;
+  inProgress: number;
+  approved: number;
+  cancelled: number;
+  totalRevenue: number;
+  avgDealValue: number;
+  conversionRate: number;
+};

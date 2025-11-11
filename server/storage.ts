@@ -11,6 +11,7 @@ import {
   type AuditLog, type InsertAuditLog,
   type TaxJurisdiction, type InsertTaxJurisdiction, type TaxJurisdictionWithRules,
   type DealWithRelations,
+  type DealStats,
   type Lender, type InsertLender,
   type LenderProgram, type InsertLenderProgram,
   type RateRequest, type InsertRateRequest,
@@ -95,6 +96,7 @@ export interface IStorage {
   // Deals
   getDeal(id: string): Promise<DealWithRelations | undefined>;
   getDeals(options: { page: number; pageSize: number; search?: string; status?: string }): Promise<{ deals: DealWithRelations[]; total: number; pages: number }>;
+  getDealsStats(): Promise<DealStats>;
   createDeal(deal: InsertDeal): Promise<Deal>;
   updateDeal(id: string, deal: Partial<InsertDeal>): Promise<Deal>;
   updateDealState(id: string, state: string): Promise<Deal>;
@@ -525,6 +527,52 @@ export class DatabaseStorage implements IStorage {
       deals: results as DealWithRelations[],
       total,
       pages,
+    };
+  }
+  
+  async getDealsStats(): Promise<DealStats> {
+    // Get deal counts and revenue in one query
+    const result = await db.select({
+      total: sql<number>`count(distinct ${deals.id})::int`,
+      draft: sql<number>`sum(case when ${deals.dealState} = 'DRAFT' then 1 else 0 end)::int`,
+      inProgress: sql<number>`sum(case when ${deals.dealState} = 'IN_PROGRESS' then 1 else 0 end)::int`,
+      approved: sql<number>`sum(case when ${deals.dealState} = 'APPROVED' then 1 else 0 end)::int`,
+      cancelled: sql<number>`sum(case when ${deals.dealState} = 'CANCELLED' then 1 else 0 end)::int`,
+      totalRevenue: sql<number>`
+        coalesce(sum(
+          case when ${deals.dealState} = 'APPROVED' and ${dealScenarios.vehiclePrice} is not null 
+          then ${dealScenarios.vehiclePrice}::numeric 
+          else 0 end
+        ), 0)::numeric
+      `,
+    })
+    .from(deals)
+    .leftJoin(dealScenarios, eq(deals.activeScenarioId, dealScenarios.id));
+    
+    const stats = result[0] || {
+      total: 0,
+      draft: 0,
+      inProgress: 0,
+      approved: 0,
+      cancelled: 0,
+      totalRevenue: 0,
+    };
+    
+    // Calculate derived metrics
+    const totalRevenue = Number(stats.totalRevenue) || 0;
+    const approved = Number(stats.approved) || 0;
+    const avgDealValue = approved > 0 ? totalRevenue / approved : 0;
+    const conversionRate = stats.total > 0 ? approved / stats.total : 0;
+    
+    return {
+      total: Number(stats.total) || 0,
+      draft: Number(stats.draft) || 0,
+      inProgress: Number(stats.inProgress) || 0,
+      approved,
+      cancelled: Number(stats.cancelled) || 0,
+      totalRevenue: Math.round(totalRevenue),
+      avgDealValue: Math.round(avgDealValue),
+      conversionRate,
     };
   }
   
