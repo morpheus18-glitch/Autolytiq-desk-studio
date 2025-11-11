@@ -64,6 +64,7 @@ export function StateTaxSelector({
 }: StateTaxSelectorProps) {
   const [localZipCode, setLocalZipCode] = useState(zipCode || '');
   const [debouncedZipCode] = useDebounce(localZipCode, 500);
+  const [showManualOverride, setShowManualOverride] = useState(false);
   
   // Fetch all states data
   const allStates = useMemo(() => getAllStates(), []);
@@ -73,17 +74,17 @@ export function StateTaxSelector({
   
   // Auto-detect state from ZIP code
   const { data: zipData, isLoading: isLoadingZip } = useQuery({
-    queryKey: ['/api/tax/zip', debouncedZipCode],
+    queryKey: [`/api/tax/zip/${debouncedZipCode}`],
     enabled: debouncedZipCode.length === 5,
     staleTime: 60 * 60 * 1000, // Cache for 1 hour
   });
   
   // Auto-select state when ZIP data is received
   useEffect(() => {
-    if (zipData && zipData.stateCode && !value) {
+    if (zipData && zipData.stateCode) {
       onValueChange(zipData.stateCode);
     }
-  }, [zipData, value, onValueChange]);
+  }, [zipData, onValueChange]);
   
   const handleZipCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const zip = e.target.value.replace(/\D/g, '').slice(0, 5);
@@ -162,26 +163,46 @@ export function StateTaxSelector({
             )}
           </div>
           {zipData && debouncedZipCode.length === 5 && (
-            <div className="text-xs text-muted-foreground flex items-center gap-1">
-              <MapPin className="h-3 w-3" />
-              {zipData.city}, {zipData.county} County • Local tax: {formatPercentage(zipData.localTaxRate)}
-            </div>
+            <Alert className="py-3">
+              <MapPin className="h-4 w-4" />
+              <AlertDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-medium">{zipData.city}, {zipData.state} {zipData.zipCode}</div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {zipData.county} County • Local: {formatPercentage(zipData.localTaxRate)} • State: {formatPercentage(zipData.stateTaxRate || 0)}
+                    </div>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => setShowManualOverride(!showManualOverride)}
+                    className="text-xs"
+                    data-testid="button-override-state"
+                  >
+                    {showManualOverride ? 'Hide' : 'Change'}
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
           )}
         </div>
       )}
       
-      {/* State Selector */}
-      <div className="space-y-2">
-        <Label htmlFor="state-selector">
-          State {required && <span className="text-destructive">*</span>}
-        </Label>
-        <Select value={value} onValueChange={onValueChange} disabled={disabled}>
-          <SelectTrigger 
-            id="state-selector"
-            className="w-full"
-            data-testid="select-state"
-          >
-            <SelectValue placeholder="Select a state">
+      {/* State Selector - Show if ZIP is not provided, failed, or manual override requested */}
+      {((!zipData || debouncedZipCode.length !== 5) || showManualOverride) && (
+        <div className="space-y-2">
+          <Label htmlFor="state-selector">
+            State {required && <span className="text-destructive">*</span>}
+            <span className="text-xs text-muted-foreground ml-2">(or enter ZIP code above)</span>
+          </Label>
+          <Select value={value} onValueChange={onValueChange} disabled={disabled}>
+            <SelectTrigger 
+              id="state-selector"
+              className="w-full"
+              data-testid="select-state"
+            >
+              <SelectValue placeholder="Select a state or enter ZIP code">
               {value && currentStateTax && (
                 <div className="flex items-center justify-between w-full pr-2">
                   <span>{currentStateTax.stateName}</span>
@@ -264,6 +285,7 @@ export function StateTaxSelector({
           </SelectContent>
         </Select>
       </div>
+      )}
       
       {/* State Tax Details */}
       {showDetails && currentStateTax && (
