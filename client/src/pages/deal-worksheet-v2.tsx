@@ -214,7 +214,7 @@ export default function DealWorksheetV2() {
         
         {/* Mobile: Collapsible Sections */}
         <div className="lg:hidden space-y-4">
-          <DeskSection title="Customer Information" icon={User} defaultOpen>
+          <DeskSection title="Customer Information" icon={User} alwaysExpanded>
             {deal.customer ? (
               <div className="space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -246,7 +246,7 @@ export default function DealWorksheetV2() {
             )}
           </DeskSection>
           
-          <DeskSection title="Vehicle Details" icon={Car}>
+          <DeskSection title="Vehicle Details" icon={Car} alwaysExpanded>
             <div className="space-y-4">
               {deal.vehicle ? (
                 <>
