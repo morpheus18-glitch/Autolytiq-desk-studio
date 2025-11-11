@@ -781,6 +781,46 @@ export type AftermarketProduct = {
   taxable: boolean; // Whether this product is taxed (varies by state/product type)
 };
 
+// ===== FEE PACKAGE TEMPLATES TABLE =====
+// Pre-configured packages for bulk-adding fees, accessories, and F&I products
+export const feePackageTemplates = pgTable("fee_package_templates", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(), // e.g., "Basic Package", "Premium Package", "Luxury Package"
+  description: text("description"),
+  category: text("category").notNull().default("custom"), // basic, premium, luxury, custom
+  
+  // Multi-tenant scoping (null = global template available to all dealerships)
+  dealershipId: uuid("dealership_id"), // .references(() => dealerships.id) when dealerships table exists
+  
+  // Audit trail
+  createdBy: uuid("created_by").notNull().references(() => users.id),
+  updatedBy: uuid("updated_by").references(() => users.id),
+  
+  // Display order for UI sorting (lower numbers appear first)
+  displayOrder: integer("display_order").notNull().default(0),
+  
+  // Pre-configured items (stored as JSONB arrays matching deal_scenarios structure)
+  dealerFees: jsonb("dealer_fees").notNull().default([]), // [{name: string, amount: number, taxable: boolean}]
+  accessories: jsonb("accessories").notNull().default([]), // [{name: string, amount: number, taxable: boolean}]
+  aftermarketProducts: jsonb("aftermarket_products").notNull().default([]), // AftermarketProduct[]
+  
+  // Status
+  isActive: boolean("is_active").notNull().default(true),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  categoryIdx: index("fee_package_templates_category_idx").on(table.category),
+  activeIdx: index("fee_package_templates_active_idx").on(table.isActive),
+  dealershipIdx: index("fee_package_templates_dealership_idx").on(table.dealershipId),
+  displayOrderIdx: index("fee_package_templates_display_order_idx").on(table.displayOrder),
+  createdByIdx: index("fee_package_templates_created_by_idx").on(table.createdBy),
+}));
+
+export const insertFeePackageTemplateSchema = createInsertSchema(feePackageTemplates).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertFeePackageTemplate = z.infer<typeof insertFeePackageTemplateSchema>;
+export type FeePackageTemplate = typeof feePackageTemplates.$inferSelect;
+
 export type DealStats = {
   total: number;
   draft: number;
