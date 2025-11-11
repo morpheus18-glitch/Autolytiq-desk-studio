@@ -3,7 +3,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Trash2, DollarSign, Package } from 'lucide-react';
+import { CurrencyField } from '@/components/ui/currency-field';
+import { formatCurrency } from '@/lib/currency';
+import { Plus, Trash2, Package } from 'lucide-react';
 import { useScenarioForm } from '@/contexts/scenario-form-context';
 
 interface Accessory {
@@ -48,17 +50,8 @@ export function AccessoriesForm() {
     updateField('accessories', updated);
   };
 
-  const totalAccessories = accessories.reduce((sum, a) => sum + a.amount, 0);
-  const taxableAccessories = accessories.filter(a => a.taxable).reduce((sum, a) => sum + a.amount, 0);
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-  };
+  const totalAccessories = accessories.reduce((sum, a) => sum + (a.amount ?? 0), 0);
+  const taxableAccessories = accessories.filter(a => a.taxable).reduce((sum, a) => sum + (a.amount ?? 0), 0);
 
   return (
     <div className="space-y-4">
@@ -116,19 +109,12 @@ export function AccessoriesForm() {
 
                 {/* Accessory Amount */}
                 <div>
-                  <Label htmlFor={`accessory-amount-${index}`} className="text-xs">Amount</Label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      id={`accessory-amount-${index}`}
-                      type="number"
-                      step="0.01"
-                      value={accessory.amount}
-                      onChange={(e) => updateAccessory(index, 'amount', parseFloat(e.target.value) || 0)}
-                      className="pl-10 font-mono"
-                      data-testid={`input-accessory-amount-${index}`}
-                    />
-                  </div>
+                  <CurrencyField
+                    label="Amount"
+                    value={accessory.amount ?? null}
+                    onChange={(value) => updateAccessory(index, 'amount', value ?? 0)}
+                    testId={`input-accessory-amount-${index}`}
+                  />
                 </div>
               </div>
 

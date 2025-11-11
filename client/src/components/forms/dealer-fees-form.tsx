@@ -3,7 +3,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Trash2, DollarSign, Receipt } from 'lucide-react';
+import { CurrencyField } from '@/components/ui/currency-field';
+import { formatCurrency } from '@/lib/currency';
+import { Plus, Trash2, Receipt } from 'lucide-react';
 import { useScenarioForm } from '@/contexts/scenario-form-context';
 
 interface DealerFee {
@@ -47,17 +49,8 @@ export function DealerFeesForm() {
     updateField('dealerFees', updated);
   };
 
-  const totalFees = fees.reduce((sum, f) => sum + f.amount, 0);
-  const taxableFees = fees.filter(f => f.taxable).reduce((sum, f) => sum + f.amount, 0);
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-  };
+  const totalFees = fees.reduce((sum, f) => sum + (f.amount ?? 0), 0);
+  const taxableFees = fees.filter(f => f.taxable).reduce((sum, f) => sum + (f.amount ?? 0), 0);
 
   return (
     <div className="space-y-4">
@@ -115,19 +108,12 @@ export function DealerFeesForm() {
 
                 {/* Fee Amount */}
                 <div>
-                  <Label htmlFor={`fee-amount-${index}`} className="text-xs">Amount</Label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      id={`fee-amount-${index}`}
-                      type="number"
-                      step="0.01"
-                      value={fee.amount}
-                      onChange={(e) => updateFee(index, 'amount', parseFloat(e.target.value) || 0)}
-                      className="pl-10 font-mono"
-                      data-testid={`input-fee-amount-${index}`}
-                    />
-                  </div>
+                  <CurrencyField
+                    label="Amount"
+                    value={fee.amount ?? null}
+                    onChange={(value) => updateFee(index, 'amount', value ?? 0)}
+                    testId={`input-fee-amount-${index}`}
+                  />
                 </div>
               </div>
 
