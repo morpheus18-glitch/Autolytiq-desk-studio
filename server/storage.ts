@@ -1,7 +1,7 @@
 // Referenced from javascript_database blueprint integration
 import { 
   users, customers, vehicles, tradeVehicles, deals, dealScenarios, auditLog, taxJurisdictions, taxRuleGroups,
-  lenders, lenderPrograms, rateRequests, approvedLenders, quickQuotes, quickQuoteContacts,
+  lenders, lenderPrograms, rateRequests, approvedLenders, quickQuotes, quickQuoteContacts, feePackageTemplates,
   type User, type InsertUser,
   type Customer, type InsertCustomer,
   type Vehicle, type InsertVehicle,
@@ -18,6 +18,7 @@ import {
   type ApprovedLender, type InsertApprovedLender,
   type QuickQuote, type InsertQuickQuote,
   type QuickQuoteContact, type InsertQuickQuoteContact,
+  type FeePackageTemplate,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, like, sql, gte, lte, asc } from "drizzle-orm";
@@ -134,6 +135,10 @@ export interface IStorage {
   getApprovedLenders(rateRequestId: string): Promise<ApprovedLender[]>;
   selectApprovedLender(id: string, userId: string): Promise<ApprovedLender>;
   getSelectedLenderForDeal(dealId: string): Promise<ApprovedLender | undefined>;
+  
+  // Fee Package Templates
+  getFeePackageTemplates(active?: boolean): Promise<FeePackageTemplate[]>;
+  getFeePackageTemplate(id: string): Promise<FeePackageTemplate | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -818,6 +823,26 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
     
     return result?.approved_lenders || undefined;
+  }
+  
+  // Fee Package Templates
+  async getFeePackageTemplates(active?: boolean): Promise<FeePackageTemplate[]> {
+    const conditions = [];
+    if (active !== undefined) {
+      conditions.push(eq(feePackageTemplates.isActive, active));
+    }
+    
+    return await db.select()
+      .from(feePackageTemplates)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(asc(feePackageTemplates.displayOrder));
+  }
+  
+  async getFeePackageTemplate(id: string): Promise<FeePackageTemplate | undefined> {
+    const [template] = await db.select()
+      .from(feePackageTemplates)
+      .where(eq(feePackageTemplates.id, id));
+    return template || undefined;
   }
 }
 

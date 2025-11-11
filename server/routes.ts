@@ -850,6 +850,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // ===== FEE PACKAGE TEMPLATES =====
+  app.get('/api/templates', async (req, res) => {
+    try {
+      const active = req.query.active === 'true' ? true : req.query.active === 'false' ? false : undefined;
+      const templates = await storage.getFeePackageTemplates(active);
+      res.json(templates);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get templates' });
+    }
+  });
+  
+  app.get('/api/templates/:id', async (req, res) => {
+    try {
+      const template = await storage.getFeePackageTemplate(req.params.id);
+      if (!template) {
+        return res.status(404).json({ error: 'Template not found' });
+      }
+      res.json(template);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get template' });
+    }
+  });
+  
   // ===== DEAL SCENARIOS =====
   app.post('/api/deals/:dealId/scenarios', async (req, res) => {
     try {
@@ -941,6 +964,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error: any) {
       res.status(400).json({ error: error.message || 'Failed to delete scenario' });
+    }
+  });
+  
+  app.post('/api/deals/:dealId/scenarios/:scenarioId/apply-template', async (req, res) => {
+    try {
+      const { dealId, scenarioId } = req.params;
+      const { templateId } = req.body;
+      
+      const deal = await storage.getDeal(dealId);
+      if (!deal) {
+        return res.status(404).json({ error: 'Deal not found' });
+      }
+      
+      const scenario = await storage.getScenario(scenarioId);
+      if (!scenario) {
+        return res.status(404).json({ error: 'Scenario not found' });
+      }
+      
+      const template = await storage.getFeePackageTemplate(templateId);
+      if (!template) {
+        return res.status(404).json({ error: 'Template not found' });
+      }
+      
+      const scenarioDealerFees = Array.isArray(scenario.dealerFees) ? scenario.dealerFees : [];
+      const scenarioAccessories = Array.isArray(scenario.accessories) ? scenario.accessories : [];
+      const scenarioProducts = Array.isArray(scenario.aftermarketProducts) ? scenario.aftermarketProducts : [];
+      
+      const templateDealerFees = Array.isArray(template.dealerFees) ? template.dealerFees : [];
+      const templateAccessories = Array.isArray(template.accessories) ? template.accessories : [];
+      const templateProducts = Array.isArray(template.aftermarketProducts) ? template.aftermarketProducts : [];
+      
+      const updatedScenario = await storage.updateScenario(scenarioId, {
+        dealerFees: [...scenarioDealerFees, ...templateDealerFees],
+        accessories: [...scenarioAccessories, ...templateAccessories],
+        aftermarketProducts: [...scenarioProducts, ...templateProducts],
+      });
+      
+      await storage.createAuditLog({
+        dealId,
+        scenarioId,
+        userId: deal.salespersonId,
+        action: 'apply_template',
+        entityType: 'scenario',
+        entityId: scenarioId,
+        metadata: { 
+          templateId: template.id,
+          templateName: template.name,
+          itemsAdded: {
+            dealerFees: templateDealerFees.length,
+            accessories: templateAccessories.length,
+            aftermarketProducts: templateProducts.length,
+          }
+        },
+      });
+      
+      res.json(updatedScenario);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || 'Failed to apply template' });
     }
   });
   
