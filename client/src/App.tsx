@@ -9,6 +9,7 @@ import DealWorksheetV2 from "@/pages/deal-worksheet-v2";
 import DealWorksheetTabsPage from "@/pages/deal-worksheet-tabs";
 import NewDeal from "@/pages/new-deal";
 import Inventory from "@/pages/inventory";
+import InventoryNew from "@/pages/inventory-new";
 import Customers from "@/pages/customers";
 import VINDecoder from "@/pages/vin-decoder";
 import Analytics from "@/pages/analytics";
@@ -20,6 +21,7 @@ function Router() {
     <Switch>
       <Route path="/" component={() => <Redirect to="/inventory" />} />
       <Route path="/inventory" component={Inventory} />
+      <Route path="/inventory/new" component={InventoryNew} />
       <Route path="/customers" component={Customers} />
       <Route path="/analytics" component={Analytics} />
       <Route path="/vin-decoder" component={VINDecoder} />
