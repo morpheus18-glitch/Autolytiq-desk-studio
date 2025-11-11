@@ -115,7 +115,13 @@ export default function DealWorksheetV2() {
           </Badge>
         </div>
         <div className="flex flex-wrap items-center gap-x-2 md:gap-x-3 gap-y-1 mt-1.5 text-xs md:text-sm text-muted-foreground">
-          <span className="font-medium">{deal.customer.firstName} {deal.customer.lastName}</span>
+          {deal.customer ? (
+            <span className="font-medium">{deal.customer.firstName} {deal.customer.lastName}</span>
+          ) : (
+            <Badge variant="outline" className="text-xs" data-testid="badge-no-customer">
+              No Customer Selected
+            </Badge>
+          )}
           {deal.vehicle ? (
             <>
               <span className="hidden sm:inline text-border">•</span>
@@ -197,22 +203,35 @@ export default function DealWorksheetV2() {
         {/* Mobile: Collapsible Sections */}
         <div className="lg:hidden space-y-4">
           <DeskSection title="Customer Information" icon={User} defaultOpen>
-            <div className="space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1.5">Name</div>
-                  <div className="font-medium text-sm">{deal.customer.firstName} {deal.customer.lastName}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1.5">Phone</div>
-                  <div className="font-medium font-mono text-sm">{deal.customer.phone || 'N/A'}</div>
-                </div>
-                <div className="sm:col-span-2">
-                  <div className="text-xs text-muted-foreground mb-1.5">Email</div>
-                  <div className="font-medium text-sm break-all">{deal.customer.email || 'N/A'}</div>
+            {deal.customer ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-1.5">Name</div>
+                    <div className="font-medium text-sm">{deal.customer.firstName} {deal.customer.lastName}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-1.5">Phone</div>
+                    <div className="font-medium font-mono text-sm">{deal.customer.phone || 'N/A'}</div>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <div className="text-xs text-muted-foreground mb-1.5">Email</div>
+                    <div className="font-medium text-sm break-all">{deal.customer.email || 'N/A'}</div>
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="text-center py-6">
+                <p className="text-muted-foreground mb-4">No customer selected for this deal</p>
+                <Button 
+                  variant="outline"
+                  data-testid="button-select-customer"
+                >
+                  <User className="w-4 h-4 mr-2" />
+                  Select Customer
+                </Button>
+              </div>
+            )}
           </DeskSection>
           
           <DeskSection title="Vehicle Details" icon={Car}>
@@ -305,31 +324,47 @@ export default function DealWorksheetV2() {
           {/* Customer & Vehicle Info */}
           <div className="grid grid-cols-2 gap-8">
             <div className="space-y-4">
-              <SectionHeader icon={User} title="Customer Information" />
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1">Name</div>
-                  <div className="font-medium">{deal.customer.firstName} {deal.customer.lastName}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1">Phone</div>
-                  <div className="font-medium font-mono">{deal.customer.phone || 'N/A'}</div>
-                </div>
-                <div className="col-span-2">
-                  <div className="text-xs text-muted-foreground mb-1">Email</div>
-                  <div className="font-medium">{deal.customer.email || 'N/A'}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1">Address</div>
-                  <div className="font-medium">{deal.customer.address || 'N/A'}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1">City, State ZIP</div>
-                  <div className="font-medium">
-                    {[deal.customer.city, deal.customer.state, deal.customer.zipCode].filter(Boolean).join(', ') || 'N/A'}
+              <div className="flex items-center justify-between">
+                <SectionHeader icon={User} title="Customer Information" />
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  data-testid="button-select-customer-desktop"
+                >
+                  <User className="w-4 h-4 mr-2" />
+                  {deal.customer ? "Change" : "Select"} Customer
+                </Button>
+              </div>
+              {deal.customer ? (
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-1">Name</div>
+                    <div className="font-medium">{deal.customer.firstName} {deal.customer.lastName}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-1">Phone</div>
+                    <div className="font-medium font-mono">{deal.customer.phone || 'N/A'}</div>
+                  </div>
+                  <div className="col-span-2">
+                    <div className="text-xs text-muted-foreground mb-1">Email</div>
+                    <div className="font-medium">{deal.customer.email || 'N/A'}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-1">Address</div>
+                    <div className="font-medium">{deal.customer.address || 'N/A'}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-1">City, State ZIP</div>
+                    <div className="font-medium">
+                      {[deal.customer.city, deal.customer.state, deal.customer.zipCode].filter(Boolean).join(', ') || 'N/A'}
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="text-center py-6 text-muted-foreground">
+                  <p>No customer selected for this deal</p>
+                </div>
+              )}
             </div>
             
             <div className="space-y-4">

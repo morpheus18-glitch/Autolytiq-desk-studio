@@ -95,7 +95,13 @@ export function DealWorkflowControls({ deal, activeScenarioId }: DealWorkflowCon
     const scenario = liveScenario || deal.scenarios.find(s => s.id === activeScenarioId) || deal.scenarios[0];
     
     // Customer validation
-    if (!deal.customer.email && !deal.customer.phone) {
+    if (!deal.customer) {
+      issues.push({
+        field: 'Customer',
+        message: 'Customer must be selected',
+        severity: 'error',
+      });
+    } else if (!deal.customer.email && !deal.customer.phone) {
       issues.push({
         field: 'Customer Contact',
         message: 'Email or phone number required',

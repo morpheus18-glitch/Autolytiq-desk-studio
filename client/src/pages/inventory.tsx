@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { Vehicle } from "@shared/schema";
+import type { Vehicle, User as UserType } from "@shared/schema";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,7 +45,8 @@ import {
   CreditCard,
   Eye,
   EyeOff,
-  Smartphone
+  Smartphone,
+  FileText
 } from "lucide-react";
 import { useDebouncedCallback } from "use-debounce";
 import { calculatePricingSummary, formatCurrency, formatPercent, getProfitColorClass } from "@/lib/pricing-utils";
@@ -884,6 +886,45 @@ export default function InventoryPage() {
     },
     staleTime: 30000,
   });
+  
+  // Get toast for notifications
+  const { toast } = useToast();
+  
+  // Get users for salesperson
+  const { data: users } = useQuery<UserType[]>({
+    queryKey: ['/api/users'],
+  });
+  
+  // Create deal mutation
+  const createDealMutation = useMutation({
+    mutationFn: async (vehicleId: string) => {
+      const salesperson = users?.find(u => u.role === 'salesperson') || users?.[0];
+      if (!salesperson) {
+        throw new Error('No users available');
+      }
+      
+      const response = await apiRequest('POST', '/api/deals', {
+        salespersonId: salesperson.id,
+        vehicleId,
+      });
+      return await response.json();
+    },
+    onSuccess: (deal) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/deals'] });
+      toast({
+        title: 'Deal created',
+        description: 'Opening deal worksheet...',
+      });
+      setLocation(`/deals/${deal.id}`);
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Failed to create deal',
+        description: error.message || 'Please try again',
+        variant: 'destructive',
+      });
+    },
+  });
 
   // Update URL when filters change
   const updateURL = useCallback((newFilters: InventoryFilters) => {
@@ -932,8 +973,7 @@ export default function InventoryPage() {
   };
 
   const handleStartDeal = (vehicle: Vehicle) => {
-    // Navigate to new deal page with vehicle pre-selected
-    setLocation(`/deals/new?vehicleId=${vehicle.id}`);
+    createDealMutation.mutate(vehicle.id);
   };
 
   const handleSortChange = (sortBy: string) => {
@@ -1077,12 +1117,12 @@ export default function InventoryPage() {
               <div className="flex items-center gap-2">
                 <Button
                   size="lg"
-                  onClick={() => setLocation('/quick-quote')}
-                  data-testid="button-quick-quote"
+                  onClick={() => setLocation('/')}
+                  data-testid="button-start-desking"
                   className="hidden md:flex"
                 >
-                  <Smartphone className="w-5 h-5 mr-2" />
-                  Quick Quote
+                  <FileText className="w-5 h-5 mr-2" />
+                  Start Desking
                 </Button>
                 <Button
                   variant="outline"

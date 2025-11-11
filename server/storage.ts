@@ -599,6 +599,35 @@ export class DatabaseStorage implements IStorage {
     const [deal] = await db.insert(deals)
       .values({ ...insertDeal, dealNumber })
       .returning();
+    
+    // Auto-create a default scenario for every new deal
+    // Get vehicle price if vehicle is selected
+    let vehiclePrice = '0';
+    if (insertDeal.vehicleId) {
+      const vehicle = await this.getVehicle(insertDeal.vehicleId);
+      if (vehicle) {
+        vehiclePrice = vehicle.price;
+      }
+    }
+    
+    // Create default scenario with sensible automotive finance defaults
+    await this.createScenario({
+      dealId: deal.id,
+      name: 'Scenario 1',
+      scenarioType: 'FINANCE_DEAL',
+      vehicleId: insertDeal.vehicleId,
+      vehiclePrice,
+      downPayment: '0',
+      tradeAllowance: '0',
+      tradePayoff: '0',
+      term: '60',  // 60 months standard
+      apr: '8.9',  // Standard APR
+      totalTax: '0',
+      totalFees: '0',
+      monthlyPayment: '0',
+      aftermarketProducts: [],
+    });
+    
     return deal;
   }
   
