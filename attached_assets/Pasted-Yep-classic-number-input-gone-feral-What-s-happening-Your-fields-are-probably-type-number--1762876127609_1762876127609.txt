@@ -1,0 +1,67 @@
+Yep—classic “number input gone feral.”
+
+What’s happening:
+	•	Your fields are probably type="number" with a controlled value set to 0.00, and your change handler is nudging the value (e.g., step=0.01 or a custom increment) on each keypress—so you see 0.00 → 0.01 → 0.02 instead of the digits you typed.
+	•	Mobile keyboard: type="number" is inconsistent across devices. Use inputmode to force the numeric keypad (and decimal if you need a dot).
+
+Quick fixes
+	1.	Don’t prefill with 0.00. Start with an empty string and show 0.00 only for display (e.g., on blur) if needed.
+	2.	For currency/decimal fields, avoid type="number". Use type="text" with inputmode="decimal" so users can type freely (and you control validation).
+	3.	Store the raw string while typing. Parse/format only on blur, so partial inputs like . or 1. don’t get wrecked.
+	4.	If you keep type="number": remove any code that increments on keydown/change; also remove step if it’s causing jumps, or set step="any".
+
+Minimal React pattern (robust + mobile-friendly)
+
+type MoneyInputProps = {
+  value: string;                // keep as string while typing
+  onChange: (v: string) => void;
+  placeholder?: string;
+};
+
+export function MoneyInput({ value, onChange, placeholder = "0.00" }: MoneyInputProps) {
+  // Allow only digits + one dot while typing
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const next = e.target.value;
+    if (next === "" || /^[0-9]*\.?[0-9]*$/.test(next)) onChange(next);
+  };
+
+  const handleBlur = () => {
+    if (value === "") return;
+    const n = Number(value);
+    if (Number.isFinite(n)) onChange(n.toFixed(2)); // format on blur
+    else onChange("");
+  };
+
+  return (
+    <input
+      type="text"                // not "number" to avoid weird increments
+      inputMode="decimal"        // mobile decimal keypad
+      autoComplete="off"
+      enterKeyHint="done"
+      aria-label="Amount"
+      placeholder={placeholder}
+      value={value}
+      onChange={handleChange}
+      onBlur={handleBlur}
+    />
+  );
+}
+
+If you really must use <input type="number">
+	•	Use:
+
+<input type="number" step="any" inputmode="decimal" autocomplete="off" />
+
+
+	•	Remove any handlers that do stepUp() or “+ 0.01” on keypress/change.
+	•	Make sure you’re not coercing e.target.value to a number on every keystroke (that kills partial input). Keep it as a string until blur.
+
+Common gotchas to check
+	•	Controlled value stuck at 0.00: initial state 0 + toFixed(2) in render → you’ll never be able to type. Start with "".
+	•	Increment on keypress: search for onKeyDown, ArrowUp, stepUp, or code that adds 0.01 regardless of typed character.
+	•	Locale: if you need commas, handle them in parsing (or normalize , → . on input).
+	•	Mobile keyboard not numeric: ensure inputmode="numeric" (integers) or inputmode="decimal" (money). iOS respects decimal for the dot keypad.
+
+If you paste a snippet of your input component/handler, I’ll mark the exact line that’s auto-incrementing.
+
+Want me to swap this into your current form and return a drop-in component + tests?
