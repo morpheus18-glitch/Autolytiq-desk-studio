@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Copy, MoreVertical, Plus, Trash2, Check } from 'lucide-react';
+import { Copy, MoreVertical, Plus, Trash2, Check, GitCompare } from 'lucide-react';
 import type { DealScenario } from '@shared/schema';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -29,6 +29,7 @@ import Decimal from 'decimal.js';
 import { useOptimisticCreate, useOptimisticDelete, generateTempId } from '@/lib/optimistic-mutations';
 import { createUndoAction, showSuccessToast, showErrorToast } from '@/lib/toast-actions';
 import { ScenarioComparisonBadge } from './scenario-comparison-badge';
+import { ScenarioComparisonModal } from './scenario-comparison-modal';
 
 interface ScenarioSelectorProps {
   dealId: string;
@@ -48,6 +49,7 @@ export function ScenarioSelector({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [scenarioToDelete, setScenarioToDelete] = useState<string | null>(null);
   const [deletedScenarioSnapshot, setDeletedScenarioSnapshot] = useState<DealScenario | null>(null);
+  const [comparisonModalOpen, setComparisonModalOpen] = useState(false);
 
   const createScenarioMutation = useOptimisticCreate<any, any>({
     queryKey: ['/api/deals', dealId],
@@ -185,18 +187,31 @@ export function ScenarioSelector({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h3 className="text-sm font-medium text-muted-foreground">Scenarios</h3>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={createNewScenario}
-          disabled={createScenarioMutation.isPending}
-          data-testid="button-add-scenario"
-        >
-          <Plus className="w-3 h-3 mr-1" />
-          New
-        </Button>
+        <div className="flex items-center gap-2">
+          {scenarios.length >= 2 && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setComparisonModalOpen(true)}
+              data-testid="button-compare-scenarios"
+            >
+              <GitCompare className="w-3 h-3 mr-1" />
+              Compare
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={createNewScenario}
+            disabled={createScenarioMutation.isPending}
+            data-testid="button-add-scenario"
+          >
+            <Plus className="w-3 h-3 mr-1" />
+            New
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-2">
@@ -318,6 +333,12 @@ export function ScenarioSelector({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ScenarioComparisonModal
+        open={comparisonModalOpen}
+        onOpenChange={setComparisonModalOpen}
+        scenarios={scenarios}
+      />
     </div>
   );
 }
