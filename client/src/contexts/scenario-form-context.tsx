@@ -55,6 +55,12 @@ export function ScenarioFormProvider({
   dealId,
   children 
 }: ScenarioFormProviderProps) {
+  // Add defensive guard for undefined scenario
+  if (!initialScenario) {
+    console.warn('[ScenarioFormProvider] Rendered with undefined scenario - this should not happen');
+    return null;
+  }
+
   const [scenario, setScenario] = useState<DealScenario>(initialScenario);
   const [dirtyFields, setDirtyFields] = useState<Set<string>>(new Set());
   // Use selector to ONLY get the function, not subscribe to state changes
@@ -64,6 +70,8 @@ export function ScenarioFormProvider({
   
   // Sync with server updates intelligently
   useEffect(() => {
+    if (!initialScenario?.id) return;
+    
     const isScenarioSwitch = initialScenario.id !== scenarioIdRef.current;
     const hasNoEdits = dirtyFields.size === 0;
     

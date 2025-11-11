@@ -41,10 +41,19 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 **Database**: PostgreSQL via Neon serverless with WebSocket support.
 **Schema Design**: Uses UUID primary keys and includes tables for Users, Customers, Vehicles, Trade Vehicles, Deals (with state machine), Deal Scenarios (with JSONB for aftermarket products), Tax Rule Groups, Tax Jurisdictions, Zip Code Lookup, Fee Package Templates, and Audit Log. Decimal type is used for all monetary values.
 **Fee Package Templates**: Multi-tenant table (dealershipId nullable for global templates) with audit trail (createdBy/updatedBy), displayOrder for UI sorting, and JSONB arrays for dealerFees, accessories, aftermarketProducts. Seeded with 3 realistic starter packages (Basic $2K, Premium $5.6K, Luxury $11.6K) for rapid deal structuring.
+**Scenario Comparison**: Side-by-side comparison modal with diff highlighting, allowing users to compare 2 scenarios across 9 key metrics (vehicle price, down payment, trade equity, APR, term, amount financed, monthly payment, total cost, cash due). Features automatic hydration on async load, color-coded diff badges (green for better, red for worse), and visual highlighting (yellow background + left border) on changed rows.
 
 ### Authentication and Authorization
 
 **Current State**: Infrastructure prepared for session management (connect-pg-simple) and role-based access control, but no authentication system is currently implemented.
+
+## Recent Changes (November 2025)
+
+**Scenario Management Enhancements (prof-scenarios-1)**:
+- Scenario cloning via duplicate button (already existed, verified working)
+- Side-by-side comparison modal with 2-scenario selector
+- Diff highlighting on changed values (yellow background, left border accent, diff badges)
+- Bug fixes: defensive guards for undefined scenarios, conditional audit logging, decimal-to-string type conversion for API compatibility
 
 ## External Dependencies
 

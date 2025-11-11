@@ -882,22 +882,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'Deal not found' });
       }
       
+      console.log('[POST /api/deals/:dealId/scenarios] Request body:', JSON.stringify(req.body, null, 2));
       const data = insertDealScenarioSchema.parse({ ...req.body, dealId });
       const scenario = await storage.createScenario(data);
       
-      // Create audit log
-      await storage.createAuditLog({
-        dealId,
-        scenarioId: scenario.id,
-        userId: deal.salespersonId,
-        action: 'create',
-        entityType: 'scenario',
-        entityId: scenario.id,
-        metadata: { scenarioType: scenario.scenarioType, name: scenario.name },
-      });
+      // Create audit log only if we have a valid userId
+      if (deal.salespersonId) {
+        await storage.createAuditLog({
+          dealId,
+          scenarioId: scenario.id,
+          userId: deal.salespersonId,
+          action: 'create',
+          entityType: 'scenario',
+          entityId: scenario.id,
+          metadata: { scenarioType: scenario.scenarioType, name: scenario.name },
+        });
+      } else {
+        console.warn('[POST /api/deals/:dealId/scenarios] Skipping audit log creation - deal has no salespersonId');
+      }
       
       res.status(201).json(scenario);
     } catch (error: any) {
+      console.error('[POST /api/deals/:dealId/scenarios] Error:', error);
+      console.error('[POST /api/deals/:dealId/scenarios] Request body was:', req.body);
       res.status(400).json({ error: error.message || 'Failed to create scenario' });
     }
   });

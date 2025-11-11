@@ -107,6 +107,22 @@ export default function DealWorksheetV2() {
   
   const activeScenario = deal.scenarios.find(s => s.id === activeScenarioId) || deal.scenarios[0];
   
+  // Handle missing scenarios gracefully
+  if (!activeScenario || deal.scenarios.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center space-y-4">
+          <h2 className="text-xl font-semibold">No scenarios found</h2>
+          <p className="text-muted-foreground">This deal doesn't have any scenarios yet. Please create one to continue.</p>
+          <Button onClick={() => setLocation('/deals')} data-testid="button-back-to-deals">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Deals
+          </Button>
+        </div>
+      </div>
+    );
+  }
+  
   const header = (
     <div className="flex items-start md:items-center justify-between gap-3 md:gap-4">
       <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
