@@ -29,6 +29,9 @@ interface QuickQuoteState {
   termMonths: number;
   amountFinanced: number | null;
   
+  // Persisted quote ID (set after saving to DB)
+  savedQuoteId: string | null;
+  
   // Actions
   setStep: (step: QuickQuoteStep) => void;
   nextStep: () => void;
@@ -40,6 +43,7 @@ interface QuickQuoteState {
   setTradeValue: (value: number | null) => void;
   setTradePayoff: (payoff: number | null) => void;
   setCalculatedPayment: (payment: number, apr: number, termMonths: number, amountFinanced: number) => void;
+  setSavedQuoteId: (id: string | null) => void;
   reset: () => void;
 }
 
@@ -64,6 +68,7 @@ const initialState = {
   apr: 12.9,
   termMonths: 60,
   amountFinanced: null,
+  savedQuoteId: null,
 };
 
 export const useQuickQuoteStore = create<QuickQuoteState>()(
@@ -132,6 +137,10 @@ export const useQuickQuoteStore = create<QuickQuoteState>()(
         state.apr = apr;
         state.termMonths = termMonths;
         state.amountFinanced = amountFinanced;
+      }),
+
+      setSavedQuoteId: (id) => set((state) => {
+        state.savedQuoteId = id;
       }),
 
       reset: () => set(initialState),

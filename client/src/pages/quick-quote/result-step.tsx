@@ -1,8 +1,12 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useQuickQuoteStore } from "@/stores/quick-quote-store";
+import { TextQuoteDialog } from "@/components/mobile/text-quote-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { useLocation } from "wouter";
 import Decimal from "decimal.js";
 
 // Simple monthly payment calculator for Quick Quote
@@ -27,23 +31,145 @@ export function ResultStep() {
     apr,
     termMonths,
     amountFinanced,
+    savedQuoteId,
     setCalculatedPayment,
+    setSavedQuoteId,
     previousStep,
     reset,
   } = useQuickQuoteStore();
 
-  useEffect(() => {
-    if (vehicle && !calculatedPayment) {
-      // Calculate payment
-      const price = new Decimal(vehicle.price);
-      const down = new Decimal(downPayment || 0);
-      const tradeEquity = new Decimal(tradeValue || 0).minus(new Decimal(tradePayoff || 0));
-      const financed = price.minus(down).minus(tradeEquity);
+  const [showTextDialog, setShowTextDialog] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
-      const payment = calculateMonthlyPayment(financed.toNumber(), apr / 100, termMonths);
-      setCalculatedPayment(payment, apr, termMonths, financed.toNumber());
+  // Always recalculate payment when dependencies change
+  useEffect(() => {
+    if (!vehicle) return;
+
+    // Calculate payment
+    const price = new Decimal(vehicle.price);
+    const down = new Decimal(downPayment || 0);
+    const tradeEquity = new Decimal(tradeValue || 0).minus(new Decimal(tradePayoff || 0));
+    const financed = price.minus(down).minus(tradeEquity);
+
+    const payment = calculateMonthlyPayment(financed.toNumber(), apr / 100, termMonths);
+    setCalculatedPayment(payment, apr, termMonths, financed.toNumber());
+  }, [vehicle, downPayment, tradeValue, tradePayoff, apr, termMonths, setCalculatedPayment]);
+
+  // Save or update quote in database
+  useEffect(() => {
+    async function saveOrUpdateQuote() {
+      if (!vehicle || !calculatedPayment) return;
+      
+      const quotePayload = {
+        vehicle: {
+          year: vehicle.year,
+          make: vehicle.make,
+          model: vehicle.model,
+          price: vehicle.price,
+        },
+        targetPayment,
+        downPayment,
+        hasTrade,
+        tradeValue,
+        tradePayoff,
+        calculatedPayment,
+        apr,
+        termMonths,
+        amountFinanced,
+      };
+      
+      setIsSaving(true);
+      try {
+        if (!savedQuoteId) {
+          // Create new quote
+          const response = await apiRequest('POST', '/api/quick-quotes', {
+            vehicleId: vehicle.id,
+            quotePayload,
+            status: 'draft',
+          });
+          const data = await response.json();
+          setSavedQuoteId(data.id);
+        } else {
+          // Update existing quote
+          await apiRequest('PATCH', `/api/quick-quotes/${savedQuoteId}`, {
+            quotePayload,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to save/update quote:', error);
+      } finally {
+        setIsSaving(false);
+      }
     }
-  }, [vehicle, downPayment, tradeValue, tradePayoff, calculatedPayment, apr, termMonths, setCalculatedPayment]);
+
+    saveOrUpdateQuote();
+  }, [vehicle, calculatedPayment, savedQuoteId, targetPayment, downPayment, hasTrade, tradeValue, tradePayoff, apr, termMonths, amountFinanced, setSavedQuoteId]);
+
+  const handleSendText = async (name: string, phone: string) => {
+    if (!savedQuoteId) {
+      toast({
+        title: "Error",
+        description: "Quote not saved yet. Please wait a moment.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await apiRequest('POST', `/api/quick-quotes/${savedQuoteId}/text`, { name, phone });
+
+      toast({
+        title: "Quote sent!",
+        description: `Payment quote texted to ${name} at ${phone}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to send text",
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  const handleTakeToDesk = async () => {
+    if (!savedQuoteId) {
+      toast({
+        title: "Error",
+        description: "Quote not saved yet. Please wait a moment.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsConverting(true);
+    try {
+      const response = await apiRequest('POST', `/api/quick-quotes/${savedQuoteId}/convert`, {});
+      const data = await response.json();
+
+      toast({
+        title: "Quote converted!",
+        description: "Opening full desk...",
+      });
+
+      // Navigate to deal worksheet
+      setLocation(`/deals/${data.dealId}`);
+      
+      // Clear quote after conversion
+      reset();
+    } catch (error) {
+      toast({
+        title: "Failed to convert quote",
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      });
+    } finally {
+      setIsConverting(false);
+    }
+  };
 
   const variance = targetPayment && calculatedPayment 
     ? calculatedPayment - targetPayment 
@@ -154,6 +280,8 @@ export function ResultStep() {
         <Button
           size="lg"
           className="w-full min-h-[56px] text-lg"
+          onClick={() => setShowTextDialog(true)}
+          disabled={!savedQuoteId || isSaving}
           data-testid="button-text-quote"
         >
           <Phone className="mr-2 h-5 w-5" />
@@ -164,9 +292,11 @@ export function ResultStep() {
           size="lg"
           variant="outline"
           className="w-full min-h-[56px] text-lg"
+          onClick={handleTakeToDesk}
+          disabled={!savedQuoteId || isSaving || isConverting}
           data-testid="button-take-to-desk"
         >
-          Take to Desk
+          {isConverting ? "Converting..." : "Take to Desk"}
         </Button>
 
         <Button
@@ -179,6 +309,12 @@ export function ResultStep() {
           Start Over
         </Button>
       </div>
+
+      <TextQuoteDialog
+        open={showTextDialog}
+        onOpenChange={setShowTextDialog}
+        onSendQuote={handleSendText}
+      />
     </div>
   );
 }

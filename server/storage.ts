@@ -1,7 +1,7 @@
 // Referenced from javascript_database blueprint integration
 import { 
   users, customers, vehicles, tradeVehicles, deals, dealScenarios, auditLog, taxJurisdictions, taxRuleGroups,
-  lenders, lenderPrograms, rateRequests, approvedLenders,
+  lenders, lenderPrograms, rateRequests, approvedLenders, quickQuotes, quickQuoteContacts,
   type User, type InsertUser,
   type Customer, type InsertCustomer,
   type Vehicle, type InsertVehicle,
@@ -15,6 +15,8 @@ import {
   type LenderProgram, type InsertLenderProgram,
   type RateRequest, type InsertRateRequest,
   type ApprovedLender, type InsertApprovedLender,
+  type QuickQuote, type InsertQuickQuote,
+  type QuickQuoteContact, type InsertQuickQuoteContact,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, like, sql, gte, lte, asc } from "drizzle-orm";
@@ -81,6 +83,14 @@ export interface IStorage {
   getAllTaxJurisdictions(): Promise<TaxJurisdictionWithRules[]>;
   getTaxJurisdiction(state: string, county?: string, city?: string): Promise<TaxJurisdictionWithRules | undefined>;
   createTaxJurisdiction(jurisdiction: InsertTaxJurisdiction): Promise<TaxJurisdiction>;
+  
+  // Quick Quotes
+  createQuickQuote(quote: InsertQuickQuote): Promise<QuickQuote>;
+  getQuickQuote(id: string): Promise<QuickQuote | undefined>;
+  updateQuickQuote(id: string, data: Partial<Pick<QuickQuote, 'status' | 'dealId'>>): Promise<QuickQuote>;
+  updateQuickQuotePayload(id: string, payload: any): Promise<QuickQuote>;
+  createQuickQuoteContact(contact: InsertQuickQuoteContact): Promise<QuickQuoteContact>;
+  updateQuickQuoteContactStatus(id: string, status: string, sentAt: Date): Promise<QuickQuoteContact>;
   
   // Deals
   getDeal(id: string): Promise<DealWithRelations | undefined>;
@@ -411,6 +421,40 @@ export class DatabaseStorage implements IStorage {
   async createTaxJurisdiction(insertJurisdiction: InsertTaxJurisdiction): Promise<TaxJurisdiction> {
     const [jurisdiction] = await db.insert(taxJurisdictions).values(insertJurisdiction).returning();
     return jurisdiction;
+  }
+  
+  // Quick Quotes
+  async createQuickQuote(insertQuote: InsertQuickQuote): Promise<QuickQuote> {
+    const [quote] = await db.insert(quickQuotes).values(insertQuote).returning();
+    return quote;
+  }
+
+  async getQuickQuote(id: string): Promise<QuickQuote | undefined> {
+    const [quote] = await db.select().from(quickQuotes).where(eq(quickQuotes.id, id));
+    return quote || undefined;
+  }
+
+  async updateQuickQuote(id: string, data: Partial<Pick<QuickQuote, 'status' | 'dealId'>>): Promise<QuickQuote> {
+    const [quote] = await db.update(quickQuotes).set(data).where(eq(quickQuotes.id, id)).returning();
+    return quote;
+  }
+
+  async updateQuickQuotePayload(id: string, payload: any): Promise<QuickQuote> {
+    const [quote] = await db.update(quickQuotes).set({ quotePayload: payload }).where(eq(quickQuotes.id, id)).returning();
+    return quote;
+  }
+
+  async createQuickQuoteContact(insertContact: InsertQuickQuoteContact): Promise<QuickQuoteContact> {
+    const [contact] = await db.insert(quickQuoteContacts).values(insertContact).returning();
+    return contact;
+  }
+
+  async updateQuickQuoteContactStatus(id: string, status: string, sentAt: Date): Promise<QuickQuoteContact> {
+    const [contact] = await db.update(quickQuoteContacts)
+      .set({ smsDeliveryStatus: status, smsSentAt: sentAt })
+      .where(eq(quickQuoteContacts.id, id))
+      .returning();
+    return contact;
   }
   
   // Deals

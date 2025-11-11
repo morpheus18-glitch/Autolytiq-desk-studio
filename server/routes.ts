@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import rateLimit from "express-rate-limit";
-import { insertCustomerSchema, insertVehicleSchema, insertDealSchema, insertDealScenarioSchema, insertTradeVehicleSchema, insertTaxJurisdictionSchema } from "@shared/schema";
+import { insertCustomerSchema, insertVehicleSchema, insertDealSchema, insertDealScenarioSchema, insertTradeVehicleSchema, insertTaxJurisdictionSchema, insertQuickQuoteSchema, insertQuickQuoteContactSchema } from "@shared/schema";
 import { calculateFinancePayment, calculateLeasePayment, calculateSalesTax } from "./calculations";
 import { z } from "zod";
 import { aiService, type ChatMessage, type DealContext } from "./ai-service";
@@ -600,6 +600,138 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(jurisdiction);
     } catch (error: any) {
       res.status(400).json({ error: error.message || 'Failed to create tax jurisdiction' });
+    }
+  });
+  // ===== QUICK QUOTES =====
+  app.post('/api/quick-quotes', async (req, res) => {
+    try {
+      const data = insertQuickQuoteSchema.parse(req.body);
+      const quote = await storage.createQuickQuote(data);
+      res.status(201).json(quote);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || 'Failed to create quick quote' });
+    }
+  });
+
+  app.patch('/api/quick-quotes/:id', async (req, res) => {
+    try {
+      const quoteId = req.params.id;
+      
+      // Validate payload using schema subset
+      const data = insertQuickQuoteSchema.pick({ quotePayload: true }).parse(req.body);
+
+      // Check quote exists
+      const existingQuote = await storage.getQuickQuote(quoteId);
+      if (!existingQuote) {
+        return res.status(404).json({ error: 'Quote not found' });
+      }
+
+      const quote = await storage.updateQuickQuotePayload(quoteId, data.quotePayload);
+      res.json(quote);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || 'Failed to update quick quote' });
+    }
+  });
+
+  app.post('/api/quick-quotes/:id/text', async (req, res) => {
+    try {
+      // Validate request body
+      const contactData = z.object({
+        name: z.string().min(2, 'Name must be at least 2 characters'),
+        phone: z.string().min(10, 'Phone number must be at least 10 digits'),
+      }).parse(req.body);
+
+      const quoteId = req.params.id;
+
+      // Get the quote
+      const quote = await storage.getQuickQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ error: 'Quote not found' });
+      }
+
+      // Save contact info
+      const contact = await storage.createQuickQuoteContact({
+        quickQuoteId: quoteId,
+        name: contactData.name,
+        phone: contactData.phone,
+        smsDeliveryStatus: 'pending',
+      });
+
+      // TODO: Send SMS via Twilio integration
+      // For now, just mark as sent
+      await storage.updateQuickQuoteContactStatus(contact.id, 'delivered', new Date());
+      
+      // Update quote status
+      await storage.updateQuickQuote(quoteId, { status: 'sent' });
+
+      res.json({ success: true, contactId: contact.id });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || 'Failed to send text quote' });
+    }
+  });
+
+  app.post('/api/quick-quotes/:id/convert', async (req, res) => {
+    try {
+      const quoteId = req.params.id;
+
+      // Get the quote
+      const quote = await storage.getQuickQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ error: 'Quote not found' });
+      }
+
+      if (quote.status === 'converted') {
+        return res.status(400).json({ error: 'Quote already converted' });
+      }
+
+      const payload = quote.quotePayload as any;
+
+      // Get salesperson or use first user as fallback
+      let salespersonId = quote.salespersonId;
+      if (!salespersonId) {
+        const users = await storage.getUsers();
+        if (users.length === 0) {
+          return res.status(400).json({ error: 'No users found in system' });
+        }
+        salespersonId = users[0].id;
+      }
+
+      // Create customer (simplified - using temp data)
+      const customer = await storage.createCustomer({
+        firstName: 'Quick',
+        lastName: 'Quote Customer',
+      });
+
+      // Create deal
+      const deal = await storage.createDeal({
+        salespersonId,
+        customerId: customer.id,
+        vehicleId: quote.vehicleId!,
+      });
+
+      // Create scenario with quote data
+      await storage.createScenario({
+        dealId: deal.id,
+        vehicleId: quote.vehicleId!,
+        scenarioType: 'FINANCE_DEAL',
+        name: 'Quick Quote Conversion',
+        vehiclePrice: payload.vehicle?.price || 0,
+        downPayment: payload.downPayment || 0,
+        apr: payload.apr || 12.9,
+        term: payload.termMonths || 60,
+        tradeAllowance: payload.tradeValue || 0,
+        tradePayoff: payload.tradePayoff || 0,
+      });
+
+      // Update quote status
+      await storage.updateQuickQuote(quoteId, { 
+        status: 'converted',
+        dealId: deal.id
+      });
+
+      res.json({ success: true, dealId: deal.id });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || 'Failed to convert quote' });
     }
   });
   

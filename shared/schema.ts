@@ -243,6 +243,46 @@ export const insertTaxJurisdictionSchema = createInsertSchema(taxJurisdictions).
 export type InsertTaxJurisdiction = z.infer<typeof insertTaxJurisdictionSchema>;
 export type TaxJurisdiction = typeof taxJurisdictions.$inferSelect;
 
+// ===== QUICK QUOTES TABLE =====
+// Stores Quick Quote wizard results for audit, SMS retry, and conversion tracking
+export const quickQuotes = pgTable("quick_quotes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  salespersonId: uuid("salesperson_id").references(() => users.id),
+  vehicleId: uuid("vehicle_id").references(() => vehicles.id),
+  quotePayload: jsonb("quote_payload").notNull(), // Complete quote data: payment, terms, trade, etc.
+  status: text("status").notNull().default("draft"), // draft, sent, converted
+  dealId: uuid("deal_id").references(() => deals.id), // Set when converted to full deal
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  salespersonIdx: index("quick_quotes_salesperson_idx").on(table.salespersonId),
+  statusIdx: index("quick_quotes_status_idx").on(table.status),
+  vehicleIdx: index("quick_quotes_vehicle_idx").on(table.vehicleId),
+}));
+
+export const insertQuickQuoteSchema = createInsertSchema(quickQuotes).omit({ id: true, createdAt: true });
+export type InsertQuickQuote = z.infer<typeof insertQuickQuoteSchema>;
+export type QuickQuote = typeof quickQuotes.$inferSelect;
+
+// ===== QUICK QUOTE CONTACTS TABLE =====
+// Stores customer contact info for SMS quote delivery
+export const quickQuoteContacts = pgTable("quick_quote_contacts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  quickQuoteId: uuid("quick_quote_id").notNull().references(() => quickQuotes.id, { onDelete: "cascade" }),
+  customerId: uuid("customer_id").references(() => customers.id), // Linked customer if known
+  name: text("name").notNull(),
+  phone: text("phone").notNull(), // E.164 format
+  smsSentAt: timestamp("sms_sent_at"),
+  smsDeliveryStatus: text("sms_delivery_status"), // pending, delivered, failed
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  quickQuoteIdx: index("quick_quote_contacts_quote_idx").on(table.quickQuoteId),
+  phoneIdx: index("quick_quote_contacts_phone_idx").on(table.phone),
+}));
+
+export const insertQuickQuoteContactSchema = createInsertSchema(quickQuoteContacts).omit({ id: true, createdAt: true });
+export type InsertQuickQuoteContact = z.infer<typeof insertQuickQuoteContactSchema>;
+export type QuickQuoteContact = typeof quickQuoteContacts.$inferSelect;
+
 // ===== DEALS TABLE =====
 export const deals = pgTable("deals", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -583,6 +623,33 @@ export const tradeVehiclesRelations = relations(tradeVehicles, ({ one, many }) =
     references: [deals.id],
   }),
   scenarios: many(dealScenarios),
+}));
+
+export const quickQuotesRelations = relations(quickQuotes, ({ one, many }) => ({
+  salesperson: one(users, {
+    fields: [quickQuotes.salespersonId],
+    references: [users.id],
+  }),
+  vehicle: one(vehicles, {
+    fields: [quickQuotes.vehicleId],
+    references: [vehicles.id],
+  }),
+  deal: one(deals, {
+    fields: [quickQuotes.dealId],
+    references: [deals.id],
+  }),
+  contacts: many(quickQuoteContacts),
+}));
+
+export const quickQuoteContactsRelations = relations(quickQuoteContacts, ({ one }) => ({
+  quickQuote: one(quickQuotes, {
+    fields: [quickQuoteContacts.quickQuoteId],
+    references: [quickQuotes.id],
+  }),
+  customer: one(customers, {
+    fields: [quickQuoteContacts.customerId],
+    references: [customers.id],
+  }),
 }));
 
 export const dealsRelations = relations(deals, ({ one, many }) => ({
