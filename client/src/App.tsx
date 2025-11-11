@@ -14,12 +14,14 @@ import Customers from "@/pages/customers";
 import VINDecoder from "@/pages/vin-decoder";
 import Analytics from "@/pages/analytics";
 import CreditCenter from "@/pages/credit-center";
+import QuickQuote from "@/pages/quick-quote";
 import NotFound from "@/pages/not-found";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={() => <Redirect to="/inventory" />} />
+      <Route path="/quick-quote" component={QuickQuote} />
       <Route path="/inventory" component={Inventory} />
       <Route path="/inventory/new" component={InventoryNew} />
       <Route path="/customers" component={Customers} />

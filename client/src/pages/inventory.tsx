@@ -43,7 +43,8 @@ import {
   Scan,
   CreditCard,
   Eye,
-  EyeOff
+  EyeOff,
+  Smartphone
 } from "lucide-react";
 import { useDebouncedCallback } from "use-debounce";
 import { calculatePricingSummary, formatCurrency, formatPercent, getProfitColorClass } from "@/lib/pricing-utils";
@@ -1075,9 +1076,19 @@ export default function InventoryPage() {
               <h1 className="text-2xl md:text-3xl font-semibold">Vehicle Inventory</h1>
               <div className="flex items-center gap-2">
                 <Button
+                  size="lg"
+                  onClick={() => setLocation('/quick-quote')}
+                  data-testid="button-quick-quote"
+                  className="hidden md:flex"
+                >
+                  <Smartphone className="w-5 h-5 mr-2" />
+                  Quick Quote
+                </Button>
+                <Button
                   variant="outline"
                   onClick={() => setLocation('/credit')}
                   data-testid="button-credit-center"
+                  className="hidden md:flex"
                 >
                   <CreditCard className="w-4 h-4 mr-2" />
                   Credit Center
@@ -1086,6 +1097,7 @@ export default function InventoryPage() {
                   variant="outline"
                   onClick={() => setLocation('/vin-decoder')}
                   data-testid="button-vin-decoder"
+                  className="hidden md:flex"
                 >
                   <Scan className="w-4 h-4 mr-2" />
                   VIN Decoder

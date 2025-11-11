@@ -2,7 +2,21 @@
 
 ## Overview
 
-The NextGen Automotive Desking Platform is a comprehensive application for automotive dealerships, managing finance and lease calculations, multi-scenario deal structuring, and customer/vehicle lifecycles. It provides real-time payment calculations with high accuracy using Decimal.js, enabling sales and finance personnel to create, compare, and manage deals efficiently. The platform focuses on delivering a premium, production-ready user experience with "Apple/Nike quality" UI/UX standards, modular architecture, and advanced features like real-time calculations and complete audit trails.
+The NextGen Automotive Desking Platform is a **mobile-first** desking tool for automotive dealerships, designed for **value and velocity**. Built for salespeople on the lot and desk managers closing deals fast, the platform enables payment quotes in 30-45 seconds and complete deal structuring in 3-5 minutes. Core philosophy: profit is made when you acquire the car and prep it right - the desking tool focuses on speed, simplicity, and getting customers approved and into cars FAST.
+
+## Product Vision: Two Modes
+
+**MODE 1: Quick Quote** (30-45 seconds)
+- Salesperson on lot, qualifying customer
+- Phone-based wizard: Pick vehicle → Budget → Down → Trade → Payment
+- Text quote to customer
+- "Take to Desk" for full structuring
+
+**MODE 2: Full Desk** (3-5 minutes)
+- Complete deal structuring
+- Start from Quick Quote OR blank desk
+- Add F&I products
+- Submit to finance
 
 ## Recent Changes (November 2024)
 
@@ -15,9 +29,27 @@ The NextGen Automotive Desking Platform is a comprehensive application for autom
 - ✅ **Micro-interactions System**: 6 CSS animations (shake-error, success-glow, fade-in, scale-in, checkmark-draw, focus-glow) with 250-400ms timing cadence; state-guard pattern in auto-save indicator prevents reflow jitter; semantic styling (variant="outline" + green icon) for success states; reduced-motion compliance
 - ✅ **Animation Quality Standards**: All animations use useRef + useState guards (not key-based remounts) to trigger on state change only; timing follows 200ms (smooth), 250ms (spring/scale), 300ms (shake/fade), 400ms (glow) cadence; semantic theme tokens (hsl(var(--ring))) instead of hardcoded colors; accessibility-first with prefers-reduced-motion support
 
+**Mobile-First Desking Vision** (IN PROGRESS):
+- 📱 Quick Quote wizard for 30-second lot qualification
+- 🎯 Mobile-first UI: 56px buttons, thumb zone optimization, direct inputs (NO SLIDERS)
+- 💬 Text messaging integration (primary contact method)
+- ⚡ Suggested amount buttons ($1K, $2.5K, $5K quick-taps)
+- 🔄 "Take to Desk" conversion from Quick Quote → Full Desk
+- 🚫 NEVER prefill trade payoff (customer tells you, could be $0 or $20K)
+- 📊 Real-world APR rates (8.9% - 23.9% based on credit tiers)
+- 🎨 Big payment display (72px font), clear value hierarchy
+- ⚙️ Full Desk mode with mobile-optimized tabs for detailed structuring
+
 ## User Preferences
 
-Preferred communication style: Simple, everyday language.
+**Core Philosophy**: Value and velocity, not profit obsession
+- "You make profit when you acquire the car and get it through recon properly"
+- Desk managers need SPEED to close deals, not complex analytics
+- Simple, fast, easy to understand
+- Mobile-first (phone in pocket, not tablet or desktop)
+- One-handed operation on the lot
+
+**Communication Style**: Simple, everyday language
 
 ## System Architecture
 
