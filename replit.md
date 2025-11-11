@@ -49,6 +49,15 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 
 ## Recent Changes (November 2025)
 
+**Mobile Navigation System (prof-navigation-1 through prof-navigation-4)**:
+- Created sticky bottom navigation bar with 4 quick-access buttons (Dashboard, Deals, Inventory, Customers)
+- Implemented expandable menu (bottom-right) with slide-up sheet containing all routes
+- Created PageLayout wrapper component with iOS safe-area-inset-bottom support
+- Applied PageLayout to all pages for consistent bottom padding (5rem on mobile, 1.5rem on desktop)
+- Implemented conditional navigation suppression on deal worksheet pages via shared `isMobileNavSuppressed()` helper
+- Navigation automatically hides on deal worksheets to maximize screen real estate
+- All interactive elements sized at 56px minimum for one-handed mobile operation
+
 **Scenario Management Enhancements (prof-scenarios-1)**:
 - Scenario cloning via duplicate button (already existed, verified working)
 - Side-by-side comparison modal with 2-scenario selector

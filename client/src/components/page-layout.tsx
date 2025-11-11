@@ -14,16 +14,11 @@ export function PageLayout({ children, className }: PageLayoutProps) {
   return (
     <div
       className={cn(
-        // Add bottom padding for mobile nav (20 = 80px) except on pages where nav is hidden
-        // Include safe-area-inset-bottom for iOS devices
-        !navSuppressed && 'pb-20 md:pb-6',
+        // Mobile: 5rem (80px) bottom padding + iOS safe area for nav clearance
+        // Desktop: 1.5rem (24px) bottom padding + iOS safe area for standard spacing
+        !navSuppressed && 'pb-[calc(env(safe-area-inset-bottom,0px)+5rem)] md:pb-[calc(env(safe-area-inset-bottom,0px)+1.5rem)]',
         className
       )}
-      style={{
-        paddingBottom: !navSuppressed
-          ? 'calc(env(safe-area-inset-bottom, 0px) + 5rem)' // 5rem = pb-20
-          : undefined,
-      }}
     >
       {children}
     </div>
