@@ -12,7 +12,7 @@ export function VehicleStep() {
   const { setVehicle, nextStep } = useQuickQuoteStore();
 
   const { data: vehicles, isLoading } = useQuery<Vehicle[]>({
-    queryKey: ["/api/vehicles"],
+    queryKey: ["/api/inventory/search"],
   });
 
   const filteredVehicles = vehicles?.filter((v) => {
