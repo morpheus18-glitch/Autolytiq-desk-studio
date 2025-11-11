@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useLocation } from 'wouter';
+import { PageLayout } from '@/components/page-layout';
 import { 
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   LineChart, Line, ResponsiveContainer, XAxis, YAxis, 
@@ -205,7 +206,7 @@ export default function Analytics() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <PageLayout className="h-screen flex flex-col bg-background">
       {/* Header with Navigation */}
       <header className="sticky top-0 z-50 border-b bg-card/50 backdrop-blur-sm">
         <div className="max-w-[1600px] mx-auto">
@@ -800,6 +801,6 @@ export default function Analytics() {
           </div>
         </div>
       </main>
-    </div>
+    </PageLayout>
   );
 }

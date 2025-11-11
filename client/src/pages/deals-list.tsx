@@ -27,6 +27,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { PageLayout } from '@/components/page-layout';
 
 const DEAL_STATE_COLORS: Record<string, string> = {
   DRAFT: 'bg-yellow-100 text-yellow-800 border-0 shadow-md rounded-full',
@@ -347,7 +348,7 @@ export default function DealsList() {
   };
   
   return (
-    <div className="min-h-screen bg-background">
+    <PageLayout className="min-h-screen bg-background">
       {/* Header */}
       <div className="sticky top-0 z-40 backdrop-blur-md bg-background/80 border-b">
         <div className="container mx-auto px-3 md:px-4 py-4">
@@ -601,6 +602,6 @@ export default function DealsList() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageLayout>
   );
 }

@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PageLayout } from "@/components/page-layout";
 
 export default function InventoryNew() {
   const [, navigate] = useLocation();
@@ -40,7 +41,7 @@ export default function InventoryNew() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <PageLayout className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="mb-6">
         <Button
           variant="ghost"
@@ -72,6 +73,6 @@ export default function InventoryNew() {
           />
         </CardContent>
       </Card>
-    </div>
+    </PageLayout>
   );
 }

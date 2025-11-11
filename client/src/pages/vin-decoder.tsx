@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import type { DecodedVehicle } from '@/lib/vin-decoder';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Car, Package, DollarSign, Info } from 'lucide-react';
+import { PageLayout } from '@/components/page-layout';
 
 export default function VINDecoderPage() {
   const [, navigate] = useLocation();
@@ -59,7 +60,7 @@ export default function VINDecoderPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+    <PageLayout className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <div className="container max-w-6xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -178,6 +179,6 @@ export default function VINDecoderPage() {
           </Card>
         )}
       </div>
-    </div>
+    </PageLayout>
   );
 }

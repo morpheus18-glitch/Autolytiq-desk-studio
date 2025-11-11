@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { Search, Plus, ArrowLeft } from 'lucide-react';
 import { StockNumberQuickAdd } from '@/components/stock-number-quick-add';
+import { PageLayout } from '@/components/page-layout';
 import {
   Form,
   FormControl,
@@ -188,7 +189,7 @@ export default function NewDeal() {
   };
   
   return (
-    <div className="min-h-screen bg-background">
+    <PageLayout className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b bg-card">
         <div className="max-w-4xl mx-auto p-8">
@@ -391,6 +392,6 @@ export default function NewDeal() {
           </Card>
         </div>
       </div>
-    </div>
+    </PageLayout>
   );
 }

@@ -19,6 +19,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { PageLayout } from "@/components/page-layout";
 import {
   Search,
   Filter,
@@ -1107,7 +1108,7 @@ export default function InventoryPage() {
   }, [filters]);
 
   return (
-    <div className="min-h-screen bg-background max-w-full overflow-x-clip">
+    <PageLayout className="min-h-screen bg-background max-w-full overflow-x-clip">
       {/* Header */}
       <div className="sticky top-0 z-40 backdrop-blur-md bg-background/80 border-b">
         <div className="container mx-auto px-4 py-4">
@@ -1331,6 +1332,6 @@ export default function InventoryPage() {
         }}
         onStartDeal={handleStartDeal}
       />
-    </div>
+    </PageLayout>
   );
 }

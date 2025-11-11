@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { PageLayout } from '@/components/page-layout';
 import { 
   Calculator, 
   Shield, 
@@ -23,7 +24,7 @@ export default function CreditCenter() {
   const [activeTab, setActiveTab] = useState('dashboard');
   
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+    <PageLayout className="min-h-screen bg-gradient-to-b from-background to-muted/20">
       {/* Header */}
       <div className="border-b bg-card/50 backdrop-blur-xl sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -266,6 +267,6 @@ export default function CreditCenter() {
           </div>
         </Card>
       </div>
-    </div>
+    </PageLayout>
   );
 }

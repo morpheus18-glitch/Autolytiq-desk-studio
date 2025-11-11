@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { PageLayout } from "@/components/page-layout";
 import {
   Search,
   User,
@@ -148,7 +149,7 @@ export default function Customers() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <PageLayout className="min-h-screen bg-background">
       {/* Header */}
       <div className="sticky top-0 z-40 backdrop-blur-md bg-background/80 border-b">
         <div className="container mx-auto px-3 md:px-4 py-4">
@@ -258,6 +259,6 @@ export default function Customers() {
           )}
         </div>
       </div>
-    </div>
+    </PageLayout>
   );
 }
