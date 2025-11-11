@@ -68,11 +68,17 @@ The NextGen Automotive Desking Platform is a **mobile-first** desking tool for a
 - ✅ **Multi-Path Integration**: Works across Quick Quote (with Browse dialog), New Deal (with fallback search), maintaining vehicle state synchronization for direct typing, browse dialog, and fallback search flows
 - ✅ **Critical Fix**: onChange calls onClear when typed value diverges from selected vehicle (clears parent state) but doesn't clear input text (preserves user typing); useEffect syncs input when external selection occurs
 
+**Inventory Navigation Fix** (✅ COMPLETE - November 2024):
+
+- ✅ **URL Parameter Handling**: New Deal page now reads `vehicleId` from URL query parameters when navigating from inventory
+- ✅ **Vehicle Pre-population**: TanStack Query fetches vehicle data using full URL path (`/api/vehicles/${vehicleId}`) with default fetcher
+- ✅ **State Synchronization**: useEffect syncs selectedVehicle state and form field when vehicle data loads
+- ✅ **Complete Flow**: User clicks "Start Deal" in inventory → navigates to `/deals/new?vehicleId=abc-123` → vehicle auto-loads with success badge + preview
+
 **Remaining Work**:
 - 📱 Mobile-optimize existing Full Desk tabs for thumb zone operation
 - 📊 Update APR rate system to real-world credit tiers (8.9% - 23.9%)
 - 💬 Complete Twilio integration for actual SMS delivery
-- 🔄 Fix inventory navigation: selecting vehicle from inventory should return to deal screen with data preserved
 
 ## User Preferences
 
