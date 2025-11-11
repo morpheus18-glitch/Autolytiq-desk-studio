@@ -161,7 +161,7 @@ export function VehicleForm({
                 <FormItem>
                   <FormLabel>Trim (Optional)</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="EX" data-testid="input-vehicle-trim" />
+                    <Input {...field} value={field.value ?? ""} placeholder="EX" data-testid="input-vehicle-trim" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -362,7 +362,7 @@ export function VehicleForm({
                 <FormItem>
                   <FormLabel>Exterior Color (Optional)</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Sonic Gray Pearl" data-testid="input-vehicle-exterior-color" />
+                    <Input {...field} value={field.value ?? ""} placeholder="Sonic Gray Pearl" data-testid="input-vehicle-exterior-color" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -376,7 +376,7 @@ export function VehicleForm({
                 <FormItem>
                   <FormLabel>Interior Color (Optional)</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Black Cloth" data-testid="input-vehicle-interior-color" />
+                    <Input {...field} value={field.value ?? ""} placeholder="Black Cloth" data-testid="input-vehicle-interior-color" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -390,7 +390,7 @@ export function VehicleForm({
                 <FormItem>
                   <FormLabel>Engine (Optional)</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="2.0L 4-Cylinder Turbo" data-testid="input-vehicle-engine-type" />
+                    <Input {...field} value={field.value ?? ""} placeholder="2.0L 4-Cylinder Turbo" data-testid="input-vehicle-engine-type" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -404,7 +404,7 @@ export function VehicleForm({
                 <FormItem>
                   <FormLabel>Transmission (Optional)</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Automatic" data-testid="input-vehicle-transmission" />
+                    <Input {...field} value={field.value ?? ""} placeholder="Automatic" data-testid="input-vehicle-transmission" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -418,7 +418,7 @@ export function VehicleForm({
                 <FormItem>
                   <FormLabel>Drivetrain (Optional)</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="FWD" data-testid="input-vehicle-drivetrain" />
+                    <Input {...field} value={field.value ?? ""} placeholder="FWD" data-testid="input-vehicle-drivetrain" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -432,7 +432,7 @@ export function VehicleForm({
                 <FormItem>
                   <FormLabel>Fuel Type (Optional)</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Gasoline" data-testid="input-vehicle-fuel-type" />
+                    <Input {...field} value={field.value ?? ""} placeholder="Gasoline" data-testid="input-vehicle-fuel-type" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
