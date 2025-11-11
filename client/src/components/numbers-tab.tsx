@@ -7,6 +7,7 @@ import { useScenarioForm } from '@/contexts/scenario-form-context';
 import { useState, useEffect } from 'react';
 import Decimal from 'decimal.js';
 import { cn } from '@/lib/utils';
+import { getValueColorClass, formatCurrency as formatCurrencyUtil } from '@/lib/pricing-utils';
 
 export function NumbersTab() {
   const { scenario, calculations, updateField } = useScenarioForm();
@@ -189,15 +190,15 @@ export function NumbersTab() {
               <div className="flex items-center gap-2">
                 <Label className="text-sm font-medium">Trade Equity</Label>
                 {isPositiveEquity ? (
-                  <TrendingUp className="w-4 h-4 text-green-600" aria-hidden="true" />
+                  <TrendingUp className={cn("w-4 h-4", getValueColorClass(tradeEquity))} aria-hidden="true" />
                 ) : (
-                  <TrendingDown className="w-4 h-4 text-destructive" aria-hidden="true" />
+                  <TrendingDown className={cn("w-4 h-4", getValueColorClass(tradeEquity))} aria-hidden="true" />
                 )}
               </div>
               <div
                 className={cn(
                   "text-2xl font-bold font-mono tabular-nums",
-                  isPositiveEquity ? "text-green-600" : "text-destructive"
+                  getValueColorClass(tradeEquity)
                 )}
                 data-testid="text-trade-equity"
               >
@@ -329,7 +330,7 @@ export function NumbersTab() {
             <span
               className={cn(
                 "font-mono tabular-nums font-semibold",
-                isPositiveEquity ? "text-green-600" : "text-destructive"
+                getValueColorClass(tradeEquity)
               )}
               data-testid="text-summary-trade-equity"
             >

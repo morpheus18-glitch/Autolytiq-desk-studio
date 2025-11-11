@@ -2,7 +2,9 @@ import { Badge } from '@/components/ui/badge';
 import { useScenarioForm } from '@/contexts/scenario-form-context';
 import { CurrencyField } from '@/components/ui/currency-field';
 import { formatCurrency, parseScenarioNumber } from '@/lib/currency';
+import { getValueColorClass } from '@/lib/pricing-utils';
 import { TrendingUp, TrendingDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export function TradeForm() {
   const { scenario, tradeVehicle, updateField, calculations } = useScenarioForm();
@@ -59,24 +61,23 @@ export function TradeForm() {
       </div>
       
       {/* Trade Equity Indicator */}
-      <div className={`calc-surface border p-4 ${
-        hasPositiveEquity ? 'bg-green-500/10 border-green-500/20' :
-        hasNegativeEquity ? 'bg-red-500/10 border-red-500/20' :
-        ''
-      }`}>
+      <div className={cn(
+        "calc-surface border p-4",
+        hasPositiveEquity && 'bg-success/10 border-success/20',
+        hasNegativeEquity && 'bg-destructive/10 border-destructive/20'
+      )}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            {hasPositiveEquity && <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-400" />}
-            {hasNegativeEquity && <TrendingDown className="w-4 h-4 text-red-600 dark:text-red-400" />}
+            {hasPositiveEquity && <TrendingUp className={cn("w-4 h-4", getValueColorClass(calculations.tradeEquity))} />}
+            {hasNegativeEquity && <TrendingDown className={cn("w-4 h-4", getValueColorClass(calculations.tradeEquity))} />}
             <span className="text-step--1 font-medium">
               {hasPositiveEquity ? 'Positive Equity' : hasNegativeEquity ? 'Negative Equity' : 'No Trade'}
             </span>
           </div>
-          <div className={`text-step-1 font-bold font-mono tabular-nums ${
-            hasPositiveEquity ? 'text-green-600 dark:text-green-400' :
-            hasNegativeEquity ? 'text-red-600 dark:text-red-400' :
-            'text-muted-foreground'
-          }`} data-testid="text-trade-equity" data-currency>
+          <div className={cn(
+            "text-step-1 font-bold font-mono tabular-nums",
+            getValueColorClass(calculations.tradeEquity)
+          )} data-testid="text-trade-equity" data-currency>
             {formatCurrency(Math.abs(calculations.tradeEquity.toNumber()))}
           </div>
         </div>

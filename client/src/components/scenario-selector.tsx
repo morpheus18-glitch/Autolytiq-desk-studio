@@ -28,6 +28,7 @@ import { useScenarioForm } from '@/contexts/scenario-form-context';
 import Decimal from 'decimal.js';
 import { useOptimisticCreate, useOptimisticDelete, generateTempId } from '@/lib/optimistic-mutations';
 import { createUndoAction, showSuccessToast, showErrorToast } from '@/lib/toast-actions';
+import { ScenarioComparisonBadge } from './scenario-comparison-badge';
 
 interface ScenarioSelectorProps {
   dealId: string;
@@ -199,12 +200,21 @@ export function ScenarioSelector({
       </div>
 
       <div className="space-y-2">
-        {scenarios.map((scenario) => {
+        {scenarios.map((scenario, index) => {
           const isActive = scenario.id === activeScenarioId;
           // Show live calculation for active scenario, server value for others
           const monthlyPayment = isActive 
             ? calculations.monthlyPayment.toNumber()
             : parseFloat(scenario.monthlyPayment || '0');
+          
+          // Get baseline scenario (first one) for comparison
+          const baselineScenario = scenarios[0];
+          const baselinePayment = baselineScenario
+            ? (baselineScenario.id === activeScenarioId 
+                ? calculations.monthlyPayment.toNumber()
+                : parseFloat(baselineScenario.monthlyPayment || '0'))
+            : 0;
+          const showComparison = index > 0 && monthlyPayment > 0 && baselinePayment > 0;
           
           return (
             <Card
@@ -230,6 +240,15 @@ export function ScenarioSelector({
                       <span className="text-xs font-mono text-muted-foreground">
                         ${monthlyPayment.toFixed(2)}/mo
                       </span>
+                    )}
+                    {showComparison && (
+                      <ScenarioComparisonBadge
+                        current={monthlyPayment}
+                        baseline={baselinePayment}
+                        label="vs Scenario 1"
+                        inverse // Lower payment is better
+                        testId={`badge-comparison-${scenario.id}`}
+                      />
                     )}
                   </div>
                 </div>
