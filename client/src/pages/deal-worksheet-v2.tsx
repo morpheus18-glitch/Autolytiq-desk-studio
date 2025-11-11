@@ -26,6 +26,7 @@ import { TaxBreakdownForm } from '@/components/forms/tax-breakdown-form';
 import { DealerFeesForm } from '@/components/forms/dealer-fees-form';
 import { AccessoriesForm } from '@/components/forms/accessories-form';
 import { ScenarioSelector } from '@/components/scenario-selector';
+import { FeePackageSelector } from '@/components/fee-package-selector';
 import { DealWorkflowControls } from '@/components/deal-workflow-controls';
 import { MobilePaymentSheet } from '@/components/mobile-payment-sheet';
 import { MobileActionButton } from '@/components/mobile-action-button';
@@ -317,6 +318,12 @@ export default function DealWorksheetV2() {
           <DeskSection title="Tax & Fees" icon={Receipt}>
             <TaxBreakdownForm />
           </DeskSection>
+          
+          {dealId && activeScenarioId && (
+            <DeskSection title="Fee Packages" icon={Receipt} defaultOpen>
+              <FeePackageSelector dealId={dealId} scenarioId={activeScenarioId} />
+            </DeskSection>
+          )}
           
           <DeskSection title="Dealer Fees" icon={Receipt}>
             <DealerFeesForm />
