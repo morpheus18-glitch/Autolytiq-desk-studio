@@ -3,6 +3,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { PageLayout } from '@/components/page-layout';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -78,7 +79,7 @@ export default function Dashboard() {
   };
   
   return (
-    <div className="min-h-screen bg-background">
+    <PageLayout className="min-h-screen bg-background">
       {/* Header */}
       <div className="sticky top-0 z-40 backdrop-blur-md bg-background/80 border-b">
         <div className="container mx-auto px-3 md:px-4 py-4">
@@ -97,7 +98,7 @@ export default function Dashboard() {
               onClick={handleDesking}
               disabled={usersLoading || createDealMutation.isPending}
               data-testid="button-desking"
-              className="gap-2"
+              className="gap-2 hidden md:flex"
             >
               <FileText className="w-4 h-4" />
               {usersLoading ? 'Loading...' : 'Desking'}
@@ -270,6 +271,6 @@ export default function Dashboard() {
           </Card>
         </div>
       </div>
-    </div>
+    </PageLayout>
   );
 }

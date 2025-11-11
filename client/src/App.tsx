@@ -1,9 +1,10 @@
-import { Switch, Route, Redirect } from "wouter";
+import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AIChatCompanion } from "@/components/ai-chat-companion";
+import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import Dashboard from "@/pages/dashboard";
 import DealsList from "@/pages/deals-list";
 import DealWorksheetV2 from "@/pages/deal-worksheet-v2";
@@ -46,6 +47,7 @@ function App() {
       <TooltipProvider>
         <Toaster />
         <Router />
+        <MobileBottomNav />
         <AIChatCompanion />
       </TooltipProvider>
     </QueryClientProvider>
