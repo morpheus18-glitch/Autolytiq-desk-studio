@@ -2,6 +2,13 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
+// Validate SESSION_SECRET at startup to prevent runtime failures
+if (!process.env.SESSION_SECRET) {
+  throw new Error(
+    "SESSION_SECRET environment variable must be set. This is required for secure session management."
+  );
+}
+
 const app = express();
 
 declare module 'http' {

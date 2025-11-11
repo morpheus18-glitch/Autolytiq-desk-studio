@@ -10,13 +10,72 @@ export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   username: text("username").notNull().unique(),
   fullName: text("full_name").notNull(),
+  email: text("email").notNull().unique(),
+  password: text("password").notNull(),
   role: text("role").notNull().default("salesperson"), // salesperson, sales_manager, finance_manager, admin
+  
+  // Email verification
+  emailVerified: boolean("email_verified").notNull().default(false),
+  
+  // Password reset
+  resetToken: text("reset_token"),
+  resetTokenExpires: timestamp("reset_token_expires"),
+  
+  // Two-factor authentication
+  mfaEnabled: boolean("mfa_enabled").notNull().default(false),
+  mfaSecret: text("mfa_secret"),
+  
+  // Security & activity tracking
+  lastLogin: timestamp("last_login"),
+  failedLoginAttempts: integer("failed_login_attempts").notNull().default(0),
+  accountLockedUntil: timestamp("account_locked_until"),
+  
+  // User preferences (theme, notifications, default views, etc.)
+  preferences: jsonb("preferences").default({}),
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  emailIdx: index("users_email_idx").on(table.email),
+}));
+
+export const insertUserSchema = createInsertSchema(users).omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true,
+  emailVerified: true,
+  failedLoginAttempts: true,
+  mfaEnabled: true,
+  // Note: role IS included in insertUserSchema for internal/admin use
+  // but is NOT included in registerSchema (public) to prevent privilege escalation
 });
 
-export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
+// Login schema (username/email + password)
+export const loginSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+// Registration schema with password validation - role is NOT included (defaults to salesperson)
+export const registerSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  fullName: z.string().min(1, "Full name is required"),
+  email: z.string().email("Invalid email address"),
+  password: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number"),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+export type LoginData = z.infer<typeof loginSchema>;
+export type RegisterData = z.infer<typeof registerSchema>;
 
 // ===== CUSTOMERS TABLE =====
 export const customers = pgTable("customers", {

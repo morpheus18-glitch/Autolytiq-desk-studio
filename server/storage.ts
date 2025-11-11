@@ -20,15 +20,22 @@ import {
   type QuickQuoteContact, type InsertQuickQuoteContact,
   type FeePackageTemplate,
 } from "@shared/schema";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { eq, desc, and, or, like, sql, gte, lte, asc } from "drizzle-orm";
+import session from "express-session";
+import connectPg from "connect-pg-simple";
+
+const PostgresSessionStore = connectPg(session);
 
 export interface IStorage {
   // Users
   getUser(id: string): Promise<User | undefined>;
   getUsers(): Promise<User[]>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: string, data: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<User>;
+  sessionStore: any;
   
   // Customers
   getCustomer(id: string): Promise<Customer | undefined>;
@@ -142,6 +149,15 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  public sessionStore: session.Store;
+
+  constructor() {
+    this.sessionStore = new PostgresSessionStore({ 
+      pool, 
+      createTableIfMissing: true 
+    });
+  }
+
   // Users
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
@@ -157,8 +173,21 @@ export class DatabaseStorage implements IStorage {
     return user || undefined;
   }
 
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db.insert(users).values(insertUser).returning();
+    return user;
+  }
+
+  async updateUser(id: string, data: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<User> {
+    const [user] = await db.update(users)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
     return user;
   }
   
@@ -625,7 +654,7 @@ export class DatabaseStorage implements IStorage {
       downPayment: '0',
       tradeAllowance: '0',
       tradePayoff: '0',
-      term: '60',  // 60 months standard
+      term: 60,  // 60 months standard
       apr: '8.9',  // Standard APR
       totalTax: '0',
       totalFees: '0',

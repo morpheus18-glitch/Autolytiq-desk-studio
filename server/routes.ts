@@ -6,6 +6,7 @@ import { insertCustomerSchema, insertVehicleSchema, insertDealSchema, insertDeal
 import { calculateFinancePayment, calculateLeasePayment, calculateSalesTax } from "./calculations";
 import { z } from "zod";
 import { aiService, type ChatMessage, type DealContext } from "./ai-service";
+import { setupAuth, requireAuth, requireRole } from "./auth";
 
 // Rate limiting middleware - 100 requests per minute per IP
 const limiter = rateLimit({
@@ -17,7 +18,24 @@ const limiter = rateLimit({
   validate: { xForwardedForHeader: false },
 });
 
+// Auth rate limiting - stricter for login/register (10 attempts per minute)
+const authLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: 'Too many authentication attempts, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+});
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Setup authentication first (session + passport middleware)
+  setupAuth(app);
+  
+  // Apply rate limiting to auth endpoints
+  app.use('/api/register', authLimiter);
+  app.use('/api/login', authLimiter);
+  
   // Apply rate limiting to all API routes
   app.use('/api', limiter);
   
