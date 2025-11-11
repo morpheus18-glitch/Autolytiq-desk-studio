@@ -291,8 +291,8 @@ export const deals = pgTable("deals", {
   salespersonId: uuid("salesperson_id").notNull().references(() => users.id),
   salesManagerId: uuid("sales_manager_id").references(() => users.id),
   financeManagerId: uuid("finance_manager_id").references(() => users.id),
-  customerId: uuid("customer_id").notNull().references(() => customers.id),
-  vehicleId: uuid("vehicle_id").references(() => vehicles.id),
+  customerId: uuid("customer_id").references(() => customers.id),  // Made nullable for blank desking
+  vehicleId: uuid("vehicle_id").references(() => vehicles.id),  // Already nullable for blank desking
   tradeVehicleId: uuid("trade_vehicle_id").references(() => tradeVehicles.id),
   dealState: text("deal_state").notNull().default("DRAFT"), // DRAFT, IN_PROGRESS, APPROVED, CANCELLED
   activeScenarioId: uuid("active_scenario_id"),

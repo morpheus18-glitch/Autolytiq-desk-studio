@@ -1,11 +1,17 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
@@ -14,11 +20,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Plus, Search, Filter, ChevronLeft, ChevronRight, FileText, User, Car, DollarSign, Calendar, Hash, Package, ArrowRight } from 'lucide-react';
-import type { DealWithRelations } from '@shared/schema';
+import type { DealWithRelations, Vehicle, Customer, User as UserType } from '@shared/schema';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useLocation } from 'wouter';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 
 const DEAL_STATE_COLORS: Record<string, string> = {
   DRAFT: 'bg-yellow-100 text-yellow-800 border-0 shadow-md rounded-full',
