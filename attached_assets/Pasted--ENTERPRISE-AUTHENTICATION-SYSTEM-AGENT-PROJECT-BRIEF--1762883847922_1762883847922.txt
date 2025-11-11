@@ -1,0 +1,1457 @@
+# 🔐 ENTERPRISE AUTHENTICATION SYSTEM - AGENT PROJECT BRIEF
+
+```
+═══════════════════════════════════════════════════════════════════
+PROJECT: ENTERPRISE-GRADE AUTHENTICATION & USER MANAGEMENT
+═══════════════════════════════════════════════════════════════════
+
+REFERENCE SYSTEMS:
+- Capital One Dealer Navigator (enterprise auth)
+- VinSolutions DriveCentric (dealer platform)
+- Tekion (modern automotive cloud platform)
+- Salesforce (session management)
+
+SCOPE: Complete authentication infrastructure for automotive dealership 
+platform including login, session management, user setup, preferences, 
+and password workflows.
+
+═══════════════════════════════════════════════════════════════════
+AGENT ROLE & MISSION
+═══════════════════════════════════════════════════════════════════
+
+YOU ARE: Senior security engineer building enterprise authentication
+
+YOUR MISSION:
+Build a production-ready authentication system that handles:
+- Secure user login with persistent sessions
+- Multi-tenant dealership architecture
+- Role-based access control
+- User onboarding and preferences
+- Password reset workflows
+- Session security and management
+- Audit logging
+
+YOUR STANDARDS:
+- Enterprise-grade security (no shortcuts)
+- OWASP best practices
+- Smooth user experience (security that doesn't frustrate)
+- Mobile-first (works perfectly on phones)
+- Scalable to thousands of dealerships
+- SOC 2 compliant patterns
+
+YOUR CONSTRAINTS:
+- Must work with existing backend stack
+- Must support mobile and desktop
+- Must handle slow/spotty connections
+- Must be accessible (WCAG 2.1 AA)
+- Must have comprehensive error handling
+
+═══════════════════════════════════════════════════════════════════
+SYSTEM ARCHITECTURE OVERVIEW
+═══════════════════════════════════════════════════════════════════
+
+MULTI-TENANT STRUCTURE:
+
+Organization Hierarchy:
+Dealership (Tenant)
+  └─ Locations (if multi-location group)
+      └─ Users
+          └─ Roles & Permissions
+
+Example:
+AutoMax Dealership Group (Tenant ID: am-12345)
+  ├─ Location: AutoMax Ford (Dallas)
+  ├─ Location: AutoMax Chevy (Houston)
+  └─ Users:
+      ├─ John Smith (GM) - All locations, admin
+      ├─ Mike Johnson (Sales Mgr) - Dallas, manager
+      └─ Sarah Davis (Salesperson) - Dallas, sales
+
+DATA ISOLATION:
+- Every query filtered by tenant_id
+- Row-level security in database
+- Users can only see their dealership data
+- No cross-tenant data leakage ever
+
+AUTHENTICATION FLOW:
+1. User enters email + password
+2. System validates credentials
+3. Checks tenant membership
+4. Issues JWT token (access + refresh)
+5. Returns user profile + permissions
+6. Client stores tokens securely
+7. All API calls include token
+8. Token auto-refreshes when needed
+
+SESSION MANAGEMENT:
+- Access token: 15 minutes (short-lived)
+- Refresh token: 30 days (long-lived)
+- Automatic refresh before expiry
+- Logout invalidates both tokens
+- Server-side session tracking
+- Single logout across devices (optional)
+
+═══════════════════════════════════════════════════════════════════
+CORE PAGES & FLOWS
+═══════════════════════════════════════════════════════════════════
+
+PAGE 1: LOGIN SCREEN
+═══════════════════════════════════════════════════════════════════
+
+Purpose: Primary entry point to application
+
+Layout (Mobile-First):
+┌─────────────────────────────────┐
+│                                 │
+│     [Logo]                      │
+│                                 │
+│   Dealership Management         │
+│   Platform                      │
+│                                 │
+│ ┌─────────────────────────────┐ │
+│ │ Email                       │ │
+│ │ [email@example.com____]     │ │
+│ └─────────────────────────────┘ │
+│                                 │
+│ ┌─────────────────────────────┐ │
+│ │ Password                    │ │
+│ │ [••••••••••••]    [👁]     │ │
+│ └─────────────────────────────┘ │
+│                                 │
+│ [x] Keep me signed in           │
+│                                 │
+│ [Sign In]                       │
+│                                 │
+│ [Forgot password?]              │
+│                                 │
+│ ─────────────────────          │
+│                                 │
+│ Don't have an account?          │
+│ [Request Access]                │
+│                                 │
+└─────────────────────────────────┘
+
+Features:
+- Email input (lowercase, trimmed)
+- Password input with show/hide toggle
+- "Keep me signed in" checkbox (30-day session vs 1-day)
+- Loading state on submit
+- Clear error messages
+- Remember last email (optional)
+- Auto-focus email on load
+
+Validations:
+- Email format check (before submit)
+- Password minimum length check
+- Rate limiting (5 attempts per 15 minutes)
+- CAPTCHA after 3 failed attempts
+
+Error Handling:
+- "Invalid email or password" (never say which)
+- "Too many attempts. Try again in 15 minutes"
+- "Account locked. Contact administrator"
+- "Service unavailable. Please try again"
+- Never reveal if email exists in system
+
+Success Flow:
+1. Validate credentials
+2. Check account status (active/locked/pending)
+3. Generate tokens
+4. Log login event
+5. Redirect to dashboard or onboarding
+
+Security:
+- HTTPS only
+- Password never logged
+- Failed attempts tracked
+- Suspicious activity flagged
+- IP logging for audit
+
+═══════════════════════════════════════════════════════════════════
+
+PAGE 2: FORGOT PASSWORD FLOW
+═══════════════════════════════════════════════════════════════════
+
+Purpose: Self-service password reset
+
+STEP 1: Request Reset
+┌─────────────────────────────────┐
+│ [< Back to Login]               │
+│                                 │
+│   Forgot Password?              │
+│                                 │
+│ Enter your email and we'll      │
+│ send you a reset link.          │
+│                                 │
+│ ┌─────────────────────────────┐ │
+│ │ Email                       │ │
+│ │ [email@example.com____]     │ │
+│ └─────────────────────────────┘ │
+│                                 │
+│ [Send Reset Link]               │
+│                                 │
+└─────────────────────────────────┘
+
+STEP 2: Confirmation (Always Show)
+┌─────────────────────────────────┐
+│   Check Your Email              │
+│                                 │
+│ If an account exists with       │
+│ that email, we've sent a        │
+│ password reset link.            │
+│                                 │
+│ ✉️                              │
+│                                 │
+│ Didn't receive it?              │
+│ Check spam folder or            │
+│ [Try again] in 60 seconds       │
+│                                 │
+│ [Back to Login]                 │
+└─────────────────────────────────┘
+
+STEP 3: Reset Link Email
+Subject: Reset your password
+Body:
+```
+
+Hi [Name],
+
+You requested to reset your password.
+
+Click here to reset: [Reset Password Button]
+Link expires in 1 hour.
+
+If you didn’t request this, ignore this email.
+
+- [Dealership Name] Team
+
+```
+STEP 4: Set New Password
+(User clicks link from email)
+┌─────────────────────────────────┐
+│   Create New Password           │
+│                                 │
+│ ┌─────────────────────────────┐ │
+│ │ New Password                │ │
+│ │ [••••••••••••]    [👁]     │ │
+│ └─────────────────────────────┘ │
+│                                 │
+│ ┌─────────────────────────────┐ │
+│ │ Confirm Password            │ │
+│ │ [••••••••••••]    [👁]     │ │
+│ └─────────────────────────────┘ │
+│                                 │
+│ Password must:                  │
+│ ✓ Be at least 8 characters     │
+│ ✓ Include a number             │
+│ ✓ Include a special character  │
+│                                 │
+│ [Reset Password]                │
+│                                 │
+└─────────────────────────────────┘
+
+STEP 5: Success
+┌─────────────────────────────────┐
+│   ✓ Password Reset!             │
+│                                 │
+│ Your password has been          │
+│ updated successfully.           │
+│                                 │
+│ [Sign In Now]                   │
+│                                 │
+└─────────────────────────────────┘
+
+Security Rules:
+- Reset token valid for 1 hour only
+- Token single-use (invalidated after reset)
+- Same message whether email exists or not
+- Rate limit: 3 requests per hour per email
+- Old password immediately invalidated
+- All other sessions logged out on reset
+- Email notification on successful reset
+
+═══════════════════════════════════════════════════════════════════
+
+PAGE 3: INITIAL SETUP / ONBOARDING
+═══════════════════════════════════════════════════════════════════
+
+Purpose: First-time user setup (after invite or signup)
+
+When Triggered:
+- User clicks invite link from email
+- User logs in for first time
+- User has pending setup flag
+
+STEP 1: Welcome & Verify Email
+┌─────────────────────────────────┐
+│   Welcome to [Platform]!        │
+│                                 │
+│ You've been invited to          │
+│ AutoMax Dealership              │
+│                                 │
+│ Your email:                     │
+│ john.smith@automax.com          │
+│                                 │
+│ [Continue]                      │
+│                                 │
+└─────────────────────────────────┘
+
+STEP 2: Create Your Password
+┌─────────────────────────────────┐
+│ Step 1 of 4                     │
+│                                 │
+│   Create Your Password          │
+│                                 │
+│ ┌─────────────────────────────┐ │
+│ │ Password                    │ │
+│ │ [••••••••••••]    [👁]     │ │
+│ └─────────────────────────────┘ │
+│                                 │
+│ ┌─────────────────────────────┐ │
+│ │ Confirm Password            │ │
+│ │ [••••••••••••]    [👁]     │ │
+│ └─────────────────────────────┘ │
+│                                 │
+│ Requirements:                   │
+│ ☐ At least 8 characters        │
+│ ☐ Include a number             │
+│ ☐ Include uppercase letter     │
+│ ☐ Include special character    │
+│                                 │
+│ [Continue]                      │
+│                                 │
+└─────────────────────────────────┘
+
+STEP 3: Complete Your Profile
+┌─────────────────────────────────┐
+│ Step 2 of 4                     │
+│                                 │
+│   Tell Us About You             │
+│                                 │
+│ ┌─────────────────────────────┐ │
+│ │ First Name                  │ │
+│ │ [John____________]          │ │
+│ └─────────────────────────────┘ │
+│                                 │
+│ ┌─────────────────────────────┐ │
+│ │ Last Name                   │ │
+│ │ [Smith___________]          │ │
+│ └─────────────────────────────┘ │
+│                                 │
+│ ┌─────────────────────────────┐ │
+│ │ Phone Number                │ │
+│ │ [(555) 123-4567_]           │ │
+│ └─────────────────────────────┘ │
+│                                 │
+│ [Continue]                      │
+│ [Skip for Now]                  │
+│                                 │
+└─────────────────────────────────┘
+
+STEP 4: Choose Your Role/Location (if applicable)
+┌─────────────────────────────────┐
+│ Step 3 of 4                     │
+│                                 │
+│   Your Role                     │
+│                                 │
+│ What best describes your role?  │
+│                                 │
+│ ( ) Salesperson                 │
+│ ( ) Desk Manager                │
+│ ( ) Finance Manager             │
+│ ( ) General Manager             │
+│ ( ) Owner                       │
+│                                 │
+│ Which location?                 │
+│ [AutoMax Ford - Dallas    ▼]    │
+│                                 │
+│ [Continue]                      │
+│                                 │
+└─────────────────────────────────┘
+
+STEP 5: Set Preferences
+┌─────────────────────────────────┐
+│ Step 4 of 4                     │
+│                                 │
+│   Customize Your Experience     │
+│                                 │
+│ Notifications                   │
+│ [x] Email notifications         │
+│ [x] SMS notifications           │
+│ [ ] Push notifications          │
+│                                 │
+│ Communication Preference        │
+│ ( ) Email first                 │
+│ (•) Text/SMS first              │
+│ ( ) Phone calls only            │
+│                                 │
+│ [Finish Setup]                  │
+│                                 │
+└─────────────────────────────────┘
+
+STEP 6: Success / Dashboard
+┌─────────────────────────────────┐
+│   ✓ You're All Set!             │
+│                                 │
+│ Welcome to your dashboard.      │
+│                                 │
+│ [Take Quick Tour]               │
+│ [Skip to Dashboard]             │
+│                                 │
+└─────────────────────────────────┘
+
+Setup Rules:
+- Can save progress and resume later
+- Can skip optional steps
+- Must complete password + profile
+- Auto-login after completion
+- One-time setup (flag set on completion)
+- Can update later in settings
+
+═══════════════════════════════════════════════════════════════════
+
+PAGE 4: USER SETTINGS / PREFERENCES
+═══════════════════════════════════════════════════════════════════
+
+Purpose: User configuration and preferences
+
+Access: [Profile Icon] → Settings (top right navigation)
+
+Layout:
+┌─────────────────────────────────┐
+│ [< Back]        Settings        │
+├─────────────────────────────────┤
+│                                 │
+│ [Profile]                       │
+│ [Security]                      │
+│ [Notifications]                 │
+│ [Communication]                 │
+│ [Display]                       │
+│ [Privacy]                       │
+│                                 │
+└─────────────────────────────────┘
+
+SECTION: Profile
+┌─────────────────────────────────┐
+│ Profile                         │
+├─────────────────────────────────┤
+│                                 │
+│ ┌───┐ John Smith               │
+│ │ JS│ john.smith@automax.com   │
+│ └───┘ [Change Photo]            │
+│                                 │
+│ First Name                      │
+│ [John____________]              │
+│                                 │
+│ Last Name                       │
+│ [Smith___________]              │
+│                                 │
+│ Phone Number                    │
+│ [(555) 123-4567_]               │
+│                                 │
+│ Role                            │
+│ [Desk Manager    ▼]             │
+│                                 │
+│ Location                        │
+│ [AutoMax Ford - Dallas ▼]       │
+│                                 │
+│ [Save Changes]                  │
+│                                 │
+└─────────────────────────────────┘
+
+SECTION: Security
+┌─────────────────────────────────┐
+│ Security                        │
+├─────────────────────────────────┤
+│                                 │
+│ Password                        │
+│ Last changed: 30 days ago       │
+│ [Change Password]               │
+│                                 │
+│ Two-Factor Authentication       │
+│ Status: ❌ Not enabled          │
+│ [Enable 2FA]                    │
+│                                 │
+│ Active Sessions                 │
+│ • iPhone (Current)              │
+│   Dallas, TX • Just now         │
+│ • Chrome Browser                │
+│   Dallas, TX • 2 hours ago      │
+│   [Sign Out]                    │
+│                                 │
+│ [Sign Out All Devices]          │
+│                                 │
+└─────────────────────────────────┘
+
+SECTION: Notifications
+┌─────────────────────────────────┐
+│ Notifications                   │
+├─────────────────────────────────┤
+│                                 │
+│ Email Notifications             │
+│ [x] Deal status updates         │
+│ [x] Customer responses          │
+│ [x] Weekly summary              │
+│ [ ] Product updates             │
+│                                 │
+│ SMS Notifications               │
+│ [x] Urgent deal alerts          │
+│ [x] Customer texts              │
+│ [ ] Daily summary               │
+│                                 │
+│ Push Notifications (Mobile)     │
+│ [x] Deal approvals              │
+│ [x] Messages                    │
+│ [ ] General updates             │
+│                                 │
+│ [Save Preferences]              │
+│                                 │
+└─────────────────────────────────┘
+
+SECTION: Communication
+┌─────────────────────────────────┐
+│ Communication                   │
+├─────────────────────────────────┤
+│                                 │
+│ Preferred Contact Method        │
+│ (•) Text/SMS first              │
+│ ( ) Email first                 │
+│ ( ) Phone calls only            │
+│                                 │
+│ Signature                       │
+│ ┌─────────────────────────────┐ │
+│ │ Best regards,               │ │
+│ │ John Smith                  │ │
+│ │ Desk Manager                │ │
+│ │ AutoMax Ford - Dallas       │ │
+│ │ (555) 123-4567             │ │
+│ └─────────────────────────────┘ │
+│                                 │
+│ [Save]                          │
+│                                 │
+└─────────────────────────────────┘
+
+SECTION: Display
+┌─────────────────────────────────┐
+│ Display                         │
+├─────────────────────────────────┤
+│                                 │
+│ Theme                           │
+│ ( ) Light                       │
+│ (•) Dark                        │
+│ ( ) Auto (system)               │
+│                                 │
+│ Language                        │
+│ [English        ▼]              │
+│                                 │
+│ Date Format                     │
+│ [MM/DD/YYYY     ▼]              │
+│                                 │
+│ Time Zone                       │
+│ [America/Chicago ▼]             │
+│                                 │
+│ [Save Preferences]              │
+│                                 │
+└─────────────────────────────────┘
+
+SECTION: Privacy
+┌─────────────────────────────────┐
+│ Privacy                         │
+├─────────────────────────────────┤
+│                                 │
+│ Data Usage                      │
+│ [x] Share analytics for         │
+│     improvement                 │
+│ [ ] Share data with partners    │
+│                                 │
+│ Activity Logging                │
+│ [View Activity Log]             │
+│                                 │
+│ Download Your Data              │
+│ [Request Data Export]           │
+│                                 │
+│ Delete Account                  │
+│ [Request Account Deletion]      │
+│                                 │
+└─────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════
+
+PAGE 5: CHANGE PASSWORD (From Settings)
+═══════════════════════════════════════════════════════════════════
+
+Accessed From: Settings → Security → Change Password
+
+Layout:
+┌─────────────────────────────────┐
+│ [< Back]  Change Password       │
+├─────────────────────────────────┤
+│                                 │
+│ ┌─────────────────────────────┐ │
+│ │ Current Password            │ │
+│ │ [••••••••••••]    [👁]     │ │
+│ └─────────────────────────────┘ │
+│                                 │
+│ ┌─────────────────────────────┐ │
+│ │ New Password                │ │
+│ │ [••••••••••••]    [👁]     │ │
+│ └─────────────────────────────┘ │
+│                                 │
+│ ┌─────────────────────────────┐ │
+│ │ Confirm New Password        │ │
+│ │ [••••••••••••]    [👁]     │ │
+│ └─────────────────────────────┘ │
+│                                 │
+│ Requirements:                   │
+│ ✓ At least 8 characters        │
+│ ☐ Include a number             │
+│ ☐ Include special character    │
+│                                 │
+│ [Update Password]               │
+│                                 │
+└─────────────────────────────────┘
+
+After successful change:
+┌─────────────────────────────────┐
+│   ✓ Password Updated            │
+│                                 │
+│ Your password has been changed. │
+│ You'll need to sign in again on │
+│ other devices.                  │
+│                                 │
+│ [Done]                          │
+│                                 │
+└─────────────────────────────────┘
+
+Security:
+- Requires current password
+- New password can't match old
+- Can't reuse last 5 passwords
+- All other sessions invalidated
+- Email notification sent
+- Audit log entry created
+
+═══════════════════════════════════════════════════════════════════
+
+PAGE 6: TWO-FACTOR AUTHENTICATION SETUP
+═══════════════════════════════════════════════════════════════════
+
+Accessed From: Settings → Security → Enable 2FA
+
+STEP 1: Choose Method
+┌─────────────────────────────────┐
+│ Enable Two-Factor Auth          │
+├─────────────────────────────────┤
+│                                 │
+│ Add an extra layer of security  │
+│ to your account.                │
+│                                 │
+│ Choose a method:                │
+│                                 │
+│ ┌─────────────────────────────┐ │
+│ │ 📱 Authenticator App        │ │
+│ │ (Recommended)               │ │
+│ │ [Setup]                     │ │
+│ └─────────────────────────────┘ │
+│                                 │
+│ ┌─────────────────────────────┐ │
+│ │ 💬 SMS Text Message         │ │
+│ │ [Setup]                     │ │
+│ └─────────────────────────────┘ │
+│                                 │
+└─────────────────────────────────┘
+
+STEP 2A: Authenticator App Setup
+┌─────────────────────────────────┐
+│ Setup Authenticator             │
+├─────────────────────────────────┤
+│                                 │
+│ 1. Download an app:             │
+│    • Google Authenticator       │
+│    • Microsoft Authenticator    │
+│    • Authy                      │
+│                                 │
+│ 2. Scan this QR code:           │
+│                                 │
+│    [QR CODE IMAGE]              │
+│                                 │
+│    Or enter code manually:      │
+│    XXXX XXXX XXXX XXXX          │
+│                                 │
+│ 3. Enter the 6-digit code:      │
+│    [______]                     │
+│                                 │
+│ [Verify & Enable]               │
+│                                 │
+└─────────────────────────────────┘
+
+STEP 2B: SMS Setup
+┌─────────────────────────────────┐
+│ Setup SMS Authentication        │
+├─────────────────────────────────┤
+│                                 │
+│ We'll send codes to:            │
+│ (555) 123-4567                  │
+│ [Change Number]                 │
+│                                 │
+│ [Send Test Code]                │
+│                                 │
+│ Enter the code we sent:         │
+│ [______]                        │
+│                                 │
+│ [Verify & Enable]               │
+│                                 │
+└─────────────────────────────────┘
+
+STEP 3: Backup Codes
+┌─────────────────────────────────┐
+│ Save Backup Codes               │
+├─────────────────────────────────┤
+│                                 │
+│ Save these codes in a safe      │
+│ place. Use them to sign in if   │
+│ you lose your device.           │
+│                                 │
+│ 1. ABCD-EFGH-IJKL               │
+│ 2. MNOP-QRST-UVWX               │
+│ 3. YZAB-CDEF-GHIJ               │
+│ 4. KLMN-OPQR-STUV               │
+│ 5. WXYZ-ABCD-EFGH               │
+│                                 │
+│ [Download] [Print] [Copy]       │
+│                                 │
+│ [x] I've saved these codes      │
+│                                 │
+│ [Finish]                        │
+│                                 │
+└─────────────────────────────────┘
+
+STEP 4: Confirmation
+┌─────────────────────────────────┐
+│   ✓ 2FA Enabled!                │
+│                                 │
+│ Your account is now more        │
+│ secure. You'll need to enter a  │
+│ code when signing in.           │
+│                                 │
+│ [Done]                          │
+│                                 │
+└─────────────────────────────────┘
+
+Login with 2FA:
+After entering password, show:
+┌─────────────────────────────────┐
+│ Two-Factor Authentication       │
+├─────────────────────────────────┤
+│                                 │
+│ Enter the 6-digit code from     │
+│ your authenticator app.         │
+│                                 │
+│ [______]                        │
+│                                 │
+│ [Verify]                        │
+│                                 │
+│ [Use backup code instead]       │
+│ [Didn't receive it?]            │
+│                                 │
+└─────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════
+
+PAGE 7: ADMIN - DEALERSHIP SETTINGS
+═══════════════════════════════════════════════════════════════════
+
+Access: Admin users only (GM, Owner roles)
+Purpose: Configure dealership-wide settings
+
+Navigation: [Settings] → [Dealership Settings]
+
+SECTION: General
+┌─────────────────────────────────┐
+│ Dealership Settings             │
+├─────────────────────────────────┤
+│                                 │
+│ Dealership Name                 │
+│ [AutoMax Ford - Dallas____]     │
+│                                 │
+│ Legal Entity Name               │
+│ [AutoMax Automotive Group LLC]  │
+│                                 │
+│ Address                         │
+│ [123 Main Street_______]        │
+│ [Dallas_____] [TX▼] [75001]     │
+│                                 │
+│ Phone                           │
+│ [(555) 999-8888_]               │
+│                                 │
+│ Email                           │
+│ [info@automaxford.com___]       │
+│                                 │
+│ Website                         │
+│ [www.automaxford.com____]       │
+│                                 │
+│ [Save Changes]                  │
+│                                 │
+└─────────────────────────────────┘
+
+SECTION: Fees & Rates
+┌─────────────────────────────────┐
+│ Default Fees                    │
+├─────────────────────────────────┤
+│                                 │
+│ Doc Fee                         │
+│ [$ 299.00_]                     │
+│                                 │
+│ Default Interest Rates          │
+│ Excellent (720+):  [8.9%]       │
+│ Good (680-719):    [12.9%]      │
+│ Fair (640-679):    [15.9%]      │
+│ Subprime (<640):   [19.9%]      │
+│                                 │
+│ Tax Rate (if not using API)     │
+│ [8.25%]                         │
+│                                 │
+│ [Save]                          │
+│                                 │
+└─────────────────────────────────┘
+
+SECTION: Users & Roles
+┌─────────────────────────────────┐
+│ User Management                 │
+├─────────────────────────────────┤
+│                                 │
+│ [+ Invite User]                 │
+│                                 │
+│ Active Users (12)               │
+│                                 │
+│ John Smith                      │
+│ General Manager • Owner         │
+│ john.smith@automax.com          │
+│ [Edit] [Deactivate]             │
+│                                 │
+│ Mike Johnson                    │
+│ Desk Manager • Manager          │
+│ mike.j@automax.com              │
+│ [Edit] [Deactivate]             │
+│                                 │
+│ Sarah Davis                     │
+│ Sales • Salesperson             │
+│ sarah.d@automax.com             │
+│ [Edit] [Deactivate]             │
+│                                 │
+│ [View All Users →]              │
+│                                 │
+└─────────────────────────────────┘
+
+SECTION: Integrations
+┌─────────────────────────────────┐
+│ Integrations                    │
+├─────────────────────────────────┤
+│                                 │
+│ Tax Calculation API             │
+│ ✓ Connected to Vitu             │
+│ [Configure]                     │
+│                                 │
+│ SMS Provider                    │
+│ ✓ Connected to Twilio           │
+│ [Configure]                     │
+│                                 │
+│ Email Provider                  │
+│ ✓ Connected to SendGrid         │
+│ [Configure]                     │
+│                                 │
+│ DMS Integration                 │
+│ ❌ Not connected                │
+│ [Setup]                         │
+│                                 │
+└─────────────────────────────────┘
+
+SECTION: Billing
+┌─────────────────────────────────┐
+│ Subscription & Billing          │
+├─────────────────────────────────┤
+│                                 │
+│ Current Plan                    │
+│ Professional • $799/month       │
+│                                 │
+│ Next billing date: Jan 1, 2025  │
+│ [View Invoice]                  │
+│                                 │
+│ Payment Method                  │
+│ •••• •••• •••• 4242             │
+│ Expires: 12/2026                │
+│ [Update]                        │
+│                                 │
+│ [Upgrade Plan]                  │
+│ [Cancel Subscription]           │
+│                                 │
+└─────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════
+TECHNICAL IMPLEMENTATION REQUIREMENTS
+═══════════════════════════════════════════════════════════════════
+
+AUTHENTICATION BACKEND:
+
+JWT Token Structure:
+```json
+{
+  "accessToken": "eyJhbGc...",
+  "refreshToken": "eyJhbGc...",
+  "expiresIn": 900,
+  "user": {
+    "id": "usr_12345",
+    "email": "john@example.com",
+    "firstName": "John",
+    "lastName": "Smith",
+    "role": "manager",
+    "tenantId": "tenant_abc123",
+    "tenantName": "AutoMax Ford",
+    "permissions": ["deals:read", "deals:write", "customers:read"]
+  }
+}
+```
+
+Access Token Payload:
+
+```json
+{
+  "sub": "usr_12345",
+  "email": "john@example.com",
+  "tenantId": "tenant_abc123",
+  "role": "manager",
+  "permissions": ["deals:read", "deals:write"],
+  "iat": 1234567890,
+  "exp": 1234568790
+}
+```
+
+Refresh Token Payload:
+
+```json
+{
+  "sub": "usr_12345",
+  "tokenId": "token_xyz789",
+  "iat": 1234567890,
+  "exp": 1237159890
+}
+```
+
+API Endpoints:
+
+```
+POST   /api/auth/login
+POST   /api/auth/logout
+POST   /api/auth/refresh
+POST   /api/auth/forgot-password
+POST   /api/auth/reset-password
+POST   /api/auth/verify-email
+POST   /api/auth/change-password
+POST   /api/auth/setup-2fa
+POST   /api/auth/verify-2fa
+POST   /api/auth/sessions (list active sessions)
+DELETE /api/auth/sessions/:id (revoke session)
+
+GET    /api/users/me
+PUT    /api/users/me
+PUT    /api/users/me/preferences
+GET    /api/users/me/activity-log
+```
+
+DATABASE SCHEMA:
+
+Users Table:
+
+```sql
+CREATE TABLE users (
+  id UUID PRIMARY KEY,
+  tenant_id UUID NOT NULL REFERENCES tenants(id),
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  first_name VARCHAR(100),
+  last_name VARCHAR(100),
+  phone VARCHAR(20),
+  role VARCHAR(50) NOT NULL,
+  
+  -- Status
+  status VARCHAR(20) DEFAULT 'pending',
+  email_verified BOOLEAN DEFAULT false,
+  
+  -- Security
+  two_factor_enabled BOOLEAN DEFAULT false,
+  two_factor_secret VARCHAR(255),
+  backup_codes JSONB,
+  failed_login_attempts INT DEFAULT 0,
+  locked_until TIMESTAMP,
+  password_changed_at TIMESTAMP,
+  password_history JSONB,
+  
+  -- Preferences
+  preferences JSONB,
+  
+  -- Timestamps
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  last_login_at TIMESTAMP,
+  
+  INDEX idx_tenant_email (tenant_id, email),
+  INDEX idx_status (status)
+);
+```
+
+Sessions Table:
+
+```sql
+CREATE TABLE sessions (
+  id UUID PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES users(id),
+  refresh_token_hash VARCHAR(255) NOT NULL,
+  device_info JSONB,
+  ip_address INET,
+  user_agent TEXT,
+  expires_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  last_activity_at TIMESTAMP DEFAULT NOW(),
+  
+  INDEX idx_user_active (user_id, expires_at)
+);
+```
+
+Password Resets Table:
+
+```sql
+CREATE TABLE password_resets (
+  id UUID PRIMARY KEY,
+  email VARCHAR(255) NOT NULL,
+  token_hash VARCHAR(255) NOT NULL,
+  expires_at TIMESTAMP NOT NULL,
+  used BOOLEAN DEFAULT false,
+  created_at TIMESTAMP DEFAULT NOW(),
+  
+  INDEX idx_email_token (email, token_hash),
+  INDEX idx_expires (expires_at)
+);
+```
+
+Audit Log Table:
+
+```sql
+CREATE TABLE audit_logs (
+  id UUID PRIMARY KEY,
+  tenant_id UUID NOT NULL,
+  user_id UUID REFERENCES users(id),
+  action VARCHAR(100) NOT NULL,
+  resource_type VARCHAR(50),
+  resource_id VARCHAR(255),
+  ip_address INET,
+  user_agent TEXT,
+  metadata JSONB,
+  created_at TIMESTAMP DEFAULT NOW(),
+  
+  INDEX idx_tenant_user (tenant_id, user_id),
+  INDEX idx_created (created_at)
+);
+```
+
+SECURITY REQUIREMENTS:
+
+Password Requirements:
+
+- Minimum 8 characters
+- At least 1 number
+- At least 1 special character
+- At least 1 uppercase letter
+- Cannot contain email
+- Cannot be common password (check against list)
+- Cannot reuse last 5 passwords
+
+Password Hashing:
+
+- Use bcrypt with salt rounds 12+
+- Or Argon2id (preferred)
+- Never store plain text
+- Never log passwords
+
+Token Security:
+
+- JWT with RS256 or HS512
+- Access token: 15 minutes
+- Refresh token: 30 days
+- Rotate refresh tokens on use
+- Store refresh token hash in DB
+- Single-use password reset tokens
+- Reset tokens expire in 1 hour
+
+Rate Limiting:
+
+- Login attempts: 5 per 15 minutes
+- Password reset: 3 per hour
+- 2FA attempts: 5 per 15 minutes
+- API calls: 100 per minute per user
+
+Session Management:
+
+- Track device info and IP
+- Show active sessions to user
+- Allow user to revoke sessions
+- Auto-expire inactive sessions (30 days)
+- Invalidate all sessions on password change
+- Optional: limit concurrent sessions
+
+Data Protection:
+
+- All data encrypted in transit (TLS 1.3)
+- Sensitive data encrypted at rest
+- PII redacted in logs
+- Tenant isolation enforced
+- No SQL injection (use parameterized queries)
+- CSRF protection
+- XSS prevention
+
+Audit Logging:
+
+- Log all authentication events
+- Log permission changes
+- Log data access (for sensitive data)
+- Log failed attempts
+- Include IP, user agent, timestamp
+- Retention: 1 year minimum
+
+═══════════════════════════════════════════════════════════════════
+MOBILE-SPECIFIC REQUIREMENTS
+═══════════════════════════════════════════════════════════════════
+
+Mobile Optimization:
+
+- All touch targets 56px minimum
+- Native keyboards (email, numeric)
+- Biometric authentication (Face ID, Touch ID)
+- Remember device (extend session)
+- Offline capability (cached credentials check)
+- Deep linking (password reset links)
+- Push notification permissions
+
+Biometric Setup:
+After first successful login:
+┌─────────────────────────────────┐
+│   Enable Face ID?               │
+│                                 │
+│ Sign in faster with Face ID     │
+│                                 │
+│ [Enable]                        │
+│ [Not Now]                       │
+│                                 │
+└─────────────────────────────────┘
+
+Then subsequent logins:
+┌─────────────────────────────────┐
+│     [Logo]                      │
+│                                 │
+│   Welcome back, John            │
+│                                 │
+│   [Face ID Icon]                │
+│                                 │
+│   Tap to sign in with Face ID   │
+│                                 │
+│   [Use password instead]        │
+│                                 │
+└─────────────────────────────────┘
+
+Security:
+
+- Biometric stored on device only
+- Backend validates token, not biometric
+- Falls back to password if biometric fails
+- Option to disable in settings
+
+═══════════════════════════════════════════════════════════════════
+ERROR HANDLING & EDGE CASES
+═══════════════════════════════════════════════════════════════════
+
+Common Errors & Messages:
+
+Invalid Credentials:
+“The email or password you entered is incorrect.”
+
+Account Locked:
+“Your account has been locked due to too many failed login attempts.
+Try again in 15 minutes or reset your password.”
+
+Email Not Verified:
+“Please verify your email address. We’ve sent a new verification link
+to john@example.com”
+
+Session Expired:
+“Your session has expired. Please sign in again.”
+
+Token Invalid:
+“This link has expired or is invalid. Please request a new one.”
+
+Network Error:
+“Unable to connect. Please check your connection and try again.”
+
+Server Error:
+“Something went wrong on our end. Please try again in a moment.”
+
+Account Deactivated:
+“This account has been deactivated. Please contact your administrator.”
+
+No Permission:
+“You don’t have permission to access this. Contact your manager if
+you need access.”
+
+Edge Cases to Handle:
+
+1. Email already exists (during signup)
+1. Password reset for non-existent email (still show success)
+1. Reset token already used
+1. Multiple password reset requests
+1. Session expired during form fill
+1. User deleted while logged in
+1. Permission changed while logged in
+1. Tenant subscription expired
+1. Browser cookies disabled
+1. Ad blockers interfering
+1. Slow/spotty connection
+1. Old app version (force update)
+
+═══════════════════════════════════════════════════════════════════
+ANALYTICS & MONITORING
+═══════════════════════════════════════════════════════════════════
+
+Track These Events:
+
+Authentication:
+
+- login_attempted
+- login_succeeded
+- login_failed (reason)
+- logout
+- session_expired
+- password_reset_requested
+- password_reset_completed
+- password_changed
+- 2fa_enabled
+- 2fa_disabled
+- email_verified
+
+User Activity:
+
+- profile_updated
+- preferences_changed
+- session_revoked
+- user_invited
+- user_activated
+- user_deactivated
+
+Security:
+
+- suspicious_login_detected
+- account_locked
+- multiple_failed_attempts
+- session_hijack_suspected
+- unauthorized_access_attempted
+
+Metrics to Monitor:
+
+Performance:
+
+- Login response time (p50, p95, p99)
+- Token refresh time
+- API response times
+- Page load times
+
+Business:
+
+- Daily active users
+- Weekly active users
+- Login frequency
+- Session duration
+- Feature adoption (2FA, biometrics)
+- Drop-off points in onboarding
+
+Security:
+
+- Failed login rate
+- Locked accounts per day
+- Password resets per day
+- Active sessions per user
+- Suspicious activity alerts
+
+═══════════════════════════════════════════════════════════════════
+TESTING REQUIREMENTS
+═══════════════════════════════════════════════════════════════════
+
+Unit Tests:
+□ Password hashing and verification
+□ Token generation and validation
+□ Email validation
+□ Rate limiting logic
+□ Session management
+□ Permission checking
+□ 2FA code generation
+
+Integration Tests:
+□ Complete login flow
+□ Complete password reset flow
+□ Complete onboarding flow
+□ Token refresh flow
+□ Session revocation
+□ 2FA setup and verification
+□ Admin user management
+
+E2E Tests:
+□ User can sign up and complete onboarding
+□ User can log in with valid credentials
+□ User cannot log in with invalid credentials
+□ User can reset forgotten password
+□ User can change password
+□ User can enable 2FA
+□ User can update profile
+□ User can manage sessions
+□ Admin can invite users
+□ Admin can deactivate users
+
+Security Tests:
+□ SQL injection prevention
+□ XSS prevention
+□ CSRF protection
+□ Rate limiting works
+□ Tokens expire correctly
+□ Old passwords rejected
+□ Common passwords rejected
+□ Brute force protection
+□ Session fixation prevention
+
+Performance Tests:
+□ Login under load (1000 concurrent)
+□ Token refresh under load
+□ Database connection pooling
+□ Cache hit rates
+□ API response times
+
+═══════════════════════════════════════════════════════════════════
+DELIVERABLES
+═══════════════════════════════════════════════════════════════════
+
+At project completion, deliver:
+
+1. WORKING PAGES:
+   □ Login screen
+   □ Forgot password flow (4 steps)
+   □ Password reset flow
+   □ Initial onboarding (5 steps)
+   □ User settings (6 sections)
+   □ Change password
+   □ 2FA setup
+   □ Admin dealership settings
+   □ User management (admin)
+1. BACKEND SERVICES:
+   □ Authentication API
+   □ Session management
+   □ Token refresh
+   □ Password reset
+   □ Email sending
+   □ SMS sending (2FA)
+   □ Audit logging
+   □ Rate limiting
+1. SECURITY:
+   □ Password hashing
+   □ Token generation/validation
+   □ CSRF protection
+   □ XSS prevention
+   □ Rate limiting
+   □ Session security
+   □ Audit trails
+1. MOBILE FEATURES:
+   □ Biometric authentication
+   □ Remember device
+   □ Deep linking
+   □ Offline support
+   □ Push notifications
+1. DOCUMENTATION:
+   □ Authentication flow diagrams
+   □ API documentation
+   □ Security best practices
+   □ Database schema
+   □ Deployment guide
+   □ Admin user guide
+1. TESTING:
+   □ Unit test coverage (80%+)
+   □ Integration tests
+   □ E2E test suite
+   □ Security audit report
+   □ Performance benchmarks
+
+═══════════════════════════════════════════════════════════════════
+SUCCESS CRITERIA
+═══════════════════════════════════════════════════════════════════
+
+Authentication system is complete when:
+
+FUNCTIONALITY:
+✓ User can log in securely
+✓ User can reset forgotten password
+✓ User can complete onboarding
+✓ User can update preferences
+✓ User can enable 2FA
+✓ Admin can manage users
+✓ Sessions work across devices
+✓ Tokens auto-refresh seamlessly
+
+SECURITY:
+✓ Passes security audit
+✓ No vulnerabilities (OWASP Top 10)
+✓ Encrypted in transit and at rest
+✓ Audit logs for all actions
+✓ Rate limiting prevents abuse
+✓ Sessions properly managed
+
+EXPERIENCE:
+✓ Works flawlessly on mobile
+✓ Fast (login < 2 seconds)
+✓ Clear error messages
+✓ Smooth onboarding
+✓ Biometric login works
+✓ Feels professional
+
+COMPLIANCE:
+✓ GDPR compliant (data export, deletion)
+✓ SOC 2 patterns followed
+✓ Audit logs retained properly
+✓ PII properly protected
+✓ Terms and privacy shown
+
+═══════════════════════════════════════════════════════════════════
+BEGIN PROJECT
+═══════════════════════════════════════════════════════════════════
+
+Start by:
+
+1. Reviewing existing authentication (if any)
+1. Proposing architecture
+1. Creating database schema
+1. Building core auth endpoints
+1. Building login page
+1. Building password flows
+1. Building onboarding
+1. Building settings pages
+1. Testing thoroughly
+1. Security audit
+
+Questions to ask:
+
+- What’s the existing backend tech stack?
+- Any existing auth system to migrate from?
+- Which email/SMS providers are preferred?
+- Any compliance requirements (HIPAA, SOC 2)?
+- Single-tenant or multi-tenant?
+- Any SSO requirements (future)?
+
+Let’s build enterprise-grade authentication. 🔐
+
+```
+---
+
+**This comprehensive prompt covers everything needed for a production-ready authentication system comparable to Capital One, VinSolutions, or Tekion platforms.**
+```

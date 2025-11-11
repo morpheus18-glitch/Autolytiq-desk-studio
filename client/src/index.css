@@ -2,6 +2,59 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+═══════════════════════════════════════════════════════════════════
+DESIGN SYSTEM - APPLE/NIKE QUALITY STANDARDS
+═══════════════════════════════════════════════════════════════════
+
+This design system enforces professional-grade UI/UX standards:
+
+SPACING SCALE (8px Grid):
+  --space-1:  4px   (0.25rem)  - Micro spacing (icon padding, tight gaps)
+  --space-2:  8px   (0.5rem)   - Compact spacing (form field gaps)
+  --space-3:  12px  (0.75rem)  - Small spacing (card padding)
+  --space-4:  16px  (1rem)     - Base spacing (standard gaps)
+  --space-5:  20px  (1.25rem)  - Medium spacing (section gaps)
+  --space-6:  24px  (1.5rem)   - Large spacing (header padding)
+  --space-8:  32px  (2rem)     - XL spacing (page margins)
+  --space-12: 48px  (3rem)     - XXL spacing (hero sections)
+  --space-16: 64px  (4rem)     - Max spacing (major sections)
+
+TYPOGRAPHY SCALE (Fluid Clamp):
+  --step--2: 11px → 13px  - Micro text (helper text, labels)
+  --step--1: 13px → 15px  - Small text (captions, badges)
+  --step-0:  16px → 18px  - Body text (paragraphs, inputs)
+  --step-1:  19px → 22px  - Subheadings (card titles)
+  --step-2:  23px → 28px  - Headings (section titles)
+  --step-3:  28px → 33px  - Large headings (page titles)
+  --step-4:  33px → 40px  - Hero text (landing pages)
+
+COLOR SEMANTICS:
+  Primary:     Electric Blue (#2B7FE7) - Brand identity, CTAs
+  Success:     Green (#2A9D67)         - Positive actions, profit
+  Warning:     Amber (#E68A2E)         - Caution, pending states
+  Destructive: Red (#D93F3F)           - Errors, negative equity
+  Muted:       Graphite                - Secondary content
+
+ANIMATION TIMING:
+  200ms - Smooth transitions (color, opacity)
+  250ms - Spring effects (scale, bounce)
+  300ms - Fade/shake effects
+  400ms - Glow/focus effects
+
+ELEVATION SYSTEM:
+  hover-elevate: Subtle lift on hover (buttons, cards)
+  active-elevate-2: Press down effect on click
+  toggle-elevate: Stateful toggle backgrounds
+
+ACCESSIBILITY:
+  WCAG 2.1 AA: 4.5:1 minimum contrast for text
+  Touch targets: 44px minimum, 56px for primary actions
+  Reduced motion: All animations respect prefers-reduced-motion
+
+═══════════════════════════════════════════════════════════════════
+*/
+
 /* LIGHT MODE - Premium Automotive Finance Color System */
 :root {
   --button-outline: rgba(0,0,0, .10);
