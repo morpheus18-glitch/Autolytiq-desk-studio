@@ -41,9 +41,12 @@ import {
   RefreshCw,
   Hash,
   Scan,
-  CreditCard
+  CreditCard,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import { useDebouncedCallback } from "use-debounce";
+import { calculatePricingSummary, formatCurrency, formatPercent, getProfitColorClass } from "@/lib/pricing-utils";
 
 // Types
 interface InventoryFilters {
@@ -74,6 +77,8 @@ function VehicleCard({ vehicle, onViewDetails, onStartDeal }: {
   onViewDetails: () => void;
   onStartDeal: () => void;
 }) {
+  const [showInternalMetrics, setShowInternalMetrics] = useState(false);
+  
   const formatPrice = (price: string | number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -82,6 +87,12 @@ function VehicleCard({ vehicle, onViewDetails, onStartDeal }: {
       maximumFractionDigits: 0,
     }).format(Number(price));
   };
+  
+  // Calculate pricing summary
+  const pricing = calculatePricingSummary(
+    vehicle.internetPrice || vehicle.price,
+    vehicle.invoicePrice
+  );
 
   const getConditionColor = (condition: string) => {
     switch (condition) {
@@ -158,15 +169,60 @@ function VehicleCard({ vehicle, onViewDetails, onStartDeal }: {
           )}
         </div>
 
-        <div className="flex items-baseline gap-3">
-          {vehicle.msrp && Number(vehicle.msrp) > Number(vehicle.price) && (
-            <span className="text-lg text-neutral-400 line-through font-mono">
-              {formatPrice(vehicle.msrp)}
+        <div className="space-y-2">
+          <div className="flex items-baseline gap-3">
+            {vehicle.msrp && Number(vehicle.msrp) > Number(vehicle.price) && (
+              <span className="text-lg text-neutral-400 line-through font-mono">
+                {formatPrice(vehicle.msrp)}
+              </span>
+            )}
+            <span className="text-2xl font-bold font-mono tabular-nums text-blue-600" data-testid={`text-price-${vehicle.id}`}>
+              {formatPrice(vehicle.internetPrice || vehicle.price)}
             </span>
+          </div>
+
+          {pricing.hasCost && (
+            <div className="space-y-1.5">
+              <button
+                onClick={() => setShowInternalMetrics(!showInternalMetrics)}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors group"
+                data-testid={`button-toggle-metrics-${vehicle.id}`}
+              >
+                {showInternalMetrics ? (
+                  <EyeOff className="w-3.5 h-3.5" />
+                ) : (
+                  <Eye className="w-3.5 h-3.5" />
+                )}
+                <span className="font-medium">Internal Metrics</span>
+              </button>
+
+              {showInternalMetrics && (
+                <div 
+                  className="grid grid-cols-3 gap-2 p-2.5 rounded-md bg-muted/30 border border-border/50"
+                  data-testid={`section-internal-metrics-${vehicle.id}`}
+                >
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium">Cost</p>
+                    <p className="text-sm font-mono font-semibold text-amber-600" data-testid={`text-cost-${vehicle.id}`}>
+                      {formatCurrency(pricing.cost!)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium">Profit</p>
+                    <p className={cn("text-sm font-mono font-semibold", getProfitColorClass(pricing.marginPercent))} data-testid={`text-profit-${vehicle.id}`}>
+                      {formatCurrency(pricing.grossProfit!)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium">Margin</p>
+                    <p className={cn("text-sm font-mono font-semibold", getProfitColorClass(pricing.marginPercent))} data-testid={`text-margin-${vehicle.id}`}>
+                      {formatPercent(pricing.marginPercent!)}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
-          <span className="text-2xl font-bold font-mono tabular-nums text-blue-600" data-testid={`text-price-${vehicle.id}`}>
-            {formatPrice(vehicle.internetPrice || vehicle.price)}
-          </span>
         </div>
 
         <div className="flex flex-wrap gap-2">
