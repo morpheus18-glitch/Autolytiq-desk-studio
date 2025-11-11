@@ -588,6 +588,13 @@ function VehicleQuickView({
   onClose: () => void;
   onStartDeal: (vehicle: Vehicle) => void;
 }) {
+  const [showInternalMetrics, setShowInternalMetrics] = useState(false);
+  
+  // Reset internal metrics when modal opens or vehicle changes
+  useEffect(() => {
+    setShowInternalMetrics(false);
+  }, [open, vehicle?.id]);
+  
   if (!vehicle) return null;
 
   const formatPrice = (price: string | number) => {
@@ -601,6 +608,12 @@ function VehicleQuickView({
 
   const images = (vehicle.images as string[]) || [];
   const features = (vehicle.features as any[]) || [];
+  
+  // Calculate pricing summary
+  const pricing = calculatePricingSummary(
+    vehicle.internetPrice || vehicle.price,
+    vehicle.invoicePrice
+  );
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -643,7 +656,7 @@ function VehicleQuickView({
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg">Pricing</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent className="space-y-3">
                 {vehicle.msrp && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">MSRP</span>
@@ -652,8 +665,53 @@ function VehicleQuickView({
                 )}
                 <div className="flex justify-between text-lg font-semibold">
                   <span>Internet Price</span>
-                  <span className="text-primary">{formatPrice(vehicle.internetPrice || vehicle.price)}</span>
+                  <span className="text-primary font-mono" data-testid={`text-modal-price-${vehicle.id}`}>
+                    {formatPrice(vehicle.internetPrice || vehicle.price)}
+                  </span>
                 </div>
+
+                {pricing.hasCost && (
+                  <div className="pt-2 border-t">
+                    <button
+                      onClick={() => setShowInternalMetrics(!showInternalMetrics)}
+                      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors w-full group"
+                      data-testid={`button-modal-toggle-metrics-${vehicle.id}`}
+                    >
+                      {showInternalMetrics ? (
+                        <EyeOff className="w-3.5 h-3.5" />
+                      ) : (
+                        <Eye className="w-3.5 h-3.5" />
+                      )}
+                      <span className="font-medium">Internal Metrics</span>
+                    </button>
+
+                    {showInternalMetrics && (
+                      <div 
+                        className="mt-3 space-y-2"
+                        data-testid={`section-modal-internal-metrics-${vehicle.id}`}
+                      >
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Dealer Cost</span>
+                          <span className="text-sm font-mono font-semibold text-amber-600" data-testid={`text-modal-cost-${vehicle.id}`}>
+                            {formatCurrency(pricing.cost!)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Gross Profit</span>
+                          <span className={cn("text-sm font-mono font-semibold", getProfitColorClass(pricing.marginPercent))} data-testid={`text-modal-profit-${vehicle.id}`}>
+                            {formatCurrency(pricing.grossProfit!)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Margin</span>
+                          <span className={cn("text-sm font-mono font-semibold", getProfitColorClass(pricing.marginPercent))} data-testid={`text-modal-margin-${vehicle.id}`}>
+                            {formatPercent(pricing.marginPercent!)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
