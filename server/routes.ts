@@ -176,74 +176,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         const nhtsa_data = await nhtsa_response.json();
         
-        // Parse the response
+        // Parse the response - DecodeVinValuesExtended returns Results[0] as a flat object
         const results = nhtsa_data.Results || [];
         
+        if (results.length === 0) {
+          throw new Error('No results returned from NHTSA API');
+        }
+        
+        // NHTSA returns a single object with all fields as properties
+        const vehicleData = results[0];
+        
         const getValue = (name: string): string | undefined => {
-          const result = results.find((r: any) => r.Variable === name);
-          return result?.Value && result.Value !== 'Not Applicable' && result.Value !== '' 
-            ? result.Value 
+          const value = vehicleData[name];
+          return value && value !== 'Not Applicable' && value !== '' 
+            ? value 
             : undefined;
         };
         
-        // Parse safety features
+        // Parse safety features - use correct NHTSA field names
         const airbags: string[] = [];
-        const airbagTypes = [
-          'Air Bag-Frontal-Driver',
-          'Air Bag-Frontal-Passenger',
-          'Air Bag-Knee-Driver',
-          'Air Bag-Knee-Passenger',
-          'Air Bag-Side Body-Front',
-          'Air Bag-Side Head-Front',
-          'Curtain Air Bag Locations',
-          'Seat Belt Air Bag Locations'
+        const airbagFields = [
+          'AirBagLocFront',
+          'AirBagLocKnee',
+          'AirBagLocSide',
+          'AirBagLocCurtain',
+          'AirBagLocSeatCushion'
         ];
         
-        for (const type of airbagTypes) {
-          const value = getValue(type);
+        for (const field of airbagFields) {
+          const value = getValue(field);
           if (value && value !== 'Not Applicable') {
             airbags.push(value);
           }
         }
         
-        // Build response
+        // Build response - use correct field names from NHTSA flat format
         const decodedData = {
           vin: cleanVIN,
           make: getValue('Make'),
           model: getValue('Model'),
-          year: getValue('Model Year') ? parseInt(getValue('Model Year')!) : undefined,
+          year: getValue('ModelYear') ? parseInt(getValue('ModelYear')!) : undefined,
           trim: getValue('Trim') || getValue('Trim2') || getValue('Series') || getValue('Series2'),
-          bodyClass: getValue('Body Class'),
-          bodyType: getValue('Body Class'),
+          bodyClass: getValue('BodyClass'),
+          bodyType: getValue('BodyClass'),
           doors: getValue('Doors') ? parseInt(getValue('Doors')!) : undefined,
-          drivetrain: getValue('Drive Type'),
-          engineDisplacement: getValue('Displacement (L)'),
-          engineCylinders: getValue('Engine Number of Cylinders') ? parseInt(getValue('Engine Number of Cylinders')!) : undefined,
-          engineModel: getValue('Engine Model'),
-          fuelType: getValue('Fuel Type - Primary') || getValue('Fuel Type - Secondary'),
-          transmission: getValue('Transmission Style'),
-          gvwr: getValue('Gross Vehicle Weight Rating From'),
-          manufacturer: getValue('Manufacturer Name'),
+          drivetrain: getValue('DriveType'),
+          engineDisplacement: getValue('DisplacementL'),
+          engineCylinders: getValue('EngineCylinders') ? parseInt(getValue('EngineCylinders')!) : undefined,
+          engineModel: getValue('EngineModel'),
+          fuelType: getValue('FuelTypePrimary') || getValue('FuelTypeSecondary'),
+          transmission: getValue('TransmissionStyle'),
+          gvwr: getValue('GVWR'),
+          manufacturer: getValue('Manufacturer'),
           plant: [
-            getValue('Plant City'),
-            getValue('Plant State'),
-            getValue('Plant Country')
+            getValue('PlantCity'),
+            getValue('PlantState'),
+            getValue('PlantCountry')
           ].filter(Boolean).join(', '),
-          vehicleType: getValue('Vehicle Type'),
+          vehicleType: getValue('VehicleType'),
           series: getValue('Series'),
           
           // Safety features
           airbags: airbags.length > 0 ? airbags : undefined,
           abs: getValue('ABS') === 'Standard',
           tpms: getValue('TPMS') === 'Direct' || getValue('TPMS') === 'Indirect',
-          esc: getValue('Electronic Stability Control (ESC)') === 'Standard',
+          esc: getValue('ESC') === 'Standard',
           
           // Additional info
-          suggestedVIN: getValue('Suggested VIN'),
-          errorCode: getValue('Error Code'),
-          errorText: getValue('Error Text'),
+          suggestedVIN: getValue('SuggestedVIN'),
+          errorCode: getValue('ErrorCode'),
+          errorText: getValue('ErrorText'),
           decodedAt: new Date().toISOString()
         };
+        
+        // Debug logging
+        console.log('[VIN Decoder] Parsed data:', {
+          vin: decodedData.vin,
+          make: decodedData.make,
+          model: decodedData.model,
+          year: decodedData.year,
+          trim: decodedData.trim
+        });
         
         // Remove undefined values
         const cleanedData = Object.fromEntries(

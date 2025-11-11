@@ -189,7 +189,9 @@ export class VINDecoder {
     // Implement LRU cache
     if (vinCache.size >= MAX_CACHE_SIZE) {
       const firstKey = vinCache.keys().next().value;
-      vinCache.delete(firstKey);
+      if (firstKey) {
+        vinCache.delete(firstKey);
+      }
     }
     
     vinCache.set(vin, data);
