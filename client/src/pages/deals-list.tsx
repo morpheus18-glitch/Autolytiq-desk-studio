@@ -38,13 +38,13 @@ function DealCard({ deal }: { deal: DealWithRelations }) {
     }).format(Number(price));
   };
 
-  const images = (deal.vehicle.images as string[]) || [];
+  const images = (deal.vehicle?.images as string[]) || [];
   const primaryImage = images[0] || '/api/placeholder/400/300';
   
   // Get primary scenario for financial info
   const primaryScenario = deal.scenarios?.[0];
   const monthlyPayment = primaryScenario?.monthlyPayment;
-  const vehiclePrice = primaryScenario?.vehiclePrice || deal.vehicle.price;
+  const vehiclePrice = primaryScenario?.vehiclePrice || deal.vehicle?.price || '0';
   const downPayment = primaryScenario?.downPayment || '0';
   const scenarioCount = deal.scenarios?.length || 0;
   
@@ -60,7 +60,7 @@ function DealCard({ deal }: { deal: DealWithRelations }) {
         <div className="aspect-[4/3] relative overflow-hidden bg-gradient-to-b from-muted/20 to-muted/40">
           <img
             src={primaryImage}
-            alt={`${deal.vehicle.year} ${deal.vehicle.make} ${deal.vehicle.model}`}
+            alt={deal.vehicle ? `${deal.vehicle.year} ${deal.vehicle.make} ${deal.vehicle.model}` : 'Vehicle'}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             loading="lazy"
           />
@@ -109,20 +109,37 @@ function DealCard({ deal }: { deal: DealWithRelations }) {
               <Car className="w-3.5 h-3.5" />
               <span>Vehicle</span>
             </div>
-            <p className="font-semibold text-base text-neutral-900">
-              {deal.vehicle.year} {deal.vehicle.make} {deal.vehicle.model}
-            </p>
-            <div className="flex items-center justify-between mt-2">
-              <p className="text-sm text-neutral-500 font-mono flex items-center gap-1">
-                <Package className="w-3.5 h-3.5" />
-                {deal.vehicle.stockNumber.substring(0, 8).toUpperCase()}
-              </p>
-              {scenarioCount > 0 && (
-                <Badge variant="secondary" className="text-xs font-semibold">
-                  {scenarioCount} scenario{scenarioCount !== 1 ? 's' : ''}
-                </Badge>
-              )}
-            </div>
+            {deal.vehicle ? (
+              <>
+                <p className="font-semibold text-base text-neutral-900">
+                  {deal.vehicle.year} {deal.vehicle.make} {deal.vehicle.model}
+                </p>
+                <div className="flex items-center justify-between mt-2">
+                  <p className="text-sm text-neutral-500 font-mono flex items-center gap-1">
+                    <Package className="w-3.5 h-3.5" />
+                    {deal.vehicle.stockNumber.substring(0, 8).toUpperCase()}
+                  </p>
+                  {scenarioCount > 0 && (
+                    <Badge variant="secondary" className="text-xs font-semibold">
+                      {scenarioCount} scenario{scenarioCount !== 1 ? 's' : ''}
+                    </Badge>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="font-semibold text-base text-neutral-900">
+                  No Vehicle Selected
+                </p>
+                {scenarioCount > 0 && (
+                  <div className="flex items-center justify-end mt-2">
+                    <Badge variant="secondary" className="text-xs font-semibold">
+                      {scenarioCount} scenario{scenarioCount !== 1 ? 's' : ''}
+                    </Badge>
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           {/* Financial Summary */}
