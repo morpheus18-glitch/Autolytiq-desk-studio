@@ -39,7 +39,8 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 ### Data Storage Solutions
 
 **Database**: PostgreSQL via Neon serverless with WebSocket support.
-**Schema Design**: Uses UUID primary keys and includes tables for Users, Customers, Vehicles, Trade Vehicles, Deals (with state machine), Deal Scenarios (with JSONB for aftermarket products), Tax Rule Groups, Tax Jurisdictions, Zip Code Lookup, and Audit Log. Decimal type is used for all monetary values.
+**Schema Design**: Uses UUID primary keys and includes tables for Users, Customers, Vehicles, Trade Vehicles, Deals (with state machine), Deal Scenarios (with JSONB for aftermarket products), Tax Rule Groups, Tax Jurisdictions, Zip Code Lookup, Fee Package Templates, and Audit Log. Decimal type is used for all monetary values.
+**Fee Package Templates**: Multi-tenant table (dealershipId nullable for global templates) with audit trail (createdBy/updatedBy), displayOrder for UI sorting, and JSONB arrays for dealerFees, accessories, aftermarketProducts. Seeded with 3 realistic starter packages (Basic $2K, Premium $5.6K, Luxury $11.6K) for rapid deal structuring.
 
 ### Authentication and Authorization
 
