@@ -3,11 +3,14 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Check, AlertCircle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useEffect, useRef, useState } from 'react';
+import { cn } from '@/lib/utils';
 
 export function AutoSaveIndicator() {
   const { isSaving, lastSaved, saveError } = useStore();
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
+  const [showCheckmarkBounce, setShowCheckmarkBounce] = useState(false);
   const [showErrorAnimation, setShowErrorAnimation] = useState(false);
+  const [relativeTime, setRelativeTime] = useState<string>('');
   const lastSavedRef = useRef<Date | null>(null);
   const lastErrorRef = useRef<string | null>(null);
   
@@ -18,10 +21,38 @@ export function AutoSaveIndicator() {
   useEffect(() => {
     if (lastSavedDate && lastSavedRef.current?.getTime() !== lastSavedDate.getTime()) {
       setShowSuccessAnimation(true);
+      setShowCheckmarkBounce(true);
       lastSavedRef.current = lastSavedDate;
-      const timer = setTimeout(() => setShowSuccessAnimation(false), 250);
-      return () => clearTimeout(timer);
+      
+      // Fade in the badge
+      const fadeTimer = setTimeout(() => setShowSuccessAnimation(false), 400);
+      // Bounce the checkmark
+      const bounceTimer = setTimeout(() => setShowCheckmarkBounce(false), 600);
+      
+      return () => {
+        clearTimeout(fadeTimer);
+        clearTimeout(bounceTimer);
+      };
     }
+  }, [lastSavedDate]);
+  
+  // Real-time relative time updates
+  useEffect(() => {
+    if (!lastSavedDate) {
+      setRelativeTime('');
+      return;
+    }
+    
+    // Update immediately
+    const updateRelativeTime = () => {
+      setRelativeTime(formatDistanceToNow(lastSavedDate, { addSuffix: true }));
+    };
+    
+    updateRelativeTime();
+    
+    // Update every 10 seconds for fresh timestamps
+    const interval = setInterval(updateRelativeTime, 10000);
+    return () => clearInterval(interval);
   }, [lastSavedDate]);
   
   // Trigger error animation only on state change
@@ -29,7 +60,7 @@ export function AutoSaveIndicator() {
     if (saveError && lastErrorRef.current !== saveError) {
       setShowErrorAnimation(true);
       lastErrorRef.current = saveError;
-      const timer = setTimeout(() => setShowErrorAnimation(false), 300);
+      const timer = setTimeout(() => setShowErrorAnimation(false), 400);
       return () => clearTimeout(timer);
     }
   }, [saveError]);
@@ -39,29 +70,42 @@ export function AutoSaveIndicator() {
   }
   
   return (
-    <div data-testid="autosave-indicator">
+    <div data-testid="autosave-indicator" className="transition-all duration-300">
       {isSaving ? (
-        <Badge variant="secondary" className="gap-2 shadow-lg" data-testid="badge-saving">
+        <Badge 
+          variant="secondary" 
+          className="gap-2 shadow-lg fade-in" 
+          data-testid="badge-saving"
+        >
           <Loader2 className="w-3 h-3 animate-spin" />
           Saving...
         </Badge>
       ) : saveError ? (
         <Badge 
           variant="destructive" 
-          className={`gap-2 shadow-lg ${showErrorAnimation ? 'shake-error' : ''}`}
+          className={cn("gap-2 shadow-lg", showErrorAnimation && "shake-error")}
           data-testid="badge-error"
         >
           <AlertCircle className="w-3 h-3" />
-          Error - {saveError}
+          {saveError}
         </Badge>
-      ) : lastSavedDate ? (
+      ) : lastSavedDate && relativeTime ? (
         <Badge 
           variant="outline" 
-          className={`gap-2 shadow-lg ${showSuccessAnimation ? 'scale-in' : ''}`}
+          className={cn(
+            "gap-2 shadow-sm border-success/30 bg-success/5",
+            showSuccessAnimation && "fade-in"
+          )}
           data-testid="badge-saved"
         >
-          <Check className="w-3 h-3 text-green-600 dark:text-green-400" />
-          Saved {formatDistanceToNow(lastSavedDate, { addSuffix: true })}
+          <Check 
+            className={cn(
+              "w-3 h-3 text-success",
+              showCheckmarkBounce && "checkmark-bounce"
+            )} 
+          />
+          <span className="text-success font-medium">Saved</span>
+          <span className="text-muted-foreground">{relativeTime}</span>
         </Badge>
       ) : null}
     </div>

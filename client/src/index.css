@@ -578,6 +578,26 @@ ACCESSIBILITY:
     }
   }
   
+  /* Checkmark bounce for auto-save success - Apple/Nike quality spring */
+  .checkmark-bounce {
+    animation: checkmark-bounce 600ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  
+  @keyframes checkmark-bounce {
+    0% {
+      transform: scale(0.8);
+      opacity: 0;
+    }
+    50% {
+      transform: scale(1.2);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  
   /* Enhanced focus glow for inputs */
   .focus-glow:focus-visible {
     box-shadow: 0 0 0 3px hsl(var(--ring) / 0.3);
@@ -590,7 +610,8 @@ ACCESSIBILITY:
     .success-glow,
     .fade-in,
     .scale-in,
-    .checkmark-draw {
+    .checkmark-draw,
+    .checkmark-bounce {
       animation: none;
     }
     
