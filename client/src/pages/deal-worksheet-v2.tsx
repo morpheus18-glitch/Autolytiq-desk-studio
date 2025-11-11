@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useRoute } from 'wouter';
+import { useRoute, useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Car, User, History, Printer, FileText, DollarSign, Calculator, Receipt, TrendingUp } from 'lucide-react';
+import { Car, User, History, Printer, FileText, DollarSign, Calculator, Receipt, TrendingUp, ArrowLeft } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import type { DealWithRelations, DealScenario } from '@shared/schema';
 import { 
@@ -41,6 +41,7 @@ const DEAL_STATE_COLORS: Record<string, string> = {
 
 export default function DealWorksheetV2() {
   const [, params] = useRoute('/deals/:id');
+  const [, setLocation] = useLocation();
   const dealId = params?.id;
   const [activeScenarioId, setActiveScenarioId] = useState<string>('');
   const [vehicleSwitcherOpen, setVehicleSwitcherOpen] = useState(false);
@@ -107,36 +108,47 @@ export default function DealWorksheetV2() {
   
   const header = (
     <div className="flex items-start md:items-center justify-between gap-3 md:gap-4">
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <h1 className="text-lg md:text-xl lg:text-2xl font-semibold font-mono tracking-tight">{deal.dealNumber}</h1>
-          <Badge className={DEAL_STATE_COLORS[deal.dealState]} data-testid="badge-deal-state">
-            {deal.dealState.replace('_', ' ')}
-          </Badge>
-        </div>
-        <div className="flex flex-wrap items-center gap-x-2 md:gap-x-3 gap-y-1 mt-1.5 text-xs md:text-sm text-muted-foreground">
-          {deal.customer ? (
-            <span className="font-medium">{deal.customer.firstName} {deal.customer.lastName}</span>
-          ) : (
-            <Badge variant="outline" className="text-xs" data-testid="badge-no-customer">
-              No Customer Selected
+      <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setLocation('/deals')}
+          className="shrink-0"
+          data-testid="button-back-to-deals"
+        >
+          <ArrowLeft className="w-4 h-4" />
+        </Button>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-lg md:text-xl lg:text-2xl font-semibold font-mono tracking-tight">{deal.dealNumber}</h1>
+            <Badge className={DEAL_STATE_COLORS[deal.dealState]} data-testid="badge-deal-state">
+              {deal.dealState.replace('_', ' ')}
             </Badge>
-          )}
-          {deal.vehicle ? (
-            <>
-              <span className="hidden sm:inline text-border">•</span>
-              <span className="sm:contents w-full sm:w-auto">{deal.vehicle.year} {deal.vehicle.make} {deal.vehicle.model}</span>
-              <span className="hidden sm:inline text-border">•</span>
-              <span className="font-mono">#{deal.vehicle.stockNumber}</span>
-            </>
-          ) : (
-            <>
-              <span className="hidden sm:inline text-border">•</span>
-              <Badge variant="outline" className="text-xs" data-testid="badge-no-vehicle">
-                No Vehicle Selected
+          </div>
+          <div className="flex flex-wrap items-center gap-x-2 md:gap-x-3 gap-y-1 mt-1.5 text-xs md:text-sm text-muted-foreground">
+            {deal.customer ? (
+              <span className="font-medium">{deal.customer.firstName} {deal.customer.lastName}</span>
+            ) : (
+              <Badge variant="outline" className="text-xs" data-testid="badge-no-customer">
+                No Customer Selected
               </Badge>
-            </>
-          )}
+            )}
+            {deal.vehicle ? (
+              <>
+                <span className="hidden sm:inline text-border">•</span>
+                <span className="sm:contents w-full sm:w-auto">{deal.vehicle.year} {deal.vehicle.make} {deal.vehicle.model}</span>
+                <span className="hidden sm:inline text-border">•</span>
+                <span className="font-mono">#{deal.vehicle.stockNumber}</span>
+              </>
+            ) : (
+              <>
+                <span className="hidden sm:inline text-border">•</span>
+                <Badge variant="outline" className="text-xs" data-testid="badge-no-vehicle">
+                  No Vehicle Selected
+                </Badge>
+              </>
+            )}
+          </div>
         </div>
       </div>
       
