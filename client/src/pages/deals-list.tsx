@@ -228,10 +228,15 @@ function DealCardSkeleton() {
 export default function DealsList() {
   const isMobile = useIsMobile();
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
+  const [showVehiclePicker, setShowVehiclePicker] = useState(false);
+  const [showCustomerPicker, setShowCustomerPicker] = useState(false);
+  const [vehicleSearchQuery, setVehicleSearchQuery] = useState('');
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
   
   // Build query params for pagination and filtering
   const queryParams = new URLSearchParams({
@@ -249,8 +254,85 @@ export default function DealsList() {
     queryKey: [`/api/deals?${queryParams.toString()}`],
   });
   
+  // Get users for salesperson
+  const { data: users, isLoading: usersLoading } = useQuery<UserType[]>({
+    queryKey: ['/api/users'],
+  });
+  
+  // Vehicle search for picker
+  const { data: vehicles } = useQuery<Vehicle[]>({
+    queryKey: ['/api/inventory/search'],
+    enabled: showVehiclePicker,
+  });
+  
+  // Customer search for picker
+  const { data: customers } = useQuery<Customer[]>({
+    queryKey: ['/api/customers/search', customerSearchQuery],
+    enabled: showCustomerPicker && customerSearchQuery.length > 0,
+  });
+  
   const deals = data?.deals || [];
   const totalPages = data?.pages || 1;
+  
+  // Filter vehicles by search
+  const filteredVehicles = vehicles?.filter((v) => {
+    const search = vehicleSearchQuery.toLowerCase();
+    return (
+      v.make.toLowerCase().includes(search) ||
+      v.model.toLowerCase().includes(search) ||
+      v.year.toString().includes(search) ||
+      v.stockNumber.toLowerCase().includes(search)
+    );
+  });
+  
+  // Create deal mutation
+  const createDealMutation = useMutation({
+    mutationFn: async (data: { vehicleId?: string; customerId?: string }) => {
+      // Get salesperson (first user or first salesperson)
+      const salesperson = users?.find(u => u.role === 'salesperson') || users?.[0];
+      if (!salesperson) {
+        throw new Error('No users available');
+      }
+      
+      const dealData = {
+        salespersonId: salesperson.id,
+        vehicleId: data.vehicleId || undefined,
+        customerId: data.customerId || undefined,
+      };
+      
+      const response = await apiRequest('POST', '/api/deals', dealData);
+      return await response.json();
+    },
+    onSuccess: (deal) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/deals'] });
+      toast({
+        title: 'Deal created',
+        description: 'Opening deal worksheet...',
+      });
+      setLocation(`/deals/${deal.id}`);
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Failed to create deal',
+        description: error.message || 'Please try again',
+        variant: 'destructive',
+      });
+    },
+  });
+  
+  const handleStartBlankDeal = () => {
+    createDealMutation.mutate({});
+  };
+  
+  const handleStartWithVehicle = (vehicleId: string) => {
+    createDealMutation.mutate({ vehicleId });
+    setShowVehiclePicker(false);
+  };
+  
+  const handleStartWithCustomer = (customerId: string) => {
+    createDealMutation.mutate({ customerId });
+    setShowCustomerPicker(false);
+  };
   
   return (
     <div className="min-h-screen bg-background">
@@ -260,18 +342,46 @@ export default function DealsList() {
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl md:text-3xl font-semibold text-foreground">Deals</h1>
+                <h1 className="text-2xl md:text-3xl font-semibold text-foreground">Desk HQ</h1>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Manage and track all automotive deals
+                  Your universal deal command center
                 </p>
               </div>
-              <Link href="/deals/new">
-                <Button size="lg" className="gap-2" data-testid="button-create-deal">
+              <div className="flex gap-2">
+                <Button 
+                  size={isMobile ? "default" : "lg"} 
+                  onClick={handleStartBlankDeal}
+                  disabled={usersLoading || createDealMutation.isPending}
+                  data-testid="button-start-blank-deal"
+                  className="gap-2"
+                >
                   <Plus className="w-4 h-4" />
-                  <span className="hidden sm:inline">Create New Deal</span>
-                  <span className="sm:hidden">New</span>
+                  <span className="hidden md:inline">{usersLoading ? 'Loading...' : 'Start Blank Deal'}</span>
+                  <span className="md:hidden">{usersLoading ? '...' : 'Blank'}</span>
                 </Button>
-              </Link>
+                <Button 
+                  size={isMobile ? "default" : "lg"}
+                  variant="outline"
+                  onClick={() => setShowVehiclePicker(true)}
+                  disabled={usersLoading || createDealMutation.isPending}
+                  data-testid="button-with-vehicle"
+                  className="gap-2"
+                >
+                  <Car className="w-4 h-4" />
+                  <span className="hidden sm:inline">With Vehicle</span>
+                </Button>
+                <Button 
+                  size={isMobile ? "default" : "lg"}
+                  variant="outline"
+                  onClick={() => setShowCustomerPicker(true)}
+                  disabled={usersLoading || createDealMutation.isPending}
+                  data-testid="button-with-customer"
+                  className="gap-2 hidden sm:flex"
+                >
+                  <User className="w-4 h-4" />
+                  <span>With Customer</span>
+                </Button>
+              </div>
             </div>
             
             {/* Filters */}
@@ -326,8 +436,8 @@ export default function DealsList() {
                 action={
                   !searchQuery && statusFilter === 'all'
                     ? {
-                        label: 'Create Deal',
-                        onClick: () => setLocation('/deals/new'),
+                        label: 'Start Blank Deal',
+                        onClick: handleStartBlankDeal,
                         testId: 'button-create-first-deal',
                       }
                     : undefined
@@ -391,6 +501,94 @@ export default function DealsList() {
           )}
         </div>
       </div>
+      
+      {/* Vehicle Picker Dialog */}
+      <Dialog open={showVehiclePicker} onOpenChange={setShowVehiclePicker}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Select Vehicle</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 flex-1 overflow-auto">
+            <Input
+              type="text"
+              placeholder="Search by make, model, year, or stock#..."
+              value={vehicleSearchQuery}
+              onChange={(e) => setVehicleSearchQuery(e.target.value)}
+              data-testid="input-vehicle-picker-search"
+            />
+            <div className="space-y-2">
+              {filteredVehicles?.map((v) => (
+                <Card
+                  key={v.id}
+                  className="hover-elevate active-elevate-2 cursor-pointer"
+                  onClick={() => handleStartWithVehicle(v.id)}
+                  data-testid={`card-vehicle-picker-${v.id}`}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-semibold">
+                          {v.year} {v.make} {v.model}
+                        </h3>
+                        {v.trim && <p className="text-sm text-muted-foreground">{v.trim}</p>}
+                        <p className="text-xs text-muted-foreground font-mono mt-1">
+                          Stock #{v.stockNumber}
+                        </p>
+                      </div>
+                      <p className="text-lg font-bold">${v.price.toLocaleString()}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Customer Picker Dialog */}
+      <Dialog open={showCustomerPicker} onOpenChange={setShowCustomerPicker}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Select Customer</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 flex-1 overflow-auto">
+            <Input
+              type="text"
+              placeholder="Search by name, email, or phone..."
+              value={customerSearchQuery}
+              onChange={(e) => setCustomerSearchQuery(e.target.value)}
+              data-testid="input-customer-picker-search"
+            />
+            <div className="space-y-2">
+              {customers?.map((c) => (
+                <Card
+                  key={c.id}
+                  className="hover-elevate active-elevate-2 cursor-pointer"
+                  onClick={() => handleStartWithCustomer(c.id)}
+                  data-testid={`card-customer-picker-${c.id}`}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-semibold">
+                          {c.firstName} {c.lastName}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">{c.email}</p>
+                        {c.phone && <p className="text-xs text-muted-foreground">{c.phone}</p>}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              {customerSearchQuery.length > 0 && (!customers || customers.length === 0) && (
+                <div className="text-center text-muted-foreground py-8">
+                  No customers found. Try a different search.
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
