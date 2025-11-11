@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -45,6 +45,10 @@ export default function NewDeal() {
   const [vehicleSearch, setVehicleSearch] = useState('');
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   
+  // Read vehicleId from URL query parameters
+  const urlParams = new URLSearchParams(window.location.search);
+  const vehicleIdFromUrl = urlParams.get('vehicleId');
+  
   // Get all users for selecting salesperson
   const { data: users } = useQuery<User[]>({
     queryKey: ['/api/users'],
@@ -60,15 +64,29 @@ export default function NewDeal() {
     enabled: vehicleSearch.length > 0,
   });
   
+  // Fetch vehicle from URL if vehicleId is provided
+  const { data: vehicleFromUrl } = useQuery<Vehicle>({
+    queryKey: vehicleIdFromUrl ? [`/api/vehicles/${vehicleIdFromUrl}`] : [],
+    enabled: !!vehicleIdFromUrl,
+  });
+  
   const form = useForm<NewDealForm>({
     resolver: zodResolver(newDealSchema),
     defaultValues: {
       customerId: '',
-      vehicleId: '',
+      vehicleId: vehicleIdFromUrl || '',
       salespersonId: '',
       salesManagerId: '',
     },
   });
+  
+  // Pre-populate vehicle when coming from inventory
+  useEffect(() => {
+    if (vehicleFromUrl && vehicleIdFromUrl) {
+      setSelectedVehicle(vehicleFromUrl);
+      form.setValue('vehicleId', vehicleIdFromUrl);
+    }
+  }, [vehicleFromUrl, vehicleIdFromUrl, form]);
   
   const createDealMutation = useMutation({
     mutationFn: async (data: NewDealForm) => {

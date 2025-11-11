@@ -58,11 +58,21 @@ The NextGen Automotive Desking Platform is a **mobile-first** desking tool for a
 - Schema validation: PATCH endpoint validates using `insertQuickQuoteSchema.pick({ quotePayload: true })` for type safety
 - Real-world workflow: User can go back, change down payment from $5K → $10K, payment recalculates, PATCH persists update, conversion creates deal with updated $10K value
 
+**ZIP-Based Tax Flow & Stock Number Quick-Add** (✅ COMPLETE - November 2024):
+
+- ✅ **ZIP Code Auto-Population**: ZIP code input debounced at 500ms, auto-fetches city/state/taxes from `/api/zip-lookup` endpoint with automatic state selection via useEffect
+- ✅ **Manual Override Pattern**: State selector hidden when ZIP valid, "Change" button reveals manual state selection for edge cases (balances automation with transparency)
+- ✅ **Home Page Redesign**: New landing page (`client/src/pages/home.tsx`) with Quick Quote and Full Desk entry points using mobile-first design with 56px touch targets
+- ✅ **Stock Number Quick-Add Component**: Controlled component (`StockNumberQuickAdd`) with exact-match auto-select, success badge + vehicle preview, comprehensive data-testid coverage for testing
+- ✅ **State Synchronization Pattern**: Component receives `selectedVehicle`/`value`/`onChange`/`onClear` props; syncs input when vehicle selected externally (browse/fallback); clears parent selection when typing differs but preserves typed text
+- ✅ **Multi-Path Integration**: Works across Quick Quote (with Browse dialog), New Deal (with fallback search), maintaining vehicle state synchronization for direct typing, browse dialog, and fallback search flows
+- ✅ **Critical Fix**: onChange calls onClear when typed value diverges from selected vehicle (clears parent state) but doesn't clear input text (preserves user typing); useEffect syncs input when external selection occurs
+
 **Remaining Work**:
 - 📱 Mobile-optimize existing Full Desk tabs for thumb zone operation
-- 🏠 Add Home Screen with Quick Quote + Full Desk entry points
 - 📊 Update APR rate system to real-world credit tiers (8.9% - 23.9%)
 - 💬 Complete Twilio integration for actual SMS delivery
+- 🔄 Fix inventory navigation: selecting vehicle from inventory should return to deal screen with data preserved
 
 ## User Preferences
 
