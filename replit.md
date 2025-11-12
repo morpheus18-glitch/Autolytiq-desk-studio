@@ -39,12 +39,39 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 ### Data Storage
 
 **Database**: PostgreSQL (Neon serverless with WebSocket support).
-**Schema Design**: UUID primary keys, tables for Users, Customers (`customer_number` unique identifier), Vehicles (`stock_number` unique identifier), Deals (with state machine), Deal Scenarios (JSONB for aftermarket products), Tax Rule Groups, Tax Jurisdictions, Zip Code Lookup, Fee Package Templates, and Audit Log. Monetary values use Decimal type. **Recent Schema Updates** (Nov 2024):
-- Added `customerNumber` (nullable, awaiting auto-generation logic)
-- Added `stockNumber` (nullable, awaiting auto-generation logic)  
-- **Deal Numbers**: Made `dealNumber` nullable - generated ONLY when customer attached
-- **Customer Attached Tracking**: Added `customerAttachedAt` timestamp for audit trail
-- **Future Format**: Deal numbers will use 4-digit#Glyph format (e.g., "1234#A") for quick recall
+**Schema Design**: UUID primary keys, tables for Users, Customers, Vehicles, Deals (with state machine), Deal Scenarios (JSONB for aftermarket products), Tax Rule Groups, Tax Jurisdictions, Zip Code Lookup, Fee Package Templates, and Audit Log. Monetary values use Decimal type.
+
+**Recent Schema Updates** (Nov 12, 2025):
+- **Deal Numbers**: Made `dealNumber` nullable in deals table - generated ONLY when customer attached via `PATCH /api/deals/:id/attach-customer`
+- **Customer Attached Tracking**: Added `customerAttachedAt` timestamp to deals table for audit trail
+- **Deal Number Sequences**: Created `deal_number_sequences` table with atomic per-dealership counters using SELECT FOR UPDATE locking
+- **Customer Multi-tenant Isolation**: Added `dealershipId` to customers table (TODO: populate from auth context)
+- **Stock Number Settings**: Using existing `dealershipStockSettings` table for configurable stock number generation
+
+**Deal Number Implementation** (Completed Nov 12, 2025):
+- **Format**: "D-1234H" (prefix + 4-digit sequence + Crockford Base32 checksum glyph)
+- **Checksum Algorithm**: sequence % 32, mapped to Crockford alphabet "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+- **Generation Method**: `generateDealNumber(dealershipId)` in server/storage.ts
+- **Transaction Safety**: SELECT FOR UPDATE prevents race conditions in concurrent requests
+- **Multi-tenant**: Each dealership has independent sequence counter
+- **API Endpoint**: `PATCH /api/deals/:id/attach-customer` triggers number generation
+- **Audit Logging**: Comprehensive audit trail created when customer attached
+
+**Stock Number Implementation** (Completed Nov 12, 2025):
+- **Format**: Configurable via `dealershipStockSettings` table (e.g., "STK-2025-000001" or "STK-000001")
+- **Generation Method**: `generateStockNumber(dealershipId)` in server/storage.ts
+- **Configuration**: Supports `useYearPrefix`, custom `prefix`, and `paddingLength`
+- **Transaction Safety**: SELECT FOR UPDATE prevents duplicate stock numbers
+- **Auto-initialization**: Creates default settings if none exist
+
+**Customer Attachment Security** (Completed Nov 12, 2025):
+- **Endpoint**: `PATCH /api/deals/:id/attach-customer` (body: `{ customerId: string }`)
+- **Validation**: Verifies customer and deal belong to same dealership (multi-tenant isolation)
+- **Error Handling**: Returns 403 for dealership mismatch, 404 for not found
+- **Atomic Operation**: Updates deal with customerId, generates dealNumber, sets customerAttachedAt timestamp
+- **TODO**: Inject dealershipId from auth context (req.user.dealershipId) in createCustomer
+- **TODO**: Backfill existing customers with correct dealershipId values
+
 **Fee Package Templates**: Multi-tenant, JSONB arrays for dealerFees, accessories, aftermarketProducts, with seeded starter packages for rapid deal structuring.
 **Scenario Comparison**: Side-by-side comparison modal with diff highlighting for 9 key metrics.
 
@@ -63,3 +90,25 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 **UI Libraries**: Radix UI, Tailwind CSS, Lucide React, `date-fns`.
 **Financial Calculations**: Decimal.js.
 **Development Tools**: Vite, TypeScript, Drizzle Kit, ESBuild.
+
+## Remaining TODO Items
+
+**Critical - Multi-tenant Data Isolation**:
+1. **Inject dealershipId from auth context**: Update `POST /api/customers` route to extract `req.user.dealershipId` and pass to `storage.createCustomer()`
+2. **Update createCustomer signature**: Accept dealershipId parameter and set it on customer record
+3. **Backfill existing customers**: Write migration/script to populate dealershipId based on relationship data
+4. **Remove temporary null checks**: After data is consistent, remove null guards in `attachCustomerToDeal` (line 712 in server/storage.ts)
+
+**Frontend - Deal Numbers**:
+1. Display placeholder text for deals without deal numbers (e.g., "Pending customer attachment")
+2. Refresh deal worksheet after customer attachment to show new deal number
+3. Show deal number prominently in deal worksheet header
+
+**Sales Tax Improvements**:
+1. Sort tax jurisdictions alphabetically in dropdown
+2. Implement zip code lookup with auto-population of state/city
+3. Add state-of-purchase tax methodology
+4. Handle non-reciprocal state tax rules
+
+**Design Consistency**:
+1. Apply consistent border-radius to all Card component outlines globally
