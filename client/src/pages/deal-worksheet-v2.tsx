@@ -31,6 +31,7 @@ import { DealWorkflowControls } from '@/components/deal-workflow-controls';
 import { MobilePaymentSheet } from '@/components/mobile-payment-sheet';
 import { MobileActionButton } from '@/components/mobile-action-button';
 import { VehicleSwitcher } from '@/components/vehicle-switcher';
+import { CustomerSelectorSheet } from '@/components/customer-selector-sheet';
 import { TradeGarageSheet } from '@/components/trade-garage-sheet';
 
 const DEAL_STATE_COLORS: Record<string, string> = {
@@ -46,6 +47,7 @@ export default function DealWorksheetV2() {
   const dealId = params?.id;
   const [activeScenarioId, setActiveScenarioId] = useState<string>('');
   const [vehicleSwitcherOpen, setVehicleSwitcherOpen] = useState(false);
+  const [customerSelectorOpen, setCustomerSelectorOpen] = useState(false);
   const setActiveDealId = useStore(state => state.setActiveDealId);
   
   const { data: deal, isLoading } = useQuery<DealWithRelations>({
@@ -254,6 +256,7 @@ export default function DealWorksheetV2() {
                 <p className="text-muted-foreground mb-4">No customer selected for this deal</p>
                 <Button 
                   variant="outline"
+                  onClick={() => setCustomerSelectorOpen(true)}
                   data-testid="button-select-customer"
                 >
                   <User className="w-4 h-4 mr-2" />
@@ -364,6 +367,7 @@ export default function DealWorksheetV2() {
                 <Button 
                   variant="outline" 
                   size="sm"
+                  onClick={() => setCustomerSelectorOpen(true)}
                   data-testid="button-select-customer-desktop"
                 >
                   <User className="w-4 h-4 mr-2" />
@@ -506,6 +510,14 @@ export default function DealWorksheetV2() {
           currentVehicleId={deal.vehicle?.id || null}
           dealId={deal.id}
           scenarioId={activeScenarioId}
+        />
+        
+        {/* Customer Selector Sheet */}
+        <CustomerSelectorSheet
+          open={customerSelectorOpen}
+          onOpenChange={setCustomerSelectorOpen}
+          dealId={deal.id}
+          currentCustomerId={deal.customer?.id}
         />
       </LayoutShell>
     </ScenarioFormProvider>

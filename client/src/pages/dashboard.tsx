@@ -4,6 +4,7 @@ import { useLocation } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PageLayout } from '@/components/page-layout';
+import { DealCreationDialog } from '@/components/deal-creation-dialog';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -33,6 +34,7 @@ type DealStats = {
 export default function Dashboard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const [dealDialogOpen, setDealDialogOpen] = useState(false);
   
   // Get users for salesperson
   const { data: users, isLoading: usersLoading } = useQuery<UserType[]>({
@@ -97,23 +99,12 @@ export default function Dashboard() {
             <div className="hidden md:flex items-center gap-2">
               <Button 
                 size="lg"
-                variant="outline"
-                onClick={() => setLocation('/quick-quote')}
-                data-testid="button-quick-quote"
-                className="gap-2"
-              >
-                <Zap className="w-4 h-4" />
-                Quick Quote
-              </Button>
-              <Button 
-                size="lg"
-                onClick={handleDesking}
-                disabled={usersLoading || createDealMutation.isPending}
-                data-testid="button-desking"
+                onClick={() => setDealDialogOpen(true)}
+                data-testid="button-start-deal"
                 className="gap-2"
               >
                 <FileText className="w-4 h-4" />
-                {usersLoading ? 'Loading...' : 'Full Desk'}
+                Start Deal
               </Button>
             </div>
           </div>
@@ -284,6 +275,11 @@ export default function Dashboard() {
           </Card>
         </div>
       </div>
+      
+      <DealCreationDialog 
+        open={dealDialogOpen}
+        onOpenChange={setDealDialogOpen}
+      />
     </PageLayout>
   );
 }

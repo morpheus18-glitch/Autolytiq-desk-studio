@@ -65,6 +65,18 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 
 ## Recent Changes (November 2025)
 
+**Quick Quote Mode Implementation (November 12, 2025)**:
+- Created `/quick-quote` route with streamlined 4-input form (vehicle price, down payment ±%, APR, term)
+- Real-time payment calculations using shared `calculateFinancePayment()` engine (Decimal.js precision)
+- Mobile-optimized: h-14 inputs, large touch targets, 60fps-capable display with font-mono numbers
+- Schema enhancement: Added `isQuickQuote` boolean flag to deal_scenarios table for session tracking
+- Inventory integration: "Quick Quote" buttons on vehicle cards with URL pre-population (vehiclePrice, vehicleId)
+- Safe URL param parsing with NaN fallback to defaults (20% down, 6.99% APR, 72 months)
+- Vehicle context display: Shows "{year} {make} {model}" in header when coming from inventory
+- Entry points: Dashboard Quick Quote button, Inventory card buttons
+- Creates deal + quick quote scenario on "Save & Continue", navigates to full desk worksheet
+- Target: 30-45 second payment quotes vs 3-5+ min traditional desking
+
 **Mobile Navigation System (prof-navigation-1 through prof-navigation-4)**:
 - Created sticky bottom navigation bar with 4 quick-access buttons (Dashboard, Deals, Inventory, Customers)
 - Implemented expandable menu (bottom-right) with slide-up sheet containing all routes
