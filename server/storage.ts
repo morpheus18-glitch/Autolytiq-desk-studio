@@ -35,7 +35,7 @@ const PostgresSessionStore = connectPg(session);
 export interface IStorage {
   // Users
   getUser(id: string): Promise<User | undefined>;
-  getUsers(): Promise<User[]>;
+  getUsers(dealershipId: string): Promise<User[]>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser, dealershipId: string): Promise<User>;
@@ -50,9 +50,9 @@ export interface IStorage {
   
   // Vehicles
   getVehicle(id: string): Promise<Vehicle | undefined>;
-  getVehicleByStock(stockNumber: string): Promise<Vehicle | undefined>;
-  searchVehicles(query: string): Promise<Vehicle[]>;
-  createVehicle(vehicle: InsertVehicle): Promise<Vehicle>;
+  getVehicleByStock(stockNumber: string, dealershipId: string): Promise<Vehicle | undefined>;
+  searchVehicles(query: string, dealershipId: string): Promise<Vehicle[]>;
+  createVehicle(vehicle: InsertVehicle, dealershipId: string): Promise<Vehicle>;
   updateVehicle(id: string, vehicle: Partial<InsertVehicle>): Promise<Vehicle>;
   
   // Inventory Management
@@ -108,8 +108,8 @@ export interface IStorage {
   
   // Deals
   getDeal(id: string): Promise<DealWithRelations | undefined>;
-  getDeals(options: { page: number; pageSize: number; search?: string; status?: string }): Promise<{ deals: DealWithRelations[]; total: number; pages: number }>;
-  getDealsStats(): Promise<DealStats>;
+  getDeals(options: { page: number; pageSize: number; search?: string; status?: string; dealershipId: string }): Promise<{ deals: DealWithRelations[]; total: number; pages: number }>;
+  getDealsStats(dealershipId: string): Promise<DealStats>;
   createDeal(deal: InsertDeal, dealershipId: string): Promise<Deal>;
   updateDeal(id: string, deal: Partial<InsertDeal>): Promise<Deal>;
   updateDealState(id: string, state: string): Promise<Deal>;
@@ -190,8 +190,9 @@ export class DatabaseStorage implements IStorage {
     return user || undefined;
   }
   
-  async getUsers(): Promise<User[]> {
-    return await db.select().from(users);
+  async getUsers(dealershipId: string): Promise<User[]> {
+    // SECURITY: Filter by dealershipId for multi-tenant isolation
+    return await db.select().from(users).where(eq(users.dealershipId, dealershipId));
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
@@ -275,26 +276,43 @@ export class DatabaseStorage implements IStorage {
     return vehicle || undefined;
   }
   
-  async getVehicleByStock(stockNumber: string): Promise<Vehicle | undefined> {
-    const [vehicle] = await db.select().from(vehicles).where(eq(vehicles.stockNumber, stockNumber));
+  async getVehicleByStock(stockNumber: string, dealershipId: string): Promise<Vehicle | undefined> {
+    // SECURITY: Filter by dealershipId for multi-tenant isolation
+    const [vehicle] = await db.select().from(vehicles)
+      .where(and(
+        eq(vehicles.stockNumber, stockNumber),
+        eq(vehicles.dealershipId, dealershipId)
+      ));
     return vehicle || undefined;
   }
   
-  async searchVehicles(query: string): Promise<Vehicle[]> {
-    return await db.select().from(vehicles)
-      .where(
-        or(
-          like(vehicles.stockNumber, `%${query}%`),
-          like(vehicles.vin, `%${query}%`),
-          like(vehicles.make, `%${query}%`),
-          like(vehicles.model, `%${query}%`)
-        )
+  async searchVehicles(query: string, dealershipId: string): Promise<Vehicle[]> {
+    // SECURITY: Filter by dealershipId for multi-tenant isolation
+    const whereConditions = and(
+      eq(vehicles.dealershipId, dealershipId),
+      or(
+        like(vehicles.stockNumber, `%${query}%`),
+        like(vehicles.vin, `%${query}%`),
+        like(vehicles.make, `%${query}%`),
+        like(vehicles.model, `%${query}%`)
       )
+    );
+    
+    return await db.select().from(vehicles)
+      .where(whereConditions)
       .limit(20);
   }
   
-  async createVehicle(insertVehicle: InsertVehicle): Promise<Vehicle> {
-    const [vehicle] = await db.insert(vehicles).values(insertVehicle).returning();
+  async createVehicle(insertVehicle: InsertVehicle, dealershipId: string): Promise<Vehicle> {
+    // SECURITY: dealershipId is REQUIRED for multi-tenant isolation
+    if (!dealershipId) {
+      throw new Error('dealershipId is required to create a vehicle');
+    }
+    
+    const [vehicle] = await db.insert(vehicles).values({
+      ...insertVehicle,
+      dealershipId,
+    }).returning();
     return vehicle;
   }
   
@@ -560,11 +578,12 @@ export class DatabaseStorage implements IStorage {
     return result as DealWithRelations | undefined;
   }
   
-  async getDeals(options: { page: number; pageSize: number; search?: string; status?: string }) {
-    const { page, pageSize, search, status } = options;
+  async getDeals(options: { page: number; pageSize: number; search?: string; status?: string; dealershipId: string }) {
+    const { page, pageSize, search, status, dealershipId } = options;
     const offset = (page - 1) * pageSize;
     
-    let conditions: any[] = [];
+    // SECURITY: Always filter by dealershipId for multi-tenant isolation
+    let conditions: any[] = [eq(deals.dealershipId, dealershipId)];
     
     if (status && status !== 'all') {
       conditions.push(eq(deals.dealState, status));
@@ -578,7 +597,7 @@ export class DatabaseStorage implements IStorage {
       );
     }
     
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    const whereClause = and(...conditions);
     
     const [totalResult] = await db.select({ count: sql<number>`count(*)` })
       .from(deals)
@@ -610,7 +629,8 @@ export class DatabaseStorage implements IStorage {
     };
   }
   
-  async getDealsStats(): Promise<DealStats> {
+  async getDealsStats(dealershipId: string): Promise<DealStats> {
+    // SECURITY: Filter by dealershipId for multi-tenant isolation
     // Get deal counts and revenue in one query
     const result = await db.select({
       total: sql<number>`count(distinct ${deals.id})::int`,
@@ -627,7 +647,8 @@ export class DatabaseStorage implements IStorage {
       `,
     })
     .from(deals)
-    .leftJoin(dealScenarios, eq(deals.activeScenarioId, dealScenarios.id));
+    .leftJoin(dealScenarios, eq(deals.activeScenarioId, dealScenarios.id))
+    .where(eq(deals.dealershipId, dealershipId));
     
     const stats = result[0] || {
       total: 0,

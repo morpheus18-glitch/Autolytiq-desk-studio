@@ -68,9 +68,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   setupAuthRoutes(app);
   
   // ===== USERS =====
-  app.get('/api/users', async (req, res) => {
+  app.get('/api/users', requireAuth, async (req, res) => {
     try {
-      const allUsers = await storage.getUsers();
+      // SECURITY: Filter by authenticated user's dealership for multi-tenant isolation
+      const dealershipId = (req.user as any)?.dealershipId;
+      if (!dealershipId) {
+        return res.status(403).json({ error: 'User must belong to a dealership' });
+      }
+      
+      const allUsers = await storage.getUsers(dealershipId);
       res.json(allUsers);
     } catch (error) {
       res.status(500).json({ error: 'Failed to get users' });
@@ -125,7 +131,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verify customer belongs to same dealership as authenticated user
       if (customer.dealershipId !== dealershipId) {
-        return res.status(403).json({ error: 'Access denied: Customer belongs to different dealership' });
+        return res.status(404).json({ error: 'Customer not found' });
       }
       
       res.json(customer);
@@ -151,8 +157,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.patch('/api/customers/:id', async (req, res) => {
+  app.patch('/api/customers/:id', requireAuth, async (req, res) => {
     try {
+      // SECURITY: Verify customer belongs to authenticated user's dealership
+      const dealershipId = (req.user as any)?.dealershipId;
+      if (!dealershipId) {
+        return res.status(403).json({ error: 'User must belong to a dealership' });
+      }
+      
+      // Verify customer exists and belongs to same dealership
+      const existingCustomer = await storage.getCustomer(req.params.id);
+      if (!existingCustomer) {
+        return res.status(404).json({ error: 'Customer not found' });
+      }
+      
+      if (existingCustomer.dealershipId !== dealershipId) {
+        return res.status(404).json({ error: 'Customer not found' });
+      }
+      
       const customer = await storage.updateCustomer(req.params.id, req.body);
       res.json(customer);
     } catch (error: any) {
@@ -161,19 +183,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // ===== VEHICLES =====
-  app.get('/api/vehicles/search', async (req, res) => {
+  app.get('/api/vehicles/search', requireAuth, async (req, res) => {
     try {
+      // SECURITY: Filter by authenticated user's dealership for multi-tenant isolation
+      const dealershipId = (req.user as any)?.dealershipId;
+      if (!dealershipId) {
+        return res.status(403).json({ error: 'User must belong to a dealership' });
+      }
+      
       const query = String(req.query.q || '');
-      const vehicles = await storage.searchVehicles(query);
+      const vehicles = await storage.searchVehicles(query, dealershipId);
       res.json(vehicles);
     } catch (error) {
       res.status(500).json({ error: 'Failed to search vehicles' });
     }
   });
   
-  app.get('/api/vehicles/stock/:stockNumber', async (req, res) => {
+  app.get('/api/vehicles/stock/:stockNumber', requireAuth, async (req, res) => {
     try {
-      const vehicle = await storage.getVehicleByStock(req.params.stockNumber);
+      // SECURITY: Filter by authenticated user's dealership for multi-tenant isolation
+      const dealershipId = (req.user as any)?.dealershipId;
+      if (!dealershipId) {
+        return res.status(403).json({ error: 'User must belong to a dealership' });
+      }
+      
+      const vehicle = await storage.getVehicleByStock(req.params.stockNumber, dealershipId);
       if (!vehicle) {
         return res.status(404).json({ error: 'Vehicle not found' });
       }
@@ -183,22 +217,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get('/api/vehicles/:id', async (req, res) => {
+  app.get('/api/vehicles/:id', requireAuth, async (req, res) => {
     try {
+      // SECURITY: Verify vehicle belongs to authenticated user's dealership
+      const dealershipId = (req.user as any)?.dealershipId;
+      if (!dealershipId) {
+        return res.status(403).json({ error: 'User must belong to a dealership' });
+      }
+      
       const vehicle = await storage.getVehicle(req.params.id);
       if (!vehicle) {
         return res.status(404).json({ error: 'Vehicle not found' });
       }
+      
+      // Verify vehicle belongs to same dealership as authenticated user
+      if (vehicle.dealershipId !== dealershipId) {
+        return res.status(404).json({ error: 'Vehicle not found' });
+      }
+      
       res.json(vehicle);
     } catch (error) {
       res.status(500).json({ error: 'Failed to get vehicle' });
     }
   });
   
-  app.post('/api/vehicles', async (req, res) => {
+  app.post('/api/vehicles', requireAuth, async (req, res) => {
     try {
+      // SECURITY: Inject dealershipId from authenticated user for multi-tenant isolation
+      const dealershipId = (req.user as any)?.dealershipId;
+      if (!dealershipId) {
+        return res.status(403).json({ error: 'User must belong to a dealership' });
+      }
+      
       const data = insertVehicleSchema.parse(req.body);
-      const vehicle = await storage.createVehicle(data);
+      const vehicle = await storage.createVehicle(data, dealershipId);
       res.status(201).json(vehicle);
     } catch (error: any) {
       res.status(400).json({ error: error.message || 'Failed to create vehicle' });
@@ -486,12 +538,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // ===== TRADE VEHICLES =====
-  app.get('/api/deals/:dealId/trades', async (req, res) => {
+  app.get('/api/deals/:dealId/trades', requireAuth, async (req, res) => {
     try {
+      // SECURITY: Verify deal belongs to authenticated user's dealership
+      const dealershipId = (req.user as any)?.dealershipId;
+      if (!dealershipId) {
+        return res.status(403).json({ error: 'User must belong to a dealership' });
+      }
+      
       const { dealId } = req.params;
       
       const deal = await storage.getDeal(dealId);
       if (!deal) {
+        return res.status(404).json({ error: 'Deal not found' });
+      }
+      
+      // Verify deal belongs to same dealership as authenticated user
+      if (deal.dealershipId !== dealershipId) {
         return res.status(404).json({ error: 'Deal not found' });
       }
       
@@ -829,9 +892,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // ===== DEALS =====
-  app.get('/api/deals/stats', async (req, res) => {
+  app.get('/api/deals/stats', requireAuth, async (req, res) => {
     try {
-      const stats = await storage.getDealsStats();
+      // SECURITY: Filter by authenticated user's dealership for multi-tenant isolation
+      const dealershipId = (req.user as any)?.dealershipId;
+      if (!dealershipId) {
+        return res.status(403).json({ error: 'User must belong to a dealership' });
+      }
+      
+      const stats = await storage.getDealsStats(dealershipId);
       res.json(stats);
     } catch (error) {
       res.status(500).json({ error: 'Failed to get deal statistics' });
@@ -839,14 +908,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   app.get('/api/deals', requireAuth, async (req, res) => {
-    // TODO: Filter results by req.user.dealershipId for multi-tenant isolation
     try {
+      // SECURITY: Filter by authenticated user's dealership for multi-tenant isolation
+      const dealershipId = (req.user as any)?.dealershipId;
+      if (!dealershipId) {
+        return res.status(403).json({ error: 'User must belong to a dealership' });
+      }
+      
       const page = parseInt(String(req.query.page || '1'));
       const pageSize = parseInt(String(req.query.pageSize || '20'));
       const search = req.query.search ? String(req.query.search) : undefined;
       const status = req.query.status ? String(req.query.status) : undefined;
       
-      const result = await storage.getDeals({ page, pageSize, search, status });
+      const result = await storage.getDeals({ page, pageSize, search, status, dealershipId });
       res.json(result);
     } catch (error) {
       res.status(500).json({ error: 'Failed to get deals' });
@@ -854,12 +928,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   app.get('/api/deals/:id', requireAuth, async (req, res) => {
-    // TODO: Verify deal belongs to req.user.dealershipId
     try {
+      // SECURITY: Verify deal belongs to authenticated user's dealership
+      const dealershipId = (req.user as any)?.dealershipId;
+      if (!dealershipId) {
+        return res.status(403).json({ error: 'User must belong to a dealership' });
+      }
+      
       const deal = await storage.getDeal(req.params.id);
       if (!deal) {
         return res.status(404).json({ error: 'Deal not found' });
       }
+      
+      // Verify deal belongs to same dealership as authenticated user
+      if (deal.dealershipId !== dealershipId) {
+        return res.status(404).json({ error: 'Deal not found' });
+      }
+      
       res.json(deal);
     } catch (error) {
       res.status(500).json({ error: 'Failed to get deal' });
@@ -1157,8 +1242,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // ===== AUDIT LOGS =====
-  app.get('/api/deals/:id/audit', async (req, res) => {
+  app.get('/api/deals/:id/audit', requireAuth, async (req, res) => {
     try {
+      // SECURITY: Verify deal belongs to authenticated user's dealership
+      const dealershipId = (req.user as any)?.dealershipId;
+      if (!dealershipId) {
+        return res.status(403).json({ error: 'User must belong to a dealership' });
+      }
+      
+      const deal = await storage.getDeal(req.params.id);
+      if (!deal) {
+        return res.status(404).json({ error: 'Deal not found' });
+      }
+      
+      // Verify deal belongs to same dealership as authenticated user
+      if (deal.dealershipId !== dealershipId) {
+        return res.status(404).json({ error: 'Deal not found' });
+      }
+      
       const logs = await storage.getDealAuditLogs(req.params.id);
       res.json(logs);
     } catch (error) {

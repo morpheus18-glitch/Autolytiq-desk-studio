@@ -1,6 +1,6 @@
 // Referenced from javascript_database blueprint integration
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, decimal, integer, uuid, boolean, jsonb, index } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, decimal, integer, uuid, boolean, jsonb, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -167,7 +167,9 @@ export type Customer = typeof customers.$inferSelect;
 // ===== VEHICLES TABLE =====
 export const vehicles = pgTable("vehicles", {
   id: uuid("id").primaryKey().defaultRandom(),
-  stockNumber: text("stock_number").unique(), // Configurable format (e.g., "STK-2024-001234"), nullable until generation logic deployed
+  dealershipId: uuid("dealership_id").notNull()
+    .references(() => dealershipSettings.id, { onDelete: "cascade" }),
+  stockNumber: text("stock_number"), // Unique within dealership - enforced via composite index
   vin: text("vin").notNull().unique(),
   year: integer("year").notNull(),
   make: text("make").notNull(),
@@ -209,6 +211,10 @@ export const vehicles = pgTable("vehicles", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
+  // Multi-tenant composite indexes for performance and uniqueness
+  dealershipStockIdx: uniqueIndex("vehicles_dealership_stock_idx").on(table.dealershipId, table.stockNumber),
+  dealershipVinIdx: index("vehicles_dealership_vin_idx").on(table.dealershipId, table.vin),
+  // Existing indexes
   stockIdx: index("vehicles_stock_idx").on(table.stockNumber),
   vinIdx: index("vehicles_vin_idx").on(table.vin),
   makeModelIdx: index("vehicles_make_model_idx").on(table.make, table.model),
@@ -248,7 +254,13 @@ export const vehicleFeatures = pgTable("vehicle_features", {
 }));
 
 // Schema types
-export const insertVehicleSchema = createInsertSchema(vehicles).omit({ id: true, stockNumber: true, createdAt: true, updatedAt: true });
+export const insertVehicleSchema = createInsertSchema(vehicles).omit({ 
+  id: true, 
+  dealershipId: true, // Set by system
+  stockNumber: true, // Auto-generated
+  createdAt: true, 
+  updatedAt: true 
+});
 export type InsertVehicle = z.infer<typeof insertVehicleSchema>;
 export type Vehicle = typeof vehicles.$inferSelect;
 
