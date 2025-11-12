@@ -20,6 +20,7 @@ import {
   Plus,
   Settings,
   Building2,
+  UserCog,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { queryClient, apiRequest } from '@/lib/queryClient';
@@ -52,7 +53,8 @@ const allNavItems: NavItem[] = [
   { label: 'VIN Decoder', path: '/vin-decoder', icon: Scan, testId: 'menu-vin-decoder' },
   { label: 'Account Settings', path: '/settings/account', icon: Settings, testId: 'menu-account-settings' },
   { label: 'Dealership Settings', path: '/settings/dealership', icon: Building2, testId: 'menu-dealership-settings' },
-];
+  { label: 'User Management', path: '/settings/users', icon: UserCog, testId: 'nav-user-management' },
+  ];
 
 export function MobileBottomNav() {
   const [location, setLocation] = useLocation();
@@ -179,8 +181,11 @@ export function MobileBottomNav() {
           <div className="overflow-y-auto h-[calc(80vh-5rem)] px-4 py-4">
             <div className="space-y-2">
               {allNavItems.map((item) => {
-                // Hide dealership settings if not admin
+                // Hide admin-only pages if not admin
                 if (item.path === '/settings/dealership' && currentUser?.role !== 'admin') {
+                  return null;
+                }
+                if (item.path === '/settings/users' && currentUser?.role !== 'admin') {
                   return null;
                 }
                 
