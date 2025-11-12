@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Search, Filter, ChevronLeft, ChevronRight, FileText, User, Car, DollarSign, Calendar, Hash, Package, ArrowRight } from 'lucide-react';
+import { Plus, Search, Filter, ChevronLeft, ChevronRight, FileText, User, Car, DollarSign, Calendar, Hash, Package, ArrowRight, Zap } from 'lucide-react';
 import type { DealWithRelations, Vehicle, Customer, User as UserType } from '@shared/schema';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useLocation } from 'wouter';
@@ -28,6 +28,8 @@ import { cn } from '@/lib/utils';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { PageLayout } from '@/components/page-layout';
+import { PageHero } from '@/components/page-hero';
+import { premiumCardClasses } from '@/lib/design-tokens';
 
 const DEAL_STATE_COLORS: Record<string, string> = {
   DRAFT: 'bg-yellow-100 text-yellow-800 border-0 shadow-md rounded-full',
@@ -78,7 +80,7 @@ function DealCard({ deal }: { deal: DealWithRelations }) {
   return (
     <Link href={`/deals/${deal.id}`}>
       <Card 
-        className="group overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer h-full"
+        className={cn(premiumCardClasses, "group overflow-hidden cursor-pointer h-full")}
         data-testid={`card-deal-${deal.id}`}
       >
         {/* Compact Header */}
@@ -294,7 +296,7 @@ export default function DealsList() {
       v.make.toLowerCase().includes(search) ||
       v.model.toLowerCase().includes(search) ||
       v.year.toString().includes(search) ||
-      v.stockNumber.toLowerCase().includes(search)
+      v.stockNumber?.toLowerCase().includes(search)
     );
   });
   
@@ -348,80 +350,51 @@ export default function DealsList() {
   };
   
   return (
-    <PageLayout className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="sticky top-0 z-40 backdrop-blur-md bg-background/80 border-b">
-        <div className="container mx-auto px-3 md:px-4 py-4">
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl md:text-3xl font-semibold text-foreground">Desk HQ</h1>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Your universal deal command center
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Button 
-                  size={isMobile ? "default" : "lg"} 
-                  onClick={handleStartBlankDeal}
-                  disabled={usersLoading || createDealMutation.isPending}
-                  data-testid="button-start-blank-deal"
-                  className="gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span className="hidden md:inline">{usersLoading ? 'Loading...' : 'Start Blank Deal'}</span>
-                  <span className="md:hidden">{usersLoading ? '...' : 'Blank'}</span>
-                </Button>
-                <Button 
-                  size={isMobile ? "default" : "lg"}
-                  variant="outline"
-                  onClick={() => setShowVehiclePicker(true)}
-                  disabled={usersLoading || createDealMutation.isPending}
-                  data-testid="button-with-vehicle"
-                  className="gap-2"
-                >
-                  <Car className="w-4 h-4" />
-                  <span className="hidden sm:inline">With Vehicle</span>
-                </Button>
-                <Button 
-                  size={isMobile ? "default" : "lg"}
-                  variant="outline"
-                  onClick={() => setShowCustomerPicker(true)}
-                  disabled={usersLoading || createDealMutation.isPending}
-                  data-testid="button-with-customer"
-                  className="gap-2 hidden sm:flex"
-                >
-                  <User className="w-4 h-4" />
-                  <span>With Customer</span>
-                </Button>
-              </div>
+    <PageLayout className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <PageHero
+        icon={FileText}
+        title="Desk HQ"
+        description="Your universal deal command center"
+        actions={
+          <Button 
+            size="lg"
+            onClick={handleStartBlankDeal}
+            disabled={usersLoading || createDealMutation.isPending}
+            data-testid="button-start-blank-deal"
+            className="gap-2 shadow-lg shadow-primary/20"
+          >
+            <Zap className="w-4 h-4" />
+            {usersLoading ? 'Loading...' : 'Start Deal'}
+          </Button>
+        }
+      />
+      
+      {/* Filters Section */}
+      <div className="border-b bg-background/80 backdrop-blur-sm">
+        <div className="container mx-auto px-4 md:px-6 py-4">
+          <div className="flex gap-3">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search deals..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+                data-testid="input-search-deals"
+              />
             </div>
-            
-            {/* Filters */}
-            <div className="flex gap-2 md:gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search deals..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                  data-testid="input-search-deals"
-                />
-              </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-32 md:w-48" data-testid="select-status-filter">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="DRAFT">Draft</SelectItem>
-                  <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                  <SelectItem value="APPROVED">Approved</SelectItem>
-                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-40" data-testid="select-status-filter">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="DRAFT">Draft</SelectItem>
+                <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                <SelectItem value="APPROVED">Approved</SelectItem>
+                <SelectItem value="CANCELLED">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>

@@ -284,6 +284,101 @@ export function setupAuthRoutes(app: Express) {
     }
   });
 
+  // Update user (admin or sales_manager with limited permissions)
+  app.patch("/api/admin/users/:userId", requireAuth, requireRole("admin", "sales_manager"), async (req: Request, res: Response) => {
+    try {
+      const currentUser = req.user as Express.User;
+      const userId = req.params.userId;
+      const { fullName, email, role, isActive } = req.body;
+      
+      // Permission checks
+      const isAdmin = currentUser.role === 'admin';
+      const isSalesManager = currentUser.role === 'sales_manager';
+      
+      // Get user being updated
+      const userToUpdate = await storage.getUser(userId);
+      if (!userToUpdate) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Ensure multi-tenant isolation - CRITICAL SECURITY CHECK
+      if (userToUpdate.dealershipId !== currentUser.dealershipId) {
+        return res.status(403).json({ error: "Cannot update users from other dealerships" });
+      }
+      
+      // Reject forbidden fields for non-admins - CRITICAL SECURITY CHECK
+      if (isSalesManager && !isAdmin) {
+        if (role !== undefined || isActive !== undefined) {
+          return res.status(403).json({ 
+            error: "Sales managers can only edit contact information (fullName, email)" 
+          });
+        }
+      }
+      
+      // Build update object based on permissions
+      const updates: any = {};
+      
+      // Contact info (both admin and sales_manager can edit)
+      if (fullName !== undefined) {
+        updates.fullName = fullName;
+      }
+      
+      if (email !== undefined) {
+        // Validate email
+        if (!z.string().email().safeParse(email).success) {
+          return res.status(400).json({ error: "Invalid email address" });
+        }
+        // Check if email already exists
+        const existingEmail = await storage.getUserByEmail(email);
+        if (existingEmail && existingEmail.id !== userId) {
+          return res.status(400).json({ error: "Email already exists" });
+        }
+        updates.email = email;
+      }
+      
+      // Role and status (admin only)
+      if (isAdmin) {
+        if (role !== undefined) {
+          // Validate role
+          const validRoles = ["admin", "finance_manager", "sales_manager", "salesperson"];
+          if (!validRoles.includes(role)) {
+            return res.status(400).json({ error: "Invalid role" });
+          }
+          updates.role = role;
+        }
+        if (isActive !== undefined) {
+          updates.isActive = isActive;
+        }
+      }
+      
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ error: "No valid fields to update" });
+      }
+      
+      // Update user
+      const updatedUser = await storage.updateUser(userId, updates);
+      
+      // Log security event
+      await logSecurityEvent(
+        "user_updated",
+        "account_management",
+        req,
+        { 
+          updatedUserId: userId,
+          updatedByUserId: currentUser.id,
+          updatedFields: Object.keys(updates)
+        }
+      );
+      
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = updatedUser;
+      
+      res.json(userWithoutPassword);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to update user" });
+    }
+  });
+
   // ===== SECURITY AUDIT LOG =====
   app.get("/api/audit/security", requireAuth, requireRole("admin"), async (req: Request, res: Response) => {
     try {
