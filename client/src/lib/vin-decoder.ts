@@ -36,6 +36,10 @@ export const decodedVehicleSchema = z.object({
   vehicleType: z.string().optional(),
   series: z.string().optional(),
   
+  // Colors
+  exteriorColor: z.string().optional(),
+  interiorColor: z.string().optional(),
+  
   // Safety features
   airbags: z.array(z.string()).optional(),
   abs: z.boolean().optional(),
@@ -290,6 +294,10 @@ export class VINDecoder {
       plant: `${getValueByName('Plant City')}, ${getValueByName('Plant State')} ${getValueByName('Plant Country')}`.replace(/, undefined/g, '').replace(/undefined/g, '').trim(),
       vehicleType: getValueByName('Vehicle Type'),
       series: getValueByName('Series'),
+      
+      // Colors
+      exteriorColor: getValueByName('Exterior Color'),
+      interiorColor: getValueByName('Interior Color'),
       
       // Safety features
       airbags: airbags.length > 0 ? airbags : undefined,

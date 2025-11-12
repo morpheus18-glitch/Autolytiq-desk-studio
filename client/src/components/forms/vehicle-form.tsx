@@ -97,6 +97,8 @@ export function VehicleForm({
       if (decoded.transmission) form.setValue("transmission", decoded.transmission);
       if (decoded.drivetrain) form.setValue("drivetrain", decoded.drivetrain);
       if (decoded.fuelType) form.setValue("fuelType", decoded.fuelType);
+      if (decoded.exteriorColor) form.setValue("exteriorColor", decoded.exteriorColor);
+      if (decoded.interiorColor) form.setValue("interiorColor", decoded.interiorColor);
       
       // Build engine description from decoded data
       if (decoded.engineDisplacement || decoded.engineCylinders) {

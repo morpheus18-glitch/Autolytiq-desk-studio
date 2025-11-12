@@ -257,13 +257,31 @@ export const vehicleFeatures = pgTable("vehicle_features", {
   categoryIdx: index("vehicle_features_category_idx").on(table.category),
 }));
 
-// Schema types
-export const insertVehicleSchema = createInsertSchema(vehicles).omit({ 
+// Schema types with preprocessing for empty strings
+const baseInsertVehicleSchema = createInsertSchema(vehicles).omit({ 
   id: true, 
   dealershipId: true, // Set by system
   stockNumber: true, // Auto-generated
   createdAt: true, 
   updatedAt: true 
+});
+
+// Helper to convert empty strings and whitespace to null while preserving coercion
+const emptyStringToNull = (val: any) => {
+  if (val === "" || val === undefined || (typeof val === "string" && val.trim() === "")) {
+    return null;
+  }
+  return val;
+};
+
+export const insertVehicleSchema = baseInsertVehicleSchema.extend({
+  // Preprocess optional decimal fields - convert empty strings to null before original coercion
+  msrp: z.preprocess(emptyStringToNull, baseInsertVehicleSchema.shape.msrp),
+  invoicePrice: z.preprocess(emptyStringToNull, baseInsertVehicleSchema.shape.invoicePrice),
+  internetPrice: z.preprocess(emptyStringToNull, baseInsertVehicleSchema.shape.internetPrice),
+  // Preprocess optional integer fields - convert empty strings to null before original coercion
+  mpgCity: z.preprocess(emptyStringToNull, baseInsertVehicleSchema.shape.mpgCity),
+  mpgHighway: z.preprocess(emptyStringToNull, baseInsertVehicleSchema.shape.mpgHighway),
 });
 export type InsertVehicle = z.infer<typeof insertVehicleSchema>;
 export type Vehicle = typeof vehicles.$inferSelect;
