@@ -743,6 +743,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(400).json({ error: error.message || 'Failed to create tax jurisdiction' });
     }
   });
+
+  // Lookup tax jurisdiction by ZIP code
+  app.get('/api/tax-jurisdictions/lookup', async (req, res) => {
+    try {
+      const zipCode = req.query.zipCode as string;
+      if (!zipCode || zipCode.length !== 5) {
+        return res.status(400).json({ error: 'Invalid ZIP code' });
+      }
+
+      // Try to find jurisdiction by ZIP code
+      const zipLookup = await storage.getZipCodeLookup(zipCode);
+      if (!zipLookup) {
+        return res.status(404).json({ error: 'ZIP code not found in tax database' });
+      }
+
+      // Get the full jurisdiction details
+      const jurisdiction = await storage.getTaxJurisdictionById(zipLookup.taxJurisdictionId);
+      if (!jurisdiction) {
+        return res.status(404).json({ error: 'Tax jurisdiction not found' });
+      }
+
+      // Return jurisdiction with city/state from ZIP lookup
+      res.json({
+        ...jurisdiction,
+        city: zipLookup.city || jurisdiction.city,
+        state: zipLookup.state || jurisdiction.state,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to lookup tax jurisdiction' });
+    }
+  });
+
   // ===== QUICK QUOTES =====
   app.post('/api/quick-quotes', async (req, res) => {
     try {

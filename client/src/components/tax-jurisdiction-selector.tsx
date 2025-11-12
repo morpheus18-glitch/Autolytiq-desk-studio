@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
@@ -9,22 +11,37 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { MapPin, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import type { TaxJurisdiction } from '@shared/schema';
 import Decimal from 'decimal.js';
+import { useDebounce } from 'use-debounce';
 
 interface TaxJurisdictionSelectorProps {
   selectedJurisdictionId?: string;
   onSelect: (jurisdiction: TaxJurisdiction | null) => void;
+  initialZipCode?: string;
 }
 
 export function TaxJurisdictionSelector({
   selectedJurisdictionId,
   onSelect,
+  initialZipCode,
 }: TaxJurisdictionSelectorProps) {
   const [selectedId, setSelectedId] = useState<string | undefined>(selectedJurisdictionId);
+  const [zipCode, setZipCode] = useState(initialZipCode || '');
+  const [debouncedZipCode] = useDebounce(zipCode, 500);
+  const [showManualSelect, setShowManualSelect] = useState(false);
 
   const { data: jurisdictions, isLoading } = useQuery<TaxJurisdiction[]>({
     queryKey: ['/api/tax-jurisdictions'],
+  });
+
+  // Auto-detect jurisdiction from ZIP code
+  const { data: zipData, isLoading: isLoadingZip, error: zipError } = useQuery<TaxJurisdiction & { city?: string; state?: string }>({
+    queryKey: [`/api/tax-jurisdictions/lookup?zipCode=${debouncedZipCode}`],
+    enabled: debouncedZipCode.length === 5 && !showManualSelect,
+    staleTime: 60 * 60 * 1000, // Cache for 1 hour
   });
 
   const selectedJurisdiction = jurisdictions?.find(j => j.id === selectedId);
@@ -33,6 +50,21 @@ export function TaxJurisdictionSelector({
   useEffect(() => {
     setSelectedId(selectedJurisdictionId);
   }, [selectedJurisdictionId]);
+
+  // Clear selection when ZIP code changes (prevent stale data)
+  useEffect(() => {
+    if (debouncedZipCode.length === 5 && !showManualSelect) {
+      setSelectedId(undefined);
+      onSelect(null); // Notify parent immediately
+    }
+  }, [debouncedZipCode, showManualSelect, onSelect]);
+
+  // Auto-select jurisdiction when ZIP data is successfully received
+  useEffect(() => {
+    if (zipData?.id && !showManualSelect) {
+      setSelectedId(zipData.id);
+    }
+  }, [zipData, showManualSelect]);
 
   // Notify parent when jurisdiction is selected or loaded
   useEffect(() => {
@@ -67,26 +99,103 @@ export function TaxJurisdictionSelector({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      {/* ZIP Code Input */}
       <div>
-        <Label htmlFor="tax-jurisdiction">Tax Jurisdiction</Label>
-        <Select
-          value={selectedId}
-          onValueChange={setSelectedId}
-          disabled={isLoading}
-        >
-          <SelectTrigger id="tax-jurisdiction" data-testid="select-tax-jurisdiction">
-            <SelectValue placeholder={isLoading ? "Loading jurisdictions..." : "Select tax jurisdiction"} />
-          </SelectTrigger>
-          <SelectContent>
-            {jurisdictions?.map((jurisdiction) => (
-              <SelectItem key={jurisdiction.id} value={jurisdiction.id}>
-                {getJurisdictionLabel(jurisdiction)} - {getCombinedRate(jurisdiction)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Label htmlFor="zip-code" className="flex items-center gap-2">
+          <MapPin className="w-4 h-4" />
+          ZIP Code (Auto-detect)
+        </Label>
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Input
+              id="zip-code"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={5}
+              placeholder="Enter ZIP code"
+              value={zipCode}
+              onChange={(e) => {
+                const value = e.target.value.replace(/\D/g, '').slice(0, 5);
+                setZipCode(value);
+                if (showManualSelect) setShowManualSelect(false);
+              }}
+              disabled={isLoading}
+              className="pr-10"
+              data-testid="input-zip-code"
+            />
+            {isLoadingZip && (
+              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground animate-spin" />
+            )}
+            {zipData && debouncedZipCode.length === 5 && !isLoadingZip && (
+              <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-600" />
+            )}
+            {zipError && debouncedZipCode.length === 5 && !isLoadingZip && (
+              <AlertCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-destructive" />
+            )}
+          </div>
+          {!showManualSelect && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowManualSelect(true)}
+              data-testid="button-manual-override"
+            >
+              Manual
+            </Button>
+          )}
+        </div>
+        {zipError && debouncedZipCode.length === 5 && (
+          <Alert variant="destructive" className="mt-2">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              ZIP code not found in tax database. Please select manually.
+            </AlertDescription>
+          </Alert>
+        )}
+        {zipData && debouncedZipCode.length === 5 && !showManualSelect && (
+          <div className="mt-2 text-sm text-muted-foreground flex items-center gap-2">
+            <CheckCircle className="w-3 h-3 text-green-600" />
+            Auto-detected: {zipData.city}, {zipData.state}
+          </div>
+        )}
       </div>
+
+      {/* Manual Tax Jurisdiction Selector */}
+      {showManualSelect && (
+        <div>
+          <Label htmlFor="tax-jurisdiction">Tax Jurisdiction (Manual)</Label>
+          <div className="flex gap-2">
+            <Select
+              value={selectedId}
+              onValueChange={setSelectedId}
+              disabled={isLoading}
+            >
+              <SelectTrigger id="tax-jurisdiction" data-testid="select-tax-jurisdiction" className="flex-1">
+                <SelectValue placeholder={isLoading ? "Loading jurisdictions..." : "Select tax jurisdiction"} />
+              </SelectTrigger>
+              <SelectContent>
+                {jurisdictions?.map((jurisdiction) => (
+                  <SelectItem key={jurisdiction.id} value={jurisdiction.id}>
+                    {getJurisdictionLabel(jurisdiction)} - {getCombinedRate(jurisdiction)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowManualSelect(false)}
+              data-testid="button-use-zip"
+            >
+              Use ZIP
+            </Button>
+          </div>
+        </div>
+      )}
 
       {selectedJurisdiction && (
         <div className="p-4 bg-muted/50 rounded-lg space-y-2" data-testid="tax-jurisdiction-details">

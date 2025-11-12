@@ -1,6 +1,6 @@
 // Referenced from javascript_database blueprint integration
 import { 
-  users, customers, vehicles, tradeVehicles, deals, dealScenarios, auditLog, taxJurisdictions, taxRuleGroups,
+  users, customers, vehicles, tradeVehicles, deals, dealScenarios, auditLog, taxJurisdictions, taxRuleGroups, zipCodeLookup,
   lenders, lenderPrograms, rateRequests, approvedLenders, quickQuotes, quickQuoteContacts, feePackageTemplates,
   dealershipSettings, dealNumberSequences, dealershipStockSettings, permissions, rolePermissions, securityAuditLog,
   type User, type InsertUser,
@@ -11,6 +11,7 @@ import {
   type DealScenario, type InsertDealScenario,
   type AuditLog, type InsertAuditLog,
   type TaxJurisdiction, type InsertTaxJurisdiction, type TaxJurisdictionWithRules,
+  type ZipCodeLookup,
   type DealWithRelations,
   type DealStats,
   type Lender, type InsertLender,
@@ -134,6 +135,8 @@ export interface IStorage {
   // Tax Jurisdictions
   getAllTaxJurisdictions(): Promise<TaxJurisdictionWithRules[]>;
   getTaxJurisdiction(state: string, county?: string, city?: string): Promise<TaxJurisdictionWithRules | undefined>;
+  getTaxJurisdictionById(id: string): Promise<TaxJurisdictionWithRules | undefined>;
+  getZipCodeLookup(zipCode: string): Promise<ZipCodeLookup | undefined>;
   createTaxJurisdiction(jurisdiction: InsertTaxJurisdiction): Promise<TaxJurisdiction>;
   
   // Quick Quotes
@@ -582,6 +585,30 @@ export class DatabaseStorage implements IStorage {
   async createTaxJurisdiction(insertJurisdiction: InsertTaxJurisdiction): Promise<TaxJurisdiction> {
     const [jurisdiction] = await db.insert(taxJurisdictions).values(insertJurisdiction).returning();
     return jurisdiction;
+  }
+
+  async getTaxJurisdictionById(id: string): Promise<TaxJurisdictionWithRules | undefined> {
+    const result = await db
+      .select()
+      .from(taxJurisdictions)
+      .leftJoin(taxRuleGroups, eq(taxJurisdictions.taxRuleGroupId, taxRuleGroups.id))
+      .where(eq(taxJurisdictions.id, id));
+    
+    if (!result || result.length === 0) return undefined;
+    
+    const [row] = result;
+    return {
+      ...row.tax_jurisdictions,
+      taxRuleGroup: row.tax_rule_groups || null
+    };
+  }
+
+  async getZipCodeLookup(zipCode: string): Promise<ZipCodeLookup | undefined> {
+    const [lookup] = await db
+      .select()
+      .from(zipCodeLookup)
+      .where(eq(zipCodeLookup.zipCode, zipCode));
+    return lookup || undefined;
   }
   
   // Quick Quotes
