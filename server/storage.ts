@@ -45,7 +45,7 @@ export interface IStorage {
   // Customers
   getCustomer(id: string): Promise<Customer | undefined>;
   searchCustomers(query: string): Promise<Customer[]>;
-  createCustomer(customer: InsertCustomer): Promise<Customer>;
+  createCustomer(customer: InsertCustomer, dealershipId?: string): Promise<Customer>;
   updateCustomer(id: string, customer: Partial<InsertCustomer>): Promise<Customer>;
   
   // Vehicles
@@ -236,8 +236,21 @@ export class DatabaseStorage implements IStorage {
       .limit(20);
   }
   
-  async createCustomer(insertCustomer: InsertCustomer): Promise<Customer> {
-    const [customer] = await db.insert(customers).values(insertCustomer).returning();
+  async createCustomer(insertCustomer: InsertCustomer, dealershipId?: string): Promise<Customer> {
+    // If dealershipId not provided, use the first/default dealership
+    let finalDealershipId = dealershipId;
+    if (!finalDealershipId) {
+      const [defaultDealership] = await db.select().from(dealershipSettings).limit(1);
+      if (!defaultDealership) {
+        throw new Error('No dealership settings found. Please configure dealership settings first.');
+      }
+      finalDealershipId = defaultDealership.id;
+    }
+    
+    const [customer] = await db.insert(customers).values({
+      ...insertCustomer,
+      dealershipId: finalDealershipId,
+    }).returning();
     return customer;
   }
   

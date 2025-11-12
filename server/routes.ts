@@ -112,6 +112,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/customers', async (req, res) => {
     try {
       const data = insertCustomerSchema.parse(req.body);
+      // TODO: Extract dealershipId from req.user.dealershipId once users table has dealershipId
+      // For now, createCustomer will use the first dealership as default
       const customer = await storage.createCustomer(data);
       res.status(201).json(customer);
     } catch (error: any) {
