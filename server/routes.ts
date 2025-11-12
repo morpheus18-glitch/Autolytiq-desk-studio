@@ -829,12 +829,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: 'create',
         entityType: 'deal',
         entityId: deal.id,
-        metadata: { dealNumber: deal.dealNumber },
+        metadata: { dealNumber: deal.dealNumber || 'pending' },
       });
       
       res.status(201).json(deal);
     } catch (error: any) {
       res.status(400).json({ error: error.message || 'Failed to create deal' });
+    }
+  });
+  
+  // Attach customer to deal and generate deal number
+  app.patch('/api/deals/:id/attach-customer', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { customerId } = z.object({ customerId: z.string().uuid() }).parse(req.body);
+      
+      const deal = await storage.attachCustomerToDeal(id, customerId);
+      
+      res.json(deal);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || 'Failed to attach customer to deal' });
     }
   });
   

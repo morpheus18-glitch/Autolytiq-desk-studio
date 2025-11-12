@@ -2,7 +2,7 @@
 import { 
   users, customers, vehicles, tradeVehicles, deals, dealScenarios, auditLog, taxJurisdictions, taxRuleGroups,
   lenders, lenderPrograms, rateRequests, approvedLenders, quickQuotes, quickQuoteContacts, feePackageTemplates,
-  dealershipSettings, permissions, rolePermissions, securityAuditLog,
+  dealershipSettings, dealNumberSequences, dealershipStockSettings, permissions, rolePermissions, securityAuditLog,
   type User, type InsertUser,
   type Customer, type InsertCustomer,
   type Vehicle, type InsertVehicle,
@@ -113,6 +113,11 @@ export interface IStorage {
   createDeal(deal: InsertDeal): Promise<Deal>;
   updateDeal(id: string, deal: Partial<InsertDeal>): Promise<Deal>;
   updateDealState(id: string, state: string): Promise<Deal>;
+  attachCustomerToDeal(dealId: string, customerId: string): Promise<Deal>;
+  
+  // Identifier Generation
+  generateDealNumber(dealershipId: string): Promise<string>;
+  generateStockNumber(dealershipId: string): Promise<string>;
   
   // Deal Scenarios
   getScenario(id: string): Promise<DealScenario | undefined>;
@@ -632,27 +637,9 @@ export class DatabaseStorage implements IStorage {
   }
   
   async createDeal(insertDeal: InsertDeal): Promise<Deal> {
-    // Generate deal number: DEAL-YYYYMMDD-XXX
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    
-    // Get count of deals today to generate sequential number
-    const dayStart = new Date(year, now.getMonth(), now.getDate());
-    const dayEnd = new Date(year, now.getMonth(), now.getDate() + 1);
-    const [countResult] = await db.select({ count: sql<number>`count(*)` })
-      .from(deals)
-      .where(and(
-        sql`${deals.createdAt} >= ${dayStart}`,
-        sql`${deals.createdAt} < ${dayEnd}`
-      ));
-    
-    const sequenceNumber = String(Number(countResult.count) + 1).padStart(3, '0');
-    const dealNumber = `DEAL-${year}${month}${day}-${sequenceNumber}`;
-    
+    // Deal number is now nullable - generated only when customer is attached
     const [deal] = await db.insert(deals)
-      .values({ ...insertDeal, dealNumber })
+      .values({ ...insertDeal })
       .returning();
     
     // Auto-create a default scenario for every new deal
@@ -700,6 +687,141 @@ export class DatabaseStorage implements IStorage {
       .where(eq(deals.id, id))
       .returning();
     return deal;
+  }
+  
+  async attachCustomerToDeal(dealId: string, customerId: string): Promise<Deal> {
+    // Verify customer exists
+    const customer = await this.getCustomer(customerId);
+    if (!customer) {
+      throw new Error('Customer not found');
+    }
+    
+    // Get current deal
+    const currentDeal = await db.select().from(deals).where(eq(deals.id, dealId)).limit(1);
+    if (!currentDeal || currentDeal.length === 0) {
+      throw new Error('Deal not found');
+    }
+    
+    const deal = currentDeal[0];
+    
+    // Generate deal number if not already set
+    let dealNumber = deal.dealNumber;
+    if (!dealNumber) {
+      dealNumber = await this.generateDealNumber(deal.dealershipId);
+    }
+    
+    // Update deal with customer and deal number
+    const [updatedDeal] = await db.update(deals)
+      .set({ 
+        customerId,
+        dealNumber,
+        customerAttachedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(deals.id, dealId))
+      .returning();
+    
+    // Create audit log
+    await this.createAuditLog({
+      dealId,
+      userId: deal.salespersonId,
+      action: 'update',
+      entityType: 'deal',
+      entityId: dealId,
+      metadata: { 
+        customerAttached: true,
+        customerId,
+        dealNumber,
+        customerAttachedAt: new Date().toISOString()
+      },
+    });
+    
+    return updatedDeal;
+  }
+  
+  async generateDealNumber(dealershipId: string): Promise<string> {
+    // Crockford Base32 alphabet (excludes I, L, O, U to avoid confusion)
+    const CROCKFORD_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+    
+    return await db.transaction(async (tx) => {
+      // Get or create sequence row with SELECT FOR UPDATE (atomic lock)
+      const existingSequence = await tx.select()
+        .from(dealNumberSequences)
+        .where(eq(dealNumberSequences.dealershipId, dealershipId))
+        .for('update')
+        .limit(1);
+      
+      let nextSequence: number;
+      
+      if (existingSequence.length === 0) {
+        // First deal for this dealership - initialize sequence
+        const [newSeq] = await tx.insert(dealNumberSequences)
+          .values({ dealershipId, currentSequence: 1 })
+          .returning();
+        nextSequence = 1;
+      } else {
+        // Increment existing sequence
+        nextSequence = existingSequence[0].currentSequence + 1;
+        await tx.update(dealNumberSequences)
+          .set({ currentSequence: nextSequence, updatedAt: sql`now()` })
+          .where(eq(dealNumberSequences.dealershipId, dealershipId));
+      }
+      
+      // Format: 4-digit + Crockford Base32 checksum
+      const fourDigit = String(nextSequence).padStart(4, '0');
+      const checksumIndex = nextSequence % 32;
+      const checksum = CROCKFORD_ALPHABET[checksumIndex];
+      
+      // Final format: 1234#A (4-digit#Glyph)
+      return `${fourDigit}#${checksum}`;
+    });
+  }
+  
+  async generateStockNumber(dealershipId: string): Promise<string> {
+    return await db.transaction(async (tx) => {
+      // Get or create stock settings with SELECT FOR UPDATE
+      const existingSettings = await tx.select()
+        .from(dealershipStockSettings)
+        .where(eq(dealershipStockSettings.dealershipId, dealershipId))
+        .for('update')
+        .limit(1);
+      
+      let settings;
+      let nextCounter: number;
+      
+      if (existingSettings.length === 0) {
+        // Create default settings
+        const [newSettings] = await tx.insert(dealershipStockSettings)
+          .values({ 
+            dealershipId,
+            prefix: 'STK',
+            useYearPrefix: true,
+            paddingLength: 6,
+            currentCounter: 1
+          })
+          .returning();
+        settings = newSettings;
+        nextCounter = 1;
+      } else {
+        settings = existingSettings[0];
+        nextCounter = settings.currentCounter + 1;
+        
+        // Update counter
+        await tx.update(dealershipStockSettings)
+          .set({ currentCounter: nextCounter, updatedAt: sql`now()` })
+          .where(eq(dealershipStockSettings.dealershipId, dealershipId));
+      }
+      
+      // Build stock number based on settings
+      const year = new Date().getFullYear();
+      const paddedCounter = String(nextCounter).padStart(settings.paddingLength, '0');
+      
+      if (settings.useYearPrefix) {
+        return `${settings.prefix}-${year}-${paddedCounter}`;
+      } else {
+        return `${settings.prefix}-${paddedCounter}`;
+      }
+    });
   }
   
   // Deal Scenarios

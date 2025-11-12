@@ -957,6 +957,21 @@ export const insertDealershipSettingsSchema = createInsertSchema(dealershipSetti
 export type InsertDealershipSettings = z.infer<typeof insertDealershipSettingsSchema>;
 export type DealershipSettings = typeof dealershipSettings.$inferSelect;
 
+// ===== DEAL NUMBER SEQUENCES TABLE =====
+// Atomic counters for deal number generation per dealership
+export const dealNumberSequences = pgTable("deal_number_sequences", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  dealershipId: uuid("dealership_id").notNull().unique(),
+  currentSequence: integer("current_sequence").notNull().default(0),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  dealershipIdx: index("deal_number_sequences_dealership_idx").on(table.dealershipId),
+}));
+
+export const insertDealNumberSequenceSchema = createInsertSchema(dealNumberSequences).omit({ id: true, updatedAt: true });
+export type InsertDealNumberSequence = z.infer<typeof insertDealNumberSequenceSchema>;
+export type DealNumberSequence = typeof dealNumberSequences.$inferSelect;
+
 // ===== PERMISSIONS TABLE =====
 export const permissions = pgTable("permissions", {
   id: uuid("id").primaryKey().defaultRandom(),
