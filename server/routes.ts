@@ -87,7 +87,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get('/api/customers/search', async (req, res) => {
+  app.get('/api/customers/search', requireAuth, async (req, res) => {
+    // TODO: Filter results by req.user.dealershipId for multi-tenant isolation
     try {
       const query = String(req.query.q || '');
       const customers = await storage.searchCustomers(query);
@@ -97,7 +98,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get('/api/customers/:id', async (req, res) => {
+  app.get('/api/customers/:id', requireAuth, async (req, res) => {
+    // TODO: Verify customer belongs to req.user.dealershipId
     try {
       const customer = await storage.getCustomer(req.params.id);
       if (!customer) {
@@ -109,12 +111,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post('/api/customers', async (req, res) => {
+  app.post('/api/customers', requireAuth, async (req, res) => {
     try {
       const data = insertCustomerSchema.parse(req.body);
-      // TODO: Extract dealershipId from req.user.dealershipId once users table has dealershipId
-      // For now, createCustomer will use the first dealership as default
-      const customer = await storage.createCustomer(data);
+      
+      // Extract dealershipId from authenticated user for multi-tenant security
+      const dealershipId = (req.user as any)?.dealershipId;
+      if (!dealershipId) {
+        return res.status(403).json({ error: 'User must belong to a dealership to create customers' });
+      }
+      
+      const customer = await storage.createCustomer(data, dealershipId);
       res.status(201).json(customer);
     } catch (error: any) {
       res.status(400).json({ error: error.message || 'Failed to create customer' });
@@ -718,7 +725,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/quick-quotes/:id/convert', async (req, res) => {
+  app.post('/api/quick-quotes/:id/convert', requireAuth, async (req, res) => {
     try {
       const quoteId = req.params.id;
 
@@ -734,28 +741,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const payload = quote.quotePayload as any;
 
-      // Get salesperson or use first user as fallback
+      // SECURITY: Use authenticated user's dealershipId for multi-tenant isolation
+      const dealershipId = (req.user as any)?.dealershipId;
+      if (!dealershipId) {
+        return res.status(403).json({ error: 'User must belong to a dealership to convert quotes' });
+      }
+      
+      // Get salesperson or use authenticated user as fallback
       let salespersonId = quote.salespersonId;
       if (!salespersonId) {
-        const users = await storage.getUsers();
-        if (users.length === 0) {
-          return res.status(400).json({ error: 'No users found in system' });
+        // Use the authenticated user as salesperson instead of arbitrary first user
+        salespersonId = (req.user as any)?.id;
+        if (!salespersonId) {
+          return res.status(401).json({ error: 'Authentication required' });
         }
-        salespersonId = users[0].id;
+      } else {
+        // Verify salesperson belongs to the same dealership
+        const salesperson = await storage.getUser(salespersonId);
+        if (!salesperson) {
+          return res.status(400).json({ error: 'Salesperson not found' });
+        }
+        if (salesperson.dealershipId !== dealershipId) {
+          return res.status(403).json({ error: 'Cannot convert quote with salesperson from different dealership' });
+        }
       }
 
       // Create customer (simplified - using temp data)
       const customer = await storage.createCustomer({
         firstName: 'Quick',
         lastName: 'Quote Customer',
-      });
+      }, dealershipId);
 
       // Create deal (vehicle is optional for blank desking)
       const deal = await storage.createDeal({
         salespersonId,
         customerId: customer.id,
         vehicleId: quote.vehicleId || null,
-      });
+      }, dealershipId);
 
       // Create scenario with quote data
       await storage.createScenario({
@@ -793,7 +815,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get('/api/deals', async (req, res) => {
+  app.get('/api/deals', requireAuth, async (req, res) => {
+    // TODO: Filter results by req.user.dealershipId for multi-tenant isolation
     try {
       const page = parseInt(String(req.query.page || '1'));
       const pageSize = parseInt(String(req.query.pageSize || '20'));
@@ -807,7 +830,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get('/api/deals/:id', async (req, res) => {
+  app.get('/api/deals/:id', requireAuth, async (req, res) => {
+    // TODO: Verify deal belongs to req.user.dealershipId
     try {
       const deal = await storage.getDeal(req.params.id);
       if (!deal) {
@@ -819,10 +843,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post('/api/deals', async (req, res) => {
+  app.post('/api/deals', requireAuth, async (req, res) => {
     try {
       const data = insertDealSchema.parse(req.body);
-      const deal = await storage.createDeal(data);
+      
+      // SECURITY: Extract dealershipId from authenticated user for multi-tenant isolation
+      const dealershipId = (req.user as any)?.dealershipId;
+      if (!dealershipId) {
+        return res.status(403).json({ error: 'User must belong to a dealership to create deals' });
+      }
+      
+      // Override any dealershipId in payload with authenticated user's dealership
+      const deal = await storage.createDeal(data, dealershipId);
       
       // Create audit log
       await storage.createAuditLog({

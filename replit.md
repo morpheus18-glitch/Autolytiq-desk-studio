@@ -93,11 +93,19 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 
 ## Remaining TODO Items
 
-**Critical - Multi-tenant Data Isolation**:
-1. **Inject dealershipId from auth context**: Update `POST /api/customers` route to extract `req.user.dealershipId` and pass to `storage.createCustomer()`
-2. **Update createCustomer signature**: Accept dealershipId parameter and set it on customer record
-3. **Backfill existing customers**: Write migration/script to populate dealershipId based on relationship data
-4. **Remove temporary null checks**: After data is consistent, remove null guards in `attachCustomerToDeal` (line 712 in server/storage.ts)
+**Critical - Multi-tenant Data Isolation** (Partially Complete):
+1. ✅ **COMPLETED**: Added dealershipId to users and customers tables
+2. ✅ **COMPLETED**: Made dealershipId mandatory in createCustomer and createUser
+3. ✅ **COMPLETED**: Injected dealershipId from req.user in POST /api/customers
+4. ✅ **COMPLETED**: Injected dealershipId from req.user in POST /api/deals
+5. ✅ **COMPLETED**: Backfilled all existing customers with correct dealershipId
+6. ✅ **COMPLETED**: Removed temporary null checks from attachCustomerToDeal
+7. ✅ **COMPLETED**: Fixed quick-quote conversion to use req.user.dealershipId and validate salesperson dealership
+8. ✅ **COMPLETED**: Added requireAuth middleware to POST /api/customers, POST /api/deals, POST /api/quick-quotes/:id/convert
+9. ✅ **COMPLETED**: Added requireAuth to read endpoints (GET /api/customers, /api/deals, etc.)
+10. **CRITICAL TODO**: Add dealership filtering to ALL read queries (customers, deals, scenarios, etc.) - currently returns all data across dealerships
+11. **CRITICAL TODO**: Improve registration to require invitation-bound dealership or disable public signup when multiple dealerships exist (currently assigns to first dealership)
+12. **TODO**: Add validation for child entities (scenarios, trades, payments) to respect parent dealership
 
 **Frontend - Deal Numbers**:
 1. Display placeholder text for deals without deal numbers (e.g., "Pending customer attachment")

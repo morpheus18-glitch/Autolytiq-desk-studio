@@ -38,14 +38,14 @@ export interface IStorage {
   getUsers(): Promise<User[]>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  createUser(user: InsertUser, dealershipId: string): Promise<User>;
   updateUser(id: string, data: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<User>;
   sessionStore: any;
   
   // Customers
   getCustomer(id: string): Promise<Customer | undefined>;
   searchCustomers(query: string): Promise<Customer[]>;
-  createCustomer(customer: InsertCustomer, dealershipId?: string): Promise<Customer>;
+  createCustomer(customer: InsertCustomer, dealershipId: string): Promise<Customer>;
   updateCustomer(id: string, customer: Partial<InsertCustomer>): Promise<Customer>;
   
   // Vehicles
@@ -110,7 +110,7 @@ export interface IStorage {
   getDeal(id: string): Promise<DealWithRelations | undefined>;
   getDeals(options: { page: number; pageSize: number; search?: string; status?: string }): Promise<{ deals: DealWithRelations[]; total: number; pages: number }>;
   getDealsStats(): Promise<DealStats>;
-  createDeal(deal: InsertDeal): Promise<Deal>;
+  createDeal(deal: InsertDeal, dealershipId: string): Promise<Deal>;
   updateDeal(id: string, deal: Partial<InsertDeal>): Promise<Deal>;
   updateDealState(id: string, state: string): Promise<Deal>;
   attachCustomerToDeal(dealId: string, customerId: string): Promise<Deal>;
@@ -204,8 +204,16 @@ export class DatabaseStorage implements IStorage {
     return user || undefined;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
+  async createUser(insertUser: InsertUser, dealershipId: string): Promise<User> {
+    // dealershipId is now REQUIRED for multi-tenant security
+    if (!dealershipId) {
+      throw new Error('dealershipId is required to create a user');
+    }
+    
+    const [user] = await db.insert(users).values({
+      ...insertUser,
+      dealershipId,
+    }).returning();
     return user;
   }
 
@@ -236,20 +244,15 @@ export class DatabaseStorage implements IStorage {
       .limit(20);
   }
   
-  async createCustomer(insertCustomer: InsertCustomer, dealershipId?: string): Promise<Customer> {
-    // If dealershipId not provided, use the first/default dealership
-    let finalDealershipId = dealershipId;
-    if (!finalDealershipId) {
-      const [defaultDealership] = await db.select().from(dealershipSettings).limit(1);
-      if (!defaultDealership) {
-        throw new Error('No dealership settings found. Please configure dealership settings first.');
-      }
-      finalDealershipId = defaultDealership.id;
+  async createCustomer(insertCustomer: InsertCustomer, dealershipId: string): Promise<Customer> {
+    // dealershipId is now REQUIRED for multi-tenant security
+    if (!dealershipId) {
+      throw new Error('dealershipId is required to create a customer');
     }
     
     const [customer] = await db.insert(customers).values({
       ...insertCustomer,
-      dealershipId: finalDealershipId,
+      dealershipId,
     }).returning();
     return customer;
   }
@@ -649,10 +652,15 @@ export class DatabaseStorage implements IStorage {
     };
   }
   
-  async createDeal(insertDeal: InsertDeal): Promise<Deal> {
+  async createDeal(insertDeal: InsertDeal, dealershipId: string): Promise<Deal> {
+    // dealershipId is now REQUIRED for multi-tenant security
+    if (!dealershipId) {
+      throw new Error('dealershipId is required to create a deal');
+    }
+    
     // Deal number is now nullable - generated only when customer is attached
     const [deal] = await db.insert(deals)
-      .values({ ...insertDeal })
+      .values({ ...insertDeal, dealershipId })
       .returning();
     
     // Auto-create a default scenario for every new deal
@@ -718,8 +726,7 @@ export class DatabaseStorage implements IStorage {
     const deal = currentDeal[0];
     
     // CRITICAL: Verify both deal and customer belong to the same dealership (multi-tenant isolation)
-    // TODO: Remove null checks once dealershipId is properly populated via auth context
-    if (customer.dealershipId && deal.dealershipId && customer.dealershipId !== deal.dealershipId) {
+    if (customer.dealershipId !== deal.dealershipId) {
       throw new Error('Customer and deal must belong to the same dealership');
     }
     

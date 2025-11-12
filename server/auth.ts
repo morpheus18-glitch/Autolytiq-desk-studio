@@ -12,6 +12,7 @@ declare global {
   namespace Express {
     interface User {
       id: string;
+      dealershipId: string; // Multi-tenant isolation - user belongs to one dealership
       username: string;
       fullName: string;
       email: string;
@@ -176,13 +177,21 @@ export function setupAuth(app: Express) {
       // Create user with hashed password - role is ALWAYS "salesperson" for self-registration
       // Only admins can create users with other roles via separate admin endpoint
       const hashedPassword = await hashPassword(password);
+      
+      // Get the first dealership for new user registration
+      // TODO: Allow users to select dealership during registration or assign based on invitation
+      const defaultDealership = await storage.getDealershipSettings();
+      if (!defaultDealership) {
+        return res.status(500).json({ message: 'No dealership settings found. Please configure dealership settings first.' });
+      }
+      
       const user = await storage.createUser({
         username,
         email,
         fullName,
         password: hashedPassword,
         role: "salesperson", // Force role to salesperson - prevent privilege escalation
-      });
+      }, defaultDealership.id);
 
       // Auto-login after registration
       req.login(user, (err) => {

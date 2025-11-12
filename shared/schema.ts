@@ -8,6 +8,7 @@ import { relations } from "drizzle-orm";
 // ===== USERS TABLE =====
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
+  dealershipId: uuid("dealership_id").notNull(), // Multi-tenant isolation - user belongs to one dealership
   username: text("username").notNull().unique(),
   fullName: text("full_name").notNull(),
   email: text("email").notNull().unique(),
@@ -40,7 +41,8 @@ export const users = pgTable("users", {
 }));
 
 export const insertUserSchema = createInsertSchema(users).omit({ 
-  id: true, 
+  id: true,
+  dealershipId: true, // Set by system during registration
   createdAt: true, 
   updatedAt: true,
   emailVerified: true,
