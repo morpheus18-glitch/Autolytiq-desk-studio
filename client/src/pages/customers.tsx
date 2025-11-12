@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PageLayout } from "@/components/page-layout";
+import { CustomerDetailSheet } from "@/components/customer-detail-sheet";
 import {
   Search,
   User,
@@ -38,8 +39,16 @@ function CustomerCard({ customer, onViewDetails }: {
     >
       <div className="bg-gradient-to-br from-primary/10 to-primary/5 p-6">
         <div className="flex items-center gap-3">
-          <div className="w-14 h-14 rounded-full bg-primary/20 backdrop-blur-sm flex items-center justify-center border-2 border-primary/30">
-            <span className="text-lg font-bold text-primary">{initials}</span>
+          <div className="w-14 h-14 rounded-full bg-primary/20 backdrop-blur-sm flex items-center justify-center border-2 border-primary/30 overflow-hidden">
+            {customer.photoUrl ? (
+              <img 
+                src={customer.photoUrl} 
+                alt={`${customer.firstName} ${customer.lastName}`} 
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="text-lg font-bold text-primary">{initials}</span>
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-base leading-tight truncate" data-testid={`text-customer-name-${customer.id}`}>
@@ -120,6 +129,8 @@ export default function Customers() {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [page] = useState(1);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   
   // Fetch customers
   const { data: customers, isLoading, error, refetch} = useQuery<Customer[]>({
@@ -143,9 +154,8 @@ export default function Customers() {
   }, [customers, searchQuery]);
 
   const handleViewDetails = (customer: Customer) => {
-    // Navigate to customer detail or edit page
-    console.log('View customer:', customer.id);
-    // setLocation(`/customers/${customer.id}`);
+    setSelectedCustomer(customer);
+    setDetailSheetOpen(true);
   };
 
   return (
@@ -238,6 +248,13 @@ export default function Customers() {
           )}
         </div>
       </div>
+
+      {/* Customer Detail Sheet */}
+      <CustomerDetailSheet
+        customer={selectedCustomer}
+        open={detailSheetOpen}
+        onOpenChange={setDetailSheetOpen}
+      />
     </PageLayout>
   );
 }

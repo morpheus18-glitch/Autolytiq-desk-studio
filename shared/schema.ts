@@ -146,6 +146,10 @@ export const customers = pgTable("customers", {
   marketingOptIn: boolean("marketing_opt_in").notNull().default(false),
   notes: text("notes"),
   
+  // Photos
+  photoUrl: text("photo_url"), // Customer photo (cropped from license or uploaded)
+  licenseImageUrl: text("license_image_url"), // Full driver's license scan (optional)
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
