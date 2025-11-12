@@ -46,6 +46,7 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 **Password Security**: `crypto/scrypt` hashing, timing-safe comparison.
 **Account Security**: Account lockout, rate limiting on auth endpoints, Helmet middleware for security headers.
 **Role-Based Access**: Four roles (salesperson, sales_manager, finance_manager, admin) with `requireAuth()` and `requireRole()` middleware. Granular permissions and permission-based RBAC (`requirePermission()` middleware).
+**User Management**: Admin-only user management UI at `/settings/users` allows creating users with custom roles via POST `/api/admin/users` endpoint. Enforces password complexity (8+ chars, upper/lower/number), validates unique username/email, logs security events, and maintains multi-tenant isolation using dealershipId.
 **Master Admin Account**: `admin@autolytiq.com` / `Admin123!` (change after first login)
 **Email Configuration**: System emails sent from `support@autolytiq.com` (configured in `server/email-config.ts`)
 
