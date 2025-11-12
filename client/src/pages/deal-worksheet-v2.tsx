@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useRoute, useLocation } from 'wouter';
+import { useRoute, useLocation, useSearch } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Car, User, History, Printer, FileText, DollarSign, Calculator, Receipt, TrendingUp, ArrowLeft } from 'lucide-react';
+import { Car, User, History, Printer, FileText, DollarSign, Calculator, Receipt, TrendingUp, ArrowLeft, Zap } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import type { DealWithRelations, DealScenario } from '@shared/schema';
 import { 
@@ -18,6 +18,7 @@ import { SectionHeader } from '@/components/section-header';
 import { PaymentSummaryPanel } from '@/components/payment-summary-panel';
 import { DeskSection } from '@/components/desk-section';
 import { ScenarioFormProvider, useScenarioForm } from '@/contexts/scenario-form-context';
+import { DealWorksheetProvider, useDealWorksheet } from '@/contexts/deal-worksheet-context';
 import { PricingForm } from '@/components/forms/pricing-form';
 import { TradeForm } from '@/components/forms/trade-form';
 import { FinanceLeaseForm } from '@/components/forms/finance-lease-form';
@@ -41,26 +42,50 @@ const DEAL_STATE_COLORS: Record<string, string> = {
   CANCELLED: 'bg-red-100 text-red-800 border-0 shadow-md rounded-full',
 };
 
+// Wrapper component that handles routing and provides context
 export default function DealWorksheetV2() {
-  const [, params] = useRoute('/deals/:id');
-  const [, setLocation] = useLocation();
+  // Detect which route we're on
+  const [matchNew] = useRoute('/deals/new');
+  const [matchExisting, params] = useRoute('/deals/:id');
+  const searchString = useSearch();
+  
+  // Parse route params
   const dealId = params?.id;
+  const isNewDeal = matchNew;
+  
+  // Parse query params
+  const searchParams = new URLSearchParams(searchString || '');
+  const mode = (searchParams.get('mode') as 'quick' | 'full') || 'full';
+  const vehicleId = searchParams.get('vehicleId') || undefined;
+  const customerId = searchParams.get('customerId') || undefined;
+  
+  return (
+    <DealWorksheetProvider
+      dealId={dealId}
+      initialMode={mode}
+      vehicleId={vehicleId}
+      customerId={customerId}
+    >
+      <DealWorksheetContent />
+    </DealWorksheetProvider>
+  );
+}
+
+// Main worksheet content component
+function DealWorksheetContent() {
+  const { deal, draftDeal, isNew, isLoading, mode, setMode } = useDealWorksheet();
+  const [, setLocation] = useLocation();
   const [activeScenarioId, setActiveScenarioId] = useState<string>('');
   const [vehicleSwitcherOpen, setVehicleSwitcherOpen] = useState(false);
   const [customerSelectorOpen, setCustomerSelectorOpen] = useState(false);
   const setActiveDealId = useStore(state => state.setActiveDealId);
   
-  const { data: deal, isLoading } = useQuery<DealWithRelations>({
-    queryKey: ['/api/deals', dealId],
-    enabled: !!dealId,
-  });
-  
   useEffect(() => {
-    if (dealId) {
-      setActiveDealId(dealId);
+    if (deal?.id) {
+      setActiveDealId(deal.id);
     }
     return () => setActiveDealId(null);
-  }, [dealId, setActiveDealId]);
+  }, [deal?.id, setActiveDealId]);
   
   useEffect(() => {
     if (deal?.scenarios && deal.scenarios.length > 0 && !activeScenarioId) {
@@ -68,7 +93,8 @@ export default function DealWorksheetV2() {
     }
   }, [deal, activeScenarioId]);
   
-  if (isLoading || !deal) {
+  // Show loading skeleton while data is being fetched
+  if (isLoading) {
     return (
       <div className="h-screen flex flex-col bg-background">
         {/* Header Skeleton */}
@@ -107,15 +133,14 @@ export default function DealWorksheetV2() {
     );
   }
   
-  const activeScenario = deal.scenarios.find(s => s.id === activeScenarioId) || deal.scenarios[0];
-  
-  // Handle missing scenarios gracefully
-  if (!activeScenario || deal.scenarios.length === 0) {
+  // For new deals, we may not have a persisted deal yet
+  // For existing deals, we should have a deal by now
+  if (!isNew && !deal) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center space-y-4">
-          <h2 className="text-xl font-semibold">No scenarios found</h2>
-          <p className="text-muted-foreground">This deal doesn't have any scenarios yet. Please create one to continue.</p>
+          <h2 className="text-xl font-semibold">Deal not found</h2>
+          <p className="text-muted-foreground">This deal could not be loaded.</p>
           <Button onClick={() => setLocation('/deals')} data-testid="button-back-to-deals">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Deals
@@ -124,6 +149,9 @@ export default function DealWorksheetV2() {
       </div>
     );
   }
+  
+  // Get active scenario (existing deals only)
+  const activeScenario = deal?.scenarios?.find(s => s.id === activeScenarioId) || deal?.scenarios?.[0];
   
   const header = (
     <div className="flex items-start md:items-center justify-between gap-3 md:gap-4">
