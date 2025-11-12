@@ -2,7 +2,7 @@
 
 ## Overview
 
-The NextGen Automotive Desking Platform is a mobile-first desking tool for automotive dealerships, designed to facilitate rapid deal closing with "value and velocity." It enables salespeople and desk managers to generate payment quotes in 30-45 seconds and structure complete deals in 3-5 minutes. The platform prioritizes speed, simplicity, and an "Apple/Nike quality" UI/UX to ensure quick customer approvals. It supports two main modes: Quick Quote for on-the-lot qualification and Full Desk for comprehensive deal structuring.
+The NextGen Automotive Desking Platform is a mobile-first desking tool for automotive dealerships, designed to facilitate rapid deal closing with "value and velocity." It enables salespeople and desk managers to generate payment quotes in 30-45 seconds and structure complete deals in 3-5 minutes. The platform prioritizes speed, simplicity, and an "Apple/Nike quality" UI/UX to ensure quick customer approvals. It supports two main modes branded as **"Deal Studio"**: **Quick Build** for on-the-lot qualification (30-second payment quotes) and **Full Build** for comprehensive deal structuring (3-5 minute workflows).
 
 ## User Preferences
 
@@ -21,11 +21,11 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 
 **Framework**: React 18+ with TypeScript and Vite.
 **UI Component System**: Shadcn/ui (Radix UI, Tailwind CSS).
-**Design Philosophy**: Mobile-first, responsive design with Carbon Design System principles, glassmorphism, smooth transitions, fluid typography, and "Apple/Nike quality" micro-interactions. Emphasizes data primacy and instant feedback.
+**Design Philosophy**: Mobile-first, responsive design with Carbon Design System principles, glassmorphism, smooth transitions, fluid typography, and "Apple/Nike quality" micro-interactions. Emphasizes data primacy and instant feedback. **Premium studio aesthetics** include gradient headers, neon border utilities (`.neon-border`, `.neon-border-subtle`), premium glow effects for currency (`.premium-glow-currency`) and market data (`.premium-glow-market`), eggshell matte backgrounds (#FAFAF8, #F5F5F3), and backdrop blur effects.
 **State Management**: Zustand (UI state), TanStack Query (server state with caching).
-**Routing**: Wouter.
+**Routing**: Wouter (route `/quick-quote` maintained for backward compatibility).
 **Form Management**: React Hook Form with Zod validation.
-**Key Design Decisions**: Real-time financial calculations (Decimal.js, precision 20, ROUND_HALF_UP), debounced auto-save, optimistic UI, comprehensive empty states, and mobile-optimized components.
+**Key Design Decisions**: Real-time financial calculations (Decimal.js, precision 20, ROUND_HALF_UP), debounced auto-save, optimistic UI, comprehensive empty states, mobile-optimized components, and GPU-friendly glow effects (text-shadow/box-shadow for 60fps performance).
 
 ### Backend
 
@@ -39,7 +39,7 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 ### Data Storage
 
 **Database**: PostgreSQL (Neon serverless with WebSocket support).
-**Schema Design**: UUID primary keys, tables for Users, Customers, Vehicles, Deals (with state machine), Deal Scenarios (JSONB for aftermarket products), Tax Rule Groups, Tax Jurisdictions, Zip Code Lookup, Fee Package Templates, and Audit Log. Monetary values use Decimal type.
+**Schema Design**: UUID primary keys, tables for Users, Customers (`customer_number` unique identifier), Vehicles (`stock_number` unique identifier), Deals (with state machine), Deal Scenarios (JSONB for aftermarket products), Tax Rule Groups, Tax Jurisdictions, Zip Code Lookup, Fee Package Templates, and Audit Log. Monetary values use Decimal type. **Recent Schema Updates**: Added `customerNumber` (nullable, awaiting auto-generation logic) and `stockNumber` (nullable, awaiting auto-generation logic) fields.
 **Fee Package Templates**: Multi-tenant, JSONB arrays for dealerFees, accessories, aftermarketProducts, with seeded starter packages for rapid deal structuring.
 **Scenario Comparison**: Side-by-side comparison modal with diff highlighting for 9 key metrics.
 
