@@ -2,6 +2,7 @@
 import { 
   users, customers, vehicles, tradeVehicles, deals, dealScenarios, auditLog, taxJurisdictions, taxRuleGroups,
   lenders, lenderPrograms, rateRequests, approvedLenders, quickQuotes, quickQuoteContacts, feePackageTemplates,
+  dealershipSettings, permissions, rolePermissions, securityAuditLog,
   type User, type InsertUser,
   type Customer, type InsertCustomer,
   type Vehicle, type InsertVehicle,
@@ -19,6 +20,10 @@ import {
   type QuickQuote, type InsertQuickQuote,
   type QuickQuoteContact, type InsertQuickQuoteContact,
   type FeePackageTemplate,
+  type DealershipSettings, type InsertDealershipSettings,
+  type Permission, type InsertPermission,
+  type RolePermission, type InsertRolePermission,
+  type SecurityAuditLog, type InsertSecurityAuditLog,
 } from "@shared/schema";
 import { db, pool } from "./db";
 import { eq, desc, and, or, like, sql, gte, lte, asc } from "drizzle-orm";
@@ -146,6 +151,22 @@ export interface IStorage {
   // Fee Package Templates
   getFeePackageTemplates(active?: boolean): Promise<FeePackageTemplate[]>;
   getFeePackageTemplate(id: string): Promise<FeePackageTemplate | undefined>;
+  
+  // Security Audit Log
+  createSecurityAuditLog(log: Omit<InsertSecurityAuditLog, "id" | "createdAt">): Promise<SecurityAuditLog>;
+  getSecurityAuditLogs(options: { userId?: string; eventType?: string; limit?: number }): Promise<SecurityAuditLog[]>;
+  
+  // Dealership Settings
+  getDealershipSettings(dealershipId?: string): Promise<DealershipSettings | undefined>;
+  updateDealershipSettings(id: string, settings: Partial<InsertDealershipSettings>): Promise<DealershipSettings>;
+  
+  // Permissions & RBAC
+  getPermissions(): Promise<Permission[]>;
+  getPermission(name: string): Promise<Permission | undefined>;
+  getRolePermissions(role: string): Promise<Permission[]>;
+  
+  // User Preferences (part of updateUser but explicit for clarity)
+  updateUserPreferences(id: string, preferences: any): Promise<User>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -872,6 +893,76 @@ export class DatabaseStorage implements IStorage {
       .from(feePackageTemplates)
       .where(eq(feePackageTemplates.id, id));
     return template || undefined;
+  }
+  
+  // Security Audit Log
+  async createSecurityAuditLog(log: Omit<InsertSecurityAuditLog, "id" | "createdAt">): Promise<SecurityAuditLog> {
+    const [result] = await db.insert(securityAuditLog).values(log).returning();
+    return result;
+  }
+  
+  async getSecurityAuditLogs(options: { userId?: string; eventType?: string; limit?: number }): Promise<SecurityAuditLog[]> {
+    const conditions = [];
+    if (options.userId) {
+      conditions.push(eq(securityAuditLog.userId, options.userId));
+    }
+    if (options.eventType) {
+      conditions.push(eq(securityAuditLog.eventType, options.eventType));
+    }
+    
+    return await db.select()
+      .from(securityAuditLog)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(securityAuditLog.createdAt))
+      .limit(options.limit || 100);
+  }
+  
+  // Dealership Settings
+  async getDealershipSettings(dealershipId: string = "default"): Promise<DealershipSettings | undefined> {
+    const [result] = await db.select()
+      .from(dealershipSettings)
+      .where(eq(dealershipSettings.dealershipId, dealershipId));
+    return result || undefined;
+  }
+  
+  async updateDealershipSettings(id: string, settings: Partial<InsertDealershipSettings>): Promise<DealershipSettings> {
+    const [result] = await db.update(dealershipSettings)
+      .set({ ...settings, updatedAt: new Date() })
+      .where(eq(dealershipSettings.id, id))
+      .returning();
+    return result;
+  }
+  
+  // Permissions & RBAC
+  async getPermissions(): Promise<Permission[]> {
+    return await db.select().from(permissions).orderBy(asc(permissions.category), asc(permissions.name));
+  }
+  
+  async getPermission(name: string): Promise<Permission | undefined> {
+    const [result] = await db.select()
+      .from(permissions)
+      .where(eq(permissions.name, name));
+    return result || undefined;
+  }
+  
+  async getRolePermissions(role: string): Promise<Permission[]> {
+    const results = await db.select({
+      id: permissions.id,
+      name: permissions.name,
+      description: permissions.description,
+      category: permissions.category,
+      createdAt: permissions.createdAt,
+    })
+      .from(rolePermissions)
+      .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
+      .where(eq(rolePermissions.role, role));
+    
+    return results;
+  }
+  
+  // User Preferences
+  async updateUserPreferences(id: string, prefs: any): Promise<User> {
+    return await this.updateUser(id, { preferences: prefs });
   }
 }
 
