@@ -190,7 +190,7 @@ export default function Dashboard() {
         </div>
         
         {/* Secondary Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
           {/* Revenue */}
           <Card className="border-none shadow-md hover-elevate transition-all bg-gradient-to-br from-card to-card/80">
             <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-3">
@@ -249,7 +249,7 @@ export default function Dashboard() {
         {/* Quick Actions */}
         <div>
           <h2 className="text-lg font-bold mb-4 text-foreground">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             <Card className="border-none shadow-md hover-elevate active-elevate-2 cursor-pointer transition-all group bg-gradient-to-br from-card to-card/80" onClick={() => setLocation('/deals')}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-3 text-base group-hover:text-primary transition-colors">
