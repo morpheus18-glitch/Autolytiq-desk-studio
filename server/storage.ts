@@ -26,7 +26,7 @@ import {
   type SecurityAuditLog, type InsertSecurityAuditLog,
 } from "@shared/schema";
 import { db, pool } from "./db";
-import { eq, desc, and, or, like, sql, gte, lte, asc } from "drizzle-orm";
+import { eq, desc, and, or, like, sql, gte, lte, gt, asc } from "drizzle-orm";
 import session from "express-session";
 import { RedisStore } from "connect-redis";
 import { createClient } from "redis";
@@ -75,6 +75,7 @@ export interface IStorage {
   getUsers(dealershipId: string): Promise<User[]>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByResetToken(hashedToken: string): Promise<User | undefined>;
   createUser(user: InsertUser, dealershipId: string): Promise<User>;
   updateUser(id: string, data: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<User>;
   sessionStore: any;
@@ -242,6 +243,22 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
+  }
+
+  async getUserByResetToken(hashedToken: string): Promise<User | undefined> {
+    // SECURITY: This method is safe for cross-dealership lookup because:
+    // 1. Reset tokens are cryptographically hashed and time-bounded secrets
+    // 2. Only used in unauthenticated password reset flow
+    // 3. Token expires after 1 hour
+    const [user] = await db.select()
+      .from(users)
+      .where(
+        and(
+          eq(users.resetToken, hashedToken),
+          gt(users.resetTokenExpires, new Date())
+        )
+      );
     return user || undefined;
   }
 

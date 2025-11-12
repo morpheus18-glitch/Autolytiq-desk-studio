@@ -10,6 +10,7 @@ import {
   generateQrCodeUrl,
   verifyTotp
 } from "./auth-helpers";
+import { sendEmail, generatePasswordResetEmail } from "./email-config";
 import { z } from "zod";
 import QRCode from "qrcode";
 
@@ -258,12 +259,26 @@ export function setupAuthRoutes(app: Express) {
         true
       );
       
-      // TODO: Send email with reset link containing the resetToken
-      // When email service is implemented, use: sendEmail() from email-config.ts
-      // From: support@autolytiq.com
-      console.log(`Password reset token for ${email}: ${resetToken}`);
-      console.log(`Reset link: http://localhost:5000/reset-password?token=${resetToken}`);
-      console.log(`Note: Email would be sent from support@autolytiq.com`);
+      // Generate reset URL (use production URL in deployed environment)
+      const baseUrl = process.env.REPLIT_DEPLOYMENT 
+        ? `https://${process.env.REPL_SLUG}.${process.env.REPLIT_DEPLOYMENT}` 
+        : "http://localhost:5000";
+      const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
+      
+      // Send password reset email
+      try {
+        const emailContent = generatePasswordResetEmail(resetUrl);
+        await sendEmail({
+          to: user.email,
+          subject: emailContent.subject,
+          html: emailContent.html,
+          text: emailContent.text,
+        });
+        console.log(`✅ Password reset email sent to ${email}`);
+      } catch (emailError) {
+        console.error("Failed to send password reset email:", emailError);
+        // Continue anyway - don't expose email sending failures to user
+      }
       
       res.json({ message: "If that email exists, a reset link has been sent" });
     } catch (error: any) {
@@ -285,11 +300,8 @@ export function setupAuthRoutes(app: Express) {
       
       const hashedToken = hashResetToken(token);
       
-      // Find user with matching reset token
-      const users = await storage.getUsers();
-      const user = users.find(
-        (u) => u.resetToken === hashedToken && u.resetTokenExpires && u.resetTokenExpires > new Date()
-      );
+      // Find user with matching reset token (safe cross-dealership lookup for password reset)
+      const user = await storage.getUserByResetToken(hashedToken);
       
       if (!user) {
         await logSecurityEvent(

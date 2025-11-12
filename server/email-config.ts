@@ -1,5 +1,51 @@
 // Email configuration for Autolytiq platform
-// This will be used when integrating an email service (e.g., SendGrid, AWS SES, Resend)
+// Integrated with Resend for transactional email delivery
+
+import { Resend } from 'resend';
+
+let connectionSettings: any;
+
+async function getCredentials() {
+  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
+  const xReplitToken = process.env.REPL_IDENTITY 
+    ? 'repl ' + process.env.REPL_IDENTITY 
+    : process.env.WEB_REPL_RENEWAL 
+    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
+    : null;
+
+  if (!xReplitToken) {
+    throw new Error('X_REPLIT_TOKEN not found for repl/depl');
+  }
+
+  connectionSettings = await fetch(
+    'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=resend',
+    {
+      headers: {
+        'Accept': 'application/json',
+        'X_REPLIT_TOKEN': xReplitToken
+      }
+    }
+  ).then(res => res.json()).then(data => data.items?.[0]);
+
+  if (!connectionSettings || (!connectionSettings.settings.api_key)) {
+    throw new Error('Resend not connected');
+  }
+  return {
+    apiKey: connectionSettings.settings.api_key, 
+    fromEmail: connectionSettings.settings.from_email
+  };
+}
+
+// WARNING: Never cache this client.
+// Access tokens expire, so a new client must be created each time.
+// Always call this function again to get a fresh client.
+async function getUncachableResendClient() {
+  const credentials = await getCredentials();
+  return {
+    client: new Resend(credentials.apiKey),
+    fromEmail: credentials.fromEmail
+  };
+}
 
 export const emailConfig = {
   // Sender email address for all system emails
@@ -10,42 +56,140 @@ export const emailConfig = {
   templates: {
     passwordReset: {
       subject: "Reset Your Autolytiq Password",
-      // Template will be implemented when email service is added
     },
     registration: {
       subject: "Welcome to Autolytiq",
-      // Template will be implemented when email service is added
     },
     emailVerification: {
       subject: "Verify Your Autolytiq Email",
-      // Template will be implemented when email service is added
     },
     twoFactorSetup: {
       subject: "Two-Factor Authentication Setup",
-      // Template will be implemented when email service is added
     },
   },
 };
 
-// Placeholder email sending function
-// TODO: Replace with actual email service integration (SendGrid, AWS SES, Resend, etc.)
+// Send email via Resend
 export async function sendEmail(options: {
   to: string;
   subject: string;
   html?: string;
   text?: string;
 }) {
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-  console.log("📧 EMAIL (Not sent - email service not configured)");
-  console.log(`From: ${emailConfig.fromName} <${emailConfig.from}>`);
-  console.log(`To: ${options.to}`);
-  console.log(`Subject: ${options.subject}`);
-  if (options.text) {
-    console.log(`\nBody:\n${options.text}`);
+  try {
+    const { client, fromEmail } = await getUncachableResendClient();
+    
+    // Use the configured from email from Resend connection, or fall back to our default
+    const finalFromEmail = fromEmail || emailConfig.from;
+    
+    const emailPayload: any = {
+      from: `${emailConfig.fromName} <${finalFromEmail}>`,
+      to: options.to,
+      subject: options.subject,
+    };
+    
+    // Add html or text if provided
+    if (options.html) {
+      emailPayload.html = options.html;
+    }
+    if (options.text) {
+      emailPayload.text = options.text;
+    }
+    
+    const result = await client.emails.send(emailPayload);
+
+    console.log("✅ Email sent successfully via Resend");
+    console.log(`To: ${options.to}`);
+    console.log(`Subject: ${options.subject}`);
+    console.log(`Resend ID: ${result.data?.id}`);
+    
+    return result;
+  } catch (error) {
+    console.error("❌ Failed to send email via Resend:", error);
+    
+    // SECURITY: Only log metadata, never the email body (contains reset tokens, sensitive data)
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log("📧 EMAIL FAILED TO SEND");
+    console.log(`To: ${options.to}`);
+    console.log(`Subject: ${options.subject}`);
+    console.log("Body: [REDACTED - contains sensitive information]");
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    
+    throw error;
   }
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-  
-  // In production, this would actually send the email via your chosen service
-  // Example with SendGrid:
-  // await sgMail.send({ from: emailConfig.from, ...options });
+}
+
+// Helper function to generate password reset email HTML
+export function generatePasswordResetEmail(resetUrl: string) {
+  return {
+    subject: emailConfig.templates.passwordReset.subject,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Reset Your Password</title>
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+            <h1 style="color: white; margin: 0; font-size: 28px;">Autolytiq</h1>
+          </div>
+          
+          <div style="background: #f9f9f9; padding: 40px 30px; border-radius: 0 0 8px 8px;">
+            <h2 style="color: #333; margin-top: 0;">Reset Your Password</h2>
+            
+            <p style="font-size: 16px; color: #555;">
+              You requested to reset your password. Click the button below to create a new password:
+            </p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${resetUrl}" 
+                 style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                        color: white; 
+                        padding: 14px 32px; 
+                        text-decoration: none; 
+                        border-radius: 6px; 
+                        font-weight: 600; 
+                        display: inline-block;
+                        font-size: 16px;">
+                Reset Password
+              </a>
+            </div>
+            
+            <p style="font-size: 14px; color: #777;">
+              This link will expire in 1 hour for security reasons.
+            </p>
+            
+            <p style="font-size: 14px; color: #777;">
+              If you didn't request this, you can safely ignore this email.
+            </p>
+            
+            <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+            
+            <p style="font-size: 12px; color: #999; text-align: center;">
+              ${emailConfig.fromName}<br>
+              This is an automated email, please do not reply.
+            </p>
+          </div>
+        </body>
+      </html>
+    `,
+    text: `
+Reset Your Password
+
+You requested to reset your password for your Autolytiq account.
+
+Click this link to create a new password:
+${resetUrl}
+
+This link will expire in 1 hour for security reasons.
+
+If you didn't request this, you can safely ignore this email.
+
+---
+${emailConfig.fromName}
+This is an automated email, please do not reply.
+    `.trim(),
+  };
 }
