@@ -1,20 +1,42 @@
 import { db } from './db';
 import { users, customers, vehicles, taxJurisdictions, deals, dealScenarios } from '@shared/schema';
+import { hashPassword } from './auth';
 
 async function seed() {
   console.log('🌱 Seeding database...');
   
   try {
+    // Create demo admin user with password (DEVELOPMENT ONLY)
+    // WARNING: Never run this seed in production environments
+    if (process.env.NODE_ENV === 'development') {
+      const demoPassword = await hashPassword('Demo123!');
+      const [demo] = await db.insert(users).values({
+        id: '00000000-0000-0000-0000-000000000001',
+        username: 'demo',
+        fullName: 'Demo Admin',
+        email: 'demo@example.com',
+        password: demoPassword,
+        role: 'admin',
+      }).returning();
+      console.log('✓ Created demo admin user (development only)');
+    }
+    
     // Create users
+    const salespersonPassword = await hashPassword('Password123!');
     const [salesperson] = await db.insert(users).values({
       username: 'john.smith',
       fullName: 'John Smith',
+      email: 'john.smith@dealership.com',
+      password: salespersonPassword,
       role: 'salesperson',
     }).returning();
     
+    const managerPassword = await hashPassword('Password123!');
     const [manager] = await db.insert(users).values({
       username: 'sarah.johnson',
       fullName: 'Sarah Johnson',
+      email: 'sarah.johnson@dealership.com',
+      password: managerPassword,
       role: 'sales_manager',
     }).returning();
     

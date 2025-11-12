@@ -61,7 +61,7 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 - User preferences: JSONB storage for theme, notifications, default views with GET/PUT API
 - Dealership settings: Multi-tenant ready with branding, contact, tax defaults, GET/PUT API (admin-only)
 - Security audit trail: Comprehensive logging of all auth events (login, logout, MFA, password reset, settings changes) with IP, user agent, metadata to security_audit_log table
-- Demo user: username "demo", password "Demo123!", role "admin" for testing
+- Demo user: username "demo", password "Demo123!", role "admin" for testing (DEVELOPMENT ONLY - created by seed.ts in NODE_ENV=development)
 
 ## Recent Changes (November 2025)
 
