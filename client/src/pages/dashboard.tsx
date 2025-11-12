@@ -90,7 +90,7 @@ export default function Dashboard() {
               </div>
               <div>
                 <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-                  Command Center
+                  Dashboard  
                 </h1>
                 <p className="text-sm text-muted-foreground font-medium mt-0.5">
                   Your dealership at a glance
