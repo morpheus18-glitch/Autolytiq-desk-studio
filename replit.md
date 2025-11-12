@@ -111,19 +111,21 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 
 ## Remaining TODO Items
 
-**Critical - Multi-tenant Data Isolation** (Partially Complete):
-1. ✅ **COMPLETED**: Added dealershipId to users and customers tables
-2. ✅ **COMPLETED**: Made dealershipId mandatory in createCustomer and createUser
-3. ✅ **COMPLETED**: Injected dealershipId from req.user in POST /api/customers
-4. ✅ **COMPLETED**: Injected dealershipId from req.user in POST /api/deals
-5. ✅ **COMPLETED**: Backfilled all existing customers with correct dealershipId
-6. ✅ **COMPLETED**: Removed temporary null checks from attachCustomerToDeal
-7. ✅ **COMPLETED**: Fixed quick-quote conversion to use req.user.dealershipId and validate salesperson dealership
-8. ✅ **COMPLETED**: Added requireAuth middleware to POST /api/customers, POST /api/deals, POST /api/quick-quotes/:id/convert
-9. ✅ **COMPLETED**: Added requireAuth to read endpoints (GET /api/customers, /api/deals, etc.)
-10. **CRITICAL TODO**: Add dealership filtering to ALL read queries (customers, deals, scenarios, etc.) - currently returns all data across dealerships
-11. **CRITICAL TODO**: Improve registration to require invitation-bound dealership or disable public signup when multiple dealerships exist (currently assigns to first dealership)
-12. **TODO**: Add validation for child entities (scenarios, trades, payments) to respect parent dealership
+**Critical - Multi-tenant Data Isolation** (✅ FULLY COMPLETED - Nov 12, 2025):
+1. ✅ **COMPLETED**: Added dealershipId to users, customers, deals, and vehicles tables
+2. ✅ **COMPLETED**: Made dealershipId mandatory in createCustomer, createUser, createDeal, createVehicle
+3. ✅ **COMPLETED**: Injected dealershipId from req.user in ALL write endpoints (POST /api/customers, /api/deals, /api/vehicles)
+4. ✅ **COMPLETED**: Backfilled all existing customers (39 records) and vehicles (44 records) with correct dealershipId
+5. ✅ **COMPLETED**: Added requireAuth middleware to ALL read and write endpoints (users, customers, deals, vehicles, trades, audit)
+6. ✅ **COMPLETED**: Added dealershipId filtering to ALL read queries (users, customers, deals, vehicles) - full tenant isolation enforced
+7. ✅ **COMPLETED**: Changed all cross-tenant access denials from 403 to 404 to prevent resource enumeration
+8. ✅ **COMPLETED**: Updated IStorage interface signatures for all methods to require/filter by dealershipId
+9. ✅ **COMPLETED**: Added foreign key constraints with CASCADE on delete for users, customers, deals, vehicles
+10. ✅ **COMPLETED**: Created composite unique index on vehicles (dealership_id, stock_number) for tenant-scoped uniqueness
+11. ✅ **COMPLETED**: All storage methods now enforce dealershipId filtering in WHERE clauses
+12. **TODO**: Improve registration to require invitation-bound dealership or disable public signup when multiple dealerships exist (currently assigns to first dealership)
+13. **TODO**: Add validation for child entities (scenarios, trades, payments) to respect parent dealership
+14. **TODO**: Add composite indexes on (dealershipId, searchable_field) for customers/deals tables for query performance
 
 **Frontend - Deal Numbers** (Completed Nov 12, 2025):
 1. ✅ Display placeholder text "Pending customer" (italic) in deal-worksheet-v2.tsx and deals-list.tsx when dealNumber is null
