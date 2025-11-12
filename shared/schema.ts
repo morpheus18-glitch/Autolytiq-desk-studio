@@ -80,6 +80,7 @@ export type RegisterData = z.infer<typeof registerSchema>;
 // ===== CUSTOMERS TABLE =====
 export const customers = pgTable("customers", {
   id: uuid("id").primaryKey().defaultRandom(),
+  dealershipId: uuid("dealership_id").notNull(), // Multi-tenant isolation - must match deal's dealership
   customerNumber: text("customer_number").unique(), // Auto-generated identifier (e.g., "C-001234"), nullable until generation logic deployed
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
@@ -115,6 +116,7 @@ export const customers = pgTable("customers", {
 
 export const insertCustomerSchema = createInsertSchema(customers).omit({ 
   id: true, 
+  dealershipId: true, // Set by system
   customerNumber: true, // Auto-generated
   createdAt: true, 
   updatedAt: true 

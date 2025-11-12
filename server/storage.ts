@@ -704,6 +704,12 @@ export class DatabaseStorage implements IStorage {
     
     const deal = currentDeal[0];
     
+    // CRITICAL: Verify both deal and customer belong to the same dealership (multi-tenant isolation)
+    // TODO: Remove null checks once dealershipId is properly populated via auth context
+    if (customer.dealershipId && deal.dealershipId && customer.dealershipId !== deal.dealershipId) {
+      throw new Error('Customer and deal must belong to the same dealership');
+    }
+    
     // Generate deal number if not already set
     let dealNumber = deal.dealNumber;
     if (!dealNumber) {

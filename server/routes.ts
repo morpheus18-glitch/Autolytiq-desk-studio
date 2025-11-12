@@ -848,7 +848,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(deal);
     } catch (error: any) {
-      res.status(400).json({ error: error.message || 'Failed to attach customer to deal' });
+      // Return 403 for dealership mismatch, 404 for not found, 400 for other errors
+      if (error.message?.includes('same dealership')) {
+        res.status(403).json({ error: 'Forbidden' });
+      } else if (error.message?.includes('not found')) {
+        res.status(404).json({ error: 'Not found' });
+      } else {
+        res.status(400).json({ error: error.message || 'Failed to attach customer to deal' });
+      }
     }
   });
   
