@@ -55,7 +55,7 @@ export function TaxJurisdictionSelector({
 
   // Sync zipCode state when initialZipCode prop changes (for async customer data)
   useEffect(() => {
-    if (initialZipCode && initialZipCode !== zipCode) {
+    if (initialZipCode !== undefined && initialZipCode !== zipCode) {
       setZipCode(initialZipCode);
       previousZipCodeRef.current = initialZipCode;
       userChangedZipRef.current = false; // This is a prop sync, not user change
@@ -65,17 +65,14 @@ export function TaxJurisdictionSelector({
   // Clear selection ONLY when user manually changes ZIP (not prop syncs)
   useEffect(() => {
     const zipChanged = previousZipCodeRef.current !== debouncedZipCode;
-    previousZipCodeRef.current = debouncedZipCode;
     
     if (zipChanged && userChangedZipRef.current && debouncedZipCode.length === 5 && !showManualSelect) {
       setSelectedId(undefined);
       onSelect(null);
+      userChangedZipRef.current = false; // Reset only after clearing
     }
     
-    // Reset the flag after processing
-    if (zipChanged) {
-      userChangedZipRef.current = false;
-    }
+    previousZipCodeRef.current = debouncedZipCode;
   }, [debouncedZipCode, showManualSelect, onSelect]);
 
   // Auto-select jurisdiction when ZIP data is successfully received
