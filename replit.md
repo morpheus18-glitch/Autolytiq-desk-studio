@@ -100,6 +100,41 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 - All routes properly protected: Dashboard, deals, inventory, customers, analytics, VIN decoder, credit center all wrapped in ProtectedRoute
 - E2E tested: Registration flow, auto-login, logout/login cycle, protected route access, all verified working without page reload
 
+**Advanced Auth Features Completion (November 12, 2025)**:
+**7 Production-Ready Enterprise Features COMPLETE + E2E TESTED**:
+
+**Backend Implementation**:
+1. Password reset flow: Token-based with crypto hashing, 1-hour expiry, email abstraction ready for SendGrid/Resend
+2. 2FA/MFA system: TOTP-based (otplib + qrcode), enforced on login via 2-step flow with pending session state
+3. Granular permissions: 20 permissions across 5 categories (deals, inventory, customers, settings, users)
+4. Permission-based RBAC: requirePermission() middleware for fine-grained access control beyond role-based
+5. User preferences API: JSONB storage with GET/PUT endpoints for theme, notifications, default views
+6. Dealership settings API: Multi-tenant ready with branding, contact, tax defaults (admin-only via requireRole)
+7. Security audit trail: Comprehensive logging to security_audit_log table with IP, user agent, metadata for all auth events
+
+**Frontend Implementation**:
+1. Account Settings page (/settings/account): User profile display, preferences toggles (email/deal notifications), 2FA setup/disable with QR code dialog
+2. Password Reset flow: Request page (/auth/password-reset) and confirm page (/auth/password-reset/:token), both public routes with form validation
+3. Dealership Settings page (/settings/dealership): Admin-only access with redirect guard, contact/branding/financial defaults management
+4. Navigation integration: Account Settings visible to all users in mobile nav, Dealership Settings conditional for admins only
+5. All features use TanStack Query + react-hook-form + zod validation, comprehensive data-testid coverage
+
+**Security Verification**:
+- Rate limiters execute BEFORE auth routes (auth: 10/min, API: 100/min)
+- MFA enforcement: Login returns requires2fa flag, 2-step flow with session-based pending state
+- Account lockout: 5 failed attempts → 15min lockout with timing-safe comparison
+- Helmet security headers: CSP, HSTS (1 year), frameguard, XSS filter, MIME sniffing protection
+- Password hashing: crypto/scrypt with 128-byte salt, 64-byte output, timing-safe comparison
+
+**E2E Test Results (ALL PASSED)**:
+- Registration → auto-login → dashboard access verified
+- 2FA setup → QR code generation → TOTP verification → mfa_enabled=true in DB
+- Logout → login with MFA enforcement → requires2fa response → TOTP challenge → login completes
+- Preferences navigation and updates with toast notifications
+- Password reset request flow with token generation
+- Dealership settings accessible for admin users
+- No critical issues, production-ready per architect final review
+
 ## External Dependencies
 
 **Database**: Neon serverless PostgreSQL, @neondatabase/serverless, Drizzle ORM.
