@@ -82,7 +82,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const customers = await storage.searchCustomers('');
       res.json(customers);
-    } catch (error) {
+    } catch (error: any) {
+      console.error('[GET /api/customers] Error:', error.message, error.stack);
       res.status(500).json({ error: 'Failed to get customers' });
     }
   });
