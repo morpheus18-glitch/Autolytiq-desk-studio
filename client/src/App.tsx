@@ -56,12 +56,12 @@ function Router() {
         </ProtectedRoute>
       </Route>
       <Route path="/quick-quote">
-        <ProtectedRoute>
-          <QuickQuote />
-        </ProtectedRoute>
+        <Redirect to="/deals/new?mode=quick" />
       </Route>
       <Route path="/deals/new">
-        <Redirect to="/" />
+        <ProtectedRoute>
+          <DealWorksheetV2 />
+        </ProtectedRoute>
       </Route>
       <Route path="/inventory">
         <ProtectedRoute>

@@ -63,28 +63,24 @@ export function DealCreationDialog({ open, onOpenChange, vehicleId, customerId }
     },
   });
   
-  const handleDealStudio = () => {
+  const handleQuickBuild = () => {
     const params = new URLSearchParams();
-    if (vehicleId) {
-      // If we have vehicleId, we should fetch the vehicle price
-      params.append('vehicleId', vehicleId);
-    }
+    params.append('mode', 'quick');
+    if (vehicleId) params.append('vehicleId', vehicleId);
+    if (customerId) params.append('customerId', customerId);
+    
     onOpenChange(false);
-    setLocation(`/quick-quote${params.toString() ? `?${params.toString()}` : ''}`);
+    setLocation(`/deals/new?${params.toString()}`);
   };
   
-  const handleFullDesk = async () => {
-    const payload: { vehicleId?: string; customerId?: string } = {};
-    if (vehicleId) payload.vehicleId = vehicleId;
-    if (customerId) payload.customerId = customerId;
+  const handleFullBuild = () => {
+    const params = new URLSearchParams();
+    params.append('mode', 'full');
+    if (vehicleId) params.append('vehicleId', vehicleId);
+    if (customerId) params.append('customerId', customerId);
     
-    const deal = await createDealMutation.mutateAsync(payload);
     onOpenChange(false);
-    toast({
-      title: 'Deal created',
-      description: 'Opening full desk worksheet...',
-    });
-    setLocation(`/deals/${deal.id}`);
+    setLocation(`/deals/new?${params.toString()}`);
   };
   
   return (
@@ -102,8 +98,8 @@ export function DealCreationDialog({ open, onOpenChange, vehicleId, customerId }
         <div className="grid gap-3 py-4">
           {/* Deal Studio - Quick Build */}
           <Card 
-            className={`cursor-pointer hover-elevate active-elevate-2 transition-all neon-border-subtle ${usersLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-            onClick={usersLoading ? undefined : handleDealStudio}
+            className="cursor-pointer hover-elevate active-elevate-2 transition-all neon-border-subtle"
+            onClick={handleQuickBuild}
             data-testid="card-deal-studio-quick"
           >
             <CardContent className="p-4 bg-gradient-to-br from-primary/5 to-primary/10">
@@ -123,8 +119,8 @@ export function DealCreationDialog({ open, onOpenChange, vehicleId, customerId }
           
           {/* Deal Studio - Full Build */}
           <Card 
-            className={`cursor-pointer hover-elevate active-elevate-2 transition-all neon-border-subtle ${usersLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-            onClick={usersLoading ? undefined : handleFullDesk}
+            className="cursor-pointer hover-elevate active-elevate-2 transition-all neon-border-subtle"
+            onClick={handleFullBuild}
             data-testid="card-deal-studio-full"
           >
             <CardContent className="p-4 bg-gradient-to-br from-accent/5 to-accent/10">
