@@ -1,10 +1,8 @@
-import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PageLayout } from '@/components/page-layout';
-import { DealCreationDialog } from '@/components/deal-creation-dialog';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -34,7 +32,6 @@ type DealStats = {
 export default function Dashboard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [dealDialogOpen, setDealDialogOpen] = useState(false);
   
   // Get users for salesperson
   const { data: users, isLoading: usersLoading } = useQuery<UserType[]>({
@@ -64,7 +61,7 @@ export default function Dashboard() {
       queryClient.invalidateQueries({ queryKey: ['/api/deals/stats'] });
       toast({
         title: 'Deal created',
-        description: 'Opening deal worksheet...',
+        description: 'Opening Deal Studio...',
       });
       setLocation(`/deals/${deal.id}`);
     },
@@ -77,7 +74,7 @@ export default function Dashboard() {
     },
   });
   
-  const handleDesking = () => {
+  const handleStartDeal = () => {
     createDealMutation.mutate();
   };
   
@@ -99,12 +96,13 @@ export default function Dashboard() {
             <div className="hidden md:flex items-center gap-2">
               <Button 
                 size="lg"
-                onClick={() => setDealDialogOpen(true)}
+                onClick={handleStartDeal}
+                disabled={createDealMutation.isPending}
                 data-testid="button-start-deal"
                 className="gap-2"
               >
-                <FileText className="w-4 h-4" />
-                Start Deal
+                <Zap className="w-4 h-4" />
+                {createDealMutation.isPending ? 'Creating...' : 'Start Deal'}
               </Button>
             </div>
           </div>
@@ -275,11 +273,6 @@ export default function Dashboard() {
           </Card>
         </div>
       </div>
-      
-      <DealCreationDialog 
-        open={dealDialogOpen}
-        onOpenChange={setDealDialogOpen}
-      />
     </PageLayout>
   );
 }

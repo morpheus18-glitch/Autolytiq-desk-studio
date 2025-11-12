@@ -21,6 +21,7 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 
 **Framework**: React 18+ with TypeScript and Vite.
 **UI Component System**: Shadcn/ui (Radix UI, Tailwind CSS).
+**Navigation**: Responsive navigation system with desktop sidebar (md+ breakpoints) and mobile bottom navigation (<md). Both implementations maintain feature parity with all navigation items: Dashboard, Deals, Inventory, Add Vehicle, Customers, Analytics, Credit Center, VIN Decoder, Settings, and role-based access control.
 **Design Philosophy**: Mobile-first, responsive design with Carbon Design System principles, glassmorphism, smooth transitions, fluid typography, and "Apple/Nike quality" micro-interactions. Emphasizes data primacy, instant feedback, and premium studio aesthetics (gradient headers, neon borders, glow effects, eggshell matte backgrounds, backdrop blur).
 **State Management**: Zustand (UI state), TanStack Query (server state with caching).
 **Form Management**: React Hook Form with Zod validation.
