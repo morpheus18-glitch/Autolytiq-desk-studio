@@ -1,6 +1,7 @@
 import { Express, Request, Response } from "express";
 import { storage } from "./storage";
 import { requireAuth, requireRole, requirePermission } from "./middleware";
+import { hashPassword } from "./auth";
 import { 
   logSecurityEvent, 
   generateResetToken, 
@@ -58,6 +59,20 @@ const resetPasswordSchema = z.object({
 
 const verify2faSchema = z.object({
   token: z.string().length(6, "TOTP token must be 6 digits"),
+});
+
+const createUserRequestSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  email: z.string().email("Invalid email address"),
+  fullName: z.string().min(1, "Full name is required"),
+  password: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number"),
+  role: z.enum(["admin", "finance_manager", "sales_manager", "salesperson"], {
+    errorMap: () => ({ message: "Invalid role" })
+  }),
 });
 
 export function setupAuthRoutes(app: Express) {
@@ -206,6 +221,66 @@ export function setupAuthRoutes(app: Express) {
       res.json(permissions);
     } catch (error: any) {
       res.status(500).json({ error: "Failed to get user permissions" });
+    }
+  });
+
+  // ===== ADMIN USER MANAGEMENT =====
+  app.post("/api/admin/users", requireAuth, requireRole("admin"), async (req: Request, res: Response) => {
+    try {
+      const adminUser = req.user as Express.User;
+      const { username, email, fullName, password, role } = createUserRequestSchema.parse(req.body);
+      
+      // Check if username exists
+      const existingUsername = await storage.getUserByUsername(username);
+      if (existingUsername) {
+        return res.status(400).json({ error: "Username already exists" });
+      }
+      
+      // Check if email exists
+      const existingEmail = await storage.getUserByEmail(email);
+      if (existingEmail) {
+        return res.status(400).json({ error: "Email already exists" });
+      }
+      
+      // Hash password
+      const hashedPassword = await hashPassword(password);
+      
+      // Get dealership ID from authenticated admin user
+      const dealershipId = adminUser.dealershipId;
+      if (!dealershipId) {
+        return res.status(403).json({ error: "Admin user must belong to a dealership" });
+      }
+      
+      // Create user
+      const newUser = await storage.createUser({
+        username,
+        email,
+        fullName,
+        password: hashedPassword,
+        role,
+      }, dealershipId);
+      
+      // Log security event
+      await logSecurityEvent(
+        "user_created",
+        "account_management",
+        req,
+        { 
+          createdUserId: newUser.id,
+          createdUserRole: newUser.role,
+          createdByUserId: adminUser.id 
+        }
+      );
+      
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = newUser;
+      
+      res.status(201).json(userWithoutPassword);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: "Validation failed", details: error.errors });
+      }
+      res.status(500).json({ error: error.message || "Failed to create user" });
     }
   });
 

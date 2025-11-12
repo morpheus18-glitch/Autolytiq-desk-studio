@@ -26,6 +26,7 @@ import {
   Settings,
   Building2,
   LogOut,
+  UserCog,
 } from 'lucide-react';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -55,6 +56,7 @@ const toolsNavItems: NavItem[] = [
 const settingsNavItems: NavItem[] = [
   { label: 'Account Settings', path: '/settings/account', icon: Settings, testId: 'nav-account-settings' },
   { label: 'Dealership Settings', path: '/settings/dealership', icon: Building2, testId: 'nav-dealership-settings' },
+  { label: 'User Management', path: '/settings/users', icon: UserCog, testId: 'nav-user-management' },
 ];
 
 export function AppSidebar() {
@@ -237,8 +239,8 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {settingsNavItems.map((item) => {
-                // Hide dealership settings if not admin
-                if (item.path === '/settings/dealership' && currentUser?.role !== 'admin') {
+                // Hide dealership settings and user management if not admin
+                if ((item.path === '/settings/dealership' || item.path === '/settings/users') && currentUser?.role !== 'admin') {
                   return null;
                 }
                 

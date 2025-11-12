@@ -23,6 +23,7 @@ import Login from "@/pages/login";
 import Register from "@/pages/register";
 import AccountSettings from "@/pages/account-settings";
 import DealershipSettings from "@/pages/dealership-settings";
+import UserManagement from "@/pages/user-management";
 import PasswordResetRequest from "@/pages/password-reset-request";
 import PasswordResetConfirm from "@/pages/password-reset-confirm";
 import NotFound from "@/pages/not-found";
@@ -50,6 +51,11 @@ function Router() {
       <Route path="/settings/dealership">
         <ProtectedRoute>
           <DealershipSettings />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/users">
+        <ProtectedRoute>
+          <UserManagement />
         </ProtectedRoute>
       </Route>
       <Route path="/deals">
