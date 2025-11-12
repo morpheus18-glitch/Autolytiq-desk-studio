@@ -18,6 +18,10 @@ import Analytics from "@/pages/analytics";
 import CreditCenter from "@/pages/credit-center";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
+import AccountSettings from "@/pages/account-settings";
+import DealershipSettings from "@/pages/dealership-settings";
+import PasswordResetRequest from "@/pages/password-reset-request";
+import PasswordResetConfirm from "@/pages/password-reset-confirm";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -26,11 +30,23 @@ function Router() {
       {/* Public routes - no authentication required */}
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
+      <Route path="/auth/password-reset" component={PasswordResetRequest} />
+      <Route path="/auth/password-reset/:token" component={PasswordResetConfirm} />
 
       {/* Protected routes - require authentication */}
       <Route path="/">
         <ProtectedRoute>
           <Dashboard />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/account">
+        <ProtectedRoute>
+          <AccountSettings />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/dealership">
+        <ProtectedRoute>
+          <DealershipSettings />
         </ProtectedRoute>
       </Route>
       <Route path="/deals">
