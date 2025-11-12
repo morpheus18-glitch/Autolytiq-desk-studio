@@ -29,9 +29,10 @@ interface CustomerDetailSheetProps {
   customer: Customer | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onEdit?: (customer: Customer) => void;
 }
 
-export function CustomerDetailSheet({ customer, open, onOpenChange }: CustomerDetailSheetProps) {
+export function CustomerDetailSheet({ customer, open, onOpenChange, onEdit }: CustomerDetailSheetProps) {
   if (!customer) return null;
 
   const initials = `${customer.firstName.charAt(0)}${customer.lastName.charAt(0)}`.toUpperCase();
@@ -266,7 +267,11 @@ export function CustomerDetailSheet({ customer, open, onOpenChange }: CustomerDe
 
           {/* Action Buttons */}
           <div className="flex gap-2 pt-4">
-            <Button className="flex-1 gap-2" data-testid="button-edit-customer">
+            <Button 
+              className="flex-1 gap-2" 
+              onClick={() => onEdit?.(customer)}
+              data-testid="button-edit-customer"
+            >
               <Edit className="w-4 h-4" />
               Edit Customer
             </Button>

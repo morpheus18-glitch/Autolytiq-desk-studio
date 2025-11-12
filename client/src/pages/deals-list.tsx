@@ -432,28 +432,12 @@ export default function DealsList() {
             </Card>
           ) : (
             <>
-              {/* Mobile: Horizontal Snap Scroll */}
-              {isMobile ? (
-                <div className="overflow-x-auto snap-x snap-mandatory -mx-3 px-3 pb-4 scrollbar-hide">
-                  <div className="flex gap-3">
-                    {deals.map((deal) => (
-                      <div
-                        key={deal.id}
-                        className="snap-center shrink-0 basis-[calc(100%-1.5rem)] max-w-[20rem]"
-                      >
-                        <DealCard deal={deal} />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                /* Desktop/Tablet: Grid */
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {deals.map((deal) => (
-                    <DealCard key={deal.id} deal={deal} />
-                  ))}
-                </div>
-              )}
+              {/* Unified vertical grid layout - mobile and desktop */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {deals.map((deal) => (
+                  <DealCard key={deal.id} deal={deal} />
+                ))}
+              </div>
               
               {/* Pagination */}
               {data && data.pages > 1 && (

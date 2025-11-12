@@ -3,7 +3,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Car, Plus, Pencil, Trash2, DollarSign, TrendingUp, TrendingDown, Inbox } from 'lucide-react';
+import { Car, Plus, Pencil, Trash2, DollarSign, TrendingUp, TrendingDown, Inbox, Scan } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
 import {
   Sheet,
@@ -193,6 +193,152 @@ export function TradeGarageSheet({ dealId, trigger }: TradeGarageSheetProps) {
       });
     },
   });
+
+  const normalizeText = (text: string): string => {
+    return text
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  };
+
+  const vinDecodeMutation = useMutation({
+    mutationFn: (vin: string) =>
+      apiRequest('/api/vin/decode', 'POST', { vin }),
+    onSuccess: (data: any) => {
+      if (!data || typeof data !== 'object') {
+        toast({
+          title: 'Failed to decode VIN',
+          description: 'Invalid response from VIN decoder',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const cleanVin = data.vin ? String(data.vin).trim() : undefined;
+      const year = data.year ? parseInt(String(data.year), 10) : undefined;
+      const make = data.make ? normalizeText(String(data.make).trim()) : undefined;
+      const model = data.model ? normalizeText(String(data.model).trim()) : undefined;
+      const trim = data.trim ? normalizeText(String(data.trim).trim()) : undefined;
+
+      const populated: string[] = [];
+      const missing: string[] = [];
+
+      form.clearErrors();
+
+      if (cleanVin) {
+        form.setValue('vin', cleanVin);
+      }
+
+      if (year && !isNaN(year)) {
+        form.setValue('year', year);
+        populated.push('year');
+      } else {
+        missing.push('year');
+        form.setValue('year', new Date().getFullYear());
+        form.setError('year', {
+          type: 'manual',
+          message: 'Year not available from VIN - using current year. Please verify.'
+        });
+      }
+
+      if (make) {
+        form.setValue('make', make);
+        populated.push('make');
+      } else {
+        missing.push('make');
+        form.setValue('make', '');
+        form.setError('make', {
+          type: 'manual',
+          message: 'Make not available from VIN. Please enter manually.'
+        });
+      }
+
+      if (model) {
+        form.setValue('model', model);
+        populated.push('model');
+      } else {
+        missing.push('model');
+        form.setValue('model', '');
+        form.setError('model', {
+          type: 'manual',
+          message: 'Model not available from VIN. Please enter manually.'
+        });
+      }
+
+      if (trim) {
+        form.setValue('trim', trim);
+        populated.push('trim');
+      } else {
+        form.setValue('trim', '');
+      }
+
+      const vehicleInfo = [year, make, model].filter(Boolean).join(' ');
+      
+      if (missing.length > 0 && missing.some(f => f === 'make' || f === 'model')) {
+        toast({
+          title: 'VIN decoded with missing data',
+          description: `Critical fields missing: ${missing.join(', ')}. Please complete the form manually.`,
+          variant: 'destructive',
+        });
+      } else if (populated.length > 0) {
+        const description = vehicleInfo || 'Vehicle information populated';
+        const fullMessage = missing.length > 0 
+          ? `${description}. Note: ${missing.join(', ')} not available from VIN` 
+          : description;
+        
+        toast({
+          title: 'VIN decoded successfully',
+          description: fullMessage,
+        });
+      } else {
+        toast({
+          title: 'VIN decoded but incomplete',
+          description: 'No vehicle information could be extracted from VIN. Please enter details manually.',
+          variant: 'destructive',
+        });
+      }
+    },
+    onError: (error: Error) => {
+      form.setError('vin', {
+        type: 'manual',
+        message: error.message || 'Failed to decode VIN. Please verify the VIN is correct.'
+      });
+      
+      toast({
+        title: 'Failed to decode VIN',
+        description: error.message || 'Could not decode VIN. Please check the VIN and try again.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const handleDecodeVin = () => {
+    if (vinDecodeMutation.isPending) {
+      return;
+    }
+
+    const vin = form.getValues('vin');
+    if (!vin || typeof vin !== 'string') {
+      toast({
+        title: 'Invalid VIN',
+        description: 'Please enter a VIN number',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const cleanVin = vin.trim();
+    if (cleanVin.length !== 17) {
+      toast({
+        title: 'Invalid VIN',
+        description: 'VIN must be exactly 17 characters',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    vinDecodeMutation.mutate(cleanVin);
+  };
 
   const handleSubmit = (data: TradeFormData) => {
     if (selectedTradeId) {
@@ -491,12 +637,32 @@ export function TradeGarageSheet({ dealId, trigger }: TradeGarageSheetProps) {
                     <FormItem>
                       <FormLabel className="text-xs">VIN (optional)</FormLabel>
                       <FormControl>
-                        <Input
-                          {...field}
-                          value={field.value || ''}
-                          className="h-9 font-mono"
-                          data-testid="input-trade-vin"
-                        />
+                        <div className="flex gap-2">
+                          <Input
+                            {...field}
+                            value={field.value || ''}
+                            className="h-9 font-mono flex-1"
+                            placeholder="Enter 17-character VIN"
+                            data-testid="input-trade-vin"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleDecodeVin}
+                            disabled={vinDecodeMutation.isPending || !field.value || field.value.length < 17}
+                            data-testid="button-decode-vin"
+                          >
+                            {vinDecodeMutation.isPending ? (
+                              'Decoding...'
+                            ) : (
+                              <>
+                                <Scan className="w-4 h-4 mr-1" />
+                                Decode
+                              </>
+                            )}
+                          </Button>
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>

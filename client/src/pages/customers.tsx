@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PageLayout } from "@/components/page-layout";
 import { CustomerDetailSheet } from "@/components/customer-detail-sheet";
+import { CustomerFormSheet } from "@/components/customer-form-sheet";
 import {
   Search,
   User,
@@ -131,6 +132,8 @@ export default function Customers() {
   const [page] = useState(1);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
+  const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
+  const [formSheetOpen, setFormSheetOpen] = useState(false);
   
   // Fetch customers
   const { data: customers, isLoading, error, refetch} = useQuery<Customer[]>({
@@ -158,6 +161,18 @@ export default function Customers() {
     setDetailSheetOpen(true);
   };
 
+  const handleAddCustomer = () => {
+    setFormMode('create');
+    setSelectedCustomer(null);
+    setFormSheetOpen(true);
+  };
+
+  const handleEditCustomer = (customer: Customer) => {
+    setFormMode('edit');
+    setSelectedCustomer(customer);
+    setFormSheetOpen(true);
+  };
+
   return (
     <PageLayout className="min-h-screen bg-background">
       {/* Header */}
@@ -171,7 +186,7 @@ export default function Customers() {
                   View and manage all your customers
                 </p>
               </div>
-              <Button className="gap-2" data-testid="button-add-customer">
+              <Button className="gap-2" onClick={handleAddCustomer} data-testid="button-add-customer">
                 <Plus className="w-4 h-4" />
                 <span className="hidden sm:inline">Add Customer</span>
                 <span className="sm:hidden">Add</span>
@@ -227,7 +242,7 @@ export default function Customers() {
                     : "No customers in the system yet. Add your first customer to get started."}
                 </p>
                 {!searchQuery && (
-                  <Button data-testid="button-add-first-customer">
+                  <Button onClick={handleAddCustomer} data-testid="button-add-first-customer">
                     <Plus className="w-4 h-4 mr-2" />
                     Add First Customer
                   </Button>
@@ -254,6 +269,19 @@ export default function Customers() {
         customer={selectedCustomer}
         open={detailSheetOpen}
         onOpenChange={setDetailSheetOpen}
+        onEdit={handleEditCustomer}
+      />
+
+      {/* Customer Form Sheet */}
+      <CustomerFormSheet
+        mode={formMode}
+        customer={selectedCustomer}
+        open={formSheetOpen}
+        onOpenChange={setFormSheetOpen}
+        onSuccess={(customer) => {
+          setDetailSheetOpen(false);
+          setFormSheetOpen(false);
+        }}
       />
     </PageLayout>
   );
