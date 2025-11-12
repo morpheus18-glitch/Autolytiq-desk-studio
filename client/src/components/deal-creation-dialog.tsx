@@ -63,11 +63,10 @@ export function DealCreationDialog({ open, onOpenChange, vehicleId, customerId }
     },
   });
   
-  const handleQuickQuote = () => {
+  const handleDealStudio = () => {
     const params = new URLSearchParams();
     if (vehicleId) {
-      // If we have vehicleId, we should fetch the vehicle price first
-      // For now, just pass the vehicleId and let Quick Quote fetch it
+      // If we have vehicleId, we should fetch the vehicle price
       params.append('vehicleId', vehicleId);
     }
     onOpenChange(false);
@@ -92,47 +91,49 @@ export function DealCreationDialog({ open, onOpenChange, vehicleId, customerId }
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]" data-testid="dialog-deal-creation">
         <DialogHeader>
-          <DialogTitle>Start a New Deal</DialogTitle>
+          <DialogTitle className="text-2xl bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+            Deal Studio
+          </DialogTitle>
           <DialogDescription>
-            Choose how you'd like to begin
+            Choose your workflow to structure deals with speed and precision
           </DialogDescription>
         </DialogHeader>
         
         <div className="grid gap-3 py-4">
-          {/* Quick Quote Option */}
+          {/* Deal Studio - Quick Build */}
           <Card 
-            className={`cursor-pointer hover-elevate active-elevate-2 transition-all ${usersLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-            onClick={usersLoading ? undefined : handleQuickQuote}
-            data-testid="card-quick-quote-option"
+            className={`cursor-pointer hover-elevate active-elevate-2 transition-all neon-border-subtle ${usersLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            onClick={usersLoading ? undefined : handleDealStudio}
+            data-testid="card-deal-studio-quick"
           >
-            <CardContent className="p-4">
+            <CardContent className="p-4 bg-gradient-to-br from-primary/5 to-primary/10">
               <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
                   <Zap className="w-5 h-5 text-primary" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-base mb-1">Quick Quote</h3>
+                  <h3 className="font-semibold text-base mb-1">Deal Studio – Quick Build</h3>
                   <p className="text-sm text-muted-foreground">
-                    Get a payment estimate in 30 seconds with minimal inputs
+                    30-second payment quotes with instant calculations
                   </p>
                 </div>
               </div>
             </CardContent>
           </Card>
           
-          {/* Full Desk Option */}
+          {/* Deal Studio - Full Build */}
           <Card 
-            className={`cursor-pointer hover-elevate active-elevate-2 transition-all ${usersLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`cursor-pointer hover-elevate active-elevate-2 transition-all neon-border-subtle ${usersLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
             onClick={usersLoading ? undefined : handleFullDesk}
-            data-testid="card-full-desk-option"
+            data-testid="card-deal-studio-full"
           >
-            <CardContent className="p-4">
+            <CardContent className="p-4 bg-gradient-to-br from-accent/5 to-accent/10">
               <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
+                <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center">
                   <FileText className="w-5 h-5 text-accent-foreground" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-base mb-1">Full Desk Worksheet</h3>
+                  <h3 className="font-semibold text-base mb-1">Deal Studio – Full Build</h3>
                   <p className="text-sm text-muted-foreground">
                     Complete deal structure with all fields, scenarios, and calculations
                   </p>

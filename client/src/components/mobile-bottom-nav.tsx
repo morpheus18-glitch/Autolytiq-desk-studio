@@ -59,11 +59,6 @@ export function MobileBottomNav() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { toast } = useToast();
 
-  // Hide navigation on deal worksheet (high-focus workflow)
-  if (isMobileNavSuppressed(location)) {
-    return null;
-  }
-
   // Get current user for role-based navigation
   const { data: currentUser } = useQuery<UserType>({
     queryKey: ['/api/user'],
@@ -119,6 +114,12 @@ export function MobileBottomNav() {
     if (path === '/') return location === '/';
     return location.startsWith(path);
   };
+
+  // Hide navigation on deal worksheet (high-focus workflow)
+  // Move after all hooks to comply with Rules of Hooks
+  if (isMobileNavSuppressed(location)) {
+    return null;
+  }
 
   return (
     <>
@@ -213,10 +214,10 @@ export function MobileBottomNav() {
                   onClick={handleNewDeal}
                   disabled={createDealMutation.isPending || usersLoading}
                   data-testid="menu-new-deal"
-                  className="w-full justify-start gap-3 text-base"
+                  className="w-full justify-start gap-3 text-base bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20"
                 >
                   <Plus className="w-5 h-5" />
-                  {usersLoading ? 'Loading...' : createDealMutation.isPending ? 'Creating...' : 'New Deal'}
+                  {usersLoading ? 'Loading...' : createDealMutation.isPending ? 'Creating...' : 'Deal Studio'}
                 </Button>
               </div>
             </div>

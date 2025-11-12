@@ -97,7 +97,7 @@ export default function QuickQuote() {
   
   // Sync down payment with percentage mode
   useEffect(() => {
-    if (usePercentMode && watchedValues.vehiclePrice > 0 && watchedValues.downPaymentPercent != null && watchedValues.downPaymentPercent !== '') {
+    if (usePercentMode && watchedValues.vehiclePrice > 0 && watchedValues.downPaymentPercent != null) {
       try {
         const calculatedDown = new Decimal(watchedValues.vehiclePrice)
           .times(watchedValues.downPaymentPercent)
@@ -113,7 +113,7 @@ export default function QuickQuote() {
   
   // Sync percentage when dollar amount changes
   useEffect(() => {
-    if (!usePercentMode && watchedValues.vehiclePrice > 0 && watchedValues.downPayment != null && watchedValues.downPayment !== '') {
+    if (!usePercentMode && watchedValues.vehiclePrice > 0 && watchedValues.downPayment != null) {
       try {
         const percent = new Decimal(watchedValues.downPayment)
           .div(watchedValues.vehiclePrice)
@@ -142,7 +142,7 @@ export default function QuickQuote() {
       
       // Create quick quote scenario
       const scenarioResponse = await apiRequest('POST', `/api/deals/${deal.id}/scenarios`, {
-        name: 'Quick Quote',
+        name: 'Deal Studio - Quick Build',
         isQuickQuote: true,
         scenarioType: 'FINANCE_DEAL',
         vehiclePrice: String(watchedValues.vehiclePrice),
@@ -160,8 +160,8 @@ export default function QuickQuote() {
     onSuccess: ({ deal }) => {
       queryClient.invalidateQueries({ queryKey: ['/api/deals'] });
       toast({
-        title: 'Quick quote saved!',
-        description: 'Opening full deal worksheet...',
+        title: 'Deal Studio quote saved!',
+        description: 'Opening full worksheet...',
       });
       setLocation(`/deals/${deal.id}`);
     },
@@ -188,9 +188,9 @@ export default function QuickQuote() {
   };
   
   return (
-    <PageLayout className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+    <PageLayout className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       {/* Header */}
-      <div className="sticky top-0 z-40 backdrop-blur-md bg-background/80 border-b">
+      <div className="sticky top-0 z-40 backdrop-blur-md bg-gradient-to-r from-background/90 to-primary/10 border-b neon-border-subtle">
         <div className="container mx-auto px-3 md:px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -203,16 +203,18 @@ export default function QuickQuote() {
                 <ArrowLeft className="w-4 h-4" />
               </Button>
               <div className="flex items-center gap-2">
-                <Zap className="w-8 h-8 text-primary" />
+                <Zap className="w-8 h-8 text-primary premium-glow-market" />
                 <div>
-                  <h1 className="text-2xl md:text-3xl font-semibold text-foreground">Quick Quote</h1>
+                  <h1 className="text-2xl md:text-3xl font-semibold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                    Deal Studio
+                  </h1>
                   {vehicle ? (
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <p className="text-sm text-muted-foreground mt-1 font-mono">
                       {vehicle.year} {vehicle.make} {vehicle.model}
                     </p>
                   ) : (
                     <p className="text-sm text-muted-foreground mt-1">
-                      Get a payment in 30 seconds
+                      Quick Build • 30-second payment quotes
                     </p>
                   )}
                 </div>
@@ -367,11 +369,13 @@ export default function QuickQuote() {
           
           {/* Payment Summary - Sticky on Desktop */}
           <div className="lg:sticky lg:top-24 lg:self-start">
-            <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
+            <Card className="neon-border bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5">
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Estimated Payment</CardTitle>
-                  <Badge variant="outline" className="bg-background">
+                  <CardTitle className="text-lg bg-gradient-to-r from-foreground to-foreground/60 bg-clip-text">
+                    Estimated Payment
+                  </CardTitle>
+                  <Badge variant="outline" className="bg-background/80 backdrop-blur-sm">
                     <Zap className="w-3 h-3 mr-1" />
                     Instant
                   </Badge>
@@ -379,9 +383,9 @@ export default function QuickQuote() {
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* Monthly Payment - Large Display */}
-                <div className="text-center py-6 px-4 bg-background/50 rounded-lg">
+                <div className="text-center py-6 px-4 bg-background/60 backdrop-blur-sm rounded-lg neon-border-subtle">
                   <p className="text-sm text-muted-foreground mb-2">Monthly Payment</p>
-                  <div className="text-5xl md:text-6xl font-bold font-mono text-primary" data-testid="text-monthly-payment">
+                  <div className="text-5xl md:text-6xl font-bold font-mono text-primary premium-glow-currency" data-testid="text-monthly-payment">
                     {formatCurrency(payment.monthlyPayment)}
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
@@ -391,13 +395,13 @@ export default function QuickQuote() {
                 
                 {/* Financial Summary */}
                 <div className="space-y-3 text-sm">
-                  <div className="flex justify-between items-center py-2 border-b">
+                  <div className="flex justify-between items-center py-2 border-b border-border/50">
                     <span className="text-muted-foreground">Amount Financed</span>
-                    <span className="font-mono font-medium" data-testid="text-amount-financed">
+                    <span className="font-mono font-medium premium-glow-currency" data-testid="text-amount-financed">
                       {formatCurrency(payment.amountFinanced)}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center py-2 border-b">
+                  <div className="flex justify-between items-center py-2 border-b border-border/50">
                     <span className="text-muted-foreground">Total Interest</span>
                     <span className="font-mono font-medium" data-testid="text-total-interest">
                       {formatCurrency(payment.totalInterest || 0)}
@@ -405,7 +409,7 @@ export default function QuickQuote() {
                   </div>
                   <div className="flex justify-between items-center py-2">
                     <span className="text-muted-foreground font-medium">Total Cost</span>
-                    <span className="font-mono font-semibold text-lg" data-testid="text-total-cost">
+                    <span className="font-mono font-semibold text-lg premium-glow-currency" data-testid="text-total-cost">
                       {formatCurrency(payment.totalCost)}
                     </span>
                   </div>
