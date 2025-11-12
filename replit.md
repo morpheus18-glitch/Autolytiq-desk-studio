@@ -45,7 +45,15 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 
 ### Authentication and Authorization
 
-**Current State**: Infrastructure prepared for session management (connect-pg-simple) and role-based access control, but no authentication system is currently implemented.
+**Authentication System**: Production-ready session-based authentication using Passport.js with LocalStrategy.
+**Password Security**: crypto/scrypt hashing with salt (128 bytes, 64-byte output) and timing-safe comparison to prevent timing attacks.
+**Session Management**: PostgreSQL-backed sessions via connect-pg-simple with httpOnly cookies, secure flag in production, sameSite: lax for CSRF protection, and 7-day maxAge.
+**Account Security**: Account lockout after 5 failed login attempts (15-minute lockout), rate limiting on auth endpoints (10 attempts/min), SESSION_SECRET validation at startup.
+**Security Headers**: Helmet middleware with Content Security Policy, HSTS (1 year), frameguard (deny), XSS filter, and MIME sniffing protection.
+**Role-Based Access**: Four roles (salesperson, sales_manager, finance_manager, admin). Self-registration restricted to "salesperson" role to prevent privilege escalation; admins can create users with elevated roles via separate endpoint.
+**Middleware**: requireAuth() for authenticated routes, requireRole(...roles) for role-based access control.
+**Auth Endpoints**: POST /api/register, POST /api/login, POST /api/logout, GET /api/user.
+**Future Enhancements**: Password reset flow (token-based), 2FA/MFA (TOTP with QR codes), granular permissions system, user preferences (theme, notifications), dealership settings, and audit trail for security events.
 
 ## Recent Changes (November 2025)
 
@@ -63,6 +71,16 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 - Side-by-side comparison modal with 2-scenario selector
 - Diff highlighting on changed values (yellow background, left border accent, diff badges)
 - Bug fixes: defensive guards for undefined scenarios, conditional audit logging, decimal-to-string type conversion for API compatibility
+
+**Authentication System Implementation (auth-core-1 through auth-core-4)**:
+- Database schema extended with auth fields: email (unique), password (hashed), emailVerified, resetToken/resetTokenExpires, mfaEnabled/mfaSecret, lastLogin, failedLoginAttempts, accountLockedUntil, preferences (JSONB), role (salesperson/sales_manager/finance_manager/admin)
+- Server auth setup: Passport.js LocalStrategy, crypto/scrypt password hashing (128-byte salt, 64-byte output), timing-safe comparison
+- Session management: PostgreSQL session store (connect-pg-simple), httpOnly cookies, secure in production, sameSite: lax, 7-day maxAge
+- Account security: 5 failed attempts → 15min lockout, rate limiting (10 attempts/min on auth endpoints, 100/min on all API routes), SESSION_SECRET validation at startup
+- Security headers: Helmet middleware with CSP, HSTS (1 year), frameguard (deny), XSS filter, MIME sniffing protection
+- RBAC foundation: 4 roles defined, self-registration forced to "salesperson" role (prevents privilege escalation), requireAuth() and requireRole() middleware ready for endpoint protection
+- Auth endpoints: POST /api/register (auto-login after registration), POST /api/login, POST /api/logout, GET /api/user (password excluded from response)
+- Storage methods: getUserByEmail(), updateUser(), sessionStore integration for session persistence
 
 ## External Dependencies
 

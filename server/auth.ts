@@ -245,8 +245,8 @@ export function setupAuth(app: Express) {
       return res.sendStatus(401);
     }
     
-    // Remove password from response
-    const { password: _, ...userWithoutPassword } = req.user;
+    // Remove password from response using type assertion (password exists in DB but not needed in response)
+    const { password: _, ...userWithoutPassword } = req.user as User;
     res.json(userWithoutPassword);
   });
 }
