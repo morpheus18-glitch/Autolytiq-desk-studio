@@ -101,7 +101,13 @@ export async function sendEmail(options: {
     console.log("✅ Email sent successfully via Resend");
     console.log(`To: ${options.to}`);
     console.log(`Subject: ${options.subject}`);
-    console.log(`Resend ID: ${result.data?.id}`);
+    console.log("Full Resend response:", JSON.stringify(result, null, 2));
+    
+    // Check if email actually sent
+    if (result.error) {
+      console.error("❌ Resend API returned an error:", result.error);
+      throw new Error(`Resend error: ${JSON.stringify(result.error)}`);
+    }
     
     return result;
   } catch (error) {
