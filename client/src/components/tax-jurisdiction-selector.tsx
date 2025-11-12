@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -32,6 +32,7 @@ export function TaxJurisdictionSelector({
   const [zipCode, setZipCode] = useState(initialZipCode || '');
   const [debouncedZipCode] = useDebounce(zipCode, 500);
   const [showManualSelect, setShowManualSelect] = useState(false);
+  const previousZipCodeRef = useRef<string>(debouncedZipCode);
 
   const { data: jurisdictions, isLoading } = useQuery<TaxJurisdiction[]>({
     queryKey: ['/api/tax-jurisdictions'],
@@ -51,11 +52,14 @@ export function TaxJurisdictionSelector({
     setSelectedId(selectedJurisdictionId);
   }, [selectedJurisdictionId]);
 
-  // Clear selection when ZIP code changes (prevent stale data)
+  // Clear selection ONLY when ZIP code actually changes (not on mount)
   useEffect(() => {
-    if (debouncedZipCode.length === 5 && !showManualSelect) {
+    const zipChanged = previousZipCodeRef.current !== debouncedZipCode;
+    previousZipCodeRef.current = debouncedZipCode;
+    
+    if (zipChanged && debouncedZipCode.length === 5 && !showManualSelect) {
       setSelectedId(undefined);
-      onSelect(null); // Notify parent immediately
+      onSelect(null);
     }
   }, [debouncedZipCode, showManualSelect, onSelect]);
 
