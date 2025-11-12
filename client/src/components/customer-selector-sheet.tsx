@@ -50,10 +50,10 @@ export function CustomerSelectorSheet({
     enabled: open,
   });
   
-  // Update deal customer mutation
+  // Attach customer to deal (generates deal number on first attachment)
   const updateDealMutation = useMutation({
     mutationFn: async (customerId: string) => {
-      const response = await apiRequest('PATCH', `/api/deals/${dealId}`, {
+      const response = await apiRequest('PATCH', `/api/deals/${dealId}/attach-customer`, {
         customerId,
       });
       return await response.json();
@@ -62,14 +62,14 @@ export function CustomerSelectorSheet({
       queryClient.invalidateQueries({ queryKey: ['/api/deals', dealId] });
       queryClient.invalidateQueries({ queryKey: ['/api/deals'] });
       toast({
-        title: 'Customer updated',
-        description: 'Deal has been linked to the selected customer',
+        title: 'Customer attached',
+        description: 'Deal has been linked to customer and deal number generated',
       });
       onOpenChange(false);
     },
     onError: (error: any) => {
       toast({
-        title: 'Failed to update customer',
+        title: 'Failed to attach customer',
         description: error.message || 'Please try again',
         variant: 'destructive',
       });

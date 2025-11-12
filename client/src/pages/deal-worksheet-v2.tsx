@@ -139,7 +139,13 @@ export default function DealWorksheetV2() {
         </Button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-lg md:text-xl lg:text-2xl font-semibold font-mono tracking-tight">{deal.dealNumber}</h1>
+            <h1 className="text-lg md:text-xl lg:text-2xl font-semibold font-mono tracking-tight" data-testid="text-deal-number">
+              {deal.dealNumber || (
+                <span className="text-muted-foreground italic font-normal">
+                  Pending customer
+                </span>
+              )}
+            </h1>
             <Badge className={DEAL_STATE_COLORS[deal.dealState]} data-testid="badge-deal-state">
               {deal.dealState.replace('_', ' ')}
             </Badge>

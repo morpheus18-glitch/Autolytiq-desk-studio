@@ -86,7 +86,7 @@ function DealCard({ deal }: { deal: DealWithRelations }) {
           <div className="flex items-start justify-between gap-2 mb-2">
             <div>
               <div className="font-mono font-bold text-sm text-foreground" data-testid={`text-deal-number-${deal.id}`}>
-                {deal.dealNumber}
+                {deal.dealNumber || <span className="text-muted-foreground italic font-normal">Pending customer</span>}
               </div>
               <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                 <Calendar className="w-3 h-3" />

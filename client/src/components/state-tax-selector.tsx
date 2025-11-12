@@ -122,6 +122,11 @@ export function StateTaxSelector({
       }
     });
     
+    // Sort states alphabetically within each region
+    Object.keys(regions).forEach(region => {
+      regions[region].sort((a, b) => a.stateName.localeCompare(b.stateName));
+    });
+    
     return regions;
   }, [allStates]);
   
