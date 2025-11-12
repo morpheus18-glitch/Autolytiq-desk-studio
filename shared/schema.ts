@@ -80,6 +80,7 @@ export type RegisterData = z.infer<typeof registerSchema>;
 // ===== CUSTOMERS TABLE =====
 export const customers = pgTable("customers", {
   id: uuid("id").primaryKey().defaultRandom(),
+  customerNumber: text("customer_number").unique(), // Auto-generated identifier (e.g., "C-001234"), nullable until generation logic deployed
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   email: text("email"),
@@ -88,20 +89,43 @@ export const customers = pgTable("customers", {
   city: text("city"),
   state: text("state"),
   zipCode: text("zip_code"),
+  
+  // Additional fields for expanded customer view
+  dateOfBirth: timestamp("date_of_birth"),
+  driversLicenseNumber: text("drivers_license_number"), // TODO: Encrypt at rest before production
+  driversLicenseState: text("drivers_license_state"),
+  ssnLast4: text("ssn_last4"), // Last 4 digits only - TODO: Encrypt at rest, implement access controls
+  employer: text("employer"),
+  occupation: text("occupation"),
+  monthlyIncome: decimal("monthly_income", { precision: 12, scale: 2 }),
+  creditScore: integer("credit_score"),
+  
+  // Marketing preferences
+  preferredContactMethod: text("preferred_contact_method"), // email, phone, sms
+  marketingOptIn: boolean("marketing_opt_in").notNull().default(false),
+  notes: text("notes"),
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
   nameIdx: index("customers_name_idx").on(table.firstName, table.lastName),
+  customerNumberIdx: index("customers_number_idx").on(table.customerNumber),
+  emailIdx: index("customers_email_idx").on(table.email),
 }));
 
-export const insertCustomerSchema = createInsertSchema(customers).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertCustomerSchema = createInsertSchema(customers).omit({ 
+  id: true, 
+  customerNumber: true, // Auto-generated
+  createdAt: true, 
+  updatedAt: true 
+});
 export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
 export type Customer = typeof customers.$inferSelect;
 
 // ===== VEHICLES TABLE =====
 export const vehicles = pgTable("vehicles", {
   id: uuid("id").primaryKey().defaultRandom(),
-  stockNumber: uuid("stock_number").notNull().unique().defaultRandom(), // UUID for stock numbers
+  stockNumber: text("stock_number").unique(), // Configurable format (e.g., "STK-2024-001234"), nullable until generation logic deployed
   vin: text("vin").notNull().unique(),
   year: integer("year").notNull(),
   make: text("make").notNull(),
@@ -993,3 +1017,118 @@ export const securityAuditLog = pgTable("security_audit_log", {
 export const insertSecurityAuditLogSchema = createInsertSchema(securityAuditLog).omit({ id: true, createdAt: true });
 export type InsertSecurityAuditLog = z.infer<typeof insertSecurityAuditLogSchema>;
 export type SecurityAuditLog = typeof securityAuditLog.$inferSelect;
+
+// ===== DEALERSHIP STOCK NUMBER SETTINGS TABLE =====
+export const dealershipStockSettings = pgTable("dealership_stock_settings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  dealershipId: uuid("dealership_id").notNull().references(() => dealershipSettings.id, { onDelete: "cascade" }).unique(), // One config per dealership
+  
+  // Stock number format configuration
+  prefix: text("prefix").notNull().default("STK"), // e.g., "STK", "INV", "USED"
+  useYearPrefix: boolean("use_year_prefix").notNull().default(true), // Include year (e.g., "STK-2024-")
+  paddingLength: integer("padding_length").notNull().default(6), // e.g., 6 = "000001"
+  currentCounter: integer("current_counter").notNull().default(1), // Auto-increments
+  
+  // Format preview (read-only, generated)
+  formatPreview: text("format_preview"), // e.g., "STK-2024-000001"
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  dealershipIdx: index("dealership_stock_settings_dealership_idx").on(table.dealershipId),
+}));
+
+export const insertDealershipStockSettingsSchema = createInsertSchema(dealershipStockSettings).omit({ 
+  id: true, 
+  currentCounter: true, // Auto-managed
+  formatPreview: true, // Auto-generated
+  createdAt: true, 
+  updatedAt: true 
+});
+export type InsertDealershipStockSettings = z.infer<typeof insertDealershipStockSettingsSchema>;
+export type DealershipStockSettings = typeof dealershipStockSettings.$inferSelect;
+
+// ===== VEHICLE VALUATIONS TABLE =====
+// Third-party valuation data from KBB, Black Book, MMR, etc.
+export const vehicleValuations = pgTable("vehicle_valuations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  vehicleId: uuid("vehicle_id").notNull().references(() => vehicles.id, { onDelete: "cascade" }),
+  
+  // Valuation source metadata
+  provider: text("provider").notNull(), // "KBB", "BlackBook", "MMR", "JDPower", "NADA"
+  valuationType: text("valuation_type").notNull(), // "wholesale", "retail", "trade_in", "private_party"
+  
+  // Valuation amounts
+  baseValue: decimal("base_value", { precision: 12, scale: 2 }), // Base valuation
+  adjustedValue: decimal("adjusted_value", { precision: 12, scale: 2 }), // Adjusted for mileage/condition/region
+  lowRange: decimal("low_range", { precision: 12, scale: 2 }),
+  highRange: decimal("high_range", { precision: 12, scale: 2 }),
+  
+  // Condition adjustments
+  conditionGrade: text("condition_grade"), // e.g., "excellent", "good", "fair", "poor", CR grade
+  mileageAdjustment: decimal("mileage_adjustment", { precision: 12, scale: 2 }),
+  regionAdjustment: decimal("region_adjustment", { precision: 12, scale: 2 }),
+  
+  // Provider-specific data (JSONB for flexibility)
+  providerData: jsonb("provider_data").default({}), // Raw API response, additional fields
+  
+  // Data freshness
+  valuationDate: timestamp("valuation_date").notNull().defaultNow(),
+  expiresAt: timestamp("expires_at"), // When this valuation becomes stale
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  vehicleProviderIdx: index("vehicle_valuations_vehicle_provider_idx").on(table.vehicleId, table.provider),
+  providerIdx: index("vehicle_valuations_provider_idx").on(table.provider),
+}));
+
+export const insertVehicleValuationSchema = createInsertSchema(vehicleValuations).omit({ id: true, createdAt: true });
+export type InsertVehicleValuation = z.infer<typeof insertVehicleValuationSchema>;
+export type VehicleValuation = typeof vehicleValuations.$inferSelect;
+
+// ===== VEHICLE COMPARABLES TABLE =====
+// Comparable vehicles ("comps") and recent sales data
+export const vehicleComparables = pgTable("vehicle_comparables", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  vehicleId: uuid("vehicle_id").notNull().references(() => vehicles.id, { onDelete: "cascade" }),
+  
+  // Comparable vehicle details
+  source: text("source").notNull(), // "auction", "retail_listing", "dealer_sale", "private_sale"
+  sourceId: text("source_id"), // External reference (auction lot #, listing ID, etc.)
+  
+  // Vehicle match details
+  year: integer("year").notNull(),
+  make: text("make").notNull(),
+  model: text("model").notNull(),
+  trim: text("trim"),
+  mileage: integer("mileage").notNull(),
+  condition: text("condition"),
+  
+  // Transaction details
+  salePrice: decimal("sale_price", { precision: 12, scale: 2 }),
+  listPrice: decimal("list_price", { precision: 12, scale: 2 }), // For listings
+  saleDate: timestamp("sale_date"),
+  daysOnMarket: integer("days_on_market"),
+  
+  // Location
+  city: text("city"),
+  state: text("state"),
+  zipCode: text("zip_code"),
+  distanceMiles: integer("distance_miles"), // Distance from dealership
+  
+  // Similarity score (algorithmic match 0-100)
+  similarityScore: integer("similarity_score"), // How close this comp is to the target vehicle
+  
+  // Additional metadata
+  metadata: jsonb("metadata").default({}), // Images, features, notes
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  vehicleIdx: index("vehicle_comparables_vehicle_idx").on(table.vehicleId),
+  sourceIdx: index("vehicle_comparables_source_idx").on(table.source),
+  saleDateIdx: index("vehicle_comparables_sale_date_idx").on(table.saleDate),
+}));
+
+export const insertVehicleComparableSchema = createInsertSchema(vehicleComparables).omit({ id: true, createdAt: true });
+export type InsertVehicleComparable = z.infer<typeof insertVehicleComparableSchema>;
+export type VehicleComparable = typeof vehicleComparables.$inferSelect;
