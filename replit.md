@@ -102,6 +102,48 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 **Role-Based Access**: Four roles (salesperson, sales_manager, finance_manager, admin). Self-registration restricted to "salesperson". `requireAuth()` and `requireRole()` middleware.
 **Advanced Features**: Password reset (token-based), 2FA/MFA (TOTP-based with QR), granular permissions (20 across 5 categories), permission-based RBAC (`requirePermission()` middleware), user preferences API (JSONB), dealership settings API (multi-tenant), and comprehensive security audit trail.
 
+### Database Performance (Completed Nov 12, 2025)
+
+**Comprehensive Indexing for Multi-Tenant Queries:**
+
+After implementing strict multi-tenant isolation with dealershipId filtering on all queries, added comprehensive database indexes to optimize query performance as data scales:
+
+**Customers Table:**
+- `idx_customers_dealership` - dealership_id for basic tenant filtering
+- `idx_customers_dealership_name` - (dealership_id, lower(last_name), lower(first_name)) for sorted lists
+- `idx_customers_dealership_email` - (dealership_id, lower(email)) for email lookups
+- `idx_customers_trgm_first_name/last_name/email` - GIN trigram indexes for fuzzy text search
+
+**Deals Table:**
+- `idx_deals_dealership` - dealership_id for basic tenant filtering
+- `idx_deals_dealership_state_created` - (dealership_id, deal_state, created_at DESC) for filtered/sorted lists
+- `idx_deals_dealership_salesperson` - (dealership_id, salesperson_id) for salesperson filtering
+- `idx_deals_dealership_customer` - (dealership_id, customer_id) for customer lookups
+- Foreign key indexes on vehicle_id, customer_id, salesperson_id, sales_manager_id, finance_manager_id, trade_vehicle_id
+
+**Vehicles Table:**
+- `idx_vehicles_dealership_make_model` - (dealership_id, lower(make), lower(model)) for vehicle searches
+- `idx_vehicles_dealership_vin` - (dealership_id, lower(vin)) for VIN lookups
+- `idx_vehicles_dealership_year` - (dealership_id, year DESC) for year filtering
+- `idx_vehicles_trgm_make/model/vin` - GIN trigram indexes for fuzzy search
+- Existing composite unique index (dealership_id, stock_number)
+
+**Users Table:**
+- `idx_users_dealership` - dealership_id for tenant filtering
+- `idx_users_email` - lower(email) for login performance
+
+**Text Search Optimization:**
+- Enabled `pg_trgm` extension for fast ILIKE '%term%' substring searches
+- GIN trigram indexes on all searchable text fields
+
+**Query Planner Updates:**
+- Ran ANALYZE on all main tables to update statistics
+
+**Performance Notes:**
+- Indexes optimize for production scale (1000s of records per dealership)
+- Current small dataset (<100 records) may still use sequential scans (PostgreSQL optimizer's correct choice)
+- Session deserialization overhead (~200-300ms per authenticated request) is inherent to serverless database + Passport architecture, not query performance
+
 ## External Dependencies
 
 **Database**: Neon serverless PostgreSQL, `@neondatabase/serverless`, Drizzle ORM.
@@ -123,9 +165,9 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 9. ✅ **COMPLETED**: Added foreign key constraints with CASCADE on delete for users, customers, deals, vehicles
 10. ✅ **COMPLETED**: Created composite unique index on vehicles (dealership_id, stock_number) for tenant-scoped uniqueness
 11. ✅ **COMPLETED**: All storage methods now enforce dealershipId filtering in WHERE clauses
-12. **TODO**: Improve registration to require invitation-bound dealership or disable public signup when multiple dealerships exist (currently assigns to first dealership)
-13. **TODO**: Add validation for child entities (scenarios, trades, payments) to respect parent dealership
-14. **TODO**: Add composite indexes on (dealershipId, searchable_field) for customers/deals tables for query performance
+12. ✅ **COMPLETED**: Added comprehensive database indexes for multi-tenant query performance (see Database Performance section below)
+13. **TODO**: Improve registration to require invitation-bound dealership or disable public signup when multiple dealerships exist (currently assigns to first dealership)
+14. **TODO**: Add validation for child entities (scenarios, trades, payments) to respect parent dealership
 
 **Frontend - Deal Numbers** (Completed Nov 12, 2025):
 1. ✅ Display placeholder text "Pending customer" (italic) in deal-worksheet-v2.tsx and deals-list.tsx when dealNumber is null
