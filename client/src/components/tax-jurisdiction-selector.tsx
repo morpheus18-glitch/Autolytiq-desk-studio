@@ -33,6 +33,7 @@ export function TaxJurisdictionSelector({
   const [debouncedZipCode] = useDebounce(zipCode, 500);
   const [showManualSelect, setShowManualSelect] = useState(false);
   const previousZipCodeRef = useRef<string>(debouncedZipCode);
+  const userChangedZipRef = useRef<boolean>(false);
 
   const { data: jurisdictions, isLoading } = useQuery<TaxJurisdiction[]>({
     queryKey: ['/api/tax-jurisdictions'],
@@ -52,14 +53,28 @@ export function TaxJurisdictionSelector({
     setSelectedId(selectedJurisdictionId);
   }, [selectedJurisdictionId]);
 
-  // Clear selection ONLY when ZIP code actually changes (not on mount)
+  // Sync zipCode state when initialZipCode prop changes (for async customer data)
+  useEffect(() => {
+    if (initialZipCode && initialZipCode !== zipCode) {
+      setZipCode(initialZipCode);
+      previousZipCodeRef.current = initialZipCode;
+      userChangedZipRef.current = false; // This is a prop sync, not user change
+    }
+  }, [initialZipCode]);
+
+  // Clear selection ONLY when user manually changes ZIP (not prop syncs)
   useEffect(() => {
     const zipChanged = previousZipCodeRef.current !== debouncedZipCode;
     previousZipCodeRef.current = debouncedZipCode;
     
-    if (zipChanged && debouncedZipCode.length === 5 && !showManualSelect) {
+    if (zipChanged && userChangedZipRef.current && debouncedZipCode.length === 5 && !showManualSelect) {
       setSelectedId(undefined);
       onSelect(null);
+    }
+    
+    // Reset the flag after processing
+    if (zipChanged) {
+      userChangedZipRef.current = false;
     }
   }, [debouncedZipCode, showManualSelect, onSelect]);
 
@@ -123,6 +138,7 @@ export function TaxJurisdictionSelector({
               onChange={(e) => {
                 const value = e.target.value.replace(/\D/g, '').slice(0, 5);
                 setZipCode(value);
+                userChangedZipRef.current = true; // Mark as user change
                 if (showManualSelect) setShowManualSelect(false);
               }}
               disabled={isLoading}
