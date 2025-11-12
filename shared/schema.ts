@@ -5,10 +5,48 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
 
+// ===== DEALERSHIP SETTINGS TABLE (defined first for foreign key references) =====
+export const dealershipSettings = pgTable("dealership_settings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  dealershipId: text("dealership_id").notNull().unique().default("default"), // Text identifier for API lookups
+  dealershipName: text("dealership_name").notNull(),
+  
+  // Contact & Location
+  address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  zipCode: text("zip_code"),
+  phone: text("phone"),
+  email: text("email"),
+  website: text("website"),
+  
+  // Branding
+  logo: text("logo"), // URL or base64
+  primaryColor: text("primary_color").default("#0066cc"),
+  
+  // Tax & Fee Defaults
+  defaultTaxRate: decimal("default_tax_rate", { precision: 5, scale: 4 }).default("0.0825"), // 8.25%
+  docFee: decimal("doc_fee", { precision: 10, scale: 2 }).default("299.00"),
+  
+  // Business Settings
+  timezone: text("timezone").default("America/New_York"),
+  currency: text("currency").default("USD"),
+  
+  // Preferences (notifications, features, etc.)
+  settings: jsonb("settings").default({}),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertDealershipSettingsSchema = createInsertSchema(dealershipSettings).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertDealershipSettings = z.infer<typeof insertDealershipSettingsSchema>;
+export type DealershipSettings = typeof dealershipSettings.$inferSelect;
+
 // ===== USERS TABLE =====
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
-  dealershipId: uuid("dealership_id").notNull(), // Multi-tenant isolation - user belongs to one dealership
+  dealershipId: uuid("dealership_id").notNull().references(() => dealershipSettings.id, { onDelete: "cascade" }), // Multi-tenant isolation - user belongs to one dealership
   username: text("username").notNull().unique(),
   fullName: text("full_name").notNull(),
   email: text("email").notNull().unique(),
@@ -82,7 +120,7 @@ export type RegisterData = z.infer<typeof registerSchema>;
 // ===== CUSTOMERS TABLE =====
 export const customers = pgTable("customers", {
   id: uuid("id").primaryKey().defaultRandom(),
-  dealershipId: uuid("dealership_id").notNull(), // Multi-tenant isolation - must match deal's dealership
+  dealershipId: uuid("dealership_id").notNull().references(() => dealershipSettings.id, { onDelete: "cascade" }), // Multi-tenant isolation - must match deal's dealership
   customerNumber: text("customer_number").unique(), // Auto-generated identifier (e.g., "C-001234"), nullable until generation logic deployed
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
@@ -374,7 +412,7 @@ export type QuickQuoteContact = typeof quickQuoteContacts.$inferSelect;
 export const deals = pgTable("deals", {
   id: uuid("id").primaryKey().defaultRandom(),
   dealNumber: text("deal_number").unique(), // Nullable until customer is attached - then auto-generated as 4-digit#Glyph
-  dealershipId: uuid("dealership_id").notNull().default(sql`gen_random_uuid()`),
+  dealershipId: uuid("dealership_id").notNull().references(() => dealershipSettings.id, { onDelete: "cascade" }), // Multi-tenant isolation
   salespersonId: uuid("salesperson_id").notNull().references(() => users.id),
   salesManagerId: uuid("sales_manager_id").references(() => users.id),
   financeManagerId: uuid("finance_manager_id").references(() => users.id),
@@ -923,43 +961,6 @@ export type DealStats = {
   conversionRate: number;
 };
 
-// ===== DEALERSHIP SETTINGS TABLE =====
-export const dealershipSettings = pgTable("dealership_settings", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  dealershipId: text("dealership_id").notNull().unique().default("default"), // Future multi-tenant support
-  dealershipName: text("dealership_name").notNull(),
-  
-  // Contact & Location
-  address: text("address"),
-  city: text("city"),
-  state: text("state"),
-  zipCode: text("zip_code"),
-  phone: text("phone"),
-  email: text("email"),
-  website: text("website"),
-  
-  // Branding
-  logo: text("logo"), // URL or base64
-  primaryColor: text("primary_color").default("#0066cc"),
-  
-  // Tax & Fee Defaults
-  defaultTaxRate: decimal("default_tax_rate", { precision: 5, scale: 4 }).default("0.0825"), // 8.25%
-  docFee: decimal("doc_fee", { precision: 10, scale: 2 }).default("299.00"),
-  
-  // Business Settings
-  timezone: text("timezone").default("America/New_York"),
-  currency: text("currency").default("USD"),
-  
-  // Preferences (notifications, features, etc.)
-  settings: jsonb("settings").default({}),
-  
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
-
-export const insertDealershipSettingsSchema = createInsertSchema(dealershipSettings).omit({ id: true, createdAt: true, updatedAt: true });
-export type InsertDealershipSettings = z.infer<typeof insertDealershipSettingsSchema>;
-export type DealershipSettings = typeof dealershipSettings.$inferSelect;
 
 // ===== DEAL NUMBER SEQUENCES TABLE =====
 // Atomic counters for deal number generation per dealership

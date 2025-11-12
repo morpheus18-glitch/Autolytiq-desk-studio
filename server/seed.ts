@@ -1,17 +1,54 @@
 import { db } from './db';
-import { users, customers, vehicles, taxJurisdictions, deals, dealScenarios } from '@shared/schema';
+import { users, customers, vehicles, taxJurisdictions, deals, dealScenarios, dealershipSettings, dealNumberSequences, dealershipStockSettings } from '@shared/schema';
 import { hashPassword } from './auth';
 
 async function seed() {
   console.log('🌱 Seeding database...');
   
   try {
+    // Step 1: Create dealership_settings FIRST (required for foreign key references)
+    const [dealership] = await db.insert(dealershipSettings).values({
+      dealershipId: 'default',
+      dealershipName: 'Demo Auto Sales',
+      address: '123 Main Street',
+      city: 'Los Angeles',
+      state: 'CA',
+      zipCode: '90001',
+      phone: '(555) 555-5555',
+      email: 'info@demoautosales.com',
+      website: 'https://demoautosales.com',
+      logo: null,
+      primaryColor: '#0066cc',
+      defaultTaxRate: '0.0825', // 8.25%
+      docFee: '299.00',
+      timezone: 'America/Los_Angeles',
+      currency: 'USD',
+      settings: {}
+    }).returning();
+    console.log('✓ Created dealership:', dealership.dealershipName);
+    
+    // Step 2: Create supporting dealership configuration tables
+    await db.insert(dealNumberSequences).values({
+      dealershipId: dealership.id,
+      currentSequence: 0,
+    });
+    
+    await db.insert(dealershipStockSettings).values({
+      dealershipId: dealership.id,
+      prefix: 'STK',
+      useYearPrefix: true,
+      paddingLength: 6,
+    });
+    console.log('✓ Created dealership configuration (deal numbers, stock numbers)');
+    
+    // Step 3: Create users (all belong to the dealership)
     // Create demo admin user with password (DEVELOPMENT ONLY)
     // WARNING: Never run this seed in production environments
     if (process.env.NODE_ENV === 'development') {
       const demoPassword = await hashPassword('Demo123!');
       const [demo] = await db.insert(users).values({
         id: '00000000-0000-0000-0000-000000000001',
+        dealershipId: dealership.id,
         username: 'demo',
         fullName: 'Demo Admin',
         email: 'demo@example.com',
@@ -21,9 +58,9 @@ async function seed() {
       console.log('✓ Created demo admin user (development only)');
     }
     
-    // Create users
     const salespersonPassword = await hashPassword('Password123!');
     const [salesperson] = await db.insert(users).values({
+      dealershipId: dealership.id,
       username: 'john.smith',
       fullName: 'John Smith',
       email: 'john.smith@dealership.com',
@@ -33,6 +70,7 @@ async function seed() {
     
     const managerPassword = await hashPassword('Password123!');
     const [manager] = await db.insert(users).values({
+      dealershipId: dealership.id,
       username: 'sarah.johnson',
       fullName: 'Sarah Johnson',
       email: 'sarah.johnson@dealership.com',
@@ -42,9 +80,10 @@ async function seed() {
     
     console.log('✓ Created users');
     
-    // Create customers
+    // Step 4: Create customers (all belong to the dealership)
     const customersData = [
       {
+        dealershipId: dealership.id,
         firstName: 'Michael',
         lastName: 'Anderson',
         email: 'michael.anderson@email.com',
@@ -55,6 +94,7 @@ async function seed() {
         zipCode: '90001',
       },
       {
+        dealershipId: dealership.id,
         firstName: 'Jennifer',
         lastName: 'Williams',
         email: 'jennifer.williams@email.com',
@@ -65,6 +105,7 @@ async function seed() {
         zipCode: '94102',
       },
       {
+        dealershipId: dealership.id,
         firstName: 'David',
         lastName: 'Martinez',
         email: 'david.martinez@email.com',
@@ -559,14 +600,16 @@ async function seed() {
     const insertedJurisdictions = await db.insert(taxJurisdictions).values(jurisdictionsData).returning();
     console.log('✓ Created tax jurisdictions');
     
-    // Create sample deals with scenarios
+    // Step 5: Create sample deals with scenarios (all belong to the dealership)
     const [deal1] = await db.insert(deals).values({
-      dealNumber: '2024-11-0001',
+      dealershipId: dealership.id,
+      dealNumber: 'D-0001H', // Using new format with Crockford checksum
       salespersonId: salesperson.id,
       salesManagerId: manager.id,
       customerId: insertedCustomers[0].id,
       vehicleId: insertedVehicles[0].id,
       dealState: 'IN_PROGRESS',
+      customerAttachedAt: new Date(), // Customer already attached in seed data
     }).returning();
     
     await db.insert(dealScenarios).values({
