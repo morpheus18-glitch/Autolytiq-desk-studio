@@ -39,7 +39,12 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 ### Data Storage
 
 **Database**: PostgreSQL (Neon serverless with WebSocket support).
-**Schema Design**: UUID primary keys, tables for Users, Customers (`customer_number` unique identifier), Vehicles (`stock_number` unique identifier), Deals (with state machine), Deal Scenarios (JSONB for aftermarket products), Tax Rule Groups, Tax Jurisdictions, Zip Code Lookup, Fee Package Templates, and Audit Log. Monetary values use Decimal type. **Recent Schema Updates**: Added `customerNumber` (nullable, awaiting auto-generation logic) and `stockNumber` (nullable, awaiting auto-generation logic) fields.
+**Schema Design**: UUID primary keys, tables for Users, Customers (`customer_number` unique identifier), Vehicles (`stock_number` unique identifier), Deals (with state machine), Deal Scenarios (JSONB for aftermarket products), Tax Rule Groups, Tax Jurisdictions, Zip Code Lookup, Fee Package Templates, and Audit Log. Monetary values use Decimal type. **Recent Schema Updates** (Nov 2024):
+- Added `customerNumber` (nullable, awaiting auto-generation logic)
+- Added `stockNumber` (nullable, awaiting auto-generation logic)  
+- **Deal Numbers**: Made `dealNumber` nullable - generated ONLY when customer attached
+- **Customer Attached Tracking**: Added `customerAttachedAt` timestamp for audit trail
+- **Future Format**: Deal numbers will use 4-digit#Glyph format (e.g., "1234#A") for quick recall
 **Fee Package Templates**: Multi-tenant, JSONB arrays for dealerFees, accessories, aftermarketProducts, with seeded starter packages for rapid deal structuring.
 **Scenario Comparison**: Side-by-side comparison modal with diff highlighting for 9 key metrics.
 

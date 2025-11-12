@@ -369,7 +369,7 @@ export type QuickQuoteContact = typeof quickQuoteContacts.$inferSelect;
 // ===== DEALS TABLE =====
 export const deals = pgTable("deals", {
   id: uuid("id").primaryKey().defaultRandom(),
-  dealNumber: text("deal_number").notNull().unique(),
+  dealNumber: text("deal_number").unique(), // Nullable until customer is attached - then auto-generated as 4-digit#Glyph
   dealershipId: uuid("dealership_id").notNull().default(sql`gen_random_uuid()`),
   salespersonId: uuid("salesperson_id").notNull().references(() => users.id),
   salesManagerId: uuid("sales_manager_id").references(() => users.id),
@@ -380,6 +380,7 @@ export const deals = pgTable("deals", {
   dealState: text("deal_state").notNull().default("DRAFT"), // DRAFT, IN_PROGRESS, APPROVED, CANCELLED
   activeScenarioId: uuid("active_scenario_id"),
   lockedBy: uuid("locked_by").references(() => users.id),
+  customerAttachedAt: timestamp("customer_attached_at"), // Timestamp when customer first attached and deal number generated
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
