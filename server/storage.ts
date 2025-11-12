@@ -345,15 +345,19 @@ export class DatabaseStorage implements IStorage {
   
   async searchVehicles(query: string, dealershipId: string): Promise<Vehicle[]> {
     // SECURITY: Filter by dealershipId for multi-tenant isolation
-    const whereConditions = and(
-      eq(vehicles.dealershipId, dealershipId),
-      or(
-        like(vehicles.stockNumber, `%${query}%`),
-        like(vehicles.vin, `%${query}%`),
-        like(vehicles.make, `%${query}%`),
-        like(vehicles.model, `%${query}%`)
-      )
-    );
+    // If query is empty, return all vehicles for dealership
+    // Otherwise, filter by search query
+    const whereConditions = query.trim()
+      ? and(
+          eq(vehicles.dealershipId, dealershipId),
+          or(
+            like(vehicles.stockNumber, `%${query}%`),
+            like(vehicles.vin, `%${query}%`),
+            like(vehicles.make, `%${query}%`),
+            like(vehicles.model, `%${query}%`)
+          )
+        )
+      : eq(vehicles.dealershipId, dealershipId);
     
     return await db.select().from(vehicles)
       .where(whereConditions)

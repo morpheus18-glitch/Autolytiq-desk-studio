@@ -22,7 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 interface VehicleSwitcherProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  currentVehicleId: string;
+  currentVehicleId?: string;
   dealId: string;
   scenarioId: string;
 }
