@@ -11,12 +11,12 @@ async function createMasterAdmin() {
     const existingAdmin = await db
       .select()
       .from(users)
-      .where(eq(users.email, "admin@dealstudio.local"))
+      .where(eq(users.email, "admin@autolytiq.com"))
       .limit(1);
 
     if (existingAdmin.length > 0) {
       console.log("✅ Master admin account already exists!");
-      console.log("📧 Email: admin@dealstudio.local");
+      console.log("📧 Email: admin@autolytiq.com");
       console.log("🔑 Password: Admin123!");
       return;
     }
@@ -38,7 +38,7 @@ async function createMasterAdmin() {
 
     // Create admin user
     await db.insert(users).values({
-      email: "admin@dealstudio.local",
+      email: "admin@autolytiq.com",
       password: hashedPassword,
       username: "admin",
       fullName: "Master Admin",
@@ -53,7 +53,7 @@ async function createMasterAdmin() {
 
     console.log("\n✅ Master admin account created successfully!");
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.log("📧 Email:    admin@dealstudio.local");
+    console.log("📧 Email:    admin@autolytiq.com");
     console.log("🔑 Password: Admin123!");
     console.log("👤 Role:     admin");
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");

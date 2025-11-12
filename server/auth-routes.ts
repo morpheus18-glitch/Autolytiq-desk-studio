@@ -259,9 +259,11 @@ export function setupAuthRoutes(app: Express) {
       );
       
       // TODO: Send email with reset link containing the resetToken
-      // For now, log it (in production, use email service)
+      // When email service is implemented, use: sendEmail() from email-config.ts
+      // From: support@autolytiq.com
       console.log(`Password reset token for ${email}: ${resetToken}`);
       console.log(`Reset link: http://localhost:5000/reset-password?token=${resetToken}`);
+      console.log(`Note: Email would be sent from support@autolytiq.com`);
       
       res.json({ message: "If that email exists, a reset link has been sent" });
     } catch (error: any) {
