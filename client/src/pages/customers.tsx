@@ -225,37 +225,16 @@ export default function Customers() {
               </div>
             </Card>
           ) : (
-            <>
-              {/* Mobile: Horizontal Snap Scroll */}
-              {isMobile ? (
-                <div className="overflow-x-auto snap-x snap-mandatory -mx-3 px-3 pb-4 scrollbar-hide">
-                  <div className="flex gap-3">
-                    {filteredCustomers.map((customer) => (
-                      <div
-                        key={customer.id}
-                        className="snap-center shrink-0 basis-[calc(100%-1.5rem)] max-w-[20rem]"
-                      >
-                        <CustomerCard
-                          customer={customer}
-                          onViewDetails={() => handleViewDetails(customer)}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                /* Desktop/Tablet: Grid */
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {filteredCustomers.map((customer) => (
-                    <CustomerCard
-                      key={customer.id}
-                      customer={customer}
-                      onViewDetails={() => handleViewDetails(customer)}
-                    />
-                  ))}
-                </div>
-              )}
-            </>
+            /* Unified vertical grid layout - mobile and desktop */
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {filteredCustomers.map((customer) => (
+                <CustomerCard
+                  key={customer.id}
+                  customer={customer}
+                  onViewDetails={() => handleViewDetails(customer)}
+                />
+              ))}
+            </div>
           )}
         </div>
       </div>
