@@ -1,31 +1,110 @@
-# NextGen Automotive Desking Platform - Design Guidelines v2.0
+# NextGen Automotive Desking Platform - Design Guidelines v3.0 (Premium Edition)
 
 ## Design Approach
-**System**: Carbon Design System with mobile-first responsive principles
-**Rationale**: Enterprise-grade automotive finance tool requiring simultaneous visibility of all deal components. Single-page architecture optimized for speed and mobile usability. Inspired by Linear's precision and modern fintech dashboards.
+**System**: Carbon Design System enhanced with premium fintech aesthetics
+**Rationale**: Enterprise-grade automotive finance tool with Apple/Nike quality standards. Mobile-first architecture optimized for speed (30-45 sec quotes) with sophisticated visual treatment that commands authority and trust.
 
 ## Core Design Principles
 1. **Mobile-First Excellence**: All features fully functional on smallest screens - no compromises
 2. **Simultaneous Visibility**: Every deal component visible without scrolling on desktop; organized accordion sections on mobile
-3. **Zero-Latency Feedback**: All calculations update instantly across all sections
-4. **Professional Authority**: Clean, precise layouts conveying financial accuracy and dealership credibility
+3. **Zero-Latency Feedback**: All calculations update instantly with 60fps animations
+4. **Professional Authority + Premium Aesthetics**: Clean layouts with subtle glow effects, neon accents, and refined typography
+5. **Value and Velocity**: Speed-first design philosophy - every interaction optimized for rapid deal closing
 
 ---
 
-## Typography System
+## Typography System (Premium Edition)
 
-**Font Stack**: Inter (UI), SF Mono (numbers/currency)
+**Font Stack**: 
+- UI Text: Inter (Variable font with optical sizing)
+- Numbers/Currency: JetBrains Mono (premium monospace with ligatures)
+- Accent Text: Inter Display (for headlines with glow effects)
 
-**Hierarchy**:
-- Deal Header: text-2xl md:text-3xl font-semibold
-- Section Headers: text-lg md:text-xl font-semibold
-- Subsection Labels: text-sm md:text-base font-medium uppercase tracking-wide
-- Input Labels: text-xs md:text-sm font-medium
-- Financial Values: text-xl md:text-2xl font-mono font-semibold tabular-nums
-- Body Text: text-sm md:text-base
-- Helper Text: text-xs text-muted-foreground
+**Enhanced Hierarchy with Glow Effects**:
+- **Deal Header**: `text-3xl md:text-4xl font-bold tracking-tight premium-glow-text`
+  - Premium glow: Subtle white/cyan halo on dark backgrounds
+- **Market Data (KBB, MMR, Valuations)**: `text-xl md:text-2xl font-mono premium-glow-market`
+  - Bright glowing effect matching data source brand color
+- **Section Headers**: `text-lg md:text-xl font-semibold tracking-tight`
+- **Subsection Labels**: `text-xs md:text-sm font-medium uppercase tracking-wider text-muted-foreground`
+- **Input Labels**: `text-xs md:text-sm font-medium`
+- **Financial Values**: `text-2xl md:text-3xl font-mono font-bold tabular-nums premium-glow-currency`
+  - Brighter, richer rendering with subtle green/gold glow
+- **Body Text**: `text-sm md:text-base leading-relaxed`
+- **Helper Text**: `text-xs text-muted-foreground/80`
 
-**Critical**: All currency values use `font-mono tabular-nums` for vertical alignment. Mobile maintains clear hierarchy with scaled-down sizes.
+**Typography Enhancement Rules**:
+1. **Glow Effects on Key Data**: Market valuations, monthly payments, totals receive subtle text-shadow glow
+2. **Increased Font Weight**: Financial data uses `font-bold` instead of `font-semibold` for authority
+3. **Refined Letter Spacing**: Tighter tracking (`tracking-tight`) on headlines, wider (`tracking-wider`) on labels
+4. **Optical Sizing**: Variable fonts adjust rendering based on text size for optimal legibility
+5. **Tabular Numbers**: All numeric values use `tabular-nums` for perfect vertical alignment
+
+**Critical**: All currency values use `font-mono tabular-nums premium-glow-currency` for vertical alignment + premium rendering.
+
+---
+
+## Color System (Premium Edition)
+
+**Background Palette**:
+- **Primary Background**: `#FAFAF8` (Eggshell, warm matte finish) - replaces pure white
+- **Card Background**: `#F5F5F3` (Slightly darker eggshell for elevation)
+- **Elevated Surface**: `#EEEEEC` (Subtle depth for modals/sheets)
+- **Dark Mode Primary**: `#0A0A0A` (Deep black with subtle warmth)
+- **Dark Mode Card**: `#141414` (Elevated dark surface)
+
+**Glow Color Palette** (for text-shadow and neon borders):
+- **Currency Glow**: `rgba(34, 197, 94, 0.4)` (Success green with alpha)
+- **Market Data Glow**: `rgba(59, 130, 246, 0.5)` (Primary blue)
+- **KBB Brand Glow**: `rgba(0, 105, 180, 0.6)` (KBB blue)
+- **Danger/Alert Glow**: `rgba(239, 68, 68, 0.4)` (Red)
+- **Premium Accent Glow**: `rgba(168, 85, 247, 0.4)` (Purple/violet)
+- **Neutral Glow**: `rgba(255, 255, 255, 0.2)` (Subtle white halo)
+
+**Neon Border System**:
+- **Border Thickness**: 1px (very fine and thin as requested)
+- **Border Glow**: Dual-layer box-shadow for neon effect
+  - Inner: `0 0 2px currentColor`
+  - Outer: `0 0 8px rgba(currentColor, 0.4)`
+- **Component Color Matching**: Borders inherit component's primary color via CSS custom properties
+- **Intensity Levels**:
+  - Subtle: `neon-border-subtle` (soft glow, always-on)
+  - Medium: `neon-border` (standard neon effect)
+  - Bright: `neon-border-bright` (high-intensity for key data)
+
+**Implementation Utilities**:
+```css
+/* Premium glow text */
+.premium-glow-text {
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+}
+
+.premium-glow-currency {
+  text-shadow: 0 0 12px rgba(34, 197, 94, 0.4);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.premium-glow-market {
+  text-shadow: 0 0 14px rgba(59, 130, 246, 0.5);
+  font-weight: 700;
+}
+
+/* Neon borders */
+.neon-border {
+  border: 1px solid currentColor;
+  box-shadow: 
+    inset 0 0 2px currentColor,
+    0 0 8px rgba(var(--glow-color-rgb), 0.4);
+}
+
+.neon-border-bright {
+  border: 1px solid currentColor;
+  box-shadow: 
+    inset 0 0 3px currentColor,
+    0 0 12px rgba(var(--glow-color-rgb), 0.6);
+}
+```
 
 ---
 

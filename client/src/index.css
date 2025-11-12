@@ -63,11 +63,11 @@ ACCESSIBILITY:
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
   
-  /* Surface Colors - Deep Graphite Foundation */
-  --background: 220 15% 97%;
+  /* Surface Colors - Eggshell Premium Foundation (Matte Finish) */
+  --background: 42 12% 98%;  /* #FAFAF8 - Warm eggshell replacing pure white */
   --foreground: 220 18% 15%;
   --border: 220 12% 88%;
-  --card: 220 14% 99%;
+  --card: 42 10% 96%;  /* #F5F5F3 - Slightly darker eggshell for elevation */
   --card-foreground: 220 18% 15%;
   --card-border: 220 12% 92%;
   
@@ -339,6 +339,95 @@ ACCESSIBILITY:
  * need to be distinguished from eachother visually.
  */
 @layer utilities {
+  /* ═══════════════════════════════════════════════════
+     PREMIUM GLOW & NEON UTILITIES
+     ═══════════════════════════════════════════════════ */
+  
+  /* Premium glow for headlines and important text */
+  .premium-glow-text {
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+  }
+  
+  /* Currency values with green/gold glow */
+  .premium-glow-currency {
+    text-shadow: 0 0 12px rgba(34, 197, 94, 0.4);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  
+  /* Market data (KBB, MMR, valuations) with blue glow */
+  .premium-glow-market {
+    text-shadow: 0 0 14px rgba(59, 130, 246, 0.5);
+    font-weight: 700;
+  }
+  
+  /* KBB-specific brand glow */
+  .premium-glow-kbb {
+    text-shadow: 0 0 14px rgba(0, 105, 180, 0.6);
+    font-weight: 700;
+  }
+  
+  /* Alert/warning glow */
+  .premium-glow-alert {
+    text-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+    font-weight: 700;
+  }
+  
+  /* Dark mode adjustments for glow */
+  .dark .premium-glow-text {
+    text-shadow: 0 0 24px rgba(255, 255, 255, 0.3);
+  }
+  
+  .dark .premium-glow-currency {
+    text-shadow: 0 0 16px rgba(34, 197, 94, 0.6);
+  }
+  
+  .dark .premium-glow-market {
+    text-shadow: 0 0 18px rgba(59, 130, 246, 0.7);
+  }
+
+  /* Neon border system - fine glowing outlines */
+  .neon-border-subtle {
+    border: 1px solid currentColor;
+    box-shadow: 
+      inset 0 0 1px currentColor,
+      0 0 4px rgba(59, 130, 246, 0.2);
+  }
+  
+  .neon-border {
+    border: 1px solid currentColor;
+    box-shadow: 
+      inset 0 0 2px currentColor,
+      0 0 8px rgba(59, 130, 246, 0.4);
+  }
+  
+  .neon-border-bright {
+    border: 1px solid currentColor;
+    box-shadow: 
+      inset 0 0 3px currentColor,
+      0 0 12px rgba(59, 130, 246, 0.6);
+  }
+  
+  .neon-border-success {
+    border: 1px solid hsl(var(--success));
+    box-shadow: 
+      inset 0 0 2px hsl(var(--success)),
+      0 0 8px rgba(34, 197, 94, 0.5);
+  }
+  
+  .neon-border-warning {
+    border: 1px solid hsl(var(--warning));
+    box-shadow: 
+      inset 0 0 2px hsl(var(--warning)),
+      0 0 8px rgba(234, 179, 8, 0.5);
+  }
+  
+  .neon-border-danger {
+    border: 1px solid hsl(var(--destructive));
+    box-shadow: 
+      inset 0 0 2px hsl(var(--destructive)),
+      0 0 8px rgba(239, 68, 68, 0.5);
+  }
 
   /* Hide ugly search cancel button in Chrome until we can style it properly */
   input[type="search"]::-webkit-search-cancel-button {
