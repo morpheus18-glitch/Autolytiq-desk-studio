@@ -239,6 +239,7 @@ export default function DealWorksheet() {
                       scenario={scenario} 
                       dealId={deal.id}
                       tradeVehicle={deal.tradeVehicle}
+                      customerZipCode={deal.customer?.zipCode}
                     />
                   </TabsContent>
                 ))}

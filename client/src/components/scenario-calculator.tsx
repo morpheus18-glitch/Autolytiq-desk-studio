@@ -25,9 +25,10 @@ interface ScenarioCalculatorProps {
   scenario: DealScenario;
   dealId: string;
   tradeVehicle: TradeVehicle | null;
+  customerZipCode?: string | null;
 }
 
-export function ScenarioCalculator({ scenario, dealId, tradeVehicle }: ScenarioCalculatorProps) {
+export function ScenarioCalculator({ scenario, dealId, tradeVehicle, customerZipCode }: ScenarioCalculatorProps) {
   const { setIsSaving, setLastSaved, setSaveError } = useStore();
   const { toast } = useToast();
   const [formData, setFormData] = useState(scenario);
@@ -332,6 +333,7 @@ export function ScenarioCalculator({ scenario, dealId, tradeVehicle }: ScenarioC
             <div>
               <TaxJurisdictionSelector
                 selectedJurisdictionId={formData.taxJurisdictionId || undefined}
+                initialZipCode={customerZipCode || undefined}
                 onSelect={handleTaxJurisdictionChange}
               />
             </div>
