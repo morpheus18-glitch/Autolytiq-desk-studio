@@ -145,16 +145,16 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar>
+    <Sidebar collapsible="icon">
       <SidebarHeader className="border-b px-6 py-4">
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-primary/60">
+          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-primary via-primary/80 to-primary/60 shadow-lg shadow-primary/20">
             <FileText className="w-5 h-5 text-primary-foreground" />
           </div>
-          <div>
-            <h1 className="text-lg font-bold">Deal Studio</h1>
+          <div className="flex flex-col group-data-[collapsible=icon]:hidden">
+            <h1 className="text-lg font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Deal Studio</h1>
             {currentUser && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground font-medium">
                 {currentUser.fullName || currentUser.username}
               </p>
             )}
@@ -174,7 +174,9 @@ export function AppSidebar() {
               size="lg"
             >
               <Plus className="w-5 h-5" />
-              {usersLoading ? 'Loading...' : createDealMutation.isPending ? 'Creating...' : 'New Deal'}
+              <span className="group-data-[collapsible=icon]:hidden">
+                {usersLoading ? 'Loading...' : createDealMutation.isPending ? 'Creating...' : 'New Deal'}
+              </span>
             </Button>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -198,7 +200,7 @@ export function AppSidebar() {
                       tooltip={item.label}
                     >
                       <Icon className="w-5 h-5" />
-                      <span>{item.label}</span>
+                      <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
@@ -224,7 +226,7 @@ export function AppSidebar() {
                       tooltip={item.label}
                     >
                       <Icon className="w-5 h-5" />
-                      <span>{item.label}</span>
+                      <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
@@ -255,7 +257,7 @@ export function AppSidebar() {
                       tooltip={item.label}
                     >
                       <Icon className="w-5 h-5" />
-                      <span>{item.label}</span>
+                      <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
@@ -274,7 +276,9 @@ export function AppSidebar() {
           className="w-full justify-start gap-3"
         >
           <LogOut className="w-5 h-5" />
-          {logoutMutation.isPending ? 'Logging out...' : 'Logout'}
+          <span className="group-data-[collapsible=icon]:hidden">
+            {logoutMutation.isPending ? 'Logging out...' : 'Logout'}
+          </span>
         </Button>
       </SidebarFooter>
     </Sidebar>

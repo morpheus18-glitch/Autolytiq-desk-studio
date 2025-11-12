@@ -137,11 +137,11 @@ function AppLayout() {
   // Show full app layout with sidebar for authenticated routes
   const sidebarStyle = {
     "--sidebar-width": "16rem",
-    "--sidebar-width-icon": "3rem",
+    "--sidebar-width-icon": "4rem",
   };
   
   return (
-    <SidebarProvider style={sidebarStyle as React.CSSProperties}>
+    <SidebarProvider defaultOpen={true} style={sidebarStyle as React.CSSProperties}>
       <div className="flex h-screen w-full">
         {/* Desktop Sidebar - Hidden on mobile */}
         <div className="hidden md:flex">
@@ -151,8 +151,8 @@ function AppLayout() {
         {/* Main Content Area */}
         <SidebarInset className="flex flex-col flex-1">
           {/* Desktop Header with Sidebar Toggle - Hidden on mobile */}
-          <header className="hidden md:flex items-center gap-2 border-b px-4 py-3">
-            <SidebarTrigger data-testid="button-sidebar-toggle" />
+          <header className="hidden md:flex items-center gap-2 border-b px-4 py-3 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <SidebarTrigger data-testid="button-sidebar-toggle" className="hover-elevate active-elevate-2" />
             <div className="flex-1" />
           </header>
           
