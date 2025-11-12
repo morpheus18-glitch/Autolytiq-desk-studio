@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Search, Car, Check } from 'lucide-react';
+import { Search, Car, Check, Plus, ArrowLeft } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -14,7 +14,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { Vehicle } from '@shared/schema';
+import { VehicleForm } from '@/components/forms/vehicle-form';
+import type { Vehicle, InsertVehicle } from '@shared/schema';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
@@ -34,12 +35,13 @@ export function VehicleSwitcher({
   scenarioId,
 }: VehicleSwitcherProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const { toast } = useToast();
 
   // Search vehicles
   const { data: vehicles = [], isLoading } = useQuery<Vehicle[]>({
     queryKey: ['/api/vehicles/search', searchQuery],
-    enabled: open,
+    enabled: open && !showCreateForm,
     queryFn: async () => {
       const query = searchQuery ? `?q=${encodeURIComponent(searchQuery)}` : '';
       const response = await fetch(`/api/vehicles/search${query}`);
@@ -47,6 +49,45 @@ export function VehicleSwitcher({
         throw new Error('Failed to search vehicles');
       }
       return response.json();
+    },
+  });
+
+  // Create vehicle and attach to deal
+  const createAndAttachMutation = useMutation({
+    mutationFn: async (data: InsertVehicle) => {
+      // Create vehicle
+      const createResponse = await apiRequest('POST', '/api/vehicles', data);
+      const newVehicle = await createResponse.json();
+      
+      // Update deal with new vehicle
+      await apiRequest('PATCH', `/api/deals/${dealId}`, {
+        vehicleId: newVehicle.id,
+      });
+      
+      // Update scenario with new vehicle and price
+      await apiRequest('PATCH', `/api/deals/${dealId}/scenarios/${scenarioId}`, {
+        vehicleId: newVehicle.id,
+        vehiclePrice: newVehicle.price,
+      });
+      
+      return newVehicle;
+    },
+    onSuccess: (vehicle) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/vehicles'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/deals', dealId] });
+      toast({
+        title: 'Vehicle created and attached',
+        description: `${vehicle.year} ${vehicle.make} ${vehicle.model} has been added to this deal`,
+      });
+      setShowCreateForm(false);
+      onOpenChange(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Failed to create vehicle',
+        description: error.message || 'Please try again',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -95,28 +136,72 @@ export function VehicleSwitcher({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(open) => {
+      onOpenChange(open);
+      if (!open) {
+        setShowCreateForm(false);
+        setSearchQuery('');
+      }
+    }}>
       <DialogContent className="w-full max-w-4xl max-h-[85vh] p-0 overflow-hidden flex flex-col">
         <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-4">
-          <DialogTitle>Switch Vehicle</DialogTitle>
+          <DialogTitle>
+            {showCreateForm ? 'Create New Vehicle' : 'Switch Vehicle'}
+          </DialogTitle>
           <DialogDescription>
-            Search and select a different vehicle for this deal
+            {showCreateForm 
+              ? 'Enter vehicle details to create and attach to this deal'
+              : 'Search and select a different vehicle for this deal'
+            }
           </DialogDescription>
         </DialogHeader>
 
-        {/* Search Input */}
-        <div className="px-6 pb-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by year, make, model, stock#, or VIN..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-              data-testid="input-vehicle-search"
+        {showCreateForm ? (
+          <div className="px-6 pb-6">
+            <VehicleForm
+              onSubmit={(data) => createAndAttachMutation.mutate(data)}
+              isLoading={createAndAttachMutation.isPending}
+              submitLabel="Create & Attach"
             />
+            <div className="mt-4">
+              <Button
+                variant="outline"
+                className="w-full gap-2"
+                onClick={() => setShowCreateForm(false)}
+                disabled={createAndAttachMutation.isPending}
+                data-testid="button-cancel-create-vehicle"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Vehicle List
+              </Button>
+            </div>
           </div>
-        </div>
+        ) : (
+          <>
+            {/* Search Input */}
+            <div className="px-6 pb-4">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by year, make, model, stock#, or VIN..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                    data-testid="input-vehicle-search"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => setShowCreateForm(true)}
+                  data-testid="button-create-vehicle"
+                >
+                  <Plus className="w-4 h-4" />
+                  Create New
+                </Button>
+              </div>
+            </div>
 
         {/* Vehicle List */}
         <ScrollArea className="flex-1 px-6">
@@ -213,6 +298,8 @@ export function VehicleSwitcher({
             </div>
           )}
         </ScrollArea>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );
