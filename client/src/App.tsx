@@ -3,6 +3,8 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
 import { AIChatCompanion } from "@/components/ai-chat-companion";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { ProtectedRoute } from "@/components/protected-route";
@@ -108,14 +110,68 @@ function Router() {
   );
 }
 
+function AppLayout() {
+  const [location] = useLocation();
+  
+  // Check if on public routes (login, register, password reset)
+  const isPublicRoute = location.startsWith('/login') || 
+                        location.startsWith('/register') || 
+                        location.startsWith('/auth/password-reset');
+  
+  // Show simple layout for public routes
+  if (isPublicRoute) {
+    return (
+      <>
+        <Router />
+        <AIChatCompanion />
+      </>
+    );
+  }
+  
+  // Show full app layout with sidebar for authenticated routes
+  const sidebarStyle = {
+    "--sidebar-width": "16rem",
+    "--sidebar-width-icon": "3rem",
+  };
+  
+  return (
+    <SidebarProvider style={sidebarStyle as React.CSSProperties}>
+      <div className="flex h-screen w-full">
+        {/* Desktop Sidebar - Hidden on mobile */}
+        <div className="hidden md:flex">
+          <AppSidebar />
+        </div>
+        
+        {/* Main Content Area */}
+        <SidebarInset className="flex flex-col flex-1">
+          {/* Desktop Header with Sidebar Toggle - Hidden on mobile */}
+          <header className="hidden md:flex items-center gap-2 border-b px-4 py-3">
+            <SidebarTrigger data-testid="button-sidebar-toggle" />
+            <div className="flex-1" />
+          </header>
+          
+          {/* Main Content */}
+          <main className="flex-1 overflow-auto">
+            <Router />
+          </main>
+        </SidebarInset>
+        
+        {/* Mobile Bottom Navigation - Shown only on mobile */}
+        <MobileBottomNav />
+        
+        {/* AI Chat Companion - Available everywhere */}
+        <AIChatCompanion />
+      </div>
+    </SidebarProvider>
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <Router />
-        <MobileBottomNav />
-        <AIChatCompanion />
+        <AppLayout />
       </TooltipProvider>
     </QueryClientProvider>
   );
