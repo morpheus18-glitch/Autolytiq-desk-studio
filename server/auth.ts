@@ -18,8 +18,11 @@ declare global {
       role: string;
       emailVerified: boolean;
       mfaEnabled: boolean;
+      mfaSecret: string | null;
       lastLogin: Date | null;
       preferences: any;
+      resetToken: string | null;
+      resetTokenExpires: Date | null;
       createdAt: Date;
       updatedAt: Date;
     }
@@ -215,6 +218,17 @@ export function setupAuth(app: Express) {
         return res.status(401).json({ message: info?.message || "Authentication failed" });
       }
 
+      // Check if 2FA is enabled for this user
+      if (user.mfaEnabled) {
+        // Store user ID in session temporarily for 2FA verification
+        (req.session as any).pending2faUserId = user.id;
+        return res.status(200).json({ 
+          requires2fa: true, 
+          message: "Please verify with your authenticator app" 
+        });
+      }
+
+      // No 2FA required - complete login
       req.login(user, (err) => {
         if (err) {
           return next(err);

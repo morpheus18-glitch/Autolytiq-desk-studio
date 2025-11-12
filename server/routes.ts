@@ -8,6 +8,7 @@ import { calculateFinancePayment, calculateLeasePayment, calculateSalesTax } fro
 import { z } from "zod";
 import { aiService, type ChatMessage, type DealContext } from "./ai-service";
 import { setupAuth, requireAuth, requireRole } from "./auth";
+import { setupAuthRoutes } from "./auth-routes";
 
 // Rate limiting middleware - 100 requests per minute per IP
 const limiter = rateLimit({
@@ -54,15 +55,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     xssFilter: true, // Enable XSS filter
   }));
 
-  // Setup authentication (session + passport middleware)
-  setupAuth(app);
-  
-  // Apply rate limiting to auth endpoints
+  // Apply rate limiting BEFORE setupAuth (critical for security!)
+  // This MUST come before setupAuth because setupAuth defines /api/register and /api/login routes
   app.use('/api/register', authLimiter);
   app.use('/api/login', authLimiter);
-  
-  // Apply rate limiting to all API routes
   app.use('/api', limiter);
+
+  // Setup authentication (session + passport middleware + auth routes)
+  setupAuth(app);
+  
+  // Setup auth routes (preferences, settings, password reset, 2FA, audit, permissions)
+  setupAuthRoutes(app);
   
   // ===== USERS =====
   app.get('/api/users', async (req, res) => {

@@ -53,7 +53,15 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 **Role-Based Access**: Four roles (salesperson, sales_manager, finance_manager, admin). Self-registration restricted to "salesperson" role to prevent privilege escalation; admins can create users with elevated roles via separate endpoint.
 **Middleware**: requireAuth() for authenticated routes, requireRole(...roles) for role-based access control.
 **Auth Endpoints**: POST /api/register, POST /api/login, POST /api/logout, GET /api/user.
-**Future Enhancements**: Password reset flow (token-based), 2FA/MFA (TOTP with QR codes), granular permissions system, user preferences (theme, notifications), dealership settings, and audit trail for security events.
+**Production-Ready Enhancements (November 2025)**:
+- Password reset flow: Token-based with hashed tokens (1-hour expiry), email abstraction ready for SendGrid/Resend integration
+- 2FA/MFA: TOTP-based with QR code generation (otplib + qrcode), enforced on login via 2-step flow
+- Granular permissions: 20 permissions across 5 categories (deals, inventory, customers, settings, users), role-permission mapping for 4 roles
+- Permission-based RBAC: requirePermission() middleware for fine-grained access control
+- User preferences: JSONB storage for theme, notifications, default views with GET/PUT API
+- Dealership settings: Multi-tenant ready with branding, contact, tax defaults, GET/PUT API (admin-only)
+- Security audit trail: Comprehensive logging of all auth events (login, logout, MFA, password reset, settings changes) with IP, user agent, metadata to security_audit_log table
+- Demo user: username "demo", password "Demo123!", role "admin" for testing
 
 ## Recent Changes (November 2025)
 
