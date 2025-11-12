@@ -1,5 +1,6 @@
 import { useLocation } from 'wouter';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Sidebar,
@@ -15,6 +16,11 @@ import {
   SidebarSeparator,
 } from '@/components/ui/sidebar';
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import {
   LayoutDashboard,
   FileText,
   Car,
@@ -27,10 +33,14 @@ import {
   Building2,
   LogOut,
   UserCog,
+  ChevronDown,
+  Clock,
 } from 'lucide-react';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
-import type { User as UserType } from '@shared/schema';
+import type { User as UserType, DealWithRelations } from '@shared/schema';
+import { Badge } from '@/components/ui/badge';
+import { formatDistanceToNow } from 'date-fns';
 
 type NavItem = {
   label: string;
@@ -62,6 +72,7 @@ const settingsNavItems: NavItem[] = [
 export function AppSidebar() {
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
+  const [recentDealsOpen, setRecentDealsOpen] = useState(true);
 
   // Get current user for role-based navigation
   const { data: currentUser } = useQuery<UserType>({
@@ -72,6 +83,17 @@ export function AppSidebar() {
   const { data: users, isLoading: usersLoading } = useQuery<UserType[]>({
     queryKey: ['/api/users'],
   });
+
+  // Get recent deals for sidebar
+  const { data: recentDealsData } = useQuery<{
+    deals: DealWithRelations[];
+    total: number;
+    pages: number;
+  }>({
+    queryKey: ['/api/deals?pageSize=5&page=1'],
+  });
+  
+  const recentDeals = recentDealsData?.deals || [];
 
   // Logout mutation
   const logoutMutation = useMutation({
@@ -96,43 +118,8 @@ export function AppSidebar() {
     },
   });
 
-  // Create deal mutation
-  const createDealMutation = useMutation({
-    mutationFn: async () => {
-      const salesperson = users?.find(u => u.role === 'salesperson') || users?.[0];
-      if (!salesperson) {
-        throw new Error('No users available');
-      }
-      
-      const response = await apiRequest('POST', '/api/deals', {
-        salespersonId: salesperson.id,
-      });
-      return await response.json();
-    },
-    onSuccess: (deal) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/deals'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/deals/stats'] });
-      toast({
-        title: 'Deal created',
-        description: 'Opening deal worksheet...',
-      });
-      setLocation(`/deals/${deal.id}`);
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Failed to create deal',
-        description: error.message || 'Please try again',
-        variant: 'destructive',
-      });
-    },
-  });
-
   const handleNavigation = (path: string) => {
     setLocation(path);
-  };
-
-  const handleNewDeal = () => {
-    createDealMutation.mutate();
   };
 
   const handleLogout = () => {
@@ -163,22 +150,63 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        {/* Quick Action */}
-        <SidebarGroup>
-          <SidebarGroupContent className="px-3 py-3">
-            <Button
-              onClick={handleNewDeal}
-              disabled={createDealMutation.isPending || usersLoading}
-              data-testid="sidebar-new-deal"
-              className="w-full justify-start gap-3"
-              size="lg"
-            >
-              <Plus className="w-5 h-5" />
-              <span className="group-data-[collapsible=icon]:hidden">
-                {usersLoading ? 'Loading...' : createDealMutation.isPending ? 'Creating...' : 'New Deal'}
-              </span>
-            </Button>
-          </SidebarGroupContent>
+        {/* Recent Deals - Collapsible */}
+        <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+          <Collapsible open={recentDealsOpen} onOpenChange={setRecentDealsOpen}>
+            <SidebarGroupLabel asChild>
+              <CollapsibleTrigger className="flex w-full items-center justify-between hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-md px-2 py-1.5 transition-colors">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  <span className="text-xs font-medium">Recent Deals</span>
+                </div>
+                <ChevronDown className={`w-4 h-4 transition-transform ${recentDealsOpen ? 'rotate-180' : ''}`} />
+              </CollapsibleTrigger>
+            </SidebarGroupLabel>
+            <CollapsibleContent>
+              <SidebarGroupContent className="px-3 py-2">
+                {recentDeals.length === 0 ? (
+                  <div className="text-xs text-muted-foreground px-2 py-3">
+                    No recent deals
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {recentDeals.map((deal) => (
+                      <button
+                        key={deal.id}
+                        onClick={() => handleNavigation(`/deals/${deal.id}`)}
+                        data-testid={`sidebar-deal-${deal.id}`}
+                        className="w-full text-left px-2 py-2 rounded-md hover-elevate active-elevate-2 transition-all"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-medium truncate">
+                              {deal.customer ? `${deal.customer.firstName} ${deal.customer.lastName}` : 'No Customer'}
+                            </div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {deal.vehicle ? `${deal.vehicle.year} ${deal.vehicle.make} ${deal.vehicle.model}` : 'No Vehicle'}
+                            </div>
+                          </div>
+                          <Badge 
+                            variant={
+                              deal.dealState === 'APPROVED' ? 'default' : 
+                              deal.dealState === 'IN_PROGRESS' ? 'secondary' : 
+                              'outline'
+                            }
+                            className="text-xs shrink-0"
+                          >
+                            {deal.dealState === 'IN_PROGRESS' ? 'Active' : deal.dealState === 'APPROVED' ? 'Approved' : 'Draft'}
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {formatDistanceToNow(new Date(deal.updatedAt), { addSuffix: true })}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </Collapsible>
         </SidebarGroup>
 
         <SidebarSeparator />
