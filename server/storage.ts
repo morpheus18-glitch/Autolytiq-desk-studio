@@ -44,7 +44,7 @@ export interface IStorage {
   
   // Customers
   getCustomer(id: string): Promise<Customer | undefined>;
-  searchCustomers(query: string): Promise<Customer[]>;
+  searchCustomers(query: string, dealershipId: string): Promise<Customer[]>;
   createCustomer(customer: InsertCustomer, dealershipId: string): Promise<Customer>;
   updateCustomer(id: string, customer: Partial<InsertCustomer>): Promise<Customer>;
   
@@ -231,16 +231,20 @@ export class DatabaseStorage implements IStorage {
     return customer || undefined;
   }
   
-  async searchCustomers(query: string): Promise<Customer[]> {
-    return await db.select().from(customers)
-      .where(
-        or(
-          like(customers.firstName, `%${query}%`),
-          like(customers.lastName, `%${query}%`),
-          like(customers.email, `%${query}%`),
-          like(customers.phone, `%${query}%`)
-        )
+  async searchCustomers(query: string, dealershipId: string): Promise<Customer[]> {
+    // SECURITY: Filter by dealershipId for multi-tenant isolation
+    const whereConditions = and(
+      eq(customers.dealershipId, dealershipId),
+      or(
+        like(customers.firstName, `%${query}%`),
+        like(customers.lastName, `%${query}%`),
+        like(customers.email, `%${query}%`),
+        like(customers.phone, `%${query}%`)
       )
+    );
+    
+    return await db.select().from(customers)
+      .where(whereConditions)
       .limit(20);
   }
   

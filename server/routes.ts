@@ -78,9 +78,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // ===== CUSTOMERS =====
-  app.get('/api/customers', async (req, res) => {
+  app.get('/api/customers', requireAuth, async (req, res) => {
     try {
-      const customers = await storage.searchCustomers('');
+      // SECURITY: Filter by authenticated user's dealership for multi-tenant isolation
+      const dealershipId = (req.user as any)?.dealershipId;
+      if (!dealershipId) {
+        return res.status(403).json({ error: 'User must belong to a dealership' });
+      }
+      
+      const customers = await storage.searchCustomers('', dealershipId);
       res.json(customers);
     } catch (error: any) {
       console.error('[GET /api/customers] Error:', error.message, error.stack);
@@ -89,10 +95,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   app.get('/api/customers/search', requireAuth, async (req, res) => {
-    // TODO: Filter results by req.user.dealershipId for multi-tenant isolation
     try {
+      // SECURITY: Filter by authenticated user's dealership for multi-tenant isolation
+      const dealershipId = (req.user as any)?.dealershipId;
+      if (!dealershipId) {
+        return res.status(403).json({ error: 'User must belong to a dealership' });
+      }
+      
       const query = String(req.query.q || '');
-      const customers = await storage.searchCustomers(query);
+      const customers = await storage.searchCustomers(query, dealershipId);
       res.json(customers);
     } catch (error) {
       res.status(500).json({ error: 'Failed to search customers' });
@@ -100,12 +111,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   app.get('/api/customers/:id', requireAuth, async (req, res) => {
-    // TODO: Verify customer belongs to req.user.dealershipId
     try {
+      // SECURITY: Verify customer belongs to authenticated user's dealership
+      const dealershipId = (req.user as any)?.dealershipId;
+      if (!dealershipId) {
+        return res.status(403).json({ error: 'User must belong to a dealership' });
+      }
+      
       const customer = await storage.getCustomer(req.params.id);
       if (!customer) {
         return res.status(404).json({ error: 'Customer not found' });
       }
+      
+      // Verify customer belongs to same dealership as authenticated user
+      if (customer.dealershipId !== dealershipId) {
+        return res.status(403).json({ error: 'Access denied: Customer belongs to different dealership' });
+      }
+      
       res.json(customer);
     } catch (error) {
       res.status(500).json({ error: 'Failed to get customer' });
