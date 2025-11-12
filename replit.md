@@ -41,6 +41,24 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 **Database**: PostgreSQL (Neon serverless with WebSocket support).
 **Schema Design**: UUID primary keys, tables for Users, Customers, Vehicles, Deals (with state machine), Deal Scenarios (JSONB for aftermarket products), Tax Rule Groups, Tax Jurisdictions, Zip Code Lookup, Fee Package Templates, and Audit Log. Monetary values use Decimal type.
 
+## Recent Completed Work (Nov 12, 2025)
+
+**Multi-Tenant Security Implementation**:
+- ✅ Added dealershipId to users, customers, and deals tables with NOT NULL constraints
+- ✅ Made dealershipId mandatory in createCustomer, createUser, createDeal storage methods
+- ✅ Added requireAuth middleware to all write endpoints (POST /api/customers, POST /api/deals, POST /api/quick-quotes/:id/convert)
+- ✅ Added requireAuth middleware to all read endpoints (GET /api/customers, GET /api/deals, etc.)
+- ✅ Fixed quick-quote conversion to use req.user.dealershipId and validate salesperson dealership
+- ✅ Backfilled 39 existing customers with correct dealershipId based on deal relationships
+- ⚠️ **CRITICAL TODO**: Add dealership filtering to ALL read queries (see line 110 below)
+
+**Frontend Enhancements**:
+- ✅ Deal number placeholder text ("Pending customer") displays when customer not yet attached
+- ✅ Customer attachment triggers automatic deal number generation via PATCH /api/deals/:id/attach-customer
+- ✅ Tax jurisdictions sorted alphabetically within each region
+- ✅ ZIP code lookup with auto-state detection already implemented
+- ✅ Consistent Card border-radius (rounded-xl) across all components
+
 **Recent Schema Updates** (Nov 12, 2025):
 - **Deal Numbers**: Made `dealNumber` nullable in deals table - generated ONLY when customer attached via `PATCH /api/deals/:id/attach-customer`
 - **Customer Attached Tracking**: Added `customerAttachedAt` timestamp to deals table for audit trail
@@ -107,16 +125,16 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 11. **CRITICAL TODO**: Improve registration to require invitation-bound dealership or disable public signup when multiple dealerships exist (currently assigns to first dealership)
 12. **TODO**: Add validation for child entities (scenarios, trades, payments) to respect parent dealership
 
-**Frontend - Deal Numbers**:
-1. Display placeholder text for deals without deal numbers (e.g., "Pending customer attachment")
-2. Refresh deal worksheet after customer attachment to show new deal number
-3. Show deal number prominently in deal worksheet header
+**Frontend - Deal Numbers** (Completed Nov 12, 2025):
+1. ✅ Display placeholder text "Pending customer" (italic) in deal-worksheet-v2.tsx and deals-list.tsx when dealNumber is null
+2. ✅ Customer attachment now uses PATCH /api/deals/:id/attach-customer endpoint - automatically generates deal number and refreshes worksheet via cache invalidation
+3. ✅ Deal number prominently displayed in worksheet header with font-mono styling and data-testid
 
 **Sales Tax Improvements**:
-1. Sort tax jurisdictions alphabetically in dropdown
-2. Implement zip code lookup with auto-population of state/city
-3. Add state-of-purchase tax methodology
-4. Handle non-reciprocal state tax rules
+1. ✅ Tax jurisdictions sorted alphabetically within each region using localeCompare() in state-tax-selector.tsx
+2. ✅ ZIP code lookup already implemented with debounced API call, auto-state detection, and manual override option
+3. **TODO**: Add state-of-purchase tax methodology
+4. **TODO**: Handle non-reciprocal state tax rules
 
-**Design Consistency**:
-1. Apply consistent border-radius to all Card component outlines globally
+**Design Consistency** (Completed Nov 12, 2025):
+1. ✅ All Card components use consistent rounded-xl border-radius - no custom overrides found across codebase
