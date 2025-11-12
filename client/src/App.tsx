@@ -10,6 +10,7 @@ import Dashboard from "@/pages/dashboard";
 import DealsList from "@/pages/deals-list";
 import DealWorksheetV2 from "@/pages/deal-worksheet-v2";
 import DealWorksheetTabsPage from "@/pages/deal-worksheet-tabs";
+import QuickQuote from "@/pages/quick-quote";
 import Inventory from "@/pages/inventory";
 import InventoryNew from "@/pages/inventory-new";
 import Customers from "@/pages/customers";
@@ -55,7 +56,9 @@ function Router() {
         </ProtectedRoute>
       </Route>
       <Route path="/quick-quote">
-        <Redirect to="/" />
+        <ProtectedRoute>
+          <QuickQuote />
+        </ProtectedRoute>
       </Route>
       <Route path="/deals/new">
         <Redirect to="/" />

@@ -14,7 +14,8 @@ import {
   Clock,
   Users,
   Car,
-  LayoutDashboard
+  LayoutDashboard,
+  Zap
 } from 'lucide-react';
 import type { User as UserType } from '@shared/schema';
 
@@ -93,16 +94,28 @@ export default function Dashboard() {
                 </p>
               </div>
             </div>
-            <Button 
-              size="lg"
-              onClick={handleDesking}
-              disabled={usersLoading || createDealMutation.isPending}
-              data-testid="button-desking"
-              className="gap-2 hidden md:flex"
-            >
-              <FileText className="w-4 h-4" />
-              {usersLoading ? 'Loading...' : 'Desking'}
-            </Button>
+            <div className="hidden md:flex items-center gap-2">
+              <Button 
+                size="lg"
+                variant="outline"
+                onClick={() => setLocation('/quick-quote')}
+                data-testid="button-quick-quote"
+                className="gap-2"
+              >
+                <Zap className="w-4 h-4" />
+                Quick Quote
+              </Button>
+              <Button 
+                size="lg"
+                onClick={handleDesking}
+                disabled={usersLoading || createDealMutation.isPending}
+                data-testid="button-desking"
+                className="gap-2"
+              >
+                <FileText className="w-4 h-4" />
+                {usersLoading ? 'Loading...' : 'Full Desk'}
+              </Button>
+            </div>
           </div>
         </div>
       </div>

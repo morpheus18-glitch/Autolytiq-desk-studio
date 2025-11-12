@@ -385,6 +385,9 @@ export const dealScenarios = pgTable("deal_scenarios", {
   scenarioType: text("scenario_type").notNull(), // CASH_DEAL, FINANCE_DEAL, LEASE_DEAL
   name: text("name").notNull(),
   
+  // Quick Quote Mode - flag for streamlined 30-45 second quotes
+  isQuickQuote: boolean("is_quick_quote").notNull().default(false),
+  
   // Vehicle pricing
   vehiclePrice: decimal("vehicle_price", { precision: 12, scale: 2 }).notNull(),
   downPayment: decimal("down_payment", { precision: 12, scale: 2 }).notNull().default("0"),

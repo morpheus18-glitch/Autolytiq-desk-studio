@@ -47,7 +47,8 @@ import {
   Eye,
   EyeOff,
   Smartphone,
-  FileText
+  FileText,
+  Plus
 } from "lucide-react";
 import { useDebouncedCallback } from "use-debounce";
 import { calculatePricingSummary, formatCurrency, formatPercent, getProfitColorClass } from "@/lib/pricing-utils";
@@ -76,10 +77,11 @@ interface InventoryResponse {
 }
 
 // Vehicle Card Component
-function VehicleCard({ vehicle, onViewDetails, onStartDeal }: {
+function VehicleCard({ vehicle, onViewDetails, onStartDeal, onQuickQuote }: {
   vehicle: Vehicle;
   onViewDetails: () => void;
   onStartDeal: () => void;
+  onQuickQuote: () => void;
 }) {
   const [showInternalMetrics, setShowInternalMetrics] = useState(false);
   
@@ -250,11 +252,11 @@ function VehicleCard({ vehicle, onViewDetails, onStartDeal }: {
           )}
         </div>
 
-        <div className="flex gap-2 pt-2">
+        <div className="grid grid-cols-2 gap-2 pt-2">
           <Button
             variant="outline"
             size="sm"
-            className="flex-1"
+            className="col-span-2"
             onClick={onViewDetails}
             data-testid={`button-view-details-${vehicle.id}`}
           >
@@ -262,13 +264,24 @@ function VehicleCard({ vehicle, onViewDetails, onStartDeal }: {
           </Button>
           <Button
             size="sm"
-            className="flex-1"
+            variant="outline"
+            className="gap-1"
+            onClick={onQuickQuote}
+            disabled={vehicle.status !== 'available'}
+            data-testid={`button-quick-quote-${vehicle.id}`}
+          >
+            <Zap className="w-4 h-4" />
+            Quick Quote
+          </Button>
+          <Button
+            size="sm"
+            className="gap-1"
             onClick={onStartDeal}
             disabled={vehicle.status !== 'available'}
             data-testid={`button-start-deal-${vehicle.id}`}
           >
-            Start Deal
-            <ChevronRight className="w-4 h-4 ml-1" />
+            <Plus className="w-4 h-4" />
+            Full Desk
           </Button>
         </div>
       </CardContent>
@@ -976,6 +989,11 @@ export default function InventoryPage() {
   const handleStartDeal = (vehicle: Vehicle) => {
     createDealMutation.mutate(vehicle.id);
   };
+  
+  const handleQuickQuote = (vehicle: Vehicle) => {
+    const price = vehicle.internetPrice || vehicle.price;
+    setLocation(`/quick-quote?vehiclePrice=${price}&vehicleId=${vehicle.id}`);
+  };
 
   const handleSortChange = (sortBy: string) => {
     const newFilters = { ...filters, sortBy };
@@ -1286,6 +1304,7 @@ export default function InventoryPage() {
                       vehicle={vehicle}
                       onViewDetails={() => handleViewDetails(vehicle)}
                       onStartDeal={() => handleStartDeal(vehicle)}
+                      onQuickQuote={() => handleQuickQuote(vehicle)}
                     />
                   ))}
                 </div>
