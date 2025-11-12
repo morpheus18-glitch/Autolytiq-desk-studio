@@ -890,3 +890,103 @@ export type DealStats = {
   avgDealValue: number;
   conversionRate: number;
 };
+
+// ===== DEALERSHIP SETTINGS TABLE =====
+export const dealershipSettings = pgTable("dealership_settings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  dealershipId: text("dealership_id").notNull().unique().default("default"), // Future multi-tenant support
+  dealershipName: text("dealership_name").notNull(),
+  
+  // Contact & Location
+  address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  zipCode: text("zip_code"),
+  phone: text("phone"),
+  email: text("email"),
+  website: text("website"),
+  
+  // Branding
+  logo: text("logo"), // URL or base64
+  primaryColor: text("primary_color").default("#0066cc"),
+  
+  // Tax & Fee Defaults
+  defaultTaxRate: decimal("default_tax_rate", { precision: 5, scale: 4 }).default("0.0825"), // 8.25%
+  docFee: decimal("doc_fee", { precision: 10, scale: 2 }).default("299.00"),
+  
+  // Business Settings
+  timezone: text("timezone").default("America/New_York"),
+  currency: text("currency").default("USD"),
+  
+  // Preferences (notifications, features, etc.)
+  settings: jsonb("settings").default({}),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertDealershipSettingsSchema = createInsertSchema(dealershipSettings).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertDealershipSettings = z.infer<typeof insertDealershipSettingsSchema>;
+export type DealershipSettings = typeof dealershipSettings.$inferSelect;
+
+// ===== PERMISSIONS TABLE =====
+export const permissions = pgTable("permissions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull().unique(), // e.g., "deals:create", "deals:edit", "deals:delete", "inventory:view"
+  description: text("description"),
+  category: text("category").notNull(), // e.g., "deals", "inventory", "customers", "settings"
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  categoryIdx: index("permissions_category_idx").on(table.category),
+}));
+
+export const insertPermissionSchema = createInsertSchema(permissions).omit({ id: true, createdAt: true });
+export type InsertPermission = z.infer<typeof insertPermissionSchema>;
+export type Permission = typeof permissions.$inferSelect;
+
+// ===== ROLE PERMISSIONS TABLE (Many-to-Many) =====
+export const rolePermissions = pgTable("role_permissions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  role: text("role").notNull(), // salesperson, sales_manager, finance_manager, admin
+  permissionId: uuid("permission_id").notNull().references(() => permissions.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  rolePermissionIdx: index("role_permissions_role_permission_idx").on(table.role, table.permissionId),
+}));
+
+export const insertRolePermissionSchema = createInsertSchema(rolePermissions).omit({ id: true, createdAt: true });
+export type InsertRolePermission = z.infer<typeof insertRolePermissionSchema>;
+export type RolePermission = typeof rolePermissions.$inferSelect;
+
+// ===== SECURITY AUDIT LOG TABLE =====
+export const securityAuditLog = pgTable("security_audit_log", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }), // null if user deleted
+  username: text("username"), // Denormalized for historical record
+  
+  // Event details
+  eventType: text("event_type").notNull(), // login, logout, login_failed, password_reset, role_change, permission_grant, mfa_enabled, etc.
+  eventCategory: text("event_category").notNull(), // authentication, authorization, account_management, security
+  
+  // Context
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  
+  // Additional metadata (JSON)
+  metadata: jsonb("metadata").default({}), // e.g., { oldRole: "salesperson", newRole: "admin", changedBy: "userId" }
+  
+  // Result
+  success: boolean("success").notNull().default(true),
+  errorMessage: text("error_message"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  userIdIdx: index("security_audit_log_user_id_idx").on(table.userId),
+  eventTypeIdx: index("security_audit_log_event_type_idx").on(table.eventType),
+  categoryIdx: index("security_audit_log_category_idx").on(table.eventCategory),
+  createdAtIdx: index("security_audit_log_created_at_idx").on(table.createdAt),
+}));
+
+export const insertSecurityAuditLogSchema = createInsertSchema(securityAuditLog).omit({ id: true, createdAt: true });
+export type InsertSecurityAuditLog = z.infer<typeof insertSecurityAuditLogSchema>;
+export type SecurityAuditLog = typeof securityAuditLog.$inferSelect;
