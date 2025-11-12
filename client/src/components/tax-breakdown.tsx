@@ -42,8 +42,8 @@ export function TaxBreakdown({ taxResult, className, showDetails = true, loading
   
   const hasTradeInSavings = taxResult && taxResult.tradeInTaxSavings > 0;
   const hasEVIncentive = taxResult && taxResult.evIncentive > 0;
-  const hasWarnings = taxResult && taxResult.warnings.length > 0;
-  const hasNotes = taxResult && taxResult.notes.length > 0;
+  const hasWarnings = taxResult && taxResult.warnings && taxResult.warnings.length > 0;
+  const hasNotes = taxResult && taxResult.notes && taxResult.notes.length > 0;
   
   if (loading) {
     return (
