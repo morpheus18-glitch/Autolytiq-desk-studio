@@ -72,7 +72,9 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 - Diff highlighting on changed values (yellow background, left border accent, diff badges)
 - Bug fixes: defensive guards for undefined scenarios, conditional audit logging, decimal-to-string type conversion for API compatibility
 
-**Authentication System Implementation (auth-core-1 through auth-core-4)**:
+**Authentication System Implementation (auth-core-1 through auth-rbac-3)**:
+
+**Backend (auth-core-1 through auth-core-4)**:
 - Database schema extended with auth fields: email (unique), password (hashed), emailVerified, resetToken/resetTokenExpires, mfaEnabled/mfaSecret, lastLogin, failedLoginAttempts, accountLockedUntil, preferences (JSONB), role (salesperson/sales_manager/finance_manager/admin)
 - Server auth setup: Passport.js LocalStrategy, crypto/scrypt password hashing (128-byte salt, 64-byte output), timing-safe comparison
 - Session management: PostgreSQL session store (connect-pg-simple), httpOnly cookies, secure in production, sameSite: lax, 7-day maxAge
@@ -81,6 +83,14 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 - RBAC foundation: 4 roles defined, self-registration forced to "salesperson" role (prevents privilege escalation), requireAuth() and requireRole() middleware ready for endpoint protection
 - Auth endpoints: POST /api/register (auto-login after registration), POST /api/login, POST /api/logout, GET /api/user (password excluded from response)
 - Storage methods: getUserByEmail(), updateUser(), sessionStore integration for session persistence
+
+**Frontend (auth-rbac-3)**:
+- useAuth hook: Manages auth state via TanStack Query, provides login/register/logout methods, targeted query invalidation on logout (preserves query configurations)
+- Login page: React Hook Form with Zod validation, auto-redirects if authenticated, loading states, data-testid attributes for testing
+- Register page: Password strength validation (8+ chars, uppercase, lowercase, number), auto-redirects if authenticated, links to login
+- ProtectedRoute component: Guards routes requiring authentication, shows loading spinner during auth check, redirects to /login if unauthenticated
+- All routes properly protected: Dashboard, deals, inventory, customers, analytics, VIN decoder, credit center all wrapped in ProtectedRoute
+- E2E tested: Registration flow, auto-login, logout/login cycle, protected route access, all verified working without page reload
 
 ## External Dependencies
 
