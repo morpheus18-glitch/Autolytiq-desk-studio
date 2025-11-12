@@ -2,7 +2,7 @@
 
 ## Overview
 
-The NextGen Automotive Desking Platform is a mobile-first desking tool for automotive dealerships, focused on "value and velocity." It enables salespeople and desk managers to generate payment quotes in 30-45 seconds and structure complete deals in 3-5 minutes. The platform's core purpose is to facilitate rapid deal closing by prioritizing speed and simplicity, ensuring customers are approved and in cars quickly, recognizing that profit is primarily made during vehicle acquisition and preparation. The project aims for "Apple/Nike quality" in its UI/UX and overall user experience, supporting two main modes: Quick Quote for on-the-lot customer qualification and Full Desk for comprehensive deal structuring.
+The NextGen Automotive Desking Platform is a mobile-first desking tool for automotive dealerships, designed to facilitate rapid deal closing with "value and velocity." It enables salespeople and desk managers to generate payment quotes in 30-45 seconds and structure complete deals in 3-5 minutes. The platform prioritizes speed, simplicity, and an "Apple/Nike quality" UI/UX to ensure quick customer approvals. It supports two main modes: Quick Quote for on-the-lot qualification and Full Desk for comprehensive deal structuring.
 
 ## User Preferences
 
@@ -17,139 +17,44 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 
 ## System Architecture
 
-### Frontend Architecture
+### Frontend
 
 **Framework**: React 18+ with TypeScript and Vite.
-**UI Component System**: Shadcn/ui built on Radix UI, styled with Tailwind CSS.
-**Design Philosophy**: Carbon Design System principles adapted for automotive finance, emphasizing data primacy, instant feedback, and professional trust, with influences from Linear and Stripe. Prioritizes mobile-first, responsive design with glassmorphism, smooth transitions, fluid typography, and "Apple/Nike quality" micro-interactions.
-**State Management**: Zustand with Immer for local/UI state; TanStack Query for server state with aggressive caching.
-**Routing**: Wouter for lightweight client-side routing.
-**Form Management**: React Hook Form with Zod for validation.
-**Key Design Decisions**: Real-time financial calculations using Decimal.js (precision: 20, ROUND_HALF_UP), debounced auto-save, optimistic UI updates, comprehensive empty states, and mobile-optimized components.
+**UI Component System**: Shadcn/ui (Radix UI, Tailwind CSS).
+**Design Philosophy**: Mobile-first, responsive design with Carbon Design System principles, glassmorphism, smooth transitions, fluid typography, and "Apple/Nike quality" micro-interactions. Emphasizes data primacy and instant feedback.
+**State Management**: Zustand (UI state), TanStack Query (server state with caching).
+**Routing**: Wouter.
+**Form Management**: React Hook Form with Zod validation.
+**Key Design Decisions**: Real-time financial calculations (Decimal.js, precision 20, ROUND_HALF_UP), debounced auto-save, optimistic UI, comprehensive empty states, and mobile-optimized components.
 
-### Backend Architecture
+### Backend
 
 **Framework**: Express.js with TypeScript.
 **API Pattern**: RESTful API.
 **Database ORM**: Drizzle ORM.
-**Rate Limiting**: Express rate limiter (100 requests/minute per IP).
-**Financial Calculations**: Server-side validation using Decimal.js to ensure precision matches the frontend.
-**Key Design Decisions**: Dual client-side and server-side calculation for performance and data integrity, raw body buffering for webhooks, and comprehensive logging.
+**Rate Limiting**: Express rate limiter.
+**Financial Calculations**: Server-side validation using Decimal.js.
+**Key Design Decisions**: Dual client-side and server-side calculations for performance and integrity, raw body buffering for webhooks.
 
-### Data Storage Solutions
+### Data Storage
 
-**Database**: PostgreSQL via Neon serverless with WebSocket support.
-**Schema Design**: Uses UUID primary keys and includes tables for Users, Customers, Vehicles, Trade Vehicles, Deals (with state machine), Deal Scenarios (with JSONB for aftermarket products), Tax Rule Groups, Tax Jurisdictions, Zip Code Lookup, Fee Package Templates, and Audit Log. Decimal type is used for all monetary values.
-**Fee Package Templates**: Multi-tenant table (dealershipId nullable for global templates) with audit trail (createdBy/updatedBy), displayOrder for UI sorting, and JSONB arrays for dealerFees, accessories, aftermarketProducts. Seeded with 3 realistic starter packages (Basic $2K, Premium $5.6K, Luxury $11.6K) for rapid deal structuring.
-**Scenario Comparison**: Side-by-side comparison modal with diff highlighting, allowing users to compare 2 scenarios across 9 key metrics (vehicle price, down payment, trade equity, APR, term, amount financed, monthly payment, total cost, cash due). Features automatic hydration on async load, color-coded diff badges (green for better, red for worse), and visual highlighting (yellow background + left border) on changed rows.
+**Database**: PostgreSQL (Neon serverless with WebSocket support).
+**Schema Design**: UUID primary keys, tables for Users, Customers, Vehicles, Deals (with state machine), Deal Scenarios (JSONB for aftermarket products), Tax Rule Groups, Tax Jurisdictions, Zip Code Lookup, Fee Package Templates, and Audit Log. Monetary values use Decimal type.
+**Fee Package Templates**: Multi-tenant, JSONB arrays for dealerFees, accessories, aftermarketProducts, with seeded starter packages for rapid deal structuring.
+**Scenario Comparison**: Side-by-side comparison modal with diff highlighting for 9 key metrics.
 
 ### Authentication and Authorization
 
-**Authentication System**: Production-ready session-based authentication using Passport.js with LocalStrategy.
-**Password Security**: crypto/scrypt hashing with salt (128 bytes, 64-byte output) and timing-safe comparison to prevent timing attacks.
-**Session Management**: PostgreSQL-backed sessions via connect-pg-simple with httpOnly cookies, secure flag in production, sameSite: lax for CSRF protection, and 7-day maxAge.
-**Account Security**: Account lockout after 5 failed login attempts (15-minute lockout), rate limiting on auth endpoints (10 attempts/min), SESSION_SECRET validation at startup.
-**Security Headers**: Helmet middleware with Content Security Policy, HSTS (1 year), frameguard (deny), XSS filter, and MIME sniffing protection.
-**Role-Based Access**: Four roles (salesperson, sales_manager, finance_manager, admin). Self-registration restricted to "salesperson" role to prevent privilege escalation; admins can create users with elevated roles via separate endpoint.
-**Middleware**: requireAuth() for authenticated routes, requireRole(...roles) for role-based access control.
-**Auth Endpoints**: POST /api/register, POST /api/login, POST /api/logout, GET /api/user.
-**Production-Ready Enhancements (November 2025)**:
-- Password reset flow: Token-based with hashed tokens (1-hour expiry), email abstraction ready for SendGrid/Resend integration
-- 2FA/MFA: TOTP-based with QR code generation (otplib + qrcode), enforced on login via 2-step flow
-- Granular permissions: 20 permissions across 5 categories (deals, inventory, customers, settings, users), role-permission mapping for 4 roles
-- Permission-based RBAC: requirePermission() middleware for fine-grained access control
-- User preferences: JSONB storage for theme, notifications, default views with GET/PUT API
-- Dealership settings: Multi-tenant ready with branding, contact, tax defaults, GET/PUT API (admin-only)
-- Security audit trail: Comprehensive logging of all auth events (login, logout, MFA, password reset, settings changes) with IP, user agent, metadata to security_audit_log table
-- Demo user: username "demo", password "Demo123!", role "admin" for testing (DEVELOPMENT ONLY - created by seed.ts in NODE_ENV=development)
-
-## Recent Changes (November 2025)
-
-**Quick Quote Mode Implementation (November 12, 2025)**:
-- Created `/quick-quote` route with streamlined 4-input form (vehicle price, down payment ±%, APR, term)
-- Real-time payment calculations using shared `calculateFinancePayment()` engine (Decimal.js precision)
-- Mobile-optimized: h-14 inputs, large touch targets, 60fps-capable display with font-mono numbers
-- Schema enhancement: Added `isQuickQuote` boolean flag to deal_scenarios table for session tracking
-- Inventory integration: "Quick Quote" buttons on vehicle cards with URL pre-population (vehiclePrice, vehicleId)
-- Safe URL param parsing with NaN fallback to defaults (20% down, 6.99% APR, 72 months)
-- Vehicle context display: Shows "{year} {make} {model}" in header when coming from inventory
-- Entry points: Dashboard Quick Quote button, Inventory card buttons
-- Creates deal + quick quote scenario on "Save & Continue", navigates to full desk worksheet
-- Target: 30-45 second payment quotes vs 3-5+ min traditional desking
-
-**Mobile Navigation System (prof-navigation-1 through prof-navigation-4)**:
-- Created sticky bottom navigation bar with 4 quick-access buttons (Dashboard, Deals, Inventory, Customers)
-- Implemented expandable menu (bottom-right) with slide-up sheet containing all routes
-- Created PageLayout wrapper component with iOS safe-area-inset-bottom support
-- Applied PageLayout to all pages for consistent bottom padding (5rem on mobile, 1.5rem on desktop)
-- Implemented conditional navigation suppression on deal worksheet pages via shared `isMobileNavSuppressed()` helper
-- Navigation automatically hides on deal worksheets to maximize screen real estate
-- All interactive elements sized at 56px minimum for one-handed mobile operation
-
-**Scenario Management Enhancements (prof-scenarios-1)**:
-- Scenario cloning via duplicate button (already existed, verified working)
-- Side-by-side comparison modal with 2-scenario selector
-- Diff highlighting on changed values (yellow background, left border accent, diff badges)
-- Bug fixes: defensive guards for undefined scenarios, conditional audit logging, decimal-to-string type conversion for API compatibility
-
-**Authentication System Implementation (auth-core-1 through auth-rbac-3)**:
-
-**Backend (auth-core-1 through auth-core-4)**:
-- Database schema extended with auth fields: email (unique), password (hashed), emailVerified, resetToken/resetTokenExpires, mfaEnabled/mfaSecret, lastLogin, failedLoginAttempts, accountLockedUntil, preferences (JSONB), role (salesperson/sales_manager/finance_manager/admin)
-- Server auth setup: Passport.js LocalStrategy, crypto/scrypt password hashing (128-byte salt, 64-byte output), timing-safe comparison
-- Session management: PostgreSQL session store (connect-pg-simple), httpOnly cookies, secure in production, sameSite: lax, 7-day maxAge
-- Account security: 5 failed attempts → 15min lockout, rate limiting (10 attempts/min on auth endpoints, 100/min on all API routes), SESSION_SECRET validation at startup
-- Security headers: Helmet middleware with CSP, HSTS (1 year), frameguard (deny), XSS filter, MIME sniffing protection
-- RBAC foundation: 4 roles defined, self-registration forced to "salesperson" role (prevents privilege escalation), requireAuth() and requireRole() middleware ready for endpoint protection
-- Auth endpoints: POST /api/register (auto-login after registration), POST /api/login, POST /api/logout, GET /api/user (password excluded from response)
-- Storage methods: getUserByEmail(), updateUser(), sessionStore integration for session persistence
-
-**Frontend (auth-rbac-3)**:
-- useAuth hook: Manages auth state via TanStack Query, provides login/register/logout methods, targeted query invalidation on logout (preserves query configurations)
-- Login page: React Hook Form with Zod validation, auto-redirects if authenticated, loading states, data-testid attributes for testing
-- Register page: Password strength validation (8+ chars, uppercase, lowercase, number), auto-redirects if authenticated, links to login
-- ProtectedRoute component: Guards routes requiring authentication, shows loading spinner during auth check, redirects to /login if unauthenticated
-- All routes properly protected: Dashboard, deals, inventory, customers, analytics, VIN decoder, credit center all wrapped in ProtectedRoute
-- E2E tested: Registration flow, auto-login, logout/login cycle, protected route access, all verified working without page reload
-
-**Advanced Auth Features Completion (November 12, 2025)**:
-**7 Production-Ready Enterprise Features COMPLETE + E2E TESTED**:
-
-**Backend Implementation**:
-1. Password reset flow: Token-based with crypto hashing, 1-hour expiry, email abstraction ready for SendGrid/Resend
-2. 2FA/MFA system: TOTP-based (otplib + qrcode), enforced on login via 2-step flow with pending session state
-3. Granular permissions: 20 permissions across 5 categories (deals, inventory, customers, settings, users)
-4. Permission-based RBAC: requirePermission() middleware for fine-grained access control beyond role-based
-5. User preferences API: JSONB storage with GET/PUT endpoints for theme, notifications, default views
-6. Dealership settings API: Multi-tenant ready with branding, contact, tax defaults (admin-only via requireRole)
-7. Security audit trail: Comprehensive logging to security_audit_log table with IP, user agent, metadata for all auth events
-
-**Frontend Implementation**:
-1. Account Settings page (/settings/account): User profile display, preferences toggles (email/deal notifications), 2FA setup/disable with QR code dialog
-2. Password Reset flow: Request page (/auth/password-reset) and confirm page (/auth/password-reset/:token), both public routes with form validation
-3. Dealership Settings page (/settings/dealership): Admin-only access with redirect guard, contact/branding/financial defaults management
-4. Navigation integration: Account Settings visible to all users in mobile nav, Dealership Settings conditional for admins only
-5. All features use TanStack Query + react-hook-form + zod validation, comprehensive data-testid coverage
-
-**Security Verification**:
-- Rate limiters execute BEFORE auth routes (auth: 10/min, API: 100/min)
-- MFA enforcement: Login returns requires2fa flag, 2-step flow with session-based pending state
-- Account lockout: 5 failed attempts → 15min lockout with timing-safe comparison
-- Helmet security headers: CSP, HSTS (1 year), frameguard, XSS filter, MIME sniffing protection
-- Password hashing: crypto/scrypt with 128-byte salt, 64-byte output, timing-safe comparison
-
-**E2E Test Results (ALL PASSED)**:
-- Registration → auto-login → dashboard access verified
-- 2FA setup → QR code generation → TOTP verification → mfa_enabled=true in DB
-- Logout → login with MFA enforcement → requires2fa response → TOTP challenge → login completes
-- Preferences navigation and updates with toast notifications
-- Password reset request flow with token generation
-- Dealership settings accessible for admin users
-- No critical issues, production-ready per architect final review
+**Authentication System**: Session-based using Passport.js (LocalStrategy).
+**Password Security**: `crypto/scrypt` hashing with salt, timing-safe comparison.
+**Session Management**: PostgreSQL-backed sessions (connect-pg-simple) with `httpOnly` cookies, secure flag in production, `sameSite: lax`, 7-day `maxAge`.
+**Account Security**: Account lockout after 5 failed attempts (15-minute), rate limiting on auth endpoints, `SESSION_SECRET` validation, Helmet middleware for security headers (CSP, HSTS, frameguard, XSS filter, MIME sniffing).
+**Role-Based Access**: Four roles (salesperson, sales_manager, finance_manager, admin). Self-registration restricted to "salesperson". `requireAuth()` and `requireRole()` middleware.
+**Advanced Features**: Password reset (token-based), 2FA/MFA (TOTP-based with QR), granular permissions (20 across 5 categories), permission-based RBAC (`requirePermission()` middleware), user preferences API (JSONB), dealership settings API (multi-tenant), and comprehensive security audit trail.
 
 ## External Dependencies
 
-**Database**: Neon serverless PostgreSQL, @neondatabase/serverless, Drizzle ORM.
-**UI Libraries**: Radix UI, Tailwind CSS, Lucide React, date-fns.
+**Database**: Neon serverless PostgreSQL, `@neondatabase/serverless`, Drizzle ORM.
+**UI Libraries**: Radix UI, Tailwind CSS, Lucide React, `date-fns`.
 **Financial Calculations**: Decimal.js.
 **Development Tools**: Vite, TypeScript, Drizzle Kit, ESBuild.

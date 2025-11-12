@@ -97,25 +97,33 @@ export default function QuickQuote() {
   
   // Sync down payment with percentage mode
   useEffect(() => {
-    if (usePercentMode && watchedValues.vehiclePrice > 0) {
-      const calculatedDown = new Decimal(watchedValues.vehiclePrice)
-        .times(watchedValues.downPaymentPercent)
-        .div(100)
-        .toDecimalPlaces(2)
-        .toNumber();
-      form.setValue('downPayment', calculatedDown);
+    if (usePercentMode && watchedValues.vehiclePrice > 0 && watchedValues.downPaymentPercent != null && watchedValues.downPaymentPercent !== '') {
+      try {
+        const calculatedDown = new Decimal(watchedValues.vehiclePrice)
+          .times(watchedValues.downPaymentPercent)
+          .div(100)
+          .toDecimalPlaces(2)
+          .toNumber();
+        form.setValue('downPayment', calculatedDown);
+      } catch (error) {
+        console.warn('Invalid percentage value for dollar calculation');
+      }
     }
   }, [watchedValues.vehiclePrice, watchedValues.downPaymentPercent, usePercentMode, form]);
   
   // Sync percentage when dollar amount changes
   useEffect(() => {
-    if (!usePercentMode && watchedValues.vehiclePrice > 0) {
-      const percent = new Decimal(watchedValues.downPayment)
-        .div(watchedValues.vehiclePrice)
-        .times(100)
-        .toDecimalPlaces(1)
-        .toNumber();
-      form.setValue('downPaymentPercent', Math.min(100, Math.max(0, percent)));
+    if (!usePercentMode && watchedValues.vehiclePrice > 0 && watchedValues.downPayment != null && watchedValues.downPayment !== '') {
+      try {
+        const percent = new Decimal(watchedValues.downPayment)
+          .div(watchedValues.vehiclePrice)
+          .times(100)
+          .toDecimalPlaces(1)
+          .toNumber();
+        form.setValue('downPaymentPercent', Math.min(100, Math.max(0, percent)));
+      } catch (error) {
+        console.warn('Invalid down payment value for percentage calculation');
+      }
     }
   }, [watchedValues.downPayment, watchedValues.vehiclePrice, usePercentMode, form]);
   
@@ -139,7 +147,7 @@ export default function QuickQuote() {
         scenarioType: 'FINANCE_DEAL',
         vehiclePrice: String(watchedValues.vehiclePrice),
         downPayment: String(watchedValues.downPayment),
-        apr: watchedValues.apr,
+        apr: String(watchedValues.apr),
         term: watchedValues.term,
         totalTax: '0',
         totalFees: '0',
