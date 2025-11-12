@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertVehicleSchema, type InsertVehicle } from "@shared/schema";
@@ -19,7 +20,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DollarSign, Hash, Calendar, Gauge, Loader2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { DollarSign, Hash, Calendar, Gauge, Loader2, Scan, CheckCircle, AlertCircle } from "lucide-react";
+import { VINDecoder } from "@/lib/vin-decoder";
+import { useToast } from "@/hooks/use-toast";
 
 interface VehicleFormProps {
   defaultValues?: Partial<InsertVehicle>;
@@ -34,6 +38,10 @@ export function VehicleForm({
   isLoading = false,
   submitLabel = "Save Vehicle",
 }: VehicleFormProps) {
+  const { toast } = useToast();
+  const [isDecoding, setIsDecoding] = useState(false);
+  const [decodeStatus, setDecodeStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  
   const form = useForm<InsertVehicle>({
     resolver: zodResolver(insertVehicleSchema),
     defaultValues: {
@@ -63,10 +71,67 @@ export function VehicleForm({
     },
   });
 
+  const handleVINDecode = async () => {
+    const vin = form.getValues("vin");
+    
+    if (!vin || vin.length !== 17) {
+      toast({
+        title: "Invalid VIN",
+        description: "VIN must be exactly 17 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsDecoding(true);
+    setDecodeStatus('idle');
+
+    try {
+      const decoded = await VINDecoder.decode(vin);
+      
+      // Auto-fill form fields from decoded data
+      if (decoded.year) form.setValue("year", decoded.year);
+      if (decoded.make) form.setValue("make", decoded.make);
+      if (decoded.model) form.setValue("model", decoded.model);
+      if (decoded.trim) form.setValue("trim", decoded.trim);
+      if (decoded.transmission) form.setValue("transmission", decoded.transmission);
+      if (decoded.drivetrain) form.setValue("drivetrain", decoded.drivetrain);
+      if (decoded.fuelType) form.setValue("fuelType", decoded.fuelType);
+      
+      // Build engine description from decoded data
+      if (decoded.engineDisplacement || decoded.engineCylinders) {
+        const engineParts = [];
+        if (decoded.engineDisplacement) engineParts.push(`${decoded.engineDisplacement}L`);
+        if (decoded.engineCylinders) {
+          const cylinderConfig = decoded.engineCylinders <= 4 ? 'I' : 'V';
+          engineParts.push(`${cylinderConfig}${decoded.engineCylinders}`);
+        }
+        if (decoded.fuelType) engineParts.push(decoded.fuelType);
+        form.setValue("engineType", engineParts.join(' '));
+      }
+
+      setDecodeStatus('success');
+      toast({
+        title: "VIN Decoded Successfully",
+        description: `${decoded.year} ${decoded.make} ${decoded.model}`,
+      });
+    } catch (error: any) {
+      setDecodeStatus('error');
+      toast({
+        title: "VIN Decode Failed",
+        description: error.message || "Could not decode VIN. Please enter details manually.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDecoding(false);
+    }
+  };
+
   const handleSubmit = async (data: InsertVehicle) => {
     try {
       await onSubmit(data);
       form.reset();
+      setDecodeStatus('idle'); // Reset decode status after successful submission
     } catch (error) {
       console.error("Form submission error:", error);
     }
@@ -78,29 +143,78 @@ export function VehicleForm({
         {/* Basic Info Section */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Basic Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+          {/* VIN Decode Status */}
+          {decodeStatus === 'success' && (
+            <Alert className="bg-green-500/10 border-green-500/20">
+              <CheckCircle className="h-4 w-4 text-green-500" />
+              <AlertDescription className="text-green-700 dark:text-green-400">
+                VIN decoded successfully! Vehicle details have been auto-filled.
+              </AlertDescription>
+            </Alert>
+          )}
+          {decodeStatus === 'error' && (
+            <Alert className="bg-destructive/10 border-destructive/20">
+              <AlertCircle className="h-4 w-4 text-destructive" />
+              <AlertDescription className="text-destructive">
+                Could not decode VIN. Please enter vehicle details manually.
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          <div className="grid grid-cols-1 gap-4">
             <FormField
               control={form.control}
               name="vin"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>VIN</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                      <Input
-                        {...field}
-                        placeholder="1HGBH41JXMN109186"
-                        className="pl-9 font-mono"
-                        data-testid="input-vehicle-vin"
-                      />
-                    </div>
-                  </FormControl>
-                  <FormDescription>17-character vehicle identification number</FormDescription>
+                  <div className="flex gap-2">
+                    <FormControl>
+                      <div className="relative flex-1">
+                        <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                        <Input
+                          {...field}
+                          placeholder="1HGBH41JXMN109186"
+                          className="pl-9 font-mono uppercase"
+                          maxLength={17}
+                          onChange={(e) => {
+                            field.onChange(e.target.value.toUpperCase());
+                            setDecodeStatus('idle');
+                          }}
+                          data-testid="input-vehicle-vin"
+                        />
+                      </div>
+                    </FormControl>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={handleVINDecode}
+                      disabled={isDecoding || field.value.length !== 17}
+                      className="gap-2"
+                      data-testid="button-decode-vin"
+                    >
+                      {isDecoding ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Decoding...
+                        </>
+                      ) : (
+                        <>
+                          <Scan className="w-4 h-4" />
+                          Decode VIN
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  <FormDescription>17-character vehicle identification number - Click "Decode VIN" to auto-fill details</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
             <FormField
               control={form.control}
