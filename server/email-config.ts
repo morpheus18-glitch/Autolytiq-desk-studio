@@ -199,3 +199,103 @@ This is an automated email, please do not reply.
     `.trim(),
   };
 }
+
+// Helper function to generate welcome email for new users
+export function generateWelcomeEmail(options: {
+  fullName: string;
+  username: string;
+  password: string;
+  loginUrl: string;
+}) {
+  const { fullName, username, password, loginUrl } = options;
+  
+  return {
+    subject: emailConfig.templates.registration.subject,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Welcome to Autolytiq</title>
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+            <h1 style="color: white; margin: 0; font-size: 28px;">Autolytiq</h1>
+          </div>
+          
+          <div style="background: #f9f9f9; padding: 40px 30px; border-radius: 0 0 8px 8px;">
+            <h2 style="color: #333; margin-top: 0;">Welcome to Autolytiq!</h2>
+            
+            <p style="font-size: 16px; color: #555;">
+              Hi ${fullName},
+            </p>
+            
+            <p style="font-size: 16px; color: #555;">
+              Your Autolytiq account has been created. Here are your login credentials:
+            </p>
+            
+            <div style="background: white; border: 1px solid #ddd; border-radius: 6px; padding: 20px; margin: 20px 0;">
+              <p style="margin: 0 0 10px 0; color: #666; font-size: 14px;">
+                <strong>Username:</strong>
+              </p>
+              <p style="margin: 0 0 20px 0; font-size: 16px; color: #333; font-family: monospace;">
+                ${username}
+              </p>
+              
+              <p style="margin: 0 0 10px 0; color: #666; font-size: 14px;">
+                <strong>Password:</strong>
+              </p>
+              <p style="margin: 0; font-size: 16px; color: #333; font-family: monospace;">
+                ${password}
+              </p>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${loginUrl}" 
+                 style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                        color: white; 
+                        padding: 14px 32px; 
+                        text-decoration: none; 
+                        border-radius: 6px; 
+                        font-weight: 600; 
+                        display: inline-block;
+                        font-size: 16px;">
+                Log In Now
+              </a>
+            </div>
+            
+            <p style="font-size: 14px; color: #777;">
+              For security, we recommend changing your password after your first login.
+            </p>
+            
+            <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+            
+            <p style="font-size: 12px; color: #999; text-align: center;">
+              ${emailConfig.fromName}<br>
+              This is an automated email, please do not reply.
+            </p>
+          </div>
+        </body>
+      </html>
+    `,
+    text: `
+Welcome to Autolytiq!
+
+Hi ${fullName},
+
+Your Autolytiq account has been created. Here are your login credentials:
+
+Username: ${username}
+Password: ${password}
+
+Log in at: ${loginUrl}
+
+For security, we recommend changing your password after your first login.
+
+---
+${emailConfig.fromName}
+This is an automated email, please do not reply.
+    `.trim(),
+  };
+}

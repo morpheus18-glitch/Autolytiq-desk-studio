@@ -11,7 +11,7 @@ import {
   generateQrCodeUrl,
   verifyTotp
 } from "./auth-helpers";
-import { sendEmail, generatePasswordResetEmail } from "./email-config";
+import { sendEmail, generatePasswordResetEmail, generateWelcomeEmail } from "./email-config";
 import { z } from "zod";
 import QRCode from "qrcode";
 
@@ -271,6 +271,34 @@ export function setupAuthRoutes(app: Express) {
           createdByUserId: adminUser.id 
         }
       );
+      
+      // Send welcome email with credentials
+      try {
+        // Construct login URL from request
+        const protocol = req.protocol;
+        const host = req.get('host');
+        const loginUrl = `${protocol}://${host}/`;
+        
+        const emailContent = generateWelcomeEmail({
+          fullName,
+          username,
+          password, // Include the plain text password in email
+          loginUrl,
+        });
+        
+        await sendEmail({
+          to: email,
+          subject: emailContent.subject,
+          html: emailContent.html,
+          text: emailContent.text,
+        });
+        
+        console.log(`✅ Welcome email sent to ${email}`);
+      } catch (emailError) {
+        // Log email error but don't fail user creation
+        console.error("⚠️ Failed to send welcome email:", emailError);
+        // Continue - user is already created
+      }
       
       // Remove password from response
       const { password: _, ...userWithoutPassword } = newUser;
