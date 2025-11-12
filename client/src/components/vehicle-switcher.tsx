@@ -159,7 +159,9 @@ export function VehicleSwitcher({
         {showCreateForm ? (
           <div className="px-6 pb-6">
             <VehicleForm
-              onSubmit={(data) => createAndAttachMutation.mutate(data)}
+              onSubmit={async (data) => {
+                await createAndAttachMutation.mutateAsync(data);
+              }}
               isLoading={createAndAttachMutation.isPending}
               submitLabel="Create & Attach"
             />

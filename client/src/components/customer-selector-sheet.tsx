@@ -184,7 +184,13 @@ export function CustomerSelectorSheet({
           {showCreateForm ? (
             <Form {...form}>
               <form 
-                onSubmit={form.handleSubmit((data) => createAndAttachMutation.mutate(data))} 
+                onSubmit={form.handleSubmit(async (data) => {
+                  try {
+                    await createAndAttachMutation.mutateAsync(data);
+                  } catch (error) {
+                    // Error is already handled by mutation's onError
+                  }
+                })} 
                 className="space-y-4"
               >
                 <ScrollArea className="h-[calc(100vh-16rem)] pr-4">
