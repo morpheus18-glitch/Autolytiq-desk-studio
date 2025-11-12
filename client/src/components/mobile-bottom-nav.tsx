@@ -18,6 +18,8 @@ import {
   CreditCard,
   Scan,
   Plus,
+  Settings,
+  Building2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { queryClient, apiRequest } from '@/lib/queryClient';
@@ -48,6 +50,8 @@ const allNavItems: NavItem[] = [
   { label: 'Analytics', path: '/analytics', icon: LineChart, testId: 'menu-analytics' },
   { label: 'Credit Center', path: '/credit-center', icon: CreditCard, testId: 'menu-credit' },
   { label: 'VIN Decoder', path: '/vin-decoder', icon: Scan, testId: 'menu-vin-decoder' },
+  { label: 'Account Settings', path: '/settings/account', icon: Settings, testId: 'menu-account-settings' },
+  { label: 'Dealership Settings', path: '/settings/dealership', icon: Building2, testId: 'menu-dealership-settings' },
 ];
 
 export function MobileBottomNav() {
@@ -59,6 +63,11 @@ export function MobileBottomNav() {
   if (isMobileNavSuppressed(location)) {
     return null;
   }
+
+  // Get current user for role-based navigation
+  const { data: currentUser } = useQuery<UserType>({
+    queryKey: ['/api/user'],
+  });
 
   // Get users for deal creation
   const { data: users, isLoading: usersLoading } = useQuery<UserType[]>({
@@ -169,6 +178,11 @@ export function MobileBottomNav() {
           <div className="overflow-y-auto h-[calc(80vh-5rem)] px-4 py-4">
             <div className="space-y-2">
               {allNavItems.map((item) => {
+                // Hide dealership settings if not admin
+                if (item.path === '/settings/dealership' && currentUser?.role !== 'admin') {
+                  return null;
+                }
+                
                 const Icon = item.icon;
                 const active = isActive(item.path);
                 return (
