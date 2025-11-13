@@ -17,12 +17,20 @@ import {
   isFeeTaxable,
   isRebateTaxable,
 } from "./interpreters";
+import { calculateGeorgiaTAVT } from "./calculateGeorgiaTAVT";
 
 /**
  * AUTO TAX ENGINE - CORE CALCULATION FUNCTION
  *
  * Pure function that calculates automotive taxes for retail and lease deals.
  * No side effects, no DB, no HTTP, no process.env.
+ *
+ * This function dispatches to specialized calculation paths based on the
+ * state's tax scheme:
+ * - SPECIAL_TAVT → Georgia Title Ad Valorem Tax calculator
+ * - SPECIAL_HUT → North Carolina Highway Use Tax (future)
+ * - DMV_PRIVILEGE_TAX → West Virginia privilege tax (future)
+ * - STATE_ONLY, STATE_PLUS_LOCAL → Generic sales tax pipeline
  *
  * @param input - Deal data and tax rate components
  * @param rules - State-specific tax rules configuration
@@ -32,6 +40,24 @@ export function calculateTax(
   input: TaxCalculationInput,
   rules: TaxRulesConfig
 ): TaxCalculationResult {
+  // ============================================================================
+  // SPECIAL TAX SCHEMES: Branch to dedicated calculators
+  // ============================================================================
+
+  // Georgia TAVT (Title Ad Valorem Tax)
+  if (rules.vehicleTaxScheme === "SPECIAL_TAVT") {
+    return calculateGeorgiaTAVT(input, rules);
+  }
+
+  // Future: Add more special schemes here
+  // if (rules.vehicleTaxScheme === "SPECIAL_HUT") {
+  //   return calculateNorthCarolinaHUT(input, rules);
+  // }
+
+  // ============================================================================
+  // GENERIC SALES TAX PIPELINE: For most states
+  // ============================================================================
+
   if (input.dealType === "RETAIL") {
     return calculateRetailTax(input, rules);
   } else {

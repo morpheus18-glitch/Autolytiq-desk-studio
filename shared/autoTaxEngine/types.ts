@@ -13,11 +13,13 @@ export type TradeInPolicy =
 export interface RebateRule {
   appliesTo: "MANUFACTURER" | "DEALER" | "ANY";
   taxable: boolean; // if false, that portion reduces the taxable base
+  notes?: string; // optional documentation
 }
 
 export interface FeeTaxRule {
   code: string; // e.g. "DOC_FEE", "SERVICE_CONTRACT", "GAP", "TITLE", "REG"
   taxable: boolean;
+  notes?: string; // optional documentation
 }
 
 // How vehicle tax behaves vs generic sales tax system for that state
@@ -144,6 +146,35 @@ export interface LeaseTaxRules {
   notes?: string;
 }
 
+// ---- DSL: State-Specific Extras ----
+
+/**
+ * Georgia TAVT (Title Ad Valorem Tax) Configuration
+ *
+ * Georgia uses TAVT instead of traditional sales tax for vehicle purchases.
+ * TAVT is a one-time tax paid at title/registration based on fair market value.
+ */
+export interface GeorgiaTAVTConfig {
+  defaultRate: number; // Current TAVT rate as decimal (e.g., 0.065 = 6.5%)
+  useAssessedValue: boolean; // Whether to use DMV-assessed value instead of deal price
+  useHigherOfPriceOrAssessed: boolean; // TAVT base is higher of price or assessed value
+  allowTradeInCredit: boolean; // Whether trade-in reduces TAVT base
+  tradeInAppliesTo: "VEHICLE_ONLY" | "FULL"; // How trade affects TAVT base
+  applyNegativeEquityToBase: boolean; // Whether negative equity increases TAVT base
+  leaseBaseMode: "AGREED_VALUE" | "CAP_COST" | "CUSTOM"; // How leases calculate TAVT base
+}
+
+/**
+ * State-Specific Extra Configurations
+ *
+ * Allows states with unique tax systems (TAVT, HUT, etc.) to provide
+ * additional configuration beyond the standard DSL.
+ */
+export interface StateExtras {
+  gaTAVT?: GeorgiaTAVTConfig; // Georgia Title Ad Valorem Tax config
+  [key: string]: unknown; // Other state-specific data
+}
+
 // ---- DSL: Full State Config ----
 
 export interface TaxRulesConfig {
@@ -168,7 +199,7 @@ export interface TaxRulesConfig {
   // Reciprocity (cross-state tax credit)
   reciprocity: ReciprocityRules;
 
-  extras?: Record<string, unknown>; // state-specific weirdness
+  extras?: StateExtras; // state-specific configurations
 }
 
 // ---- Runtime Types ----
