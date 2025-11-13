@@ -3,19 +3,39 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Receipt, MapPin, Info } from 'lucide-react';
+import { Receipt, MapPin, Info, Check } from 'lucide-react';
 import { useScenarioForm } from '@/contexts/scenario-form-context';
 import { StateTaxSelector } from '@/components/state-tax-selector';
 import { TaxBreakdown } from '@/components/tax-breakdown';
 import { calculateDealTax, type TaxCalculationResult } from '@/lib/tax-calculator';
 import { apiRequest } from '@/lib/queryClient';
-import type { TaxJurisdiction } from '@shared/schema';
+import type { TaxJurisdiction, Customer } from '@shared/schema';
 import Decimal from 'decimal.js';
 
-export function TaxBreakdownForm() {
+export function TaxBreakdownForm({ customer }: { customer?: Customer | null }) {
   const { scenario, tradeVehicle, updateField, updateMultipleFields, calculations } = useScenarioForm();
-  const [stateCode, setStateCode] = useState<string>(scenario.taxState || '');
-  const [zipCode, setZipCode] = useState<string>(scenario.taxZipCode || '');
+
+  // ✅ NEW: Auto-populate from customer data if available
+  const initialState = scenario.taxState || customer?.state || '';
+  const initialZip = scenario.taxZipCode || customer?.zipCode || '';
+
+  const [stateCode, setStateCode] = useState<string>(initialState);
+  const [zipCode, setZipCode] = useState<string>(initialZip);
+  const [autoPopulated, setAutoPopulated] = useState(false);
+
+  // ✅ NEW: Auto-populate when customer changes
+  useEffect(() => {
+    if (customer && !scenario.taxState && customer.state) {
+      setStateCode(customer.state);
+      updateField('taxState', customer.state);
+      setAutoPopulated(true);
+    }
+    if (customer && !scenario.taxZipCode && customer.zipCode) {
+      setZipCode(customer.zipCode);
+      updateField('taxZipCode', customer.zipCode);
+      setAutoPopulated(true);
+    }
+  }, [customer, scenario.taxState, scenario.taxZipCode, updateField]);
   const [taxResult, setTaxResult] = useState<TaxCalculationResult | null>(null);
   
   // Calculate tax using the API
@@ -92,6 +112,13 @@ export function TaxBreakdownForm() {
         <div className="flex items-center gap-2 mb-3">
           <MapPin className="w-4 h-4 text-muted-foreground" />
           <h3 className="font-semibold">Tax Jurisdiction</h3>
+          {/* ✅ NEW: Show indicator when auto-populated from customer */}
+          {autoPopulated && customer && (
+            <Badge variant="secondary" className="text-xs gap-1">
+              <Check className="w-3 h-3" />
+              From customer
+            </Badge>
+          )}
         </div>
         <StateTaxSelector
           value={stateCode}

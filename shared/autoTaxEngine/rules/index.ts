@@ -55,17 +55,18 @@ import WY from "./US_WY";
 /**
  * State Rules Map - All 50 US States
  *
- * Fully Implemented (8 states):
+ * Fully Implemented (9 states):
  * - CA (California): 7.25% + local, doc cap $85, no reciprocity
  * - TX (Texas): 6.25% + local, VSC/GAP not taxed, reciprocity YES
  * - FL (Florida): 6% + local, doc cap $995, reciprocity YES
- * - NY (New York): 4% + local + MCTD, doc cap $175, reciprocity YES
+ * - NY (New York): 4% + local + MCTD, doc cap $175, no reciprocity
+ * - NJ (New Jersey): 6.625% state-only, luxury surcharge 0.4%, reciprocity YES
  * - GA (Georgia): TAVT special scheme (7% one-time)
  * - NC (North Carolina): HUT special scheme (3%, 90-day window)
  * - WV (West Virginia): Privilege Tax (5%, vehicle classes)
  * - IN (Indiana): 7% state-only
  *
- * Stubs (need research): 42 other states
+ * Stubs (need research): 41 other states
  */
 export const STATE_RULES_MAP: Record<string, TaxRulesConfig> = {
   AL,

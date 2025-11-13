@@ -341,7 +341,7 @@ export default function DealWorksheetV2() {
           </DeskSection>
           
           <DeskSection title="Tax & Fees" icon={Receipt}>
-            <TaxBreakdownForm />
+            <TaxBreakdownForm customer={deal.customer} />
           </DeskSection>
           
           {dealId && activeScenarioId && (
@@ -485,7 +485,7 @@ export default function DealWorksheetV2() {
               
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Tax & Fees</h3>
-                <TaxBreakdownForm />
+                <TaxBreakdownForm customer={deal.customer} />
               </div>
               
               <div className="space-y-3">

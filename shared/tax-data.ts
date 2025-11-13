@@ -11,34 +11,44 @@ export interface StateTax {
   stateCode: string;
   stateName: string;
   baseTaxRate: number; // State sales tax rate (as decimal, e.g., 0.0625 for 6.25%)
-  
+
   // Trade-in handling
   tradeInCredit: 'full' | 'partial' | 'none' | 'tax_on_difference';
   tradeInCreditLimit?: number; // Dollar limit for partial credit states
   tradeInNotes?: string;
-  
+
   // Documentation fees
   maxDocFee?: number; // Maximum allowed documentation fee (null = no limit)
   docFeeTaxable: boolean; // Whether doc fees are subject to sales tax
-  
+
   // Title and registration fees
   titleFee: number;
   registrationFeeBase: number; // Base registration fee (actual may vary by vehicle value/weight)
   registrationNotes?: string;
-  
+
+  // ✅ NEW: F&I Product Taxation Rules
+  warrantyTaxable?: boolean; // Extended warranties (VSC) - default varies by state
+  gapTaxable?: boolean; // GAP insurance - default varies by state
+  maintenanceTaxable?: boolean; // Maintenance/service plans - default varies by state
+  accessoriesTaxable?: boolean; // Physical accessories (tint, protection, etc.) - usually taxable
+
   // Luxury/additional taxes
   luxuryTaxThreshold?: number;
   luxuryTaxRate?: number;
-  
+
   // Local tax information
   hasLocalTax: boolean;
   localTaxRanges: { min: number; max: number }; // Typical range of local tax rates
   averageLocalTax: number; // Average local tax rate for estimation
-  
+
   // Electric vehicle considerations
   evIncentive?: number; // State EV purchase incentive
   evFee?: number; // Annual EV registration fee
-  
+
+  // ✅ NEW: Rebate handling
+  rebateTaxable?: boolean; // Whether manufacturer rebates are taxed (rare, but some states do)
+  rebateReducesTaxable?: boolean; // Whether rebates reduce taxable amount (most common)
+
   // Special rules and notes
   capOnTax?: number; // Some states cap the total tax amount
   specialRules?: string[];
@@ -323,7 +333,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     stateName: 'Indiana',
     baseTaxRate: 0.07,
     tradeInCredit: 'tax_on_difference',
-    docFeeTaxable: false,
+    docFeeTaxable: true, // ✅ FIXED: Indiana doc fees ARE subject to 7% sales tax
     maxDocFee: 250,
     titleFee: 21.35,
     registrationFeeBase: 21.35,
@@ -331,7 +341,13 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0, max: 0 },
     averageLocalTax: 0,
     evFee: 150,
-    notes: 'Trade-in credit available. Flat 7% state tax with no local additions.'
+    warrantyTaxable: false, // ✅ NEW: Extended warranties (VSC) not taxed in IN
+    gapTaxable: false, // ✅ NEW: GAP insurance not taxed in IN
+    maintenanceTaxable: false, // ✅ NEW: Maintenance plans not taxed in IN
+    accessoriesTaxable: true, // ✅ NEW: Physical accessories ARE taxed in IN
+    rebateTaxable: false, // ✅ Rebates themselves are not taxed
+    rebateReducesTaxable: false, // ✅ CRITICAL: Rebates do NOT reduce taxable amount in Indiana!
+    notes: 'Trade-in credit available. Flat 7% state tax with no local additions. Doc fee IS taxable. IMPORTANT: Manufacturer rebates do NOT reduce taxable amount - you pay tax on full MSRP before rebates.'
   },
 
   // IOWA
