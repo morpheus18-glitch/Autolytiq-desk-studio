@@ -279,6 +279,61 @@ export interface TaxRulesConfig {
   extras?: StateExtras; // state-specific configurations
 }
 
+// ---- State Resolver & Multi-State Context ----
+
+/**
+ * Tax Context: Describes which states are involved in a deal
+ *
+ * In multi-state transactions, we need to know:
+ * - primaryStateCode: Which state's tax rules to apply
+ * - dealerStateCode: Where the dealer is located
+ * - buyerResidenceStateCode: Where the buyer lives
+ * - registrationStateCode: Where the vehicle will be titled/registered
+ *
+ * The state resolver (resolveTaxContext) determines primaryStateCode
+ * based on rooftop config and deal context.
+ */
+export interface TaxContext {
+  primaryStateCode: string; // Which state's rules to use
+  dealerStateCode: string; // Where dealer is located
+  buyerResidenceStateCode?: string; // Where buyer lives
+  registrationStateCode?: string; // Where vehicle will be registered
+}
+
+/**
+ * Rooftop Configuration: Dealer-specific tax perspective settings
+ *
+ * Determines how the state resolver picks the primary tax state:
+ * - DEALER_STATE: Always use dealer's state rules (default for most)
+ * - REGISTRATION_STATE: Use the state where vehicle will be registered
+ * - BUYER_STATE: Use buyer's residence state (rare, only if in allowed list)
+ *
+ * Supports state-specific overrides for edge cases (e.g., dealer in border city).
+ */
+export interface RooftopConfig {
+  id: string;
+  name: string;
+  dealerStateCode: string; // Primary dealer location
+  defaultTaxPerspective: "DEALER_STATE" | "BUYER_STATE" | "REGISTRATION_STATE";
+  allowedRegistrationStates: string[]; // States this dealer can register in
+  stateOverrides?: {
+    [stateCode: string]: {
+      forcePrimary?: boolean; // Force this state as primary regardless of perspective
+      disallowPrimary?: boolean; // Never use this state as primary
+    };
+  };
+}
+
+/**
+ * Deal Party Info: Extracted from deal for state resolution
+ */
+export interface DealPartyInfo {
+  buyerResidenceState?: string;
+  registrationState?: string;
+  vehicleLocationState?: string;
+  deliveryState?: string;
+}
+
 // ---- Runtime Types ----
 
 export type DealType = "RETAIL" | "LEASE";
