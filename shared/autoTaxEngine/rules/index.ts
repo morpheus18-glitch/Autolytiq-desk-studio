@@ -1,0 +1,156 @@
+import { TaxRulesConfig } from "../types";
+
+// Import all state rules
+import AL from "./US_AL";
+import AK from "./US_AK";
+import AZ from "./US_AZ";
+import AR from "./US_AR";
+import CA from "./US_CA";
+import CO from "./US_CO";
+import CT from "./US_CT";
+import DE from "./US_DE";
+import FL from "./US_FL";
+import GA from "./US_GA";
+import HI from "./US_HI";
+import ID from "./US_ID";
+import IL from "./US_IL";
+import IN from "./US_IN";
+import IA from "./US_IA";
+import KS from "./US_KS";
+import KY from "./US_KY";
+import LA from "./US_LA";
+import ME from "./US_ME";
+import MD from "./US_MD";
+import MA from "./US_MA";
+import MI from "./US_MI";
+import MN from "./US_MN";
+import MS from "./US_MS";
+import MO from "./US_MO";
+import MT from "./US_MT";
+import NE from "./US_NE";
+import NV from "./US_NV";
+import NH from "./US_NH";
+import NJ from "./US_NJ";
+import NM from "./US_NM";
+import NY from "./US_NY";
+import NC from "./US_NC";
+import ND from "./US_ND";
+import OH from "./US_OH";
+import OK from "./US_OK";
+import OR from "./US_OR";
+import PA from "./US_PA";
+import RI from "./US_RI";
+import SC from "./US_SC";
+import SD from "./US_SD";
+import TN from "./US_TN";
+import TX from "./US_TX";
+import UT from "./US_UT";
+import VT from "./US_VT";
+import VA from "./US_VA";
+import WA from "./US_WA";
+import WV from "./US_WV";
+import WI from "./US_WI";
+import WY from "./US_WY";
+
+/**
+ * State Rules Map - All 50 US States
+ *
+ * Detailed implementations: IN, MI, KY, SC, TN
+ * Stubs (need research): All other states
+ */
+export const STATE_RULES_MAP: Record<string, TaxRulesConfig> = {
+  AL,
+  AK,
+  AZ,
+  AR,
+  CA,
+  CO,
+  CT,
+  DE,
+  FL,
+  GA,
+  HI,
+  ID,
+  IL,
+  IN,
+  IA,
+  KS,
+  KY,
+  LA,
+  ME,
+  MD,
+  MA,
+  MI,
+  MN,
+  MS,
+  MO,
+  MT,
+  NE,
+  NV,
+  NH,
+  NJ,
+  NM,
+  NY,
+  NC,
+  ND,
+  OH,
+  OK,
+  OR,
+  PA,
+  RI,
+  SC,
+  SD,
+  TN,
+  TX,
+  UT,
+  VT,
+  VA,
+  WA,
+  WV,
+  WI,
+  WY,
+};
+
+/**
+ * Get tax rules for a specific state
+ *
+ * @param stateCode - Two-letter state code (e.g., "IN", "MI")
+ * @returns TaxRulesConfig or undefined if state not found
+ *
+ * @example
+ * const rules = getRulesForState("IN");
+ * if (!rules) throw new Error("Unsupported state");
+ */
+export function getRulesForState(stateCode: string): TaxRulesConfig | undefined {
+  return STATE_RULES_MAP[stateCode.toUpperCase()];
+}
+
+/**
+ * Get all available state codes
+ */
+export function getAllStateCodes(): string[] {
+  return Object.keys(STATE_RULES_MAP);
+}
+
+/**
+ * Check if a state is fully implemented (not a stub)
+ */
+export function isStateImplemented(stateCode: string): boolean {
+  const rules = getRulesForState(stateCode);
+  if (!rules) return false;
+  return rules.extras?.status !== "STUB";
+}
+
+/**
+ * Get list of fully implemented states
+ */
+export function getImplementedStates(): string[] {
+  return getAllStateCodes().filter((code) => isStateImplemented(code));
+}
+
+/**
+ * Get list of stub states (need research)
+ */
+export function getStubStates(): string[] {
+  return getAllStateCodes().filter((code) => !isStateImplemented(code));
+}
