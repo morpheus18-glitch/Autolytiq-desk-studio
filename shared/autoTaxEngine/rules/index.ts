@@ -55,18 +55,38 @@ import WY from "./US_WY";
 /**
  * State Rules Map - All 50 US States
  *
- * Fully Implemented (9 states):
+ * Fully Implemented (18 states, ~65% US auto market coverage):
+ *
+ * TOP 10 AUTOMOTIVE MARKETS:
  * - CA (California): 7.25% + local, doc cap $85, no reciprocity
  * - TX (Texas): 6.25% + local, VSC/GAP not taxed, reciprocity YES
  * - FL (Florida): 6% + local, doc cap $995, reciprocity YES
  * - NY (New York): 4% + local + MCTD, doc cap $175, no reciprocity
+ * - PA (Pennsylvania): 6% state-only, doc cap $195, reciprocity YES
+ * - IL (Illinois): 6.25% + local (Chicago 10.25%), reciprocity YES
+ * - OH (Ohio): 5.75% + local, doc cap $250, reciprocity YES
+ * - MI (Michigan): 6% state-only, doc cap $200, reciprocity YES
  * - NJ (New Jersey): 6.625% state-only, luxury surcharge 0.4%, reciprocity YES
  * - GA (Georgia): TAVT special scheme (7% one-time)
+ *
+ * ADDITIONAL MAJOR MARKETS (8 states):
  * - NC (North Carolina): HUT special scheme (3%, 90-day window)
  * - WV (West Virginia): Privilege Tax (5%, vehicle classes)
- * - IN (Indiana): 7% state-only
+ * - IN (Indiana): 7% state-only, reciprocity YES
+ * - TN (Tennessee): 7% + local, single article cap ($1,600/$3,200), doc cap $495
+ * - MA (Massachusetts): 6.25% state-only, no doc cap (avg $340), both rebates non-taxable
+ * - MO (Missouri): 4.225% + local, doc cap $604.47, 90-day reciprocity rule
+ * - MN (Minnesota): 6.875% state (no local on purchases), upfront lease taxation
+ * - WI (Wisconsin): 5% + local, manufacturer rebates taxable (unusual)
  *
- * Stubs (need research): 41 other states
+ * WESTERN STATES (5 states):
+ * - AZ (Arizona): 5.6% TPT + local, no doc cap, 21 reciprocal states
+ * - CO (Colorado): 2.9% + local, home-rule cities, 36-month lease threshold
+ * - MD (Maryland): Excise tax structure, titling tax
+ * - VA (Virginia): 4.15% + local, reciprocity YES
+ * - WA (Washington): 6.5% + local + RTA, B&O tax
+ *
+ * Stubs (need research): 32 other states
  */
 export const STATE_RULES_MAP: Record<string, TaxRulesConfig> = {
   AL,
