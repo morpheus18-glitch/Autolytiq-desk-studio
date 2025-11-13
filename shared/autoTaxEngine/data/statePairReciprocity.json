@@ -1,0 +1,271 @@
+{
+  "$schema": "../schemas/statePairReciprocity.schema.json",
+  "version": 1,
+  "lastUpdated": "2025-01",
+  "description": "Pairwise reciprocity matrix for automotive sales tax credit between US states. This matrix handles directional reciprocity where State A → State B may differ from State B → State A.",
+  "pairs": [
+    {
+      "origin": "FL",
+      "destination": "OK",
+      "allowsCredit": true,
+      "creditMode": "CREDIT_UP_TO_STATE_RATE",
+      "notes": "Florida allows credit for tax paid in Oklahoma (asymmetric)"
+    },
+    {
+      "origin": "OK",
+      "destination": "FL",
+      "allowsCredit": false,
+      "creditMode": "NONE",
+      "notes": "Oklahoma does NOT reciprocate credit to Florida (asymmetric pair)"
+    },
+    {
+      "origin": "IN",
+      "destination": "AL",
+      "allowsCredit": false,
+      "creditMode": "NONE",
+      "notes": "Indiana does not give credit to Alabama (nonreciprocal state)"
+    },
+    {
+      "origin": "IN",
+      "destination": "CT",
+      "allowsCredit": false,
+      "creditMode": "NONE",
+      "notes": "Indiana does not give credit to Connecticut (nonreciprocal state)"
+    },
+    {
+      "origin": "IN",
+      "destination": "HI",
+      "allowsCredit": false,
+      "creditMode": "NONE",
+      "notes": "Indiana does not give credit to Hawaii (nonreciprocal state)"
+    },
+    {
+      "origin": "IN",
+      "destination": "LA",
+      "allowsCredit": false,
+      "creditMode": "NONE",
+      "notes": "Indiana does not give credit to Louisiana (nonreciprocal state)"
+    },
+    {
+      "origin": "IN",
+      "destination": "MA",
+      "allowsCredit": false,
+      "creditMode": "NONE",
+      "notes": "Indiana does not give credit to Massachusetts (nonreciprocal state)"
+    },
+    {
+      "origin": "IN",
+      "destination": "MS",
+      "allowsCredit": false,
+      "creditMode": "NONE",
+      "notes": "Indiana does not give credit to Mississippi (nonreciprocal state)"
+    },
+    {
+      "origin": "IN",
+      "destination": "NV",
+      "allowsCredit": false,
+      "creditMode": "NONE",
+      "notes": "Indiana does not give credit to Nevada (nonreciprocal state)"
+    },
+    {
+      "origin": "IN",
+      "destination": "SC",
+      "allowsCredit": false,
+      "creditMode": "NONE",
+      "notes": "Indiana does not give credit to South Carolina (nonreciprocal state)"
+    },
+    {
+      "origin": "NC",
+      "destination": "CA",
+      "allowsCredit": true,
+      "creditMode": "CREDIT_UP_TO_STATE_RATE",
+      "timeWindowDays": 90,
+      "notes": "North Carolina has 90-day time window for reciprocity"
+    },
+    {
+      "origin": "NC",
+      "destination": "TX",
+      "allowsCredit": true,
+      "creditMode": "CREDIT_UP_TO_STATE_RATE",
+      "timeWindowDays": 90,
+      "notes": "North Carolina has 90-day time window for reciprocity"
+    },
+    {
+      "origin": "NC",
+      "destination": "FL",
+      "allowsCredit": true,
+      "creditMode": "CREDIT_UP_TO_STATE_RATE",
+      "timeWindowDays": 90,
+      "notes": "North Carolina has 90-day time window for reciprocity"
+    },
+    {
+      "origin": "NC",
+      "destination": "GA",
+      "allowsCredit": true,
+      "creditMode": "CREDIT_UP_TO_STATE_RATE",
+      "timeWindowDays": 90,
+      "notes": "North Carolina has 90-day time window for reciprocity"
+    },
+    {
+      "origin": "PA",
+      "destination": "CA",
+      "allowsCredit": true,
+      "creditMode": "CREDIT_UP_TO_STATE_RATE",
+      "requiresMutualCredit": true,
+      "notes": "Pennsylvania requires mutual credit (only gives if origin state would reciprocate)"
+    },
+    {
+      "origin": "PA",
+      "destination": "TX",
+      "allowsCredit": true,
+      "creditMode": "CREDIT_UP_TO_STATE_RATE",
+      "requiresMutualCredit": true,
+      "notes": "Pennsylvania requires mutual credit"
+    },
+    {
+      "origin": "PA",
+      "destination": "FL",
+      "allowsCredit": true,
+      "creditMode": "CREDIT_UP_TO_STATE_RATE",
+      "requiresMutualCredit": true,
+      "notes": "Pennsylvania requires mutual credit"
+    },
+    {
+      "origin": "PA",
+      "destination": "NY",
+      "allowsCredit": true,
+      "creditMode": "CREDIT_UP_TO_STATE_RATE",
+      "requiresMutualCredit": true,
+      "notes": "Pennsylvania requires mutual credit"
+    },
+    {
+      "origin": "PA",
+      "destination": "OH",
+      "allowsCredit": true,
+      "creditMode": "CREDIT_UP_TO_STATE_RATE",
+      "requiresMutualCredit": true,
+      "notes": "Pennsylvania requires mutual credit"
+    },
+    {
+      "origin": "CA",
+      "destination": "ALL",
+      "allowsCredit": false,
+      "creditMode": "NONE",
+      "notes": "California does NOT provide reciprocity (collects full CA sales tax regardless of prior tax paid)"
+    },
+    {
+      "origin": "GA",
+      "destination": "ALL",
+      "allowsCredit": true,
+      "creditMode": "CREDIT_UP_TO_STATE_RATE",
+      "requireProofOfTaxPaid": true,
+      "notes": "Georgia provides limited reciprocity for TAVT (credit capped at GA TAVT amount, requires proof)"
+    },
+    {
+      "origin": "TX",
+      "destination": "ALL",
+      "allowsCredit": true,
+      "creditMode": "CREDIT_UP_TO_STATE_RATE",
+      "requireProofOfTaxPaid": true,
+      "notes": "Texas provides limited reciprocity (credit capped at TX rate, requires proof)"
+    },
+    {
+      "origin": "FL",
+      "destination": "ALL",
+      "allowsCredit": true,
+      "creditMode": "CREDIT_UP_TO_STATE_RATE",
+      "notes": "Florida generally provides reciprocity (except specific nonreciprocal pairs)"
+    },
+    {
+      "origin": "NY",
+      "destination": "ALL",
+      "allowsCredit": true,
+      "creditMode": "CREDIT_UP_TO_STATE_RATE",
+      "notes": "New York provides reciprocity for tax paid elsewhere"
+    },
+    {
+      "origin": "MI",
+      "destination": "ALL",
+      "allowsCredit": true,
+      "creditMode": "CREDIT_UP_TO_STATE_RATE",
+      "notes": "Michigan provides full reciprocity"
+    },
+    {
+      "origin": "OH",
+      "destination": "ALL",
+      "allowsCredit": true,
+      "creditMode": "CREDIT_UP_TO_STATE_RATE",
+      "notes": "Ohio provides reciprocity"
+    },
+    {
+      "origin": "IL",
+      "destination": "ALL",
+      "allowsCredit": true,
+      "creditMode": "CREDIT_UP_TO_STATE_RATE",
+      "notes": "Illinois provides reciprocity"
+    },
+    {
+      "origin": "WV",
+      "destination": "ALL",
+      "allowsCredit": true,
+      "creditMode": "CREDIT_UP_TO_STATE_RATE",
+      "notes": "West Virginia provides reciprocity for privilege tax"
+    },
+    {
+      "origin": "IN",
+      "destination": "ALL",
+      "allowsCredit": true,
+      "creditMode": "CREDIT_UP_TO_STATE_RATE",
+      "notes": "Indiana provides reciprocity (except to nonreciprocal states listed above)"
+    }
+  ],
+  "nonreciprocalStates": {
+    "IN": ["AL", "CT", "HI", "LA", "MA", "MS", "NV", "SC"],
+    "notes": "Indiana maintains a list of states to which it does NOT provide reciprocity credit"
+  },
+  "mutualCreditStates": ["PA"],
+  "timeWindowStates": {
+    "NC": {
+      "maxDays": 90,
+      "notes": "North Carolina requires tax to have been paid within 90 days"
+    }
+  },
+  "specialCases": [
+    {
+      "pair": ["FL", "OK"],
+      "description": "Asymmetric reciprocity: FL → OK allowed, OK → FL NOT allowed",
+      "source": "Florida Statutes Chapter 212, Oklahoma Tax Commission"
+    },
+    {
+      "state": "CA",
+      "description": "California does NOT provide reciprocity - collects full sales tax regardless of prior tax paid",
+      "source": "California Department of Tax and Fee Administration"
+    },
+    {
+      "state": "GA",
+      "description": "Georgia TAVT reciprocity is limited - credit capped at GA TAVT amount, requires proof of prior tax",
+      "source": "Georgia Code Title 48, Chapter 5C"
+    },
+    {
+      "state": "NC",
+      "description": "North Carolina HUT has 90-day time window for accepting reciprocity credit",
+      "source": "North Carolina Department of Revenue"
+    },
+    {
+      "state": "PA",
+      "description": "Pennsylvania requires mutual credit - only gives credit if origin state would reciprocate",
+      "source": "Pennsylvania Department of Revenue"
+    },
+    {
+      "state": "IN",
+      "description": "Indiana maintains nonreciprocal list - 8 states that do NOT receive credit",
+      "source": "Indiana Department of Revenue"
+    }
+  ],
+  "usage": {
+    "priority": "Check this matrix FIRST before applying default reciprocity rules from state config",
+    "fallback": "If no specific pair exists, use state's default reciprocity.homeStateBehavior",
+    "directional": "Always check origin → destination (not symmetric)",
+    "wildcards": "Entries with destination='ALL' apply to all states unless overridden by specific pair"
+  }
+}

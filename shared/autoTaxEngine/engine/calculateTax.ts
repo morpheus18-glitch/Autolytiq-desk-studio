@@ -18,6 +18,8 @@ import {
   isRebateTaxable,
 } from "./interpreters";
 import { calculateGeorgiaTAVT } from "./calculateGeorgiaTAVT";
+import { calculateNorthCarolinaHUT } from "./calculateNorthCarolinaHUT";
+import { calculateWestVirginiaPrivilege } from "./calculateWestVirginiaPrivilege";
 
 /**
  * AUTO TAX ENGINE - CORE CALCULATION FUNCTION
@@ -28,8 +30,8 @@ import { calculateGeorgiaTAVT } from "./calculateGeorgiaTAVT";
  * This function dispatches to specialized calculation paths based on the
  * state's tax scheme:
  * - SPECIAL_TAVT → Georgia Title Ad Valorem Tax calculator
- * - SPECIAL_HUT → North Carolina Highway Use Tax (future)
- * - DMV_PRIVILEGE_TAX → West Virginia privilege tax (future)
+ * - SPECIAL_HUT → North Carolina Highway Use Tax calculator
+ * - DMV_PRIVILEGE_TAX → West Virginia privilege tax calculator
  * - STATE_ONLY, STATE_PLUS_LOCAL → Generic sales tax pipeline
  *
  * @param input - Deal data and tax rate components
@@ -49,10 +51,15 @@ export function calculateTax(
     return calculateGeorgiaTAVT(input, rules);
   }
 
-  // Future: Add more special schemes here
-  // if (rules.vehicleTaxScheme === "SPECIAL_HUT") {
-  //   return calculateNorthCarolinaHUT(input, rules);
-  // }
+  // North Carolina HUT (Highway Use Tax)
+  if (rules.vehicleTaxScheme === "SPECIAL_HUT") {
+    return calculateNorthCarolinaHUT(input, rules);
+  }
+
+  // West Virginia Privilege Tax
+  if (rules.vehicleTaxScheme === "DMV_PRIVILEGE_TAX") {
+    return calculateWestVirginiaPrivilege(input, rules);
+  }
 
   // ============================================================================
   // GENERIC SALES TAX PIPELINE: For most states
