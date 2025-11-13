@@ -110,6 +110,52 @@ export interface ReciprocityRules {
   // If true, you can branch behavior based on dealType.
   hasLeaseException: boolean;
 
+  // State-specific overrides for pairwise reciprocity
+  // Example: PA requires mutual credit, NC has 90-day window
+  overrides?: ReciprocityOverrideRule[];
+
+  notes?: string;
+}
+
+/**
+ * Pairwise Reciprocity Override Rules
+ *
+ * Handles complex directional reciprocity cases where state A → state B
+ * reciprocity differs from state B → state A reciprocity.
+ *
+ * Examples:
+ * - Indiana: List of nonreciprocal states (no credit given to those states)
+ * - Pennsylvania: Requires mutual credit (only give credit if origin state would reciprocate)
+ * - North Carolina: 90-day window on tax paid date
+ * - Florida ↔ Oklahoma: Asymmetric reciprocity
+ */
+export interface ReciprocityOverrideRule {
+  originState: string; // State code where tax was originally paid
+
+  // Override the default reciprocity mode for this origin state
+  modeOverride?: ReciprocityMode;
+
+  // Override the scope for this origin state
+  scopeOverride?: ReciprocityScope;
+
+  // Explicitly disallow credit from this state (Indiana nonreciprocals)
+  disallowCredit?: boolean;
+
+  // Maximum age in days since tax was paid (NC: 90 days)
+  maxAgeDaysSinceTaxPaid?: number;
+
+  // Requires that origin state would give credit back (PA mutual credit)
+  requiresMutualCredit?: boolean;
+
+  // Requires same owner on title (prevents tax avoidance schemes)
+  requiresSameOwner?: boolean;
+
+  // Only applies to certain vehicle classes (auto, truck, RV, trailer, etc.)
+  appliesToVehicleClass?: string;
+
+  // Only applies within certain GVW ranges
+  appliesToGVWRange?: { min?: number; max?: number };
+
   notes?: string;
 }
 
@@ -165,13 +211,44 @@ export interface GeorgiaTAVTConfig {
 }
 
 /**
+ * North Carolina Highway Use Tax (HUT) Configuration
+ *
+ * North Carolina uses Highway Use Tax instead of general sales tax for vehicles.
+ * HUT is a state-only tax (no local rates) with specific rules.
+ */
+export interface NorthCarolinaHUTConfig {
+  baseRate: number; // HUT rate as decimal (e.g., 0.03 = 3%)
+  useHighwayUseTax: boolean; // Use HUT instead of sales tax
+  includeTradeInReduction: boolean; // Whether trade-in reduces HUT base
+  applyToNetPriceOnly: boolean; // HUT applies to net price (after trade-in, rebates)
+  maxReciprocityAgeDays: number; // Max days since tax paid for reciprocity (typically 90)
+}
+
+/**
+ * West Virginia Privilege Tax Configuration
+ *
+ * West Virginia uses a privilege tax for vehicle registration which is
+ * similar to sales tax but with different base calculation rules.
+ */
+export interface WestVirginiaPrivilegeConfig {
+  baseRate: number; // Privilege tax rate as decimal
+  useAssessedValue: boolean; // Use state-assessed value
+  useHigherOfPriceOrAssessed: boolean; // Base is higher of price or assessed
+  allowTradeInCredit: boolean; // Whether trade-in reduces base
+  applyNegativeEquityToBase: boolean; // Whether negative equity increases base
+  vehicleClassRates?: Record<string, number>; // Different rates by vehicle class
+}
+
+/**
  * State-Specific Extra Configurations
  *
- * Allows states with unique tax systems (TAVT, HUT, etc.) to provide
- * additional configuration beyond the standard DSL.
+ * Allows states with unique tax systems (TAVT, HUT, Privilege Tax, etc.) to
+ * provide additional configuration beyond the standard DSL.
  */
 export interface StateExtras {
   gaTAVT?: GeorgiaTAVTConfig; // Georgia Title Ad Valorem Tax config
+  ncHUT?: NorthCarolinaHUTConfig; // North Carolina Highway Use Tax config
+  wvPrivilege?: WestVirginiaPrivilegeConfig; // West Virginia Privilege Tax config
   [key: string]: unknown; // Other state-specific data
 }
 
@@ -216,6 +293,7 @@ export interface OriginTaxInfo {
   stateCode: string; // where tax was originally paid
   amount: number; // amount of tax already paid
   effectiveRate?: number; // optional, for audit/debug (amount / base)
+  taxPaidDate?: string; // ISO date when tax was paid (for time-window reciprocity like NC 90-day rule)
 }
 
 // Retail + shared fields
@@ -228,6 +306,11 @@ export interface BaseDealFields {
   homeStateCode?: string; // buyer's home/residence state
   registrationStateCode?: string; // where the vehicle will be titled/registered
   originTaxInfo?: OriginTaxInfo; // tax previously paid elsewhere (trade, prior title, etc.)
+
+  // Customer & vehicle classification fields
+  customerIsNewResident?: boolean; // Used for new resident exemptions/special rules
+  vehicleClass?: string; // "auto", "truck", "RV", "trailer", "motorcycle", etc.
+  gvw?: number; // Gross Vehicle Weight (for GVW-based taxation)
 
   vehiclePrice: number; // selling price (or agreed value for lease)
   accessoriesAmount: number;
