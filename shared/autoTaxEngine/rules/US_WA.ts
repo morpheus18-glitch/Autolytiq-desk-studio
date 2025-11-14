@@ -3,8 +3,8 @@ import { TaxRulesConfig } from "../types";
 /**
  * WASHINGTON STATE TAX RULES
  *
- * Researched: 2025-11
- * Version: 1
+ * Researched: 2025-11-13
+ * Version: 2
  *
  * KEY FACTS:
  * - Base state sales tax: 6.5%
@@ -43,52 +43,147 @@ import { TaxRulesConfig } from "../types";
  */
 export const US_WA: TaxRulesConfig = {
   stateCode: "WA",
-  version: 1,
+  version: 2,
 
   // ============================================================================
   // RETAIL TRANSACTION RULES
   // ============================================================================
 
   /**
-   * Trade-in Policy: FULL
+   * Trade-in Policy: FULL (100% credit, no cap)
    *
-   * Washington allows full trade-in credit. The trade-in value is deducted
-   * from the purchase price before calculating sales tax, as "trade-in property
-   * of like kind" is excluded from the selling price.
+   * Washington provides FULL trade-in credit with no limitations. Trade-in
+   * value is completely excluded from the selling price for sales tax purposes.
    *
-   * Example: $30,000 vehicle - $10,000 trade-in = $20,000 taxable base
+   * Official Guidance (DOR Auto Dealers - Trade-ins):
+   * "For retail sales tax purposes, the selling price excludes 'trade-in
+   * property of like kind,' meaning dealers will collect retail sales tax
+   * from retail customers on the price after the value of the trade-in
+   * is deducted."
    *
-   * Source: DOR guidance on motor vehicle sales/use tax
+   * Requirements for Trade-In Credit:
+   * 1. Seller must accept ownership of trade-in property
+   * 2. Trade-in must reduce purchase price at time of sale
+   * 3. Trade-in used as consideration for the purchase
+   * 4. Must be "like kind" property (vehicle for vehicle)
+   *
+   * "Like Kind" Definition:
+   * Licensed vehicle categories qualifying for trade-in credit:
+   * - Cars, trucks, trucks with canopies
+   * - Motorcycles, motor homes, mopeds
+   * - ORVs (off-road vehicles)
+   * - Wheelchair conveyances
+   * - Trailers and recreational land vehicles
+   *
+   * IMPORTANT CLARIFICATIONS:
+   *
+   * 1. Trade-In Value vs. Payoff Amount:
+   *    - Credit based on agreed TRADE-IN VALUE, not payoff amount
+   *    - Over-allowances, payoffs, or encumbrances do NOT reduce trade-in value
+   *    - Payment to lien holders does NOT decrease the trade-in credit
+   *
+   * 2. Negative Equity:
+   *    - Full trade-in value credit applies regardless of payoff
+   *    - Example: $8,000 trade value with $10,000 payoff = $8,000 credit
+   *    - Negative equity ($2,000) is a separate loan obligation
+   *
+   * 3. Cash Back Limitation:
+   *    - Cash back to customer for trade-in value does NOT constitute trade-in
+   *    - Trade must be applied toward purchase to qualify for credit
+   *
+   * 4. Prior Tax Payment Not Required:
+   *    - Previous payment of sales/use tax on traded item is NOT required
+   *    - Credit applies even if no tax was previously paid
+   *
+   * Example - Standard Trade:
+   *   Vehicle Price:              $30,000
+   *   Trade-In Value:             $10,000
+   *   ──────────────────────────────────────
+   *   Taxable Amount:             $20,000
+   *   Sales Tax @ 8.5%:           $1,700
+   *   Tax Savings:                $850 (vs. no trade-in)
+   *
+   * Example - Negative Equity Trade:
+   *   Vehicle Price:              $30,000
+   *   Trade-In Value:             $8,000
+   *   Trade-In Payoff:            -$10,000
+   *   Negative Equity:            $2,000 (rolled into new loan)
+   *   ──────────────────────────────────────
+   *   Taxable Amount:             $22,000 (price - trade value)
+   *   Sales Tax @ 8.5%:           $1,870
+   *   Amount Financed:            $24,000 + $1,870 = $25,870
+   *
+   * Source: dor.wa.gov/education/industry-guides/auto-dealers/trade-ins
    */
   tradeInPolicy: { type: "FULL" },
 
   /**
-   * Rebate Rules:
+   * Rebate Rules: CRITICAL DISTINCTION between manufacturer and dealer rebates
    *
-   * IMPORTANT: Both manufacturer AND dealer rebates are TAXABLE in Washington.
-   * Unlike many states, Washington taxes vehicle purchases BEFORE rebates or
-   * incentives are applied to the price. This means the buyer pays sales tax
-   * on the full purchase price before any manufacturer rebates.
+   * MANUFACTURER/DISTRIBUTOR REBATES: TAXABLE (do NOT reduce taxable base)
+   * Official Guidance (DOR Auto Dealers - Discounts/Rebates):
+   * "Rebates from the manufacturer or distributor are part of the selling price
+   * of the vehicle. The amount of the rebate may not be deducted from the selling
+   * price before retail sales tax is charged, nor may it be deducted before
+   * computing the B&O tax."
    *
-   * - Manufacturer rebates (MFR): TAXABLE - do NOT reduce the sale price for tax
-   * - Dealer rebates: TAXABLE - do NOT reduce the sale price for tax
+   * Tax Treatment:
+   * - Customer pays full purchase price minus manufacturer rebate
+   * - Sales tax calculated on FULL price BEFORE rebate
+   * - Rebate does NOT reduce the taxable amount
+   * - Whether applied as down payment or taken as cash, tax base unchanged
    *
-   * This is a key difference from states like California where manufacturer
-   * rebates reduce the taxable base.
+   * Example:
+   *   Agreed Selling Price:        $25,000
+   *   Manufacturer Rebate:         -$2,000
+   *   Customer Pays:               $23,000
+   *   BUT Taxable Base:            $25,000 (NOT $23,000)
+   *   Sales Tax @ 8.5%:            $2,125 (on full $25,000)
    *
-   * Source: DOR motor vehicle sales tax guidance, WADA dealer resources
+   * DEALER REBATES: NOT TAXABLE (reduce taxable base)
+   * Official Guidance (DOR Auto Dealers - Discounts/Rebates):
+   * "Rebates from the dealer are considered discounts and are not part of
+   * the selling price. These rebates/discounts are not subject to the
+   * Retailing B&O tax or the retail sales tax."
+   *
+   * Tax Treatment:
+   * - Dealer's own discounts/promotions reduce the actual selling price
+   * - Sales tax calculated on reduced price after dealer rebate
+   * - True discount given by dealer (not reimbursed by anyone else)
+   *
+   * Example:
+   *   Original Price:              $25,000
+   *   Dealer Rebate/Discount:      -$2,000
+   *   ──────────────────────────────────────
+   *   Actual Selling Price:        $23,000
+   *   Sales Tax @ 8.5%:            $1,955 (on $23,000)
+   *
+   * CRITICAL DISTINCTION:
+   * - Manufacturer rebate: Customer saves on price but NOT on tax
+   * - Dealer rebate: Customer saves on BOTH price AND tax
+   *
+   * On a $2,000 rebate at 8.5% tax:
+   * - Manufacturer rebate saves customer: $2,000 (rebate only)
+   * - Dealer rebate saves customer: $2,170 ($2,000 + $170 tax savings)
+   *
+   * Source: dor.wa.gov/education/industry-guides/auto-dealers/discountsrebates
    */
   rebates: [
     {
       appliesTo: "MANUFACTURER",
       taxable: true,
       notes:
-        "Manufacturer rebates are taxable in WA - full price taxed before rebate applied",
+        "MANUFACTURER/DISTRIBUTOR rebates are TAXABLE per DOR guidance. Sales tax calculated " +
+        "on full selling price BEFORE rebate. Rebate amount may NOT be deducted from taxable base. " +
+        "Whether applied as down payment or cash, tax base is unchanged.",
     },
     {
       appliesTo: "DEALER",
-      taxable: true,
-      notes: "Dealer rebates are taxable - do not reduce the taxable sale price",
+      taxable: false,
+      notes:
+        "DEALER rebates/discounts are NOT taxable per DOR guidance. Dealer discounts reduce the " +
+        "actual selling price and thus reduce the sales tax base. These are true price reductions " +
+        "not subject to retail sales tax or B&O tax.",
     },
   ],
 
@@ -159,13 +254,32 @@ export const US_WA: TaxRulesConfig = {
   /**
    * Product Taxability:
    *
-   * - Accessories: Taxable (parts + labor)
-   * - Negative equity: Taxable (increases financed amount and taxable base)
-   * - Service contracts: Taxable
-   * - GAP: Typically taxable (most dealer GAP products are waivers, not insurance)
+   * ACCESSORIES: TAXABLE
+   * - All vehicle accessories subject to sales tax (parts + labor)
+   * - Factory-installed, dealer-installed, and aftermarket all taxable
+   * - Installation labor is also taxable when part of retail sale
+   *
+   * NEGATIVE EQUITY: NOT TAXABLE
+   * - Negative equity from trade-in is a debt obligation, not part of selling price
+   * - Does NOT increase the taxable base for sales tax
+   * - Trade-in credit based on VALUE, not payoff amount
+   * - Example: $30,000 vehicle - $8,000 trade value = $22,000 taxable
+   *   (even if trade has $10,000 payoff and $2,000 negative equity)
+   *
+   * SERVICE CONTRACTS (VSC): TAXABLE
+   * - Extended warranties and service contracts are taxable per WAC 458-20-257
+   * - NOT exempt like insurance products
+   * - Subject to retail sales tax, not insurance premium tax
+   *
+   * GAP: TAXABLE (most dealer products)
+   * - True GAP insurance: Exempt (rare, must be regulated insurance)
+   * - GAP waivers/debt cancellation: TAXABLE (most dealer products)
+   * - Most dealer-sold GAP products are taxable under RCW 48.160
+   *
+   * Source: DOR industry guides, WAC 458-20-257, RCW 48.160
    */
   taxOnAccessories: true,
-  taxOnNegativeEquity: true,
+  taxOnNegativeEquity: false, // Corrected based on trade-in value treatment
   taxOnServiceContracts: true,
   taxOnGap: true,
 
@@ -271,12 +385,30 @@ export const US_WA: TaxRulesConfig = {
     tradeInCredit: "FULL",
 
     /**
-     * Negative Equity on Leases: Taxable
+     * Negative Equity on Leases: NOT taxable directly
      *
-     * Negative equity rolled into a lease increases the cap cost and
-     * increases monthly payments, thus increasing tax paid monthly.
+     * Negative equity rolled into a lease affects the capitalized cost
+     * calculation but is not directly taxed. Consistent with retail treatment,
+     * the trade-in credit is based on VALUE, not payoff.
+     *
+     * Treatment:
+     * - Trade-in value reduces cap cost (credit applied)
+     * - Negative equity is debt obligation (not taxed separately)
+     * - Monthly payments based on adjusted cap cost are taxed
+     *
+     * Example:
+     *   Gross Cap Cost:             $32,000
+     *   Trade-In Value:             $8,000
+     *   Trade-In Payoff:            -$10,000
+     *   Negative Equity:            $2,000
+     *
+     *   Net Cap Reduction:          $8,000 (trade value, not net equity)
+     *   Adjusted Cap Cost:          $24,000
+     *   (Negative equity affects financing, not tax base directly)
+     *
+     * Source: DOR leases/rental guidance, trade-ins guidance
      */
-    negativeEquityTaxable: true,
+    negativeEquityTaxable: false,
 
     /**
      * Fee Taxability on Leases:

@@ -3,8 +3,8 @@ import { TaxRulesConfig } from "../types";
 /**
  * ARIZONA TAX RULES
  *
- * Researched: 2025-11
- * Version: 1
+ * Researched: 2025-11-13
+ * Version: 2
  *
  * KEY FACTS:
  * - Transaction Privilege Tax (TPT): 5.6% state rate (not a true "sales tax")
@@ -41,7 +41,7 @@ import { TaxRulesConfig } from "../types";
  */
 export const US_AZ: TaxRulesConfig = {
   stateCode: "AZ",
-  version: 1,
+  version: 2,
 
   // ============================================================================
   // RETAIL TRANSACTION RULES
