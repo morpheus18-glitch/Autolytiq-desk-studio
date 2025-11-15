@@ -9,6 +9,7 @@ import { z } from "zod";
 import { aiService, type ChatMessage, type DealContext } from "./ai-service";
 import { setupAuth, requireAuth, requireRole } from "./auth";
 import { setupAuthRoutes } from "./auth-routes";
+import taxRoutes from "./tax-routes";
 
 // Rate limiting middleware - 100 requests per minute per IP
 const limiter = rateLimit({
@@ -63,10 +64,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Setup authentication (session + passport middleware + auth routes)
   setupAuth(app);
-  
+
   // Setup auth routes (preferences, settings, password reset, 2FA, audit, permissions)
   setupAuthRoutes(app);
-  
+
+  // Setup tax calculation routes (AutoTaxEngine endpoints)
+  app.use('/api/tax', taxRoutes);
+
   // ===== USERS =====
   app.get('/api/users', requireAuth, async (req, res) => {
     try {
@@ -1385,64 +1389,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
         temporaryRegistration: z.boolean().optional(),
         taxExempt: z.boolean().optional(),
         taxExemptionReason: z.string().optional(),
+        dealType: z.enum(['RETAIL', 'LEASE']).optional(),
+        registrationState: z.string().length(2).optional(),
+        // Lease-specific fields
+        grossCapCost: z.number().min(0).optional(),
+        capReductionCash: z.number().min(0).optional(),
+        basePayment: z.number().min(0).optional(),
+        paymentCount: z.number().int().min(1).optional(),
       });
-      
+
       const options = taxCalculationSchema.parse(req.body);
-      
-      // Import and use the tax calculator
-      const { calculateAutomotiveTax } = await import('../shared/tax-data');
-      const { STATE_TAX_DATA, getLocalTaxRate } = await import('../shared/tax-data');
-      
-      // Get state tax info
-      const stateTax = STATE_TAX_DATA[options.stateCode];
-      if (!stateTax) {
+
+      // Use the AutoTaxEngine for accurate calculations
+      const { calculateTax, getRulesForState, getLocalTaxRate } = await import('../shared/autoTaxEngine');
+      const { STATE_TAX_DATA } = await import('../shared/tax-data');
+
+      // Get state rules from autoTaxEngine
+      const rules = getRulesForState(options.stateCode);
+      if (!rules) {
         return res.status(400).json({ error: `Invalid state code: ${options.stateCode}` });
       }
-      
-      // Simple tax calculation for now (will be enhanced with full calculator)
-      let taxableAmount = options.vehiclePrice;
-      
-      // Apply trade-in credit
-      if (options.tradeValue && stateTax.tradeInCredit !== 'none') {
-        const tradeCredit = Math.min(options.tradeValue, options.vehiclePrice);
-        if (stateTax.tradeInCredit === 'partial' && stateTax.tradeInCreditLimit) {
-          taxableAmount -= Math.min(tradeCredit, stateTax.tradeInCreditLimit);
-        } else {
-          taxableAmount -= tradeCredit;
-        }
-      }
-      
-      // Calculate taxes
-      const stateTaxAmount = taxableAmount * stateTax.baseTaxRate;
-      let localTaxAmount = 0;
-      
+
+      // Determine local tax rate
+      let localTaxRate = 0;
       if (options.zipCode) {
         const localTax = getLocalTaxRate(options.zipCode);
         if (localTax) {
-          localTaxAmount = taxableAmount * localTax.localTaxRate;
+          localTaxRate = localTax.localTaxRate;
         }
       }
-      
-      const totalTax = stateTaxAmount + localTaxAmount;
-      const totalFees = stateTax.titleFee + stateTax.registrationFeeBase;
-      
+
+      // Build tax calculation input for autoTaxEngine
+      const taxInput = {
+        stateCode: options.stateCode,
+        asOfDate: new Date().toISOString(),
+        dealType: options.dealType ?? 'RETAIL',
+        registrationStateCode: options.registrationState ?? options.stateCode,
+
+        // Financial fields
+        vehiclePrice: options.vehiclePrice,
+        accessoriesAmount: options.accessoriesAmount ?? 0,
+        tradeInValue: options.tradeValue ?? 0,
+        rebateManufacturer: options.rebates ?? 0,
+        rebateDealer: options.dealerDiscount ?? 0,
+        docFee: options.docFee ?? 0,
+        otherFees: [],
+        serviceContracts: options.warrantyAmount ?? 0,
+        gap: options.gapInsurance ?? 0,
+        negativeEquity: options.tradePayoff && options.tradeValue
+          ? Math.max(0, options.tradePayoff - options.tradeValue)
+          : 0,
+        taxAlreadyCollected: 0,
+
+        // Tax rates - build from state + local
+        rates: [
+          { label: 'STATE', rate: rules.extras?.stateAutomotiveSalesRate ?? 0.07 },
+          ...(localTaxRate > 0 ? [{ label: 'LOCAL', rate: localTaxRate }] : [])
+        ],
+
+        // Lease fields if applicable
+        ...(options.dealType === 'LEASE' && {
+          grossCapCost: options.grossCapCost ?? options.vehiclePrice,
+          capReductionCash: options.capReductionCash ?? 0,
+          capReductionTradeIn: options.tradeValue ?? 0,
+          capReductionRebateManufacturer: options.rebates ?? 0,
+          capReductionRebateDealer: options.dealerDiscount ?? 0,
+          basePayment: options.basePayment ?? 0,
+          paymentCount: options.paymentCount ?? 36,
+        }),
+      };
+
+      // Calculate tax using autoTaxEngine
+      const result = calculateTax(taxInput, rules);
+
+      // Audit log (basic console logging for now)
+      console.log('[TAX-CALC]', {
+        timestamp: new Date().toISOString(),
+        stateCode: options.stateCode,
+        dealType: taxInput.dealType,
+        vehiclePrice: options.vehiclePrice,
+        totalTax: result.totalTax,
+        user: (req as any).user?.username ?? 'anonymous',
+      });
+
+      // Get legacy state tax data for fees
+      const stateTax = STATE_TAX_DATA[options.stateCode];
+      const titleFee = stateTax?.titleFee ?? 0;
+      const registrationFee = stateTax?.registrationFeeBase ?? 0;
+
+      // Format response to match legacy API
       res.json({
-        taxableAmount,
-        stateTax: stateTaxAmount,
-        stateTaxRate: stateTax.baseTaxRate,
-        localTax: localTaxAmount,
-        localTaxRate: localTaxAmount / taxableAmount || 0,
-        totalTax,
-        effectiveTaxRate: totalTax / taxableAmount || 0,
-        titleFee: stateTax.titleFee,
-        registrationFee: stateTax.registrationFeeBase,
-        totalFees,
-        totalTaxAndFees: totalTax + totalFees,
-        tradeInTaxSavings: options.tradeValue ? (options.vehiclePrice - taxableAmount) * (stateTax.baseTaxRate + (localTaxAmount / taxableAmount || 0)) : 0,
-        notes: [],
-        warnings: []
+        taxableAmount: result.taxableAmount,
+        stateTax: result.stateTax,
+        stateTaxRate: result.effectiveRate,
+        localTax: result.localTax ?? 0,
+        localTaxRate: localTaxRate,
+        totalTax: result.totalTax,
+        effectiveTaxRate: result.effectiveRate,
+        titleFee,
+        registrationFee,
+        totalFees: titleFee + registrationFee,
+        totalTaxAndFees: result.totalTax + titleFee + registrationFee,
+        tradeInTaxSavings: result.tradeInSavings ?? 0,
+        notes: result.notes,
+        warnings: result.warnings ?? [],
+        // Include full engine result for advanced clients
+        engineResult: result,
       });
     } catch (error: any) {
+      console.error('[TAX-CALC-ERROR]', {
+        timestamp: new Date().toISOString(),
+        error: error.message,
+        stack: error.stack,
+      });
       if (error.name === 'ZodError') {
         res.status(400).json({ error: 'Invalid request data', details: error.errors });
       } else {
