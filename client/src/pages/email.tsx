@@ -140,16 +140,6 @@ export default function EmailPage() {
         </Sheet>
 
         <h1 className="text-lg font-semibold capitalize">{selectedFolder}</h1>
-
-        {!selectedEmail && (
-          <Button
-            onClick={() => setComposeOpen(true)}
-            size="sm"
-            className="ml-auto"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
-        )}
       </div>
 
       {/* Desktop Layout */}

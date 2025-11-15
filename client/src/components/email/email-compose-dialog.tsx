@@ -4,7 +4,7 @@
  * Clean UI for composing and sending emails through the secure backend
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { X, Send, Save, Plus, ChevronDown } from 'lucide-react';
 import {
   Dialog,
@@ -49,6 +49,8 @@ export function EmailComposeDialog({
   const [showCc, setShowCc] = useState(false);
   const [showBcc, setShowBcc] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [draftId, setDraftId] = useState<string | undefined>();
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
   // Mutations
   const sendEmail = useSendEmail();
@@ -175,13 +177,79 @@ export function EmailComposeDialog({
     setShowCc(false);
     setShowBcc(false);
     setEmailError(null);
+    setDraftId(undefined);
+    setLastSaved(null);
+  };
+
+  // Auto-save draft functionality
+  const autoSaveDraft = useCallback(async () => {
+    // Only auto-save if there's meaningful content
+    if (!subject.trim() && !body.trim() && recipients.length === 0) {
+      return;
+    }
+
+    try {
+      const result = await saveDraft.mutateAsync({
+        draftId,
+        to: recipients,
+        cc: ccRecipients.length > 0 ? ccRecipients : undefined,
+        bcc: bccRecipients.length > 0 ? bccRecipients : undefined,
+        subject,
+        textBody: body,
+        htmlBody: body.replace(/\n/g, '<br>'),
+        customerId,
+        dealId,
+      });
+
+      // Save the draft ID for future updates
+      if (result && 'id' in result) {
+        setDraftId(result.id);
+      }
+      setLastSaved(new Date());
+    } catch (error) {
+      // Silently fail auto-save - don't interrupt user
+      console.error('Auto-save failed:', error);
+    }
+  }, [subject, body, recipients, ccRecipients, bccRecipients, draftId, customerId, dealId, saveDraft]);
+
+  // Auto-save every 30 seconds when composing
+  useEffect(() => {
+    if (!open) return;
+
+    const timer = setTimeout(() => {
+      autoSaveDraft();
+    }, 30000); // 30 seconds
+
+    return () => clearTimeout(timer);
+  }, [open, subject, body, recipients, autoSaveDraft]);
+
+  // Handle closing dialog - ask to save draft if content exists
+  const handleClose = (shouldClose: boolean) => {
+    if (!shouldClose) {
+      onOpenChange(false);
+      return;
+    }
+
+    // If there's unsaved content, auto-save before closing
+    if ((subject.trim() || body.trim() || recipients.length > 0) && !draftId) {
+      autoSaveDraft();
+    }
+
+    onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>New Message</DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle>New Message</DialogTitle>
+            {lastSaved && (
+              <p className="text-xs text-muted-foreground">
+                Draft saved {new Date().getTime() - lastSaved.getTime() < 60000 ? 'just now' : 'at ' + lastSaved.toLocaleTimeString()}
+              </p>
+            )}
+          </div>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto space-y-4">
