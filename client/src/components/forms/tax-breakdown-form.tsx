@@ -1,108 +1,130 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Receipt, MapPin, Info, Check } from 'lucide-react';
+import { Receipt, MapPin, Info, Check, AlertCircle } from 'lucide-react';
 import { useScenarioForm } from '@/contexts/scenario-form-context';
 import { StateTaxSelector } from '@/components/state-tax-selector';
 import { TaxBreakdown } from '@/components/tax-breakdown';
-import { calculateDealTax, type TaxCalculationResult } from '@/lib/tax-calculator';
-import { apiRequest } from '@/lib/queryClient';
-import type { TaxJurisdiction, Customer } from '@shared/schema';
+import { useTaxCalculation, useLeaseCalculationMethod, type TaxCalculationParams } from '@/hooks/use-tax-calculation';
+import type { Customer } from '@shared/schema';
 import Decimal from 'decimal.js';
 
 export function TaxBreakdownForm({ customer }: { customer?: Customer | null }) {
-  const { scenario, tradeVehicle, updateField, updateMultipleFields, calculations } = useScenarioForm();
+  const { scenario, tradeVehicle, updateField, updateMultipleFields } = useScenarioForm();
 
-  // ✅ NEW: Auto-populate from customer data if available
-  const initialState = scenario.taxState || customer?.state || '';
-  const initialZip = scenario.taxZipCode || customer?.zipCode || '';
-
-  const [stateCode, setStateCode] = useState<string>(initialState);
-  const [zipCode, setZipCode] = useState<string>(initialZip);
+  // Auto-populate state and zip from customer data
+  const [stateCode, setStateCode] = useState<string>(customer?.state || '');
+  const [zipCode, setZipCode] = useState<string>(customer?.zipCode || '');
   const [autoPopulated, setAutoPopulated] = useState(false);
 
-  // ✅ NEW: Auto-populate when customer changes
+  // Auto-populate when customer address is entered
   useEffect(() => {
-    if (customer && !scenario.taxState && customer.state) {
+    if (customer?.state && !stateCode) {
       setStateCode(customer.state);
-      updateField('taxState', customer.state);
       setAutoPopulated(true);
     }
-    if (customer && !scenario.taxZipCode && customer.zipCode) {
+    if (customer?.zipCode && !zipCode) {
       setZipCode(customer.zipCode);
-      updateField('taxZipCode', customer.zipCode);
       setAutoPopulated(true);
     }
-  }, [customer, scenario.taxState, scenario.taxZipCode, updateField]);
-  const [taxResult, setTaxResult] = useState<TaxCalculationResult | null>(null);
-  
-  // Calculate tax using the API
-  const { mutate: calculateTax, isPending: isCalculating } = useMutation({
-    mutationFn: async (params: any) => {
-      return apiRequest('POST', '/api/tax/calculate', params);
-    },
-    onSuccess: (data: TaxCalculationResult) => {
-      setTaxResult(data);
-      // Update scenario with calculated tax values
-      updateMultipleFields({
-        totalTax: data.totalTax.toString(),
-        totalFees: data.totalFees.toString(),
-      });
-    },
-  });
-  
-  // Recalculate tax when relevant fields change
-  useEffect(() => {
-    if (stateCode && scenario.vehiclePrice) {
-      const params = {
-        vehiclePrice: Number(scenario.vehiclePrice),
-        stateCode,
-        zipCode: zipCode || undefined,
-        tradeValue: Number(scenario.tradeAllowance) || undefined,
-        tradePayoff: Number(scenario.tradePayoff) || undefined,
-        docFee: Number(scenario.docFee) || undefined,
-        dealerFees: Number(scenario.dealerFees) || undefined,
-        aftermarketProducts: Number(scenario.aftermarketTotal) || undefined,
-        warrantyAmount: Number(scenario.warrantyAmount) || undefined,
-        gapInsurance: Number(scenario.gapInsurance) || undefined,
-        maintenanceAmount: Number(scenario.maintenanceAmount) || undefined,
-        accessoriesAmount: Number(scenario.accessoriesAmount) || undefined,
-        rebates: Number(scenario.rebates) || undefined,
-        dealerDiscount: Number(scenario.dealerDiscount) || undefined,
-        fuelType: scenario.fuelType as any || 'gasoline',
-        vehicleType: scenario.vehicleCondition as any || 'new',
-      };
-      
-      calculateTax(params);
-    }
+  }, [customer?.state, customer?.zipCode]);
+
+  // Get lease calculation method for this state
+  const { leaseMethod, methodDescription, hasSpecialScheme, isLoading: isLoadingStateRules } =
+    useLeaseCalculationMethod(stateCode);
+
+  // Determine if this is a lease deal
+  const isLease = scenario.scenarioType === 'LEASE';
+
+  // Build tax calculation params from scenario
+  const taxParams: TaxCalculationParams = useMemo(() => {
+    // Get vehicle price
+    const vehiclePrice = Number(scenario.vehiclePrice) || 0;
+
+    // Get trade-in values
+    const tradeValue = tradeVehicle?.estimatedValue
+      ? Number(tradeVehicle.estimatedValue)
+      : 0;
+    const tradePayoff = Number(scenario.tradePayoff) || 0;
+
+    // Build params object
+    const params: TaxCalculationParams = {
+      vehiclePrice,
+      stateCode,
+      zipCode: zipCode || undefined,
+      dealType: isLease ? 'LEASE' : 'RETAIL',
+      registrationState: stateCode,
+
+      // Trade-in
+      tradeValue: tradeValue > 0 ? tradeValue : undefined,
+      tradePayoff: tradePayoff > 0 ? tradePayoff : undefined,
+
+      // Fees (use dealerFees as doc fee if available)
+      docFee: Number(scenario.dealerFees) || 0,
+
+      // Products (from aftermarketProducts object)
+      warrantyAmount: 0, // TODO: Extract from aftermarketProducts
+      gapInsurance: 0, // TODO: Extract from aftermarketProducts
+      maintenanceAmount: 0, // TODO: Extract from aftermarketProducts
+      accessoriesAmount: 0, // TODO: Extract from aftermarketProducts
+
+      // Vehicle type
+      vehicleType: 'used', // TODO: Get from vehicle data
+
+      // Lease-specific fields
+      ...(isLease && {
+        grossCapCost: vehiclePrice,
+        capReductionCash: 0, // TODO: Extract from scenario
+        basePayment: Number(scenario.monthlyPayment) || 0,
+        paymentCount: Number(scenario.term) || 36,
+      }),
+    };
+
+    return params;
   }, [
+    scenario.vehiclePrice,
+    scenario.scenarioType,
+    scenario.tradePayoff,
+    scenario.dealerFees,
+    scenario.monthlyPayment,
+    scenario.term,
+    tradeVehicle?.estimatedValue,
     stateCode,
     zipCode,
-    scenario.vehiclePrice,
-    scenario.tradeAllowance,
-    scenario.tradePayoff,
-    scenario.docFee,
-    scenario.dealerFees,
-    scenario.aftermarketTotal,
-    scenario.warrantyAmount,
-    scenario.gapInsurance,
-    scenario.maintenanceAmount,
-    scenario.accessoriesAmount,
-    scenario.rebates,
-    scenario.dealerDiscount,
-    calculateTax
+    isLease,
   ]);
+
+  // Use tax calculation hook with auto-calculation
+  const {
+    taxResult,
+    isCalculating,
+    isError,
+    canCalculate,
+  } = useTaxCalculation(taxParams, {
+    enabled: true,
+    autoCalculate: true, // Auto-trigger when params change
+    debounceMs: 800, // Wait 800ms after last change
+  });
+
+  // Update scenario when tax result changes
+  useEffect(() => {
+    if (taxResult && !isCalculating) {
+      updateMultipleFields({
+        salesTax: new Decimal(taxResult.totalTax).toFixed(2),
+        // Note: We don't update totalTax/totalFees as they might not exist in schema
+      });
+    }
+  }, [taxResult, isCalculating, updateMultipleFields]);
 
   const handleStateChange = (newState: string) => {
     setStateCode(newState);
-    updateField('taxState', newState);
+    setAutoPopulated(false);
   };
 
   const handleZipCodeChange = (newZipCode: string) => {
     setZipCode(newZipCode);
-    updateField('taxZipCode', newZipCode);
+    setAutoPopulated(false);
   };
 
   return (
@@ -112,7 +134,7 @@ export function TaxBreakdownForm({ customer }: { customer?: Customer | null }) {
         <div className="flex items-center gap-2 mb-3">
           <MapPin className="w-4 h-4 text-muted-foreground" />
           <h3 className="font-semibold">Tax Jurisdiction</h3>
-          {/* ✅ NEW: Show indicator when auto-populated from customer */}
+          {/* Show indicator when auto-populated from customer */}
           {autoPopulated && customer && (
             <Badge variant="secondary" className="text-xs gap-1">
               <Check className="w-3 h-3" />
@@ -128,6 +150,59 @@ export function TaxBreakdownForm({ customer }: { customer?: Customer | null }) {
           showDetails={true}
           disabled={isCalculating}
         />
+
+        {/* Show lease calculation method for lease deals */}
+        {isLease && stateCode && !isLoadingStateRules && (
+          <Card className="mt-3 p-3 bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900">
+            <div className="flex items-start gap-2">
+              <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                  {stateCode} Lease Tax Method: {leaseMethod}
+                </p>
+                <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                  {methodDescription}
+                </p>
+                {hasSpecialScheme && (
+                  <Badge variant="outline" className="mt-2 text-xs border-blue-300 dark:border-blue-700">
+                    Special tax scheme applies
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* Show error if calculation fails */}
+        {isError && (
+          <Card className="mt-3 p-3 bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-900">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-red-900 dark:text-red-100">
+                  Tax Calculation Error
+                </p>
+                <p className="text-xs text-red-700 dark:text-red-300 mt-1">
+                  Unable to calculate taxes. Please check the entered values and try again.
+                </p>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* Show message if cannot calculate */}
+        {!canCalculate && stateCode && (
+          <Card className="mt-3 p-3 bg-yellow-50/50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-900">
+            <div className="flex items-start gap-2">
+              <Info className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm text-yellow-900 dark:text-yellow-100">
+                  Enter vehicle price to calculate taxes
+                </p>
+              </div>
+            </div>
+          </Card>
+        )}
       </div>
 
       <Separator />
@@ -137,8 +212,13 @@ export function TaxBreakdownForm({ customer }: { customer?: Customer | null }) {
         <div className="flex items-center gap-2 mb-3">
           <Receipt className="w-4 h-4 text-muted-foreground" />
           <h3 className="font-semibold">Tax & Fees Calculation</h3>
+          {isLease && (
+            <Badge variant="outline" className="text-xs">
+              Lease
+            </Badge>
+          )}
         </div>
-        
+
         <TaxBreakdown
           taxResult={taxResult}
           loading={isCalculating}
