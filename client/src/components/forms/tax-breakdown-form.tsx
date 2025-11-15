@@ -7,6 +7,7 @@ import { useScenarioForm } from '@/contexts/scenario-form-context';
 import { StateTaxSelector } from '@/components/state-tax-selector';
 import { TaxBreakdown } from '@/components/tax-breakdown';
 import { useTaxCalculation, useLeaseCalculationMethod, type TaxCalculationParams } from '@/hooks/use-tax-calculation';
+import { extractAftermarketValues } from '@shared/utils/aftermarket-parser';
 import type { Customer } from '@shared/schema';
 import Decimal from 'decimal.js';
 
@@ -48,6 +49,9 @@ export function TaxBreakdownForm({ customer }: { customer?: Customer | null }) {
       : 0;
     const tradePayoff = Number(scenario.tradePayoff) || 0;
 
+    // Extract aftermarket products using parser
+    const aftermarket = extractAftermarketValues(scenario.aftermarketProducts);
+
     // Build params object
     const params: TaxCalculationParams = {
       vehiclePrice,
@@ -63,11 +67,11 @@ export function TaxBreakdownForm({ customer }: { customer?: Customer | null }) {
       // Fees (use dealerFees as doc fee if available)
       docFee: Number(scenario.dealerFees) || 0,
 
-      // Products (from aftermarketProducts object)
-      warrantyAmount: 0, // TODO: Extract from aftermarketProducts
-      gapInsurance: 0, // TODO: Extract from aftermarketProducts
-      maintenanceAmount: 0, // TODO: Extract from aftermarketProducts
-      accessoriesAmount: 0, // TODO: Extract from aftermarketProducts
+      // Products (extracted from aftermarketProducts)
+      warrantyAmount: aftermarket.warrantyAmount,
+      gapInsurance: aftermarket.gapInsurance,
+      maintenanceAmount: aftermarket.maintenanceAmount,
+      accessoriesAmount: aftermarket.accessoriesAmount,
 
       // Vehicle type
       vehicleType: 'used', // TODO: Get from vehicle data
@@ -89,6 +93,7 @@ export function TaxBreakdownForm({ customer }: { customer?: Customer | null }) {
     scenario.dealerFees,
     scenario.monthlyPayment,
     scenario.term,
+    scenario.aftermarketProducts,
     tradeVehicle?.estimatedValue,
     stateCode,
     zipCode,
@@ -106,6 +111,11 @@ export function TaxBreakdownForm({ customer }: { customer?: Customer | null }) {
     autoCalculate: true, // Auto-trigger when params change
     debounceMs: 800, // Wait 800ms after last change
   });
+
+  // Extract aftermarket for display
+  const aftermarketExtracted = useMemo(() => {
+    return extractAftermarketValues(scenario.aftermarketProducts);
+  }, [scenario.aftermarketProducts]);
 
   // Update scenario when tax result changes
   useEffect(() => {
