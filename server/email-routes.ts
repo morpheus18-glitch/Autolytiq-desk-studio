@@ -1,0 +1,612 @@
+/**
+ * EMAIL API ROUTES
+ *
+ * RESTful API endpoints for email management.
+ *
+ * Endpoints:
+ * - GET    /api/email/messages - List emails
+ * - GET    /api/email/messages/:id - Get single email
+ * - POST   /api/email/send - Send new email
+ * - POST   /api/email/drafts - Save draft
+ * - PUT    /api/email/messages/:id - Update email (draft)
+ * - DELETE /api/email/messages/:id - Delete email
+ * - POST   /api/email/messages/:id/read - Mark as read
+ * - POST   /api/email/messages/:id/star - Toggle star
+ * - POST   /api/email/messages/:id/move - Move to folder
+ * - POST   /api/email/bulk/read - Bulk mark as read
+ * - POST   /api/email/bulk/delete - Bulk delete
+ * - GET    /api/email/folders - List folders
+ * - POST   /api/email/folders - Create folder
+ * - GET    /api/email/unread-counts - Get unread counts
+ */
+
+import { Router, Request, Response } from "express";
+import { z } from "zod";
+import {
+  sendEmailMessage,
+  saveDraft,
+  listEmails,
+  getEmailById,
+  getEmailWithAttachments,
+  getEmailThread,
+  markAsRead,
+  toggleStar,
+  moveToFolder,
+  deleteEmail,
+  bulkMarkAsRead,
+  bulkDelete,
+  getUserFolders,
+  createFolder,
+  getUnreadCounts,
+  type SendEmailOptions,
+} from "./email-service";
+
+const router = Router();
+
+// ============================================================================
+// VALIDATION SCHEMAS
+// ============================================================================
+
+const emailAddressSchema = z.object({
+  email: z.string().email(),
+  name: z.string().optional(),
+});
+
+const sendEmailSchema = z.object({
+  to: z.array(emailAddressSchema).min(1),
+  cc: z.array(emailAddressSchema).optional(),
+  bcc: z.array(emailAddressSchema).optional(),
+  subject: z.string().min(1),
+  htmlBody: z.string().optional(),
+  textBody: z.string().optional(),
+  replyTo: z.string().email().optional(),
+  customerId: z.string().uuid().optional(),
+  dealId: z.string().uuid().optional(),
+  attachments: z
+    .array(
+      z.object({
+        filename: z.string(),
+        content: z.string(),
+        contentType: z.string(),
+      })
+    )
+    .optional(),
+});
+
+const saveDraftSchema = sendEmailSchema.partial().extend({
+  draftId: z.string().uuid().optional(),
+});
+
+const listEmailsSchema = z.object({
+  folder: z.string().optional(),
+  customerId: z.string().uuid().optional(),
+  dealId: z.string().uuid().optional(),
+  isRead: z.boolean().optional(),
+  isStarred: z.boolean().optional(),
+  limit: z.number().min(1).max(100).optional(),
+  offset: z.number().min(0).optional(),
+  search: z.string().optional(),
+});
+
+const createFolderSchema = z.object({
+  name: z.string().min(1).max(50),
+  slug: z.string().min(1).max(50),
+  icon: z.string().optional(),
+  color: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+// ============================================================================
+// ROUTES
+// ============================================================================
+
+/**
+ * GET /api/email/messages
+ * List emails with filters and pagination
+ */
+router.get("/messages", async (req: Request, res: Response) => {
+  try {
+    // @ts-ignore - User from session
+    const userId = req.user?.id;
+    // @ts-ignore
+    const dealershipId = req.user?.dealershipId || "default";
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: "Unauthorized",
+      });
+    }
+
+    const queryParams = {
+      folder: req.query.folder as string | undefined,
+      customerId: req.query.customerId as string | undefined,
+      dealId: req.query.dealId as string | undefined,
+      isRead: req.query.isRead === "true" ? true : req.query.isRead === "false" ? false : undefined,
+      isStarred: req.query.isStarred === "true" ? true : req.query.isStarred === "false" ? false : undefined,
+      limit: req.query.limit ? Number(req.query.limit) : 50,
+      offset: req.query.offset ? Number(req.query.offset) : 0,
+      search: req.query.search as string | undefined,
+    };
+
+    const result = await listEmails({
+      dealershipId,
+      userId,
+      ...queryParams,
+    });
+
+    res.json({
+      success: true,
+      data: result.messages,
+      total: result.total,
+      limit: queryParams.limit,
+      offset: queryParams.offset,
+    });
+  } catch (error) {
+    console.error("[EmailRoutes] Error listing emails:", error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+/**
+ * GET /api/email/messages/:id
+ * Get single email by ID with attachments
+ */
+router.get("/messages/:id", async (req: Request, res: Response) => {
+  try {
+    // @ts-ignore
+    const dealershipId = req.user?.dealershipId || "default";
+
+    const email = await getEmailWithAttachments(req.params.id, dealershipId);
+
+    if (!email) {
+      return res.status(404).json({
+        success: false,
+        error: "Email not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: email,
+    });
+  } catch (error) {
+    console.error("[EmailRoutes] Error fetching email:", error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+/**
+ * GET /api/email/threads/:threadId
+ * Get email thread/conversation
+ */
+router.get("/threads/:threadId", async (req: Request, res: Response) => {
+  try {
+    // @ts-ignore
+    const dealershipId = req.user?.dealershipId || "default";
+
+    const messages = await getEmailThread(req.params.threadId, dealershipId);
+
+    res.json({
+      success: true,
+      data: messages,
+    });
+  } catch (error) {
+    console.error("[EmailRoutes] Error fetching thread:", error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+/**
+ * POST /api/email/send
+ * Send new email
+ */
+router.post("/send", async (req: Request, res: Response) => {
+  try {
+    // @ts-ignore
+    const userId = req.user?.id;
+    // @ts-ignore
+    const dealershipId = req.user?.dealershipId || "default";
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: "Unauthorized",
+      });
+    }
+
+    const data = sendEmailSchema.parse(req.body);
+
+    const message = await sendEmailMessage({
+      dealershipId,
+      userId,
+      ...data,
+    });
+
+    res.status(201).json({
+      success: true,
+      data: message,
+    });
+  } catch (error) {
+    console.error("[EmailRoutes] Error sending email:", error);
+
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        errors: error.errors.map((e) => e.message),
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+/**
+ * POST /api/email/drafts
+ * Save draft email
+ */
+router.post("/drafts", async (req: Request, res: Response) => {
+  try {
+    // @ts-ignore
+    const userId = req.user?.id;
+    // @ts-ignore
+    const dealershipId = req.user?.dealershipId || "default";
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: "Unauthorized",
+      });
+    }
+
+    const data = saveDraftSchema.parse(req.body);
+
+    const message = await saveDraft({
+      dealershipId,
+      userId,
+      ...data,
+    });
+
+    res.status(201).json({
+      success: true,
+      data: message,
+    });
+  } catch (error) {
+    console.error("[EmailRoutes] Error saving draft:", error);
+
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        errors: error.errors.map((e) => e.message),
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+/**
+ * DELETE /api/email/messages/:id
+ * Delete email (move to trash or permanent)
+ */
+router.delete("/messages/:id", async (req: Request, res: Response) => {
+  try {
+    // @ts-ignore
+    const dealershipId = req.user?.dealershipId || "default";
+    const permanent = req.query.permanent === "true";
+
+    const success = await deleteEmail(req.params.id, dealershipId, permanent);
+
+    if (!success) {
+      return res.status(404).json({
+        success: false,
+        error: "Email not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: permanent ? "Email deleted permanently" : "Email moved to trash",
+    });
+  } catch (error) {
+    console.error("[EmailRoutes] Error deleting email:", error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+/**
+ * POST /api/email/messages/:id/read
+ * Mark email as read/unread
+ */
+router.post("/messages/:id/read", async (req: Request, res: Response) => {
+  try {
+    // @ts-ignore
+    const dealershipId = req.user?.dealershipId || "default";
+    const { isRead } = req.body;
+
+    const message = await markAsRead(req.params.id, dealershipId, isRead);
+
+    if (!message) {
+      return res.status(404).json({
+        success: false,
+        error: "Email not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: message,
+    });
+  } catch (error) {
+    console.error("[EmailRoutes] Error marking as read:", error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+/**
+ * POST /api/email/messages/:id/star
+ * Toggle star on email
+ */
+router.post("/messages/:id/star", async (req: Request, res: Response) => {
+  try {
+    // @ts-ignore
+    const dealershipId = req.user?.dealershipId || "default";
+    const { isStarred } = req.body;
+
+    const message = await toggleStar(req.params.id, dealershipId, isStarred);
+
+    if (!message) {
+      return res.status(404).json({
+        success: false,
+        error: "Email not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: message,
+    });
+  } catch (error) {
+    console.error("[EmailRoutes] Error toggling star:", error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+/**
+ * POST /api/email/messages/:id/move
+ * Move email to folder
+ */
+router.post("/messages/:id/move", async (req: Request, res: Response) => {
+  try {
+    // @ts-ignore
+    const dealershipId = req.user?.dealershipId || "default";
+    const { folder } = req.body;
+
+    if (!folder) {
+      return res.status(400).json({
+        success: false,
+        error: "Folder is required",
+      });
+    }
+
+    const message = await moveToFolder(req.params.id, dealershipId, folder);
+
+    if (!message) {
+      return res.status(404).json({
+        success: false,
+        error: "Email not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: message,
+    });
+  } catch (error) {
+    console.error("[EmailRoutes] Error moving email:", error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+/**
+ * POST /api/email/bulk/read
+ * Bulk mark as read
+ */
+router.post("/bulk/read", async (req: Request, res: Response) => {
+  try {
+    // @ts-ignore
+    const dealershipId = req.user?.dealershipId || "default";
+    const { emailIds, isRead } = req.body;
+
+    if (!Array.isArray(emailIds) || emailIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "emailIds array is required",
+      });
+    }
+
+    const count = await bulkMarkAsRead(emailIds, dealershipId, isRead);
+
+    res.json({
+      success: true,
+      count,
+    });
+  } catch (error) {
+    console.error("[EmailRoutes] Error bulk marking as read:", error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+/**
+ * POST /api/email/bulk/delete
+ * Bulk delete emails
+ */
+router.post("/bulk/delete", async (req: Request, res: Response) => {
+  try {
+    // @ts-ignore
+    const dealershipId = req.user?.dealershipId || "default";
+    const { emailIds, permanent } = req.body;
+
+    if (!Array.isArray(emailIds) || emailIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "emailIds array is required",
+      });
+    }
+
+    const count = await bulkDelete(emailIds, dealershipId, permanent);
+
+    res.json({
+      success: true,
+      count,
+      message: permanent
+        ? `${count} emails deleted permanently`
+        : `${count} emails moved to trash`,
+    });
+  } catch (error) {
+    console.error("[EmailRoutes] Error bulk deleting:", error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+/**
+ * GET /api/email/folders
+ * List user's custom folders
+ */
+router.get("/folders", async (req: Request, res: Response) => {
+  try {
+    // @ts-ignore
+    const userId = req.user?.id;
+    // @ts-ignore
+    const dealershipId = req.user?.dealershipId || "default";
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: "Unauthorized",
+      });
+    }
+
+    const folders = await getUserFolders(userId, dealershipId);
+
+    res.json({
+      success: true,
+      data: folders,
+    });
+  } catch (error) {
+    console.error("[EmailRoutes] Error fetching folders:", error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+/**
+ * POST /api/email/folders
+ * Create custom folder
+ */
+router.post("/folders", async (req: Request, res: Response) => {
+  try {
+    // @ts-ignore
+    const userId = req.user?.id;
+    // @ts-ignore
+    const dealershipId = req.user?.dealershipId || "default";
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: "Unauthorized",
+      });
+    }
+
+    const data = createFolderSchema.parse(req.body);
+
+    const folder = await createFolder({
+      ...data,
+      userId,
+      dealershipId,
+      isSystem: false,
+    });
+
+    res.status(201).json({
+      success: true,
+      data: folder,
+    });
+  } catch (error) {
+    console.error("[EmailRoutes] Error creating folder:", error);
+
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        errors: error.errors.map((e) => e.message),
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+/**
+ * GET /api/email/unread-counts
+ * Get unread counts by folder
+ */
+router.get("/unread-counts", async (req: Request, res: Response) => {
+  try {
+    // @ts-ignore
+    const userId = req.user?.id;
+    // @ts-ignore
+    const dealershipId = req.user?.dealershipId || "default";
+
+    const counts = await getUnreadCounts(dealershipId, userId);
+
+    res.json({
+      success: true,
+      data: counts,
+    });
+  } catch (error) {
+    console.error("[EmailRoutes] Error fetching unread counts:", error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+export default router;

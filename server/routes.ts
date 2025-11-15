@@ -79,6 +79,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const rooftopRoutes = (await import('./rooftop-routes')).default;
   app.use('/api/rooftops', rooftopRoutes);
 
+  // Setup email messaging routes (Resend integration)
+  const emailRoutes = (await import('./email-routes')).default;
+  app.use('/api/email', requireAuth, emailRoutes);
+
   // ===== USERS =====
   app.get('/api/users', requireAuth, async (req, res) => {
     try {

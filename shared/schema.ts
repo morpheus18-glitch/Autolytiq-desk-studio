@@ -1353,3 +1353,131 @@ export const vehicleComparables = pgTable("vehicle_comparables", {
 export const insertVehicleComparableSchema = createInsertSchema(vehicleComparables).omit({ id: true, createdAt: true });
 export type InsertVehicleComparable = z.infer<typeof insertVehicleComparableSchema>;
 export type VehicleComparable = typeof vehicleComparables.$inferSelect;
+
+// ===== EMAIL MESSAGES TABLE =====
+// Email messaging system integrated with Resend
+export const emailMessages = pgTable("email_messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  dealershipId: uuid("dealership_id").notNull().references(() => dealershipSettings.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }), // Sender/owner
+
+  // Email headers
+  messageId: text("message_id").unique(), // Resend message ID or generated ID
+  threadId: text("thread_id"), // For conversation threading
+  inReplyTo: text("in_reply_to"), // Message ID this is replying to
+
+  // Addressing
+  fromAddress: text("from_address").notNull(), // support@autolytiq.com
+  fromName: text("from_name"), // "Autolytiq Support"
+  toAddresses: jsonb("to_addresses").notNull().default([]), // Array of { email, name }
+  ccAddresses: jsonb("cc_addresses").default([]),
+  bccAddresses: jsonb("bcc_addresses").default([]),
+  replyTo: text("reply_to"), // Reply-to address if different
+
+  // Content
+  subject: text("subject").notNull(),
+  htmlBody: text("html_body"), // HTML version
+  textBody: text("text_body"), // Plain text version
+
+  // Metadata
+  folder: text("folder").notNull().default("inbox"), // inbox, sent, drafts, trash, archive
+  isRead: boolean("is_read").notNull().default(false),
+  isStarred: boolean("is_starred").notNull().default(false),
+  isDraft: boolean("is_draft").notNull().default(false),
+
+  // Resend integration
+  resendId: text("resend_id"), // Resend API response ID
+  resendStatus: text("resend_status"), // sent, delivered, bounced, failed
+
+  // Associations
+  customerId: uuid("customer_id").references(() => customers.id, { onDelete: "set null" }), // Related customer
+  dealId: uuid("deal_id").references(() => deals.id, { onDelete: "set null" }), // Related deal
+
+  // Timestamps
+  sentAt: timestamp("sent_at"),
+  receivedAt: timestamp("received_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  dealershipIdx: index("email_messages_dealership_idx").on(table.dealershipId),
+  userIdx: index("email_messages_user_idx").on(table.userId),
+  folderIdx: index("email_messages_folder_idx").on(table.folder),
+  threadIdx: index("email_messages_thread_idx").on(table.threadId),
+  customerIdx: index("email_messages_customer_idx").on(table.customerId),
+  dealIdx: index("email_messages_deal_idx").on(table.dealId),
+  sentAtIdx: index("email_messages_sent_at_idx").on(table.sentAt),
+}));
+
+export const insertEmailMessageSchema = createInsertSchema(emailMessages).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+export type InsertEmailMessage = z.infer<typeof insertEmailMessageSchema>;
+export type EmailMessage = typeof emailMessages.$inferSelect;
+
+// ===== EMAIL ATTACHMENTS TABLE =====
+// File attachments for emails
+export const emailAttachments = pgTable("email_attachments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  emailMessageId: uuid("email_message_id").notNull().references(() => emailMessages.id, { onDelete: "cascade" }),
+
+  // File metadata
+  filename: text("filename").notNull(),
+  contentType: text("content_type").notNull(), // MIME type
+  size: integer("size").notNull(), // Bytes
+
+  // Storage
+  url: text("url"), // S3/CDN URL or base64 data URL
+  storageKey: text("storage_key"), // S3 key or storage reference
+
+  // Inline vs attachment
+  isInline: boolean("is_inline").notNull().default(false),
+  contentId: text("content_id"), // For inline images: cid:xxx
+
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  emailIdx: index("email_attachments_email_idx").on(table.emailMessageId),
+}));
+
+export const insertEmailAttachmentSchema = createInsertSchema(emailAttachments).omit({
+  id: true,
+  createdAt: true
+});
+export type InsertEmailAttachment = z.infer<typeof insertEmailAttachmentSchema>;
+export type EmailAttachment = typeof emailAttachments.$inferSelect;
+
+// ===== EMAIL FOLDERS TABLE =====
+// Custom email folders (beyond default inbox/sent/drafts)
+export const emailFolders = pgTable("email_folders", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  dealershipId: uuid("dealership_id").notNull().references(() => dealershipSettings.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+
+  // Folder details
+  name: text("name").notNull(),
+  slug: text("slug").notNull(), // URL-safe identifier
+  icon: text("icon"), // Lucide icon name
+  color: text("color"), // Hex color for UI
+
+  // Position/order
+  sortOrder: integer("sort_order").notNull().default(0),
+
+  // System folders are immutable
+  isSystem: boolean("is_system").notNull().default(false), // inbox, sent, drafts, trash
+
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  userIdx: index("email_folders_user_idx").on(table.userId),
+  dealershipIdx: index("email_folders_dealership_idx").on(table.dealershipId),
+  uniqueUserSlug: uniqueIndex("email_folders_user_slug_idx").on(table.userId, table.slug),
+}));
+
+export const insertEmailFolderSchema = createInsertSchema(emailFolders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+export type InsertEmailFolder = z.infer<typeof insertEmailFolderSchema>;
+export type EmailFolder = typeof emailFolders.$inferSelect;

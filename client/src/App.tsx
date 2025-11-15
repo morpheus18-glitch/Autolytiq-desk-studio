@@ -26,6 +26,7 @@ import DealershipSettings from "@/pages/dealership-settings";
 import UserManagement from "@/pages/user-management";
 import PasswordResetRequest from "@/pages/password-reset-request";
 import PasswordResetConfirm from "@/pages/password-reset-confirm";
+import Email from "@/pages/email";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -99,6 +100,11 @@ function Router() {
       <Route path="/credit-center">
         <ProtectedRoute>
           <CreditCenter />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/email">
+        <ProtectedRoute>
+          <Email />
         </ProtectedRoute>
       </Route>
       <Route path="/deals/:id/tabs">

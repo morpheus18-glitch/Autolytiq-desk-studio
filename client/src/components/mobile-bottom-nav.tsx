@@ -21,6 +21,7 @@ import {
   Settings,
   Building2,
   UserCog,
+  Mail,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { queryClient, apiRequest } from '@/lib/queryClient';
@@ -48,6 +49,7 @@ const allNavItems: NavItem[] = [
   { label: 'Inventory', path: '/inventory', icon: Car, testId: 'menu-inventory' },
   { label: 'Add Vehicle', path: '/inventory/new', icon: Plus, testId: 'menu-inventory-new' },
   { label: 'Customers', path: '/customers', icon: Users, testId: 'menu-customers' },
+  { label: 'Email', path: '/email', icon: Mail, testId: 'menu-email' },
   { label: 'Analytics', path: '/analytics', icon: LineChart, testId: 'menu-analytics' },
   { label: 'Credit Center', path: '/credit-center', icon: CreditCard, testId: 'menu-credit' },
   { label: 'VIN Decoder', path: '/vin-decoder', icon: Scan, testId: 'menu-vin-decoder' },
