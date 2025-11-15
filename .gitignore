@@ -6,3 +6,6 @@ vite.config.ts.*
 *.tar.gz
 file-history/
 .claude/
+.env
+.env.local
+.env.*.local

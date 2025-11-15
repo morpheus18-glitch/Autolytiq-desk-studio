@@ -83,6 +83,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const emailRoutes = (await import('./email-routes')).default;
   app.use('/api/email', requireAuth, emailRoutes);
 
+  // Setup email webhook routes (NO AUTH - called by Resend servers)
+  const emailWebhookRoutes = (await import('./email-webhook-routes')).default;
+  app.use('/api/webhooks/email', emailWebhookRoutes);
+
   // ===== USERS =====
   app.get('/api/users', requireAuth, async (req, res) => {
     try {
