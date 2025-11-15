@@ -402,6 +402,107 @@ export const insertTaxJurisdictionSchema = createInsertSchema(taxJurisdictions).
 export type InsertTaxJurisdiction = z.infer<typeof insertTaxJurisdictionSchema>;
 export type TaxJurisdiction = typeof taxJurisdictions.$inferSelect;
 
+// ===== LOCAL TAX RATES TABLE (AUTOTAXENGINE INTEGRATION) =====
+// Comprehensive local tax rate system for STATE_PLUS_LOCAL vehicle tax schemes
+// Supports rate stacking (state + county + city + special districts)
+export const localTaxRates = pgTable("local_tax_rates", {
+  id: uuid("id").primaryKey().defaultRandom(),
+
+  // Geographic identifiers
+  stateCode: text("state_code").notNull(), // 2-char state code (e.g., "CA", "TX", "FL")
+  countyName: text("county_name"), // County name (e.g., "Los Angeles County")
+  countyFips: text("county_fips"), // 5-digit FIPS code for precise matching
+  cityName: text("city_name"), // City name (e.g., "Beverly Hills")
+  specialDistrictName: text("special_district_name"), // Special district (e.g., "Bay Area Rapid Transit")
+
+  // Jurisdiction type (for filtering and aggregation)
+  jurisdictionType: text("jurisdiction_type").notNull(), // COUNTY, CITY, SPECIAL_DISTRICT
+
+  // Tax rate (stored as decimal, e.g., 0.0100 = 1%)
+  taxRate: decimal("tax_rate", { precision: 6, scale: 4 }).notNull(),
+
+  // Effective date range (for historical rate tracking)
+  effectiveDate: timestamp("effective_date").notNull().defaultNow(),
+  endDate: timestamp("end_date"), // null = currently active
+
+  // Metadata
+  notes: text("notes"), // Special notes about this jurisdiction
+  sourceUrl: text("source_url"), // Reference to official source
+  lastVerified: timestamp("last_verified"), // When this rate was last verified
+
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  // Composite index for fast state + county + city lookup
+  stateCountyCityIdx: index("local_tax_rates_state_county_city_idx").on(
+    table.stateCode,
+    table.countyName,
+    table.cityName
+  ),
+  stateIdx: index("local_tax_rates_state_idx").on(table.stateCode),
+  jurisdictionTypeIdx: index("local_tax_rates_jurisdiction_type_idx").on(table.jurisdictionType),
+  effectiveDateIdx: index("local_tax_rates_effective_date_idx").on(table.effectiveDate),
+  activeRatesIdx: index("local_tax_rates_active_idx").on(table.stateCode, table.endDate), // null endDate = active
+}));
+
+// ===== ZIP CODE TO LOCAL TAX RATES MAPPING TABLE =====
+// Fast lookup: ZIP code -> all applicable local tax jurisdictions
+export const zipToLocalTaxRates = pgTable("zip_to_local_tax_rates", {
+  id: uuid("id").primaryKey().defaultRandom(),
+
+  // ZIP code (5-digit)
+  zipCode: text("zip_code").notNull(),
+
+  // Geographic context
+  stateCode: text("state_code").notNull(),
+  countyFips: text("county_fips"), // 5-digit FIPS code
+  countyName: text("county_name").notNull(),
+  cityName: text("city_name"), // May be null for unincorporated areas
+
+  // Array of local tax rate IDs that apply to this ZIP
+  // This allows for proper rate stacking (county + city + multiple special districts)
+  taxRateIds: jsonb("tax_rate_ids").notNull().default('[]'), // Array of UUID strings
+
+  // Pre-calculated combined local rate (for performance)
+  // This is the sum of all applicable local rates (excluding state rate)
+  combinedLocalRate: decimal("combined_local_rate", { precision: 6, scale: 4 }).notNull().default("0"),
+
+  // Metadata
+  lastUpdated: timestamp("last_updated").notNull().defaultNow(),
+
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  // Unique constraint on ZIP code
+  zipCodeUnique: uniqueIndex("zip_to_local_tax_rates_zip_code_unique").on(table.zipCode),
+  zipCodeIdx: index("zip_to_local_tax_rates_zip_code_idx").on(table.zipCode),
+  stateIdx: index("zip_to_local_tax_rates_state_idx").on(table.stateCode),
+  countyIdx: index("zip_to_local_tax_rates_county_idx").on(table.countyFips),
+}));
+
+export const insertLocalTaxRateSchema = createInsertSchema(localTaxRates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+export type InsertLocalTaxRate = z.infer<typeof insertLocalTaxRateSchema>;
+export type LocalTaxRate = typeof localTaxRates.$inferSelect;
+
+export const insertZipToLocalTaxRateSchema = createInsertSchema(zipToLocalTaxRates).omit({
+  id: true,
+  createdAt: true
+});
+export type InsertZipToLocalTaxRate = z.infer<typeof insertZipToLocalTaxRateSchema>;
+export type ZipToLocalTaxRate = typeof zipToLocalTaxRates.$inferSelect;
+
+// Relations for local tax rates
+export const localTaxRatesRelations = relations(localTaxRates, ({ many }) => ({
+  zipMappings: many(zipToLocalTaxRates),
+}));
+
+export const zipToLocalTaxRatesRelations = relations(zipToLocalTaxRates, ({ many }) => ({
+  taxRates: many(localTaxRates),
+}));
+
 // ===== QUICK QUOTES TABLE =====
 // Stores Quick Quote wizard results for audit, SMS retry, and conversion tracking
 export const quickQuotes = pgTable("quick_quotes", {

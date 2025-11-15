@@ -35,10 +35,12 @@ import {
   getStubStates,
   resolveTaxContext,
   createSimpleRooftopConfig,
+  buildRateComponentsFromLocalInfo,
   TaxContext,
   RooftopConfig,
   DealPartyInfo,
 } from "../shared/autoTaxEngine";
+import { getLocalTaxRate } from "./local-tax-service";
 
 const router = Router();
 
@@ -57,6 +59,7 @@ interface TaxQuoteRequest {
     registrationState?: string;
     vehicleLocationState?: string;
     deliveryState?: string;
+    zipCode?: string; // ZIP code for local tax lookup
   };
 
   // Deal financial info (required)
@@ -103,6 +106,7 @@ interface TaxQuoteResponse {
   success: boolean;
   context: TaxContext;
   result: TaxCalculationResult;
+  localTaxInfo?: any; // Local tax rate info if STATE_PLUS_LOCAL
   error?: string;
 }
 
@@ -144,6 +148,30 @@ router.post("/quote", async (req: Request, res: Response) => {
       });
     }
 
+    // Fetch local tax rates if STATE_PLUS_LOCAL and ZIP code provided
+    let taxRates = body.rates ?? [{ label: "STATE", rate: 0.07 }];
+    let localTaxInfo = null;
+
+    if (
+      rules.vehicleTaxScheme === "STATE_PLUS_LOCAL" &&
+      body.deal.zipCode &&
+      !body.rates
+    ) {
+      try {
+        localTaxInfo = await getLocalTaxRate(
+          body.deal.zipCode,
+          context.primaryStateCode
+        );
+        taxRates = buildRateComponentsFromLocalInfo(localTaxInfo);
+      } catch (error) {
+        console.warn(
+          `[TaxRoutes] Could not fetch local tax rates for ZIP ${body.deal.zipCode}:`,
+          error
+        );
+        // Continue with default rates
+      }
+    }
+
     // Build tax calculation input
     const taxInput: TaxCalculationInput = {
       stateCode: context.primaryStateCode,
@@ -168,8 +196,8 @@ router.post("/quote", async (req: Request, res: Response) => {
       negativeEquity: body.negativeEquity ?? 0,
       taxAlreadyCollected: body.taxAlreadyCollected ?? 0,
 
-      // Tax rates
-      rates: body.rates ?? [{ label: "STATE", rate: 0.07 }], // Default 7%
+      // Tax rates (from local lookup or provided rates)
+      rates: taxRates,
 
       // Advanced
       vehicleClass: body.vehicleClass,
@@ -198,6 +226,7 @@ router.post("/quote", async (req: Request, res: Response) => {
       success: true,
       context,
       result,
+      localTaxInfo: localTaxInfo || undefined,
     };
 
     res.json(response);

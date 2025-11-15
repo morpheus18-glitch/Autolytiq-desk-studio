@@ -10,6 +10,7 @@
  * - Trade-in policies (FULL, CAPPED, PERCENT, NONE)
  * - Rebate rules
  * - Fee taxability
+ * - Local tax rate lookup (for STATE_PLUS_LOCAL)
  */
 
 import {
@@ -19,6 +20,91 @@ import {
   TaxRateComponent,
   TradeInPolicy,
 } from "../types";
+
+// ============================================================================
+// LOCAL TAX RATE HELPER (For SERVER-SIDE Integration)
+// ============================================================================
+
+/**
+ * Build tax rate components from local tax rate info
+ *
+ * This is a server-side helper that can be used to convert local tax rate
+ * data (from local-tax-service) into TaxRateComponent[] for AutoTaxEngine.
+ *
+ * Example usage in server routes:
+ * ```typescript
+ * import { getLocalTaxRate } from "../server/local-tax-service";
+ * const localInfo = await getLocalTaxRate(zipCode, stateCode);
+ * const rates = buildRateComponentsFromLocalInfo(localInfo);
+ * const taxInput = { ...dealData, rates };
+ * const result = calculateTax(taxInput, rules);
+ * ```
+ *
+ * @param localInfo - Local tax rate info from local-tax-service
+ * @returns Array of tax rate components for AutoTaxEngine
+ */
+export function buildRateComponentsFromLocalInfo(localInfo: {
+  stateTaxRate: number;
+  countyRate: number;
+  cityRate: number;
+  specialDistrictRate: number;
+}): TaxRateComponent[] {
+  const components: TaxRateComponent[] = [];
+
+  // Always include state rate
+  components.push({
+    label: "STATE",
+    rate: localInfo.stateTaxRate,
+  });
+
+  // Add county if non-zero
+  if (localInfo.countyRate > 0) {
+    components.push({
+      label: "COUNTY",
+      rate: localInfo.countyRate,
+    });
+  }
+
+  // Add city if non-zero
+  if (localInfo.cityRate > 0) {
+    components.push({
+      label: "CITY",
+      rate: localInfo.cityRate,
+    });
+  }
+
+  // Add special district if non-zero
+  if (localInfo.specialDistrictRate > 0) {
+    components.push({
+      label: "SPECIAL_DISTRICT",
+      rate: localInfo.specialDistrictRate,
+    });
+  }
+
+  return components;
+}
+
+/**
+ * Build tax rate components from detailed breakdown
+ *
+ * Alternative to buildRateComponentsFromLocalInfo that uses the full
+ * jurisdiction breakdown with proper labels for each component.
+ *
+ * @param breakdown - Detailed breakdown from local-tax-service
+ * @returns Array of tax rate components with proper labels
+ */
+export function buildRateComponentsFromBreakdown(breakdown: {
+  jurisdictionType: "STATE" | "COUNTY" | "CITY" | "SPECIAL_DISTRICT";
+  name: string;
+  rate: number;
+}[]): TaxRateComponent[] {
+  return breakdown.map((item) => ({
+    label: item.jurisdictionType === "SPECIAL_DISTRICT"
+      ? `DISTRICT_${item.name.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase()}`
+      : item.jurisdictionType,
+    rate: item.rate,
+  }));
+}
 
 // ============================================================================
 // VEHICLE TAX SCHEME INTERPRETERS

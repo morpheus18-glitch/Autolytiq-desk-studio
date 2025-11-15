@@ -10,6 +10,7 @@ import { aiService, type ChatMessage, type DealContext } from "./ai-service";
 import { setupAuth, requireAuth, requireRole } from "./auth";
 import { setupAuthRoutes } from "./auth-routes";
 import taxRoutes from "./tax-routes";
+import localTaxRoutes from "./local-tax-routes";
 
 // Rate limiting middleware - 100 requests per minute per IP
 const limiter = rateLimit({
@@ -70,6 +71,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Setup tax calculation routes (AutoTaxEngine endpoints)
   app.use('/api/tax', taxRoutes);
+
+  // Setup local tax rate lookup routes (ZIP code to local rates)
+  app.use('/api/tax', localTaxRoutes);
 
   // ===== USERS =====
   app.get('/api/users', requireAuth, async (req, res) => {
