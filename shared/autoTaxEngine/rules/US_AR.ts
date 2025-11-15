@@ -80,11 +80,10 @@ const AR_RULES: TaxRulesConfig = {
    * - Applies to new and used motor vehicles, trailers, semitrailers
    * - Consumer pays tax on net difference between purchase and trade value
    */
+  // Trade-in credit available within 60-day window before/after purchase.
+  // Tax paid on net difference (purchase price minus trade-in value).
   tradeInPolicy: {
     type: "FULL",
-    notes:
-      "Trade-in credit available within 60-day window before/after purchase. " +
-      "Tax paid on net difference (purchase price minus trade-in value).",
   },
 
   /**
@@ -352,21 +351,20 @@ const AR_RULES: TaxRulesConfig = {
    * - Must pay full Arkansas tax (~9% = $2,700) with NO credit for TN tax paid
    * - Total taxes paid: $4,800 (both states, no offset)
    */
+  // Arkansas does NOT provide reciprocity or credit for taxes paid to other states
+  // on motor vehicle purchases. Arkansas residents purchasing vehicles out-of-state
+  // must pay full Arkansas sales tax with NO credit for taxes paid elsewhere.
+  // This is a reciprocal policy - other states deny credit for AR taxes similarly.
+  // Trade-in and private sale credits are available ONLY for in-state transactions
+  // within 60-day windows.
   reciprocity: {
     enabled: false, // NO reciprocity for out-of-state vehicle taxes
-    scope: "NONE",
+    scope: "RETAIL_ONLY",
     homeStateBehavior: "NONE",
     requireProofOfTaxPaid: false, // N/A - no credit given regardless of proof
-    basis: "NONE",
+    basis: "TAX_PAID",
     capAtThisStatesTax: false,
     hasLeaseException: false,
-    notes:
-      "Arkansas does NOT provide reciprocity or credit for taxes paid to other states " +
-      "on motor vehicle purchases. Arkansas residents purchasing vehicles out-of-state " +
-      "must pay full Arkansas sales tax with NO credit for taxes paid elsewhere. " +
-      "This is a reciprocal policy - other states deny credit for AR taxes similarly. " +
-      "Trade-in and private sale credits are available ONLY for in-state transactions " +
-      "within 60-day windows.",
   },
 
   // ============================================================================

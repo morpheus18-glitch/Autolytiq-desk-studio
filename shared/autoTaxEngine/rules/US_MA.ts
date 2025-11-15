@@ -230,14 +230,14 @@ export const US_MA: TaxRulesConfig = {
     taxCapReduction: false,
 
     /**
-     * Rebate Behavior on Leases: ALWAYS_NON_TAXABLE
+     * Rebate Behavior on Leases: FOLLOW_RETAIL_RULE
      *
      * In Massachusetts, both manufacturer AND dealer rebates reduce the cap cost
      * and are non-taxable, consistent with retail treatment.
      *
      * This lowers the monthly payment and thus the tax paid monthly.
      */
-    rebateBehavior: "ALWAYS_NON_TAXABLE",
+    rebateBehavior: "FOLLOW_RETAIL_RULE",
 
     /**
      * Doc Fee on Leases: ALWAYS taxable

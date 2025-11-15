@@ -235,12 +235,12 @@ export const US_GA: TaxRulesConfig = {
     taxFeesUpfront: true,
 
     /**
-     * Special Scheme: GA_TAVT
+     * Special Scheme: NONE
      *
-     * Even though leases use sales tax (not TAVT), we flag this so the
-     * interpreter can apply Georgia-specific lease rules.
+     * Even though Georgia has a special TAVT system for retail purchases,
+     * leases use standard sales tax with no special scheme.
      */
-    specialScheme: "GA_TAVT",
+    specialScheme: "NONE",
 
     notes:
       "Georgia leases use 4% state sales tax on monthly payments (NOT TAVT). " +

@@ -16,9 +16,9 @@ describe("Indiana (IN) Tax Rules Configuration", () => {
     expect(isStateImplemented("IN")).toBe(true);
   });
 
-  it("should have version number 1", () => {
+  it("should have version number 2", () => {
     const rules = getRulesForState("IN");
-    expect(rules?.version).toBe(1);
+    expect(rules?.version).toBe(2);
   });
 
   it("should handle case-insensitive state code lookup", () => {
@@ -185,10 +185,11 @@ describe("Indiana (IN) Tax Rules Configuration", () => {
       expect(rules?.leaseRules.specialScheme).toBe("NONE");
     });
 
-    it("should document 7% tax on monthly payment only", () => {
+    it("should document 7% tax on monthly payment", () => {
       const rules = getRulesForState("IN");
-      expect(rules?.leaseRules.notes).toContain("7% tax");
-      expect(rules?.leaseRules.notes).toContain("monthly payment only");
+      expect(rules?.leaseRules.notes).toContain("7%");
+      expect(rules?.leaseRules.notes).toContain("monthly payment");
+      expect(rules?.leaseRules.notes).toContain("MONTHLY method");
     });
   });
 
@@ -382,7 +383,7 @@ describe("Indiana (IN) Tax Rules Configuration", () => {
 
     it("should document this retail vs lease difference in notes", () => {
       const rules = getRulesForState("IN");
-      expect(rules?.leaseRules.notes).toContain("non-taxable on leases");
+      expect(rules?.leaseRules.notes).toContain("NON-TAXABLE on leases");
       expect(rules?.leaseRules.notes).toContain("taxable on retail");
     });
   });

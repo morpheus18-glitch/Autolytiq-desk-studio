@@ -305,6 +305,9 @@ export * from "./types";
 // Tax calculation engine
 export * from "./engine/calculateTax";
 
+// State resolver (multi-state context)
+export * from "./engine/stateResolver";
+
 // Interpreters (for DSL interpretation)
 export * from "./engine/interpreters";
 

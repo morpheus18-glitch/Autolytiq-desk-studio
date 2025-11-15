@@ -233,7 +233,7 @@ export function getInvolvedStates(context: TaxContext): string[] {
     context.dealerStateCode,
     context.buyerResidenceStateCode,
     context.registrationStateCode,
-  ].filter(Boolean));
+  ].filter((s): s is string => Boolean(s)));
 
   return Array.from(states).sort();
 }

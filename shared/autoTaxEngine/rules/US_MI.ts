@@ -51,10 +51,11 @@ const MI_RULES: TaxRulesConfig = {
   version: 2, // Updated 2025-11-13: Major corrections to rebate taxability, VSC/GAP exemptions, lease trade-in rules
 
   // ---- Retail Side ----
+  // Trade-in credit limited to $11,000 OR agreed-upon value (whichever is less).
+  // NO LIMIT for recreational vehicles when trading RV for RV.
   tradeInPolicy: {
     type: "CAPPED",
-    cap: 11000, // $11,000 cap for motor vehicles (2025)
-    notes: "Trade-in credit limited to $11,000 OR agreed-upon value (whichever is less). NO LIMIT for recreational vehicles when trading RV for RV.",
+    capAmount: 11000, // $11,000 cap for motor vehicles (2025)
   },
   rebates: [
     {
@@ -131,6 +132,10 @@ const MI_RULES: TaxRulesConfig = {
 
 
   // ---- Reciprocity ----
+  // Michigan has reciprocal agreements with most states. Dealer collects LESSER of MI 6% OR buyer's home state rate.
+  // Tax collected under MI law applied as credit in state where vehicle will be titled.
+  // Non-reciprocal states: AR, DC, GA, MD, MS, NE, NC, OK, SC, SD, WV (impose use tax even if MI sales tax paid)
+  // Exempt states (no sales tax on vehicles): AK, DE, MT, NH, NM, OR
   reciprocity: {
     enabled: true,
     scope: "BOTH", // Applies to both sales and use tax
@@ -139,9 +144,6 @@ const MI_RULES: TaxRulesConfig = {
     basis: "TAX_PAID",
     capAtThisStatesTax: true, // Collect lesser of MI 6% or buyer's home state rate
     hasLeaseException: false,
-    notes: "Michigan has reciprocal agreements with most states. Dealer collects LESSER of MI 6% OR buyer's home state rate. Tax collected under MI law applied as credit in state where vehicle will be titled.",
-    exemptStates: ["AK", "DE", "MT", "NH", "NM", "OR"], // No sales tax on vehicles
-    nonReciprocalStates: ["AR", "DC", "GA", "MD", "MS", "NE", "NC", "OK", "SC", "SD", "WV"], // These states impose use tax even if MI sales tax paid
   },
 
   extras: {

@@ -411,7 +411,7 @@ export const US_MN: TaxRulesConfig = {
     taxCapReduction: false,
 
     /**
-     * Rebate Behavior on Leases: ALWAYS_NON_TAXABLE
+     * Rebate Behavior on Leases: FOLLOW_RETAIL_RULE
      *
      * In Minnesota, both manufacturer AND dealer rebates reduce the cap cost
      * and are non-taxable, consistent with retail treatment.
@@ -420,7 +420,7 @@ export const US_MN: TaxRulesConfig = {
      *
      * Source: MN DOR Motor Vehicle Leases Guide
      */
-    rebateBehavior: "ALWAYS_NON_TAXABLE",
+    rebateBehavior: "FOLLOW_RETAIL_RULE",
 
     /**
      * Doc Fee on Leases: NEVER taxable

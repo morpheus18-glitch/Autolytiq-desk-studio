@@ -234,6 +234,7 @@ export function calculateGeorgiaTAVT(
     taxableFees: [],
     taxableServiceContracts: 0, // Service contracts not subject to TAVT
     taxableGap: 0, // GAP not subject to TAVT
+    reciprocityCredit: 0, // TAVT does not offer reciprocity credits
     notes,
   };
 

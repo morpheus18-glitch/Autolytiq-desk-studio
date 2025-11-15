@@ -106,9 +106,10 @@ const OR_RULES: TaxRulesConfig = {
 
   // ---- Retail Side ----
   // Oregon has NO sales tax, so all taxability flags are false
+  // Oregon has no sales tax, so trade-in credit mechanism does not apply.
+  // Trade-in value simply reduces net cash due.
   tradeInPolicy: {
     type: "NONE",
-    notes: "Oregon has no sales tax, so trade-in credit mechanism does not apply. Trade-in value simply reduces net cash due.",
   },
   rebates: [
     {
