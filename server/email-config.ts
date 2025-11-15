@@ -49,9 +49,10 @@ async function getUncachableResendClient() {
 
 export const emailConfig = {
   // Sender email address for all system emails
+  // NOTE: In production, this is overridden by the verified email from Resend connection
   from: "support@autolytiq.com",
   fromName: "Autolytiq Support",
-  
+
   // Email templates
   templates: {
     passwordReset: {
@@ -68,6 +69,19 @@ export const emailConfig = {
     },
   },
 };
+
+/**
+ * Get the verified FROM email address from Resend connection
+ */
+export async function getVerifiedFromEmail(): Promise<string> {
+  try {
+    const { fromEmail } = await getUncachableResendClient();
+    return fromEmail || emailConfig.from;
+  } catch (error) {
+    console.error('Failed to get verified FROM email:', error);
+    return emailConfig.from;
+  }
+}
 
 // Send email via Resend
 export async function sendEmail(options: {

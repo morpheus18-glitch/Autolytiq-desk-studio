@@ -40,6 +40,14 @@ import {
   getUnreadCounts,
   type SendEmailOptions,
 } from "./email-service";
+import {
+  checkEmailSecurity,
+  checkRateLimit,
+  logSecurityEvent,
+  sanitizeSearchQuery,
+  validateUUID,
+} from "./email-security";
+import { getVerifiedFromEmail } from "./email-config";
 
 const router = Router();
 
@@ -118,15 +126,34 @@ router.get("/messages", async (req: Request, res: Response) => {
       });
     }
 
+    // SECURITY: Validate UUIDs and sanitize search query
+    const customerId = req.query.customerId as string | undefined;
+    const dealId = req.query.dealId as string | undefined;
+    const searchQuery = req.query.search as string | undefined;
+
+    if (customerId && !validateUUID(customerId)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid customerId format",
+      });
+    }
+
+    if (dealId && !validateUUID(dealId)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid dealId format",
+      });
+    }
+
     const queryParams = {
       folder: req.query.folder as string | undefined,
-      customerId: req.query.customerId as string | undefined,
-      dealId: req.query.dealId as string | undefined,
+      customerId,
+      dealId,
       isRead: req.query.isRead === "true" ? true : req.query.isRead === "false" ? false : undefined,
       isStarred: req.query.isStarred === "true" ? true : req.query.isStarred === "false" ? false : undefined,
       limit: req.query.limit ? Number(req.query.limit) : 50,
       offset: req.query.offset ? Number(req.query.offset) : 0,
-      search: req.query.search as string | undefined,
+      search: searchQuery ? sanitizeSearchQuery(searchQuery) : undefined,
     };
 
     const result = await listEmails({
@@ -159,6 +186,14 @@ router.get("/messages/:id", async (req: Request, res: Response) => {
   try {
     // @ts-ignore
     const dealershipId = req.user?.dealershipId || "default";
+
+    // SECURITY: Validate UUID
+    if (!validateUUID(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid email ID format",
+      });
+    }
 
     const email = await getEmailWithAttachments(req.params.id, dealershipId);
 
@@ -208,7 +243,7 @@ router.get("/threads/:threadId", async (req: Request, res: Response) => {
 
 /**
  * POST /api/email/send
- * Send new email
+ * Send new email with comprehensive security checks
  */
 router.post("/send", async (req: Request, res: Response) => {
   try {
@@ -224,17 +259,108 @@ router.post("/send", async (req: Request, res: Response) => {
       });
     }
 
+    // SECURITY LAYER 1: Rate Limiting
+    const rateLimit = checkRateLimit(userId, "send", {
+      maxRequests: 50, // 50 emails per hour
+      windowMs: 60 * 60 * 1000,
+    });
+
+    if (!rateLimit.allowed) {
+      logSecurityEvent({
+        timestamp: new Date(),
+        userId,
+        dealershipId,
+        action: "email_send_rate_limited",
+        severity: "medium",
+        details: { retryAfter: rateLimit.retryAfter },
+      });
+
+      return res.status(429).json({
+        success: false,
+        error: "Rate limit exceeded",
+        retryAfter: rateLimit.retryAfter,
+      });
+    }
+
+    // SECURITY LAYER 2: Input Validation
     const data = sendEmailSchema.parse(req.body);
 
+    // Get verified FROM address from Resend connection
+    const verifiedFromAddress = await getVerifiedFromEmail();
+
+    // SECURITY LAYER 3: Comprehensive Security Check
+    const securityCheck = checkEmailSecurity({
+      subject: data.subject,
+      htmlBody: data.htmlBody,
+      textBody: data.textBody,
+      fromAddress: verifiedFromAddress, // Your verified sender from Resend
+      toAddresses: data.to,
+    });
+
+    // Block if security check fails
+    if (!securityCheck.safe) {
+      logSecurityEvent({
+        timestamp: new Date(),
+        userId,
+        dealershipId,
+        action: "email_send_blocked",
+        severity: "high",
+        details: {
+          reasons: securityCheck.blockedReasons,
+          phishingScore: securityCheck.phishingAnalysis.score,
+          phishingFlags: securityCheck.phishingAnalysis.flags,
+        },
+      });
+
+      return res.status(400).json({
+        success: false,
+        error: "Email blocked for security reasons",
+        reasons: securityCheck.blockedReasons,
+      });
+    }
+
+    // Log warnings if any
+    if (securityCheck.warnings.length > 0) {
+      logSecurityEvent({
+        timestamp: new Date(),
+        userId,
+        dealershipId,
+        action: "email_send_warning",
+        severity: "low",
+        details: {
+          warnings: securityCheck.warnings,
+          phishingScore: securityCheck.phishingAnalysis.score,
+        },
+      });
+    }
+
+    // SECURITY LAYER 4: Use sanitized content
     const message = await sendEmailMessage({
       dealershipId,
       userId,
       ...data,
+      htmlBody: securityCheck.sanitizedHtml,
+      textBody: securityCheck.sanitizedText,
+    });
+
+    // Log successful send
+    logSecurityEvent({
+      timestamp: new Date(),
+      userId,
+      dealershipId,
+      action: "email_sent",
+      severity: "low",
+      details: {
+        emailId: message.id,
+        to: data.to.map(t => t.email),
+        subject: data.subject,
+      },
     });
 
     res.status(201).json({
       success: true,
       data: message,
+      warnings: securityCheck.warnings.length > 0 ? securityCheck.warnings : undefined,
     });
   } catch (error) {
     console.error("[EmailRoutes] Error sending email:", error);
@@ -310,6 +436,14 @@ router.delete("/messages/:id", async (req: Request, res: Response) => {
     const dealershipId = req.user?.dealershipId || "default";
     const permanent = req.query.permanent === "true";
 
+    // SECURITY: Validate UUID
+    if (!validateUUID(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid email ID format",
+      });
+    }
+
     const success = await deleteEmail(req.params.id, dealershipId, permanent);
 
     if (!success) {
@@ -341,6 +475,14 @@ router.post("/messages/:id/read", async (req: Request, res: Response) => {
     // @ts-ignore
     const dealershipId = req.user?.dealershipId || "default";
     const { isRead } = req.body;
+
+    // SECURITY: Validate UUID
+    if (!validateUUID(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid email ID format",
+      });
+    }
 
     const message = await markAsRead(req.params.id, dealershipId, isRead);
 
@@ -374,6 +516,14 @@ router.post("/messages/:id/star", async (req: Request, res: Response) => {
     const dealershipId = req.user?.dealershipId || "default";
     const { isStarred } = req.body;
 
+    // SECURITY: Validate UUID
+    if (!validateUUID(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid email ID format",
+      });
+    }
+
     const message = await toggleStar(req.params.id, dealershipId, isStarred);
 
     if (!message) {
@@ -405,6 +555,14 @@ router.post("/messages/:id/move", async (req: Request, res: Response) => {
     // @ts-ignore
     const dealershipId = req.user?.dealershipId || "default";
     const { folder } = req.body;
+
+    // SECURITY: Validate UUID
+    if (!validateUUID(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid email ID format",
+      });
+    }
 
     if (!folder) {
       return res.status(400).json({

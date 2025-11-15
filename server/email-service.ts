@@ -25,7 +25,7 @@ import {
   InsertEmailAttachment,
   InsertEmailFolder,
 } from "../shared/schema";
-import { sendEmail } from "./email-config";
+import { sendEmail, getVerifiedFromEmail } from "./email-config";
 
 // ============================================================================
 // TYPES
@@ -93,6 +93,9 @@ export async function sendEmailMessage(
     attachments,
   } = options;
 
+  // Get verified FROM address from Resend connection
+  const verifiedFromAddress = await getVerifiedFromEmail();
+
   // Send via Resend
   let resendId: string | undefined;
   let resendStatus = "sent";
@@ -111,17 +114,18 @@ export async function sendEmailMessage(
     resendStatus = "failed";
   }
 
-  // Generate message ID
-  const messageId = `${Date.now()}.${Math.random().toString(36).substring(7)}@autolytiq.com`;
+  // Generate message ID using verified domain
+  const domain = verifiedFromAddress.split('@')[1] || 'autolytiq.com';
+  const messageId = `${Date.now()}.${Math.random().toString(36).substring(7)}@${domain}`;
 
-  // Save to database
+  // Save to database with verified FROM address
   const [message] = await db
     .insert(emailMessages)
     .values({
       dealershipId,
       userId,
       messageId,
-      fromAddress: "support@autolytiq.com",
+      fromAddress: verifiedFromAddress,
       fromName: "Autolytiq Support",
       toAddresses: to as any,
       ccAddresses: (cc || []) as any,

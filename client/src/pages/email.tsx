@@ -1,159 +1,137 @@
 /**
  * Email Page
  *
- * Main email application page with folder navigation, inbox list, and message view.
- * Mobile-first responsive layout styled like Gmail/Outlook.
- *
- * Features:
- * - Folder sidebar (inbox, sent, drafts, trash, custom folders)
- * - Email list view
- * - Message detail view
- * - Compose new email
- * - Unread counts
- * - Responsive layout (mobile and desktop)
+ * Main email interface with secure backend integration
+ * Connected to 8-layer security airlock system
  */
 
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState } from 'react';
 import {
   Mail,
   Send,
   FileText,
   Trash2,
-  Archive,
-  Inbox,
   Star,
-  PenSquare,
+  Inbox,
+  Plus,
+  Settings,
   Menu,
-  X,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { EmailInboxList, type EmailMessage } from "@/components/email/email-inbox-list";
-import { EmailCompose } from "@/components/email/email-compose";
-import { EmailMessageView } from "@/components/email/email-message-view";
-import { apiRequest } from "@/lib/queryClient";
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { EmailList } from '@/components/email/email-list';
+import { EmailDetail } from '@/components/email/email-detail';
+import { EmailComposeDialog } from '@/components/email/email-compose-dialog';
+import { useUnreadCounts, type EmailMessage } from '@/hooks/use-email';
+import { cn } from '@/lib/utils';
+
+const FOLDERS = [
+  { id: 'inbox', label: 'Inbox', icon: Inbox },
+  { id: 'sent', label: 'Sent', icon: Send },
+  { id: 'drafts', label: 'Drafts', icon: FileText },
+  { id: 'starred', label: 'Starred', icon: Star },
+  { id: 'trash', label: 'Trash', icon: Trash2 },
+];
 
 export default function EmailPage() {
-  const [selectedFolder, setSelectedFolder] = useState("inbox");
+  const [selectedFolder, setSelectedFolder] = useState('inbox');
   const [selectedEmail, setSelectedEmail] = useState<EmailMessage | null>(null);
-  const [isComposing, setIsComposing] = useState(false);
-  const [replyTo, setReplyTo] = useState<any>(null);
+  const [composeOpen, setComposeOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Fetch unread counts
-  const { data: unreadData } = useQuery({
-    queryKey: ["/api/email/unread-counts"],
-    queryFn: async () => {
-      const response = await apiRequest("GET", "/api/email/unread-counts");
-      return await response.json();
-    },
-    refetchInterval: 30000, // Refresh every 30 seconds
-  });
-
+  const { data: unreadData } = useUnreadCounts();
   const unreadCounts = unreadData?.data || {};
 
-  // System folders
-  const folders = [
-    { id: "inbox", name: "Inbox", icon: Inbox, count: unreadCounts.inbox || 0 },
-    { id: "sent", name: "Sent", icon: Send, count: 0 },
-    { id: "drafts", name: "Drafts", icon: FileText, count: unreadCounts.drafts || 0 },
-    { id: "starred", name: "Starred", icon: Star, count: 0 },
-    { id: "trash", name: "Trash", icon: Trash2, count: 0 },
-    { id: "archive", name: "Archive", icon: Archive, count: 0 },
-  ];
+  const handleSelectEmail = (email: EmailMessage) => {
+    setSelectedEmail(email);
+  };
+
+  const handleCloseDetail = () => {
+    setSelectedEmail(null);
+  };
 
   const handleFolderSelect = (folderId: string) => {
     setSelectedFolder(folderId);
     setSelectedEmail(null);
-    setIsComposing(false);
     setMobileMenuOpen(false);
   };
 
-  const handleEmailSelect = (email: EmailMessage) => {
-    setSelectedEmail(email);
-    setIsComposing(false);
-  };
-
-  const handleCompose = () => {
-    setIsComposing(true);
-    setSelectedEmail(null);
-    setReplyTo(null);
-  };
-
-  const handleReply = (email: any) => {
-    setReplyTo(email);
-    setIsComposing(true);
-    setSelectedEmail(null);
-  };
-
-  const handleBack = () => {
-    setSelectedEmail(null);
-    setIsComposing(false);
-    setReplyTo(null);
-  };
-
-  // Folder sidebar component
+  // Folder Sidebar Component
   const FolderSidebar = ({ className }: { className?: string }) => (
-    <div className={cn("flex flex-col h-full bg-muted/30", className)}>
-      {/* Compose button */}
+    <div className={cn('flex flex-col h-full', className)}>
       <div className="p-4">
         <Button
-          onClick={handleCompose}
-          className="w-full gap-2"
+          onClick={() => setComposeOpen(true)}
+          className="w-full"
+          size="lg"
         >
-          <PenSquare className="w-4 h-4" />
+          <Plus className="h-4 w-4 mr-2" />
           Compose
         </Button>
       </div>
 
-      {/* Folder list */}
-      <nav className="flex-1 overflow-y-auto px-2">
-        {folders.map((folder) => {
-          const Icon = folder.icon;
-          const isActive = selectedFolder === folder.id;
+      <Separator />
 
-          return (
-            <button
-              key={folder.id}
-              onClick={() => handleFolderSelect(folder.id)}
-              className={cn(
-                "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
-                "hover:bg-accent",
-                isActive && "bg-accent text-accent-foreground font-medium"
-              )}
-            >
-              <Icon className="w-4 h-4" />
-              <span className="flex-1 text-left">{folder.name}</span>
-              {folder.count > 0 && (
-                <Badge variant={isActive ? "default" : "secondary"} className="ml-auto">
-                  {folder.count}
-                </Badge>
-              )}
-            </button>
-          );
-        })}
-      </nav>
+      <ScrollArea className="flex-1">
+        <nav className="p-2 space-y-1">
+          {FOLDERS.map((folder) => {
+            const Icon = folder.icon;
+            const unreadCount = unreadCounts[folder.id] || 0;
 
-      {/* Footer */}
-      <div className="p-4 border-t">
-        <p className="text-xs text-muted-foreground text-center">
-          Powered by Resend
+            return (
+              <button
+                key={folder.id}
+                onClick={() => handleFolderSelect(folder.id)}
+                className={cn(
+                  'w-full flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                  selectedFolder === folder.id
+                    ? 'bg-accent text-accent-foreground'
+                    : 'hover:bg-accent/50 text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <Icon className="h-4 w-4" />
+                  <span>{folder.label}</span>
+                </div>
+                {unreadCount > 0 && (
+                  <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                    {unreadCount}
+                  </Badge>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+      </ScrollArea>
+
+      <Separator />
+
+      <div className="p-2">
+        <Button variant="ghost" className="w-full justify-start" size="sm">
+          <Settings className="h-4 w-4 mr-2" />
+          Settings
+        </Button>
+      </div>
+
+      <div className="p-4 text-center border-t">
+        <p className="text-xs text-muted-foreground">
+          🛡️ Secured by Airlock System
         </p>
       </div>
     </div>
   );
 
   return (
-    <div className="h-screen flex flex-col bg-background">
-      {/* Mobile header */}
-      <div className="md:hidden border-b p-3 flex items-center gap-3 bg-background">
+    <div className="flex h-screen overflow-hidden bg-background">
+      {/* Mobile Header */}
+      <div className="md:hidden border-b p-3 flex items-center gap-3 absolute top-0 left-0 right-0 z-10 bg-background">
         <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
           <SheetTrigger asChild>
             <Button size="icon" variant="ghost">
-              <Menu className="w-5 h-5" />
+              <Menu className="h-5 w-5" />
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="p-0 w-[280px]">
@@ -161,83 +139,56 @@ export default function EmailPage() {
           </SheetContent>
         </Sheet>
 
-        <h1 className="text-lg font-semibold">
-          {folders.find((f) => f.id === selectedFolder)?.name || "Email"}
-        </h1>
+        <h1 className="text-lg font-semibold capitalize">{selectedFolder}</h1>
 
-        {!selectedEmail && !isComposing && (
+        {!selectedEmail && (
           <Button
-            onClick={handleCompose}
+            onClick={() => setComposeOpen(true)}
             size="sm"
             className="ml-auto"
           >
-            <PenSquare className="w-4 h-4" />
+            <Plus className="h-4 w-4" />
           </Button>
         )}
       </div>
 
-      {/* Desktop/tablet layout */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar (desktop only) */}
-        <div className="hidden md:block w-64 border-r">
+      {/* Desktop Layout */}
+      <div className="flex w-full pt-[52px] md:pt-0">
+        {/* Sidebar - Desktop only */}
+        <div className="hidden md:block w-64 border-r flex-shrink-0">
           <FolderSidebar />
         </div>
 
-        {/* Main content area */}
-        <div className="flex-1 flex">
-          {/* Email list */}
-          <div
-            className={cn(
-              "w-full md:w-96 border-r",
-              (selectedEmail || isComposing) && "hidden md:block"
-            )}
-          >
-            <EmailInboxList
-              folder={selectedFolder}
-              onSelectEmail={handleEmailSelect}
-              onCompose={handleCompose}
-            />
-          </div>
+        {/* Email List */}
+        <div
+          className={cn(
+            'w-full md:w-96 border-r flex-shrink-0',
+            selectedEmail && 'hidden md:block'
+          )}
+        >
+          <EmailList
+            folder={selectedFolder}
+            onSelectEmail={handleSelectEmail}
+            selectedEmailId={selectedEmail?.id}
+          />
+        </div>
 
-          {/* Message view or compose */}
-          <div
-            className={cn(
-              "flex-1 bg-background",
-              !selectedEmail && !isComposing && "hidden md:flex md:items-center md:justify-center"
-            )}
-          >
-            {isComposing ? (
-              <div className="h-full flex items-center justify-center p-4">
-                <div className="w-full max-w-3xl">
-                  <EmailCompose
-                    onClose={handleBack}
-                    onSent={handleBack}
-                    replyTo={replyTo}
-                  />
-                </div>
-              </div>
-            ) : selectedEmail ? (
-              <EmailMessageView
-                emailId={selectedEmail.id}
-                onBack={handleBack}
-                onReply={handleReply}
-              />
-            ) : (
-              <div className="text-center p-8">
-                <Mail className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-lg font-semibold mb-2">No message selected</h3>
-                <p className="text-muted-foreground mb-4">
-                  Select an email to read
-                </p>
-                <Button onClick={handleCompose}>
-                  <PenSquare className="w-4 h-4 mr-2" />
-                  Compose New Email
-                </Button>
-              </div>
-            )}
-          </div>
+        {/* Email Detail */}
+        <div
+          className={cn(
+            'flex-1',
+            !selectedEmail && 'hidden md:block'
+          )}
+        >
+          <EmailDetail
+            emailId={selectedEmail?.id || null}
+            onClose={handleCloseDetail}
+          />
         </div>
       </div>
+
+      {/* Compose Dialog */}
+      <EmailComposeDialog open={composeOpen} onOpenChange={setComposeOpen} />
     </div>
   );
 }
