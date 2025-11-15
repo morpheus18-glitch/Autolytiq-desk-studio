@@ -50,6 +50,11 @@ export interface TaxCalculationParams {
   capReductionCash?: number;
   basePayment?: number;
   paymentCount?: number;
+
+  // Reciprocity / Prior Tax Paid
+  originTaxState?: string;
+  originTaxAmount?: number;
+  originTaxPaidDate?: string; // ISO date
 }
 
 export interface TaxCalculationResult {
@@ -65,6 +70,8 @@ export interface TaxCalculationResult {
   totalFees: number;
   totalTaxAndFees: number;
   tradeInTaxSavings: number;
+  reciprocityCredit?: number; // Tax credit from prior tax paid
+  taxAfterReciprocity?: number; // Total tax after reciprocity credit applied
   notes: string[];
   warnings: string[];
   engineResult?: {

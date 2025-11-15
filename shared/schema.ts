@@ -614,7 +614,12 @@ export const dealScenarios = pgTable("deal_scenarios", {
   
   // Tax jurisdiction
   taxJurisdictionId: uuid("tax_jurisdiction_id").references(() => taxJurisdictions.id),
-  
+
+  // Reciprocity / Prior Tax Paid (for cross-state deals)
+  originTaxState: text("origin_tax_state"), // State where tax was previously paid (e.g., "CA", "TX")
+  originTaxAmount: decimal("origin_tax_amount", { precision: 12, scale: 2 }), // Amount of tax already paid
+  originTaxPaidDate: timestamp("origin_tax_paid_date"), // Date when tax was paid (for time-window reciprocity like NC 90-day rule)
+
   // Calculated values (stored for performance)
   totalTax: decimal("total_tax", { precision: 12, scale: 2 }).notNull().default("0"),
   totalFees: decimal("total_fees", { precision: 12, scale: 2 }).notNull().default("0"),

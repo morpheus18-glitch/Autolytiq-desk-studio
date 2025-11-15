@@ -1400,6 +1400,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         capReductionCash: z.number().min(0).optional(),
         basePayment: z.number().min(0).optional(),
         paymentCount: z.number().int().min(1).optional(),
+        // Reciprocity / Prior Tax Paid
+        originTaxState: z.string().length(2).optional(),
+        originTaxAmount: z.number().min(0).optional(),
+        originTaxPaidDate: z.string().optional(), // ISO date string
       });
 
       const options = taxCalculationSchema.parse(req.body);
@@ -1429,6 +1433,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         asOfDate: new Date().toISOString(),
         dealType: options.dealType ?? 'RETAIL',
         registrationStateCode: options.registrationState ?? options.stateCode,
+
+        // Reciprocity info
+        originTaxInfo: options.originTaxState && options.originTaxAmount
+          ? {
+              stateCode: options.originTaxState,
+              amount: options.originTaxAmount,
+              taxPaidDate: options.originTaxPaidDate,
+            }
+          : undefined,
 
         // Financial fields
         vehiclePrice: options.vehiclePrice,

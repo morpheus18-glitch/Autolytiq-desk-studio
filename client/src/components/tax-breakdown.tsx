@@ -189,14 +189,54 @@ export function TaxBreakdown({ taxResult, className, showDetails = true, loading
         {/* Total Tax */}
         <div className="flex items-center justify-between">
           <span className="font-semibold">Total Tax</span>
-          <span 
+          <span
             className="font-mono tabular-nums text-lg font-bold"
             data-testid="text-total-tax"
           >
             {formatCurrency(animatedTotalTax)}
           </span>
         </div>
-        
+
+        {/* Reciprocity Credit */}
+        {taxResult.reciprocityCredit && taxResult.reciprocityCredit > 0 && (
+          <>
+            <div className="flex items-center justify-between text-green-600 dark:text-green-400">
+              <div className="flex items-center gap-1">
+                <TrendingDown className="h-4 w-4" />
+                <span className="text-sm font-medium">Reciprocity Credit</span>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="h-3 w-3" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Credit for tax already paid in another state</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <span
+                className="font-mono tabular-nums font-semibold"
+                data-testid="text-reciprocity-credit"
+              >
+                -{formatCurrency(taxResult.reciprocityCredit)}
+              </span>
+            </div>
+
+            {taxResult.taxAfterReciprocity !== undefined && (
+              <div className="flex items-center justify-between bg-green-50/50 dark:bg-green-950/20 p-2 rounded-md border border-green-200 dark:border-green-900">
+                <span className="font-semibold text-green-900 dark:text-green-100">Final Tax Due</span>
+                <span
+                  className="font-mono tabular-nums text-lg font-bold text-green-900 dark:text-green-100"
+                  data-testid="text-tax-after-reciprocity"
+                >
+                  {formatCurrency(taxResult.taxAfterReciprocity)}
+                </span>
+              </div>
+            )}
+          </>
+        )}
+
         <Separator />
         
         {/* Fees */}

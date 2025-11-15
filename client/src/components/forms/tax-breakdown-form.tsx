@@ -6,6 +6,7 @@ import { Receipt, MapPin, Info, Check, AlertCircle } from 'lucide-react';
 import { useScenarioForm } from '@/contexts/scenario-form-context';
 import { StateTaxSelector } from '@/components/state-tax-selector';
 import { TaxBreakdown } from '@/components/tax-breakdown';
+import { PriorTaxPaid, type PriorTaxInfo } from '@/components/prior-tax-paid';
 import { useTaxCalculation, useLeaseCalculationMethod, type TaxCalculationParams } from '@/hooks/use-tax-calculation';
 import { extractAftermarketValues } from '@shared/utils/aftermarket-parser';
 import type { Customer } from '@shared/schema';
@@ -18,6 +19,19 @@ export function TaxBreakdownForm({ customer }: { customer?: Customer | null }) {
   const [stateCode, setStateCode] = useState<string>(customer?.state || '');
   const [zipCode, setZipCode] = useState<string>(customer?.zipCode || '');
   const [autoPopulated, setAutoPopulated] = useState(false);
+
+  // Prior tax paid (for reciprocity)
+  const [priorTaxInfo, setPriorTaxInfo] = useState<PriorTaxInfo | null>(
+    scenario.originTaxState && scenario.originTaxAmount
+      ? {
+          originState: scenario.originTaxState,
+          amount: Number(scenario.originTaxAmount),
+          paidDate: scenario.originTaxPaidDate
+            ? new Date(scenario.originTaxPaidDate).toISOString().split('T')[0]
+            : undefined,
+        }
+      : null
+  );
 
   // Auto-populate when customer address is entered
   useEffect(() => {
@@ -83,6 +97,13 @@ export function TaxBreakdownForm({ customer }: { customer?: Customer | null }) {
         basePayment: Number(scenario.monthlyPayment) || 0,
         paymentCount: Number(scenario.term) || 36,
       }),
+
+      // Prior tax paid (reciprocity)
+      ...(priorTaxInfo && {
+        originTaxState: priorTaxInfo.originState,
+        originTaxAmount: priorTaxInfo.amount,
+        originTaxPaidDate: priorTaxInfo.paidDate,
+      }),
     };
 
     return params;
@@ -98,6 +119,7 @@ export function TaxBreakdownForm({ customer }: { customer?: Customer | null }) {
     stateCode,
     zipCode,
     isLease,
+    priorTaxInfo,
   ]);
 
   // Use tax calculation hook with auto-calculation
@@ -126,6 +148,19 @@ export function TaxBreakdownForm({ customer }: { customer?: Customer | null }) {
       });
     }
   }, [taxResult, isCalculating, updateMultipleFields]);
+
+  // Update scenario when prior tax info changes
+  useEffect(() => {
+    updateMultipleFields({
+      originTaxState: priorTaxInfo?.originState || null,
+      originTaxAmount: priorTaxInfo?.amount
+        ? new Decimal(priorTaxInfo.amount).toFixed(2)
+        : null,
+      originTaxPaidDate: priorTaxInfo?.paidDate
+        ? new Date(priorTaxInfo.paidDate)
+        : null,
+    });
+  }, [priorTaxInfo, updateMultipleFields]);
 
   const handleStateChange = (newState: string) => {
     setStateCode(newState);
@@ -214,6 +249,18 @@ export function TaxBreakdownForm({ customer }: { customer?: Customer | null }) {
           </Card>
         )}
       </div>
+
+      {/* Prior Tax Paid Section */}
+      {stateCode && (
+        <div>
+          <PriorTaxPaid
+            value={priorTaxInfo}
+            onChange={setPriorTaxInfo}
+            currentState={stateCode}
+            disabled={isCalculating}
+          />
+        </div>
+      )}
 
       <Separator />
 
