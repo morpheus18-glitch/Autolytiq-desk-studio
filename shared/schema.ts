@@ -43,6 +43,66 @@ export const insertDealershipSettingsSchema = createInsertSchema(dealershipSetti
 export type InsertDealershipSettings = z.infer<typeof insertDealershipSettingsSchema>;
 export type DealershipSettings = typeof dealershipSettings.$inferSelect;
 
+// ===== ROOFTOP CONFIGURATIONS TABLE =====
+// Supports multi-location dealers with different tax perspectives per rooftop
+export const rooftopConfigurations = pgTable("rooftop_configurations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  dealershipId: uuid("dealership_id").notNull().references(() => dealershipSettings.id, { onDelete: "cascade" }),
+
+  // Rooftop identification
+  rooftopId: text("rooftop_id").notNull(), // Unique identifier (e.g., "main", "north_location", "south_location")
+  name: text("name").notNull(), // Display name (e.g., "Main Dealership", "North Branch")
+
+  // Location
+  dealerStateCode: text("dealer_state_code").notNull(), // Primary state where this rooftop operates
+  address: text("address"),
+  city: text("city"),
+  zipCode: text("zip_code"),
+
+  // Tax Perspective Configuration
+  // Determines which state's rules to use for tax calculations
+  defaultTaxPerspective: text("default_tax_perspective").notNull().default("DEALER_STATE"), // DEALER_STATE | BUYER_STATE | REGISTRATION_STATE
+
+  // Allowed registration states for this rooftop
+  // JSON array of state codes this location can register vehicles in
+  allowedRegistrationStates: jsonb("allowed_registration_states").notNull().default([]),
+
+  // State-specific overrides
+  // JSON object: { "CA": { "forcePrimary": true }, "NV": { "disallowPrimary": true } }
+  stateOverrides: jsonb("state_overrides").default({}),
+
+  // Drive-out provisions
+  // Allows dealers in border states to sell to nearby states with special handling
+  driveOutEnabled: boolean("drive_out_enabled").notNull().default(false),
+  driveOutStates: jsonb("drive_out_states").default([]), // States where drive-out is allowed
+
+  // Tax rate overrides for this rooftop (optional)
+  customTaxRates: jsonb("custom_tax_rates").default({}), // { "CA": { "rate": 0.0725 } }
+
+  // Status
+  isActive: boolean("is_active").notNull().default(true),
+  isPrimary: boolean("is_primary").notNull().default(false), // One primary rooftop per dealership
+
+  // Metadata
+  notes: text("notes"),
+
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  dealershipIdx: index("rooftop_dealership_idx").on(table.dealershipId),
+  rooftopIdIdx: index("rooftop_rooftop_id_idx").on(table.rooftopId),
+  // Unique constraint: dealershipId + rooftopId
+  uniqueRooftop: index("rooftop_unique_idx").on(table.dealershipId, table.rooftopId),
+}));
+
+export const insertRooftopConfigurationSchema = createInsertSchema(rooftopConfigurations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+export type InsertRooftopConfiguration = z.infer<typeof insertRooftopConfigurationSchema>;
+export type RooftopConfiguration = typeof rooftopConfigurations.$inferSelect;
+
 // ===== USERS TABLE =====
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
