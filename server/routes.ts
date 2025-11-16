@@ -82,10 +82,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup email messaging routes (Resend integration)
   const { default: emailRoutes, publicRouter: emailPublicRoutes } = await import('./email-routes');
   
-  // Mount public webhook endpoint (no auth required for Resend callbacks)
-  app.use('/api/email', emailPublicRoutes);
+  // Mount public webhook endpoint on /api/webhooks (no auth required for Resend callbacks)
+  app.use('/api/webhooks', emailPublicRoutes);
   
-  // Mount protected email routes (require authentication)
+  // Mount protected email routes on /api/email (require authentication)
   app.use('/api/email', requireAuth, emailRoutes);
 
   // Setup email webhook routes (NO AUTH - called by Resend servers)

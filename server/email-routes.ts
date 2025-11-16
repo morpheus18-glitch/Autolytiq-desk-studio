@@ -774,7 +774,7 @@ router.get("/unread-counts", async (req: Request, res: Response) => {
 // ============================================================================
 
 /**
- * POST /api/email/webhook/resend
+ * POST /api/webhooks/resend
  * Receive webhook events from Resend for real-time inbox syncing
  * 
  * Events handled:
@@ -787,7 +787,7 @@ router.get("/unread-counts", async (req: Request, res: Response) => {
  * - email.opened - Email was opened
  * - email.clicked - Link in email was clicked
  */
-publicRouter.post("/webhook/resend", async (req: Request, res: Response) => {
+publicRouter.post("/resend", async (req: Request, res: Response) => {
   try {
     // ========================================================================
     // STEP 1: Verify webhook signature
