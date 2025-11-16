@@ -57,6 +57,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     xssFilter: true, // Enable XSS filter
   }));
 
+  // ============================================================================
+  // MOUNT PUBLIC WEBHOOK ROUTES BEFORE AUTH SETUP
+  // ============================================================================
+  // CRITICAL: Public webhooks MUST be mounted BEFORE setupAuth() to avoid
+  // having session/passport middleware applied to them
+  const { default: emailRoutes, publicRouter: emailPublicRoutes } = await import('./email-routes');
+  app.use('/api/webhooks', emailPublicRoutes);
+
+  // ============================================================================
+  // SETUP AUTHENTICATION & RATE LIMITING
+  // ============================================================================
   // Apply rate limiting BEFORE setupAuth (critical for security!)
   // This MUST come before setupAuth because setupAuth defines /api/register and /api/login routes
   app.use('/api/register', authLimiter);
@@ -69,6 +80,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup auth routes (preferences, settings, password reset, 2FA, audit, permissions)
   setupAuthRoutes(app);
 
+  // ============================================================================
+  // PROTECTED ROUTES (ALL REQUIRE AUTHENTICATION)
+  // ============================================================================
+  
   // Setup tax calculation routes (AutoTaxEngine endpoints)
   app.use('/api/tax', taxRoutes);
 
@@ -78,14 +93,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup rooftop configuration routes (multi-location support)
   const rooftopRoutes = (await import('./rooftop-routes')).default;
   app.use('/api/rooftops', rooftopRoutes);
-
-  // Setup email messaging routes (Resend integration)
-  const { default: emailRoutes, publicRouter: emailPublicRoutes } = await import('./email-routes');
   
-  // Mount public webhook endpoint on /api/webhooks (no auth required for Resend callbacks)
-  app.use('/api/webhooks', emailPublicRoutes);
-  
-  // Mount protected email routes on /api/email (require authentication)
+  // Mount protected email routes (require authentication)
   app.use('/api/email', requireAuth, emailRoutes);
 
   // Setup email webhook routes (NO AUTH - called by Resend servers)
