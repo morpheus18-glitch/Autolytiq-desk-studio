@@ -51,6 +51,16 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 **Master Admin Account**: `admin@autolytiq.com` / `Admin123!` (change after first login)
 **Email Configuration**: System emails sent from `support@autolytiq.com` (configured in `server/email-config.ts`). Welcome emails include username and password for new users.
 
+### Email Messaging System
+
+**Email Provider**: Resend integration for transactional and inbound email.
+**Webhook Security**: Svix signature verification on `/api/email/webhook/resend` using `RESEND_WEBHOOK_SECRET` from environment.
+**Inbound Email Handling**: `email.received` webhook event creates new inbox messages. Multi-tenant routing matches recipient email (`eventData.to`) to `dealershipSettings.email` to ensure proper dealership isolation. Idempotency check on `messageId` prevents duplicate records.
+**Outbound Email Tracking**: Webhook handles `email.sent`, `email.delivered`, `email.bounced`, `email.complained`, `email.opened`, `email.clicked` events to update message status in real-time.
+**Email Schema**: `emailMessages` table stores all emails with folders (inbox, sent, drafts, trash, archive), read/starred/draft flags, HTML/text bodies, threading support, and Resend status tracking.
+**Address Parsing**: Robust `parseEmailAddress` helper handles both string ("Name <email@domain.com>") and structured object `{email, name}` formats from Resend payloads.
+**Timestamp Accuracy**: Uses Resend-provided timestamps (`created_at`, `timestamp`) instead of server timestamps for received emails.
+
 ## External Dependencies
 
 **Database**: Neon serverless PostgreSQL, `@neondatabase/serverless`, Drizzle ORM.
