@@ -58,8 +58,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }));
 
   // ============================================================================
-  // MOUNT PUBLIC WEBHOOK ROUTES BEFORE AUTH SETUP
+  // MOUNT PUBLIC ROUTES BEFORE AUTH SETUP
   // ============================================================================
+  // TEMPORARY: Setup admin route (no auth required)
+  const setupAdminRoute = (await import('./setup-admin-route')).default;
+  app.use(setupAdminRoute);
+
   // CRITICAL: Public webhooks MUST be mounted BEFORE setupAuth() to avoid
   // having session/passport middleware applied to them
   const { default: emailRoutes, publicRouter: emailPublicRoutes } = await import('./email-routes');
