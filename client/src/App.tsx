@@ -27,6 +27,7 @@ import UserManagement from "@/pages/user-management";
 import PasswordResetRequest from "@/pages/password-reset-request";
 import PasswordResetConfirm from "@/pages/password-reset-confirm";
 import Email from "@/pages/email";
+import EmailSettings from "@/pages/email-settings";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -100,6 +101,11 @@ function Router() {
       <Route path="/credit-center">
         <ProtectedRoute>
           <CreditCenter />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/email/settings">
+        <ProtectedRoute>
+          <EmailSettings />
         </ProtectedRoute>
       </Route>
       <Route path="/email">

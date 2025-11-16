@@ -148,16 +148,23 @@ export function EmailList({
                 key={email.id}
                 onClick={() => handleEmailClick(email)}
                 className={cn(
-                  'p-4 cursor-pointer hover:bg-accent transition-colors',
-                  !email.isRead && 'bg-muted/30',
+                  'p-4 cursor-pointer hover:bg-accent/50 transition-colors border-b',
+                  !email.isRead && 'bg-blue-50/50 dark:bg-blue-950/20',
                   selectedEmailId === email.id && 'bg-accent'
                 )}
               >
                 <div className="flex items-start gap-3">
+                  {/* Unread Indicator (Gmail style blue dot) */}
+                  <div className="mt-2 w-2 h-2 flex-shrink-0">
+                    {!email.isRead && (
+                      <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+                    )}
+                  </div>
+
                   {/* Star */}
                   <button
                     onClick={(e) => handleStarClick(e, email)}
-                    className="mt-1 hover:text-yellow-500"
+                    className="mt-1 hover:text-yellow-500 transition-colors flex-shrink-0"
                   >
                     <Star
                       className={cn(
@@ -170,32 +177,33 @@ export function EmailList({
                   {/* Email Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2 mb-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         <span
                           className={cn(
-                            'font-medium truncate',
-                            !email.isRead && 'font-semibold'
+                            'truncate',
+                            !email.isRead ? 'font-bold text-foreground' : 'font-normal text-foreground/80'
                           )}
                         >
                           {email.fromName || email.fromAddress}
                         </span>
-                        {!email.isRead && (
-                          <Badge variant="default" className="h-5 px-1.5 text-xs">
-                            New
-                          </Badge>
-                        )}
                         {email.isDraft && (
-                          <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                          <Badge variant="secondary" className="h-5 px-1.5 text-xs flex-shrink-0">
                             Draft
                           </Badge>
                         )}
                       </div>
-                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      <span className={cn(
+                        "text-xs whitespace-nowrap flex-shrink-0",
+                        !email.isRead ? 'font-semibold text-foreground' : 'text-muted-foreground'
+                      )}>
                         {formatDate(email.sentAt || email.createdAt)}
                       </span>
                     </div>
 
-                    <div className="text-sm font-medium truncate mb-1">
+                    <div className={cn(
+                      "text-sm truncate mb-1",
+                      !email.isRead ? 'font-semibold text-foreground' : 'font-normal text-foreground/80'
+                    )}>
                       {email.subject || '(no subject)'}
                     </div>
 

@@ -110,7 +110,12 @@ export default function EmailPage() {
       <Separator />
 
       <div className="p-2">
-        <Button variant="ghost" className="w-full justify-start" size="sm">
+        <Button
+          variant="ghost"
+          className="w-full justify-start"
+          size="sm"
+          onClick={() => window.location.href = '/email/settings'}
+        >
           <Settings className="h-4 w-4 mr-2" />
           Settings
         </Button>
