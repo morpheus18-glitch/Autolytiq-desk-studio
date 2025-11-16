@@ -22,6 +22,7 @@
 
 import { Router, Request, Response } from "express";
 import { z } from "zod";
+import { Webhook } from "svix";
 import {
   sendEmailMessage,
   saveDraft,
@@ -786,14 +787,54 @@ router.get("/unread-counts", async (req: Request, res: Response) => {
  */
 router.post("/webhook/resend", async (req: Request, res: Response) => {
   try {
-    console.log('[Resend Webhook] Received event:', {
-      type: req.body?.type,
-      id: req.body?.data?.email_id,
+    // ========================================================================
+    // STEP 1: Verify webhook signature
+    // ========================================================================
+    const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
+    
+    if (!webhookSecret) {
+      console.error('[Resend Webhook] RESEND_WEBHOOK_SECRET not configured');
+      return res.status(500).json({ error: 'Webhook secret not configured' });
+    }
+
+    // Extract Svix headers
+    const svixId = req.headers['svix-id'] as string;
+    const svixTimestamp = req.headers['svix-timestamp'] as string;
+    const svixSignature = req.headers['svix-signature'] as string;
+
+    if (!svixId || !svixTimestamp || !svixSignature) {
+      console.error('[Resend Webhook] Missing Svix headers');
+      return res.status(401).json({ error: 'Missing signature headers' });
+    }
+
+    // Get raw body for signature verification
+    const payload = (req as any).rawBody ? (req as any).rawBody.toString() : JSON.stringify(req.body);
+
+    // Verify the webhook signature
+    const wh = new Webhook(webhookSecret);
+    let verifiedEvent: any;
+    
+    try {
+      verifiedEvent = wh.verify(payload, {
+        'svix-id': svixId,
+        'svix-timestamp': svixTimestamp,
+        'svix-signature': svixSignature,
+      });
+    } catch (err) {
+      console.error('[Resend Webhook] Signature verification failed:', err);
+      return res.status(401).json({ error: 'Invalid signature' });
+    }
+
+    console.log('[Resend Webhook] ✓ Signature verified. Event:', {
+      type: verifiedEvent?.type,
+      id: verifiedEvent?.data?.email_id,
       timestamp: new Date().toISOString()
     });
 
-    // Extract event data
-    const event = req.body;
+    // ========================================================================
+    // STEP 2: Process verified webhook event
+    // ========================================================================
+    const event = verifiedEvent;
     const eventType = event?.type;
     const eventData = event?.data;
 
