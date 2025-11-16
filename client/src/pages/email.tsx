@@ -22,17 +22,19 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { EmailList } from '@/components/email/email-list';
+import { EmailListEnhanced } from '@/components/email/email-list-enhanced';
 import { EmailDetail } from '@/components/email/email-detail';
 import { EmailComposeDialog } from '@/components/email/email-compose-dialog';
 import { useUnreadCounts, type EmailMessage } from '@/hooks/use-email';
 import { cn } from '@/lib/utils';
+import { Archive } from 'lucide-react';
 
 const FOLDERS = [
   { id: 'inbox', label: 'Inbox', icon: Inbox },
   { id: 'sent', label: 'Sent', icon: Send },
   { id: 'drafts', label: 'Drafts', icon: FileText },
   { id: 'starred', label: 'Starred', icon: Star },
+  { id: 'archive', label: 'Archive', icon: Archive },
   { id: 'trash', label: 'Trash', icon: Trash2 },
 ];
 
@@ -161,7 +163,7 @@ export default function EmailPage() {
             selectedEmail && 'hidden md:block'
           )}
         >
-          <EmailList
+          <EmailListEnhanced
             folder={selectedFolder}
             onSelectEmail={handleSelectEmail}
             selectedEmailId={selectedEmail?.id}

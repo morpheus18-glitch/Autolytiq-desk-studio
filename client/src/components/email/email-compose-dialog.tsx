@@ -19,12 +19,16 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useSendEmail, useSaveDraft, type EmailRecipient } from '@/hooks/use-email';
+import { RichTextEditor } from './rich-text-editor';
 
 interface EmailComposeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultTo?: string;
+  defaultCc?: string[];
   defaultSubject?: string;
+  defaultBody?: string;
+  quotedText?: string;
   customerId?: string;
   dealId?: string;
 }
@@ -33,18 +37,21 @@ export function EmailComposeDialog({
   open,
   onOpenChange,
   defaultTo,
+  defaultCc,
   defaultSubject,
+  defaultBody,
+  quotedText,
   customerId,
   dealId,
 }: EmailComposeDialogProps) {
   // Form state
-  const [toInput, setToInput] = useState(defaultTo || '');
+  const [toInput, setToInput] = useState('');
   const [ccInput, setCcInput] = useState('');
   const [bccInput, setBccInput] = useState('');
   const [recipients, setRecipients] = useState<EmailRecipient[]>([]);
   const [ccRecipients, setCcRecipients] = useState<EmailRecipient[]>([]);
   const [bccRecipients, setBccRecipients] = useState<EmailRecipient[]>([]);
-  const [subject, setSubject] = useState(defaultSubject || '');
+  const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [showCc, setShowCc] = useState(false);
   const [showBcc, setShowBcc] = useState(false);
@@ -55,6 +62,34 @@ export function EmailComposeDialog({
   // Mutations
   const sendEmail = useSendEmail();
   const saveDraft = useSaveDraft();
+
+  // Initialize form with default values when dialog opens
+  useEffect(() => {
+    if (open) {
+      // Set recipients
+      if (defaultTo) {
+        setRecipients([{ email: defaultTo }]);
+      }
+
+      // Set Cc recipients
+      if (defaultCc && defaultCc.length > 0) {
+        setCcRecipients(defaultCc.map(email => ({ email })));
+        setShowCc(true);
+      }
+
+      // Set subject
+      if (defaultSubject) {
+        setSubject(defaultSubject);
+      }
+
+      // Set body with quoted text if provided
+      if (defaultBody) {
+        setBody(defaultBody);
+      } else if (quotedText) {
+        setBody(`\n\n------- Original Message -------\n${quotedText}`);
+      }
+    }
+  }, [open, defaultTo, defaultCc, defaultSubject, defaultBody, quotedText]);
 
   // Email validation
   const isValidEmail = (email: string) => {
@@ -136,8 +171,8 @@ export function EmailComposeDialog({
       cc: ccRecipients.length > 0 ? ccRecipients : undefined,
       bcc: bccRecipients.length > 0 ? bccRecipients : undefined,
       subject,
-      textBody: body,
-      htmlBody: body.replace(/\n/g, '<br>'), // Simple conversion
+      textBody: body.replace(/<[^>]*>/g, ''), // Strip HTML for text version
+      htmlBody: body, // Body is already HTML from rich text editor
       customerId,
       dealId,
     });
@@ -154,8 +189,8 @@ export function EmailComposeDialog({
       cc: ccRecipients.length > 0 ? ccRecipients : undefined,
       bcc: bccRecipients.length > 0 ? bccRecipients : undefined,
       subject,
-      textBody: body,
-      htmlBody: body.replace(/\n/g, '<br>'),
+      textBody: body.replace(/<[^>]*>/g, ''), // Strip HTML for text version
+      htmlBody: body, // Body is already HTML from rich text editor
       customerId,
       dealId,
     });
@@ -195,8 +230,8 @@ export function EmailComposeDialog({
         cc: ccRecipients.length > 0 ? ccRecipients : undefined,
         bcc: bccRecipients.length > 0 ? bccRecipients : undefined,
         subject,
-        textBody: body,
-        htmlBody: body.replace(/\n/g, '<br>'),
+        textBody: body.replace(/<[^>]*>/g, ''), // Strip HTML for text version
+        htmlBody: body, // Body is already HTML from rich text editor
         customerId,
         dealId,
       });
@@ -422,12 +457,10 @@ export function EmailComposeDialog({
           {/* Body Field */}
           <div className="space-y-2 flex-1">
             <Label htmlFor="body">Message</Label>
-            <Textarea
-              id="body"
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
+            <RichTextEditor
+              content={body}
+              onChange={setBody}
               placeholder="Write your message here..."
-              className="min-h-[300px] resize-none"
             />
           </div>
         </div>

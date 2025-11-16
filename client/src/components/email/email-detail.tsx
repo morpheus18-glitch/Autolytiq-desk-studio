@@ -93,6 +93,34 @@ export function EmailDetail({ emailId, onClose }: EmailDetailProps) {
     setForwardDialogOpen(true);
   };
 
+  // Format quoted text for reply/forward
+  const getQuotedText = (email: EmailMessage) => {
+    const dateStr = format(new Date(email.sentAt || email.createdAt), 'PPpp');
+    const from = email.fromName || email.fromAddress;
+    const body = email.textBody || email.htmlBody?.replace(/<[^>]*>/g, '') || '';
+
+    return `On ${dateStr}, ${from} wrote:\n\n${body}`;
+  };
+
+  // Get Cc recipients for Reply All
+  const getReplyAllCc = (email: EmailMessage) => {
+    const ccEmails: string[] = [];
+
+    // Add all original To recipients except the current user
+    email.toAddresses.forEach(addr => {
+      ccEmails.push(addr.email);
+    });
+
+    // Add all original Cc recipients
+    if (email.ccAddresses) {
+      email.ccAddresses.forEach(addr => {
+        ccEmails.push(addr.email);
+      });
+    }
+
+    return ccEmails;
+  };
+
   const handleDelete = () => {
     deleteEmail.mutate({ id: email.id });
     onClose?.();
@@ -262,7 +290,9 @@ export function EmailDetail({ emailId, onClose }: EmailDetailProps) {
         open={replyDialogOpen}
         onOpenChange={setReplyDialogOpen}
         defaultTo={email.fromAddress}
+        defaultCc={replyAll ? getReplyAllCc(email) : undefined}
         defaultSubject={`Re: ${email.subject || ''}`}
+        quotedText={getQuotedText(email)}
         customerId={email.customerId || undefined}
         dealId={email.dealId || undefined}
       />
@@ -272,6 +302,7 @@ export function EmailDetail({ emailId, onClose }: EmailDetailProps) {
         open={forwardDialogOpen}
         onOpenChange={setForwardDialogOpen}
         defaultSubject={`Fwd: ${email.subject || ''}`}
+        quotedText={getQuotedText(email)}
         customerId={email.customerId || undefined}
         dealId={email.dealId || undefined}
       />

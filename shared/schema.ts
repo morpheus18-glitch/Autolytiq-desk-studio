@@ -1381,10 +1381,12 @@ export const emailMessages = pgTable("email_messages", {
   textBody: text("text_body"), // Plain text version
 
   // Metadata
-  folder: text("folder").notNull().default("inbox"), // inbox, sent, drafts, trash, archive
+  folder: text("folder").notNull().default("inbox"), // inbox, sent, drafts, trash, archive, spam
   isRead: boolean("is_read").notNull().default(false),
   isStarred: boolean("is_starred").notNull().default(false),
   isDraft: boolean("is_draft").notNull().default(false),
+  isSpam: boolean("is_spam").notNull().default(false),
+  spamScore: decimal("spam_score", { precision: 5, scale: 2 }), // 0-100 spam likelihood
 
   // Resend integration
   resendId: text("resend_id"), // Resend API response ID
@@ -1447,6 +1449,109 @@ export const insertEmailAttachmentSchema = createInsertSchema(emailAttachments).
 });
 export type InsertEmailAttachment = z.infer<typeof insertEmailAttachmentSchema>;
 export type EmailAttachment = typeof emailAttachments.$inferSelect;
+
+// ===== EMAIL RULES TABLE =====
+// Email filtering and auto-management rules (like Gmail filters)
+export const emailRules = pgTable("email_rules", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  dealershipId: uuid("dealership_id").notNull().references(() => dealershipSettings.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }), // Rule owner (null = global)
+
+  // Rule metadata
+  name: text("name").notNull(), // "Forward customer emails to sales team"
+  description: text("description"),
+  priority: integer("priority").notNull().default(0), // Lower number = higher priority
+  isActive: boolean("is_active").notNull().default(true),
+
+  // Conditions (ALL must match for rule to apply)
+  // JSON object: { from: "customer@example.com", subject: "contains:quote", hasAttachment: true }
+  conditions: jsonb("conditions").notNull().default({}),
+
+  // Actions (ALL are executed when conditions match)
+  // JSON object: { moveToFolder: "customers", markAsRead: true, forward: "sales@autolytiq.com", addLabel: "urgent" }
+  actions: jsonb("actions").notNull().default({}),
+
+  // Statistics
+  matchCount: integer("match_count").notNull().default(0), // How many times this rule has matched
+  lastMatchedAt: timestamp("last_matched_at"),
+
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  dealershipIdx: index("email_rules_dealership_idx").on(table.dealershipId),
+  userIdx: index("email_rules_user_idx").on(table.userId),
+  priorityIdx: index("email_rules_priority_idx").on(table.priority),
+  activeIdx: index("email_rules_active_idx").on(table.isActive),
+}));
+
+export const insertEmailRuleSchema = createInsertSchema(emailRules).omit({
+  id: true,
+  matchCount: true,
+  lastMatchedAt: true,
+  createdAt: true,
+  updatedAt: true
+});
+export type InsertEmailRule = z.infer<typeof insertEmailRuleSchema>;
+export type EmailRule = typeof emailRules.$inferSelect;
+
+// ===== EMAIL LABELS TABLE =====
+// Custom labels/categories for emails (like Gmail labels)
+export const emailLabels = pgTable("email_labels", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  dealershipId: uuid("dealership_id").notNull().references(() => dealershipSettings.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }), // Label owner (null = global)
+
+  // Label info
+  name: text("name").notNull(), // "Urgent", "Follow Up", "Customer Inquiry"
+  color: text("color").notNull().default("#3b82f6"), // Hex color
+  icon: text("icon"), // Lucide icon name
+
+  // Settings
+  showInSidebar: boolean("show_in_sidebar").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  dealershipIdx: index("email_labels_dealership_idx").on(table.dealershipId),
+  userIdx: index("email_labels_user_idx").on(table.userId),
+  // Unique: dealership + user + name
+  uniqueLabel: uniqueIndex("email_labels_unique_idx").on(table.dealershipId, table.userId, table.name),
+}));
+
+export const insertEmailLabelSchema = createInsertSchema(emailLabels).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+export type InsertEmailLabel = z.infer<typeof insertEmailLabelSchema>;
+export type EmailLabel = typeof emailLabels.$inferSelect;
+
+// ===== EMAIL MESSAGE LABELS TABLE =====
+// Many-to-many relationship between emails and labels
+export const emailMessageLabels = pgTable("email_message_labels", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  emailMessageId: uuid("email_message_id").notNull().references(() => emailMessages.id, { onDelete: "cascade" }),
+  labelId: uuid("label_id").notNull().references(() => emailLabels.id, { onDelete: "cascade" }),
+
+  // Auto-applied or manual
+  isAutoApplied: boolean("is_auto_applied").notNull().default(false),
+  appliedBy: uuid("applied_by").references(() => users.id, { onDelete: "set null" }), // User who applied (if manual)
+
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  emailIdx: index("email_message_labels_email_idx").on(table.emailMessageId),
+  labelIdx: index("email_message_labels_label_idx").on(table.labelId),
+  // Unique: one label per email
+  uniqueEmailLabel: uniqueIndex("email_message_labels_unique_idx").on(table.emailMessageId, table.labelId),
+}));
+
+export const insertEmailMessageLabelSchema = createInsertSchema(emailMessageLabels).omit({
+  id: true,
+  createdAt: true
+});
+export type InsertEmailMessageLabel = z.infer<typeof insertEmailMessageLabelSchema>;
+export type EmailMessageLabel = typeof emailMessageLabels.$inferSelect;
 
 // ===== EMAIL FOLDERS TABLE =====
 // Custom email folders (beyond default inbox/sent/drafts)

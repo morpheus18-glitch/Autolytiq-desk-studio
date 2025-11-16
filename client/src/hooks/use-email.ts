@@ -194,6 +194,51 @@ async function fetchUnreadCounts() {
   return response.json();
 }
 
+async function bulkMarkAsRead(emailIds: string[], isRead: boolean) {
+  const response = await fetch('/api/email/bulk/mark-read', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ emailIds, isRead }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to bulk mark emails');
+  }
+
+  return response.json();
+}
+
+async function bulkDelete(emailIds: string[], permanent = false) {
+  const response = await fetch('/api/email/bulk/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ emailIds, permanent }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to bulk delete emails');
+  }
+
+  return response.json();
+}
+
+async function moveToFolder(emailIds: string[], folder: string) {
+  const response = await fetch('/api/email/bulk/move-folder', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ emailIds, folder }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to move emails');
+  }
+
+  return response.json();
+}
+
 // ============================================================================
 // HOOKS
 // ============================================================================
@@ -337,5 +382,90 @@ export function useUnreadCounts() {
     queryKey: ['email-unread-counts'],
     queryFn: fetchUnreadCounts,
     refetchInterval: 30000, // Refetch every 30 seconds
+  });
+}
+
+/**
+ * Bulk mark emails as read/unread
+ */
+export function useBulkMarkAsRead() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ emailIds, isRead }: { emailIds: string[]; isRead: boolean }) =>
+      bulkMarkAsRead(emailIds, isRead),
+    onSuccess: (_, variables) => {
+      toast({
+        title: variables.isRead
+          ? `Marked ${variables.emailIds.length} email${variables.emailIds.length > 1 ? 's' : ''} as read`
+          : `Marked ${variables.emailIds.length} email${variables.emailIds.length > 1 ? 's' : ''} as unread`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['emails'] });
+      queryClient.invalidateQueries({ queryKey: ['email-unread-counts'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Failed to update emails',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+/**
+ * Bulk delete emails
+ */
+export function useBulkDelete() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ emailIds, permanent }: { emailIds: string[]; permanent?: boolean }) =>
+      bulkDelete(emailIds, permanent),
+    onSuccess: (_, variables) => {
+      toast({
+        title: variables.permanent
+          ? `Deleted ${variables.emailIds.length} email${variables.emailIds.length > 1 ? 's' : ''} permanently`
+          : `Moved ${variables.emailIds.length} email${variables.emailIds.length > 1 ? 's' : ''} to trash`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['emails'] });
+      queryClient.invalidateQueries({ queryKey: ['email-unread-counts'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Failed to delete emails',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+/**
+ * Move emails to folder
+ */
+export function useMoveToFolder() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ emailIds, folder }: { emailIds: string[]; folder: string }) =>
+      moveToFolder(emailIds, folder),
+    onSuccess: (_, variables) => {
+      toast({
+        title: `Moved ${variables.emailIds.length} email${variables.emailIds.length > 1 ? 's' : ''} to ${variables.folder}`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['emails'] });
+      queryClient.invalidateQueries({ queryKey: ['email-unread-counts'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Failed to move emails',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
   });
 }
