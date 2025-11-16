@@ -767,4 +767,132 @@ router.get("/unread-counts", async (req: Request, res: Response) => {
   }
 });
 
+// ============================================================================
+// WEBHOOK ENDPOINT (PUBLIC - NO AUTH REQUIRED)
+// ============================================================================
+
+/**
+ * POST /api/email/webhook/resend
+ * Receive webhook events from Resend for real-time inbox syncing
+ * 
+ * Events handled:
+ * - email.sent - Email was accepted by Resend
+ * - email.delivered - Email was delivered to recipient
+ * - email.delivery_delayed - Delivery delayed
+ * - email.bounced - Email bounced
+ * - email.complained - Recipient marked as spam
+ * - email.opened - Email was opened
+ * - email.clicked - Link in email was clicked
+ */
+router.post("/webhook/resend", async (req: Request, res: Response) => {
+  try {
+    console.log('[Resend Webhook] Received event:', {
+      type: req.body?.type,
+      id: req.body?.data?.email_id,
+      timestamp: new Date().toISOString()
+    });
+
+    // Extract event data
+    const event = req.body;
+    const eventType = event?.type;
+    const eventData = event?.data;
+
+    if (!eventType || !eventData) {
+      console.error('[Resend Webhook] Invalid event structure');
+      return res.status(400).json({ error: 'Invalid event structure' });
+    }
+
+    // Get email ID from event (could be email_id or message_id depending on event type)
+    const emailId = eventData.email_id || eventData.message_id;
+    
+    if (!emailId) {
+      console.error('[Resend Webhook] No email ID in event');
+      return res.status(400).json({ error: 'No email ID provided' });
+    }
+
+    // Find the email in our database by Resend ID
+    const db = await import("./db").then((m) => m.db);
+    const { emailMessages } = await import("@shared/schema");
+    const { eq } = await import("drizzle-orm");
+
+    const emails = await db
+      .select()
+      .from(emailMessages)
+      .where(eq(emailMessages.resendId, emailId))
+      .limit(1);
+
+    if (emails.length === 0) {
+      console.warn('[Resend Webhook] Email not found in database:', emailId);
+      // Return 200 to acknowledge receipt even if we don't have the email
+      return res.status(200).json({ received: true, message: 'Email not found' });
+    }
+
+    const email = emails[0];
+
+    // Update email status based on event type
+    let updates: any = {
+      resendStatus: eventType.replace('email.', ''), // sent, delivered, bounced, etc.
+    };
+
+    // Set appropriate timestamps
+    if (eventType === 'email.delivered') {
+      updates.folder = 'sent';
+      // eventData may have delivered_at timestamp
+    } else if (eventType === 'email.bounced') {
+      updates.folder = 'trash';
+    } else if (eventType === 'email.complained') {
+      updates.folder = 'trash';
+    }
+
+    // Update the email in database
+    await db
+      .update(emailMessages)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(emailMessages.id, email.id));
+
+    console.log('[Resend Webhook] Updated email:', {
+      emailId: email.id,
+      resendId: emailId,
+      eventType,
+      updates
+    });
+
+    // Log security event for monitoring
+    logSecurityEvent({
+      timestamp: new Date(),
+      userId: email.userId || 'system',
+      dealershipId: email.dealershipId,
+      action: `email_${eventType.replace('email.', '')}`,
+      severity: eventType === 'email.bounced' || eventType === 'email.complained' ? 'medium' : 'low',
+      details: {
+        emailId: email.id,
+        resendId: emailId,
+        eventType,
+        subject: email.subject,
+      },
+    });
+
+    // Return 200 to acknowledge successful receipt
+    res.status(200).json({
+      success: true,
+      message: `Processed ${eventType} event`,
+      emailId: email.id
+    });
+
+  } catch (error) {
+    console.error('[Resend Webhook] Error processing webhook:', error);
+    
+    // Always return 200 to prevent Resend from retrying
+    // Log the error but acknowledge receipt
+    res.status(200).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      message: 'Error logged, webhook acknowledged'
+    });
+  }
+});
+
 export default router;
