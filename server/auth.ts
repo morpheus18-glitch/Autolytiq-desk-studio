@@ -191,15 +191,14 @@ export function setupAuth(app: Express) {
         fullName,
         password: hashedPassword,
         role: "salesperson", // Force role to salesperson - prevent privilege escalation
+        isActive: false, // Requires admin approval before login
       }, defaultDealership.id);
 
-      // Auto-login after registration
-      req.login(user, (err) => {
-        if (err) return next(err);
-        
-        // Remove password from response
-        const { password: _, ...userWithoutPassword } = user;
-        res.status(201).json(userWithoutPassword);
+      // Don't auto-login - user needs admin approval first
+      res.status(201).json({
+        message: "Registration successful! Your account is pending approval from an administrator.",
+        requiresApproval: true,
+        email: user.email,
       });
     } catch (error: any) {
       console.error("Registration error:", error);

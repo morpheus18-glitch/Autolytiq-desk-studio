@@ -128,10 +128,11 @@ export const users = pgTable("users", {
   lastLogin: timestamp("last_login"),
   failedLoginAttempts: integer("failed_login_attempts").notNull().default(0),
   accountLockedUntil: timestamp("account_locked_until"),
-  
+  isActive: boolean("is_active").notNull().default(false), // Requires admin approval by default
+
   // User preferences (theme, notifications, default views, etc.)
   preferences: jsonb("preferences").default({}),
-  
+
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({

@@ -113,14 +113,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!dealershipId) {
         return res.status(403).json({ error: 'User must belong to a dealership' });
       }
-      
+
       const allUsers = await storage.getUsers(dealershipId);
       res.json(allUsers);
     } catch (error) {
       res.status(500).json({ error: 'Failed to get users' });
     }
   });
-  
+
+  // Admin: Create new user
+  app.post('/api/admin/users', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+      const { username, email, fullName, password, role } = req.body;
+      const dealershipId = (req.user as any)?.dealershipId;
+
+      // Check if username/email already exists
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(400).json({ error: 'Username already exists' });
+      }
+
+      const existingEmail = await storage.getUserByEmail(email);
+      if (existingEmail) {
+        return res.status(400).json({ error: 'Email already exists' });
+      }
+
+      // Hash password
+      const { hashPassword } = await import('./auth');
+      const hashedPassword = await hashPassword(password);
+
+      // Create user - admins create users as ACTIVE by default
+      const newUser = await storage.createUser({
+        username,
+        email,
+        fullName,
+        password: hashedPassword,
+        role: role || 'salesperson',
+        isActive: true, // Admin-created users are active immediately
+      }, dealershipId);
+
+      // Send welcome email with credentials
+      const { sendWelcomeEmail } = await import('./email-service');
+      await sendWelcomeEmail(newUser.email, username, password).catch(err =>
+        console.error('Failed to send welcome email:', err)
+      );
+
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = newUser;
+      res.status(201).json(userWithoutPassword);
+    } catch (error: any) {
+      console.error('Error creating user:', error);
+      res.status(500).json({ error: error.message || 'Failed to create user' });
+    }
+  });
+
+  // Admin: Update user
+  app.patch('/api/admin/users/:id', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+
+      // Don't allow password updates through this endpoint
+      delete updates.password;
+      delete updates.id;
+      delete updates.createdAt;
+      delete updates.dealershipId;
+
+      const updatedUser = await storage.updateUser(id, updates);
+
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = updatedUser;
+      res.json(userWithoutPassword);
+    } catch (error: any) {
+      console.error('Error updating user:', error);
+      res.status(500).json({ error: error.message || 'Failed to update user' });
+    }
+  });
+
   // ===== CUSTOMERS =====
   app.get('/api/customers', requireAuth, async (req, res) => {
     try {
