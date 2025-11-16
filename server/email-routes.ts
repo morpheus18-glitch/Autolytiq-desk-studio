@@ -614,10 +614,10 @@ router.post("/messages/:id/move", async (req: Request, res: Response) => {
 });
 
 /**
- * POST /api/email/bulk/read
+ * POST /api/email/bulk/mark-read
  * Bulk mark as read
  */
-router.post("/bulk/read", async (req: Request, res: Response) => {
+router.post("/bulk/mark-read", async (req: Request, res: Response) => {
   try {
     // @ts-ignore
     const dealershipId = req.user?.dealershipId || "default";
