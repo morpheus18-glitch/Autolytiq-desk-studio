@@ -58,8 +58,10 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 **Inbound Email Handling**: `email.received` webhook event creates new inbox messages. Multi-tenant routing matches recipient email (`eventData.to`) to `dealershipSettings.email` to ensure proper dealership isolation. Idempotency check on `messageId` prevents duplicate records.
 **Outbound Email Tracking**: Webhook handles `email.sent`, `email.delivered`, `email.bounced`, `email.complained`, `email.opened`, `email.clicked` events to update message status in real-time.
 **Email Schema**: `emailMessages` table stores all emails with folders (inbox, sent, drafts, trash, archive), read/starred/draft flags, HTML/text bodies, threading support, and Resend status tracking.
+**Email Folder Visibility**: Inbox and archive folders show all dealership emails (shared access, including webhook-received emails with null userId). Sent, drafts, trash, and starred folders are user-specific (filtered by userId for privacy). Implemented in `server/email-service.ts` listEmails() function.
 **Address Parsing**: Robust `parseEmailAddress` helper handles both string ("Name <email@domain.com>") and structured object `{email, name}` formats from Resend payloads.
 **Timestamp Accuracy**: Uses Resend-provided timestamps (`created_at`, `timestamp`) instead of server timestamps for received emails.
+**Mobile UX**: All input and textarea fields have `autocapitalize="off"` attribute to prevent mobile keyboards from starting in caps mode (applied globally in base Input and Textarea components).
 
 ## External Dependencies
 
