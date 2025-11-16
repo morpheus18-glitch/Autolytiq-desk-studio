@@ -219,13 +219,22 @@ export class DatabaseStorage implements IStorage {
   public sessionStore: session.Store;
 
   constructor() {
-    // Use Redis for session storage (faster than PostgreSQL)
-    // Sessions stored in Redis: ~5-10ms lookups vs ~150-200ms in PostgreSQL
-    this.sessionStore = new RedisStore({
-      client: redisClient,
-      prefix: "dealstudio:sess:", // Namespace sessions to avoid conflicts
-      ttl: 7 * 24 * 60 * 60, // 7 days (matches cookie maxAge)
-    });
+    // Try Redis if available, fall back to memory store
+    // Check if Redis is connected before using it
+    if (redisClient.isOpen && redisClient.isReady) {
+      console.log('[Storage] Using Redis for session storage');
+      this.sessionStore = new RedisStore({
+        client: redisClient,
+        prefix: "dealstudio:sess:", // Namespace sessions to avoid conflicts
+        ttl: 7 * 24 * 60 * 60, // 7 days (matches cookie maxAge)
+      });
+    } else {
+      console.warn('[Storage] Redis not available - using memory session store');
+      console.warn('[Storage] Sessions will be lost on server restart!');
+      // Use default memory store as fallback
+      // Note: This is OK for development but NOT recommended for production
+      this.sessionStore = new session.MemoryStore();
+    }
   }
 
   // Users
