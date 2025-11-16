@@ -51,6 +51,7 @@ import {
 import { getVerifiedFromEmail } from "./email-config";
 
 const router = Router();
+const publicRouter = Router();
 
 // ============================================================================
 // VALIDATION SCHEMAS
@@ -786,7 +787,7 @@ router.get("/unread-counts", async (req: Request, res: Response) => {
  * - email.opened - Email was opened
  * - email.clicked - Link in email was clicked
  */
-router.post("/webhook/resend", async (req: Request, res: Response) => {
+publicRouter.post("/webhook/resend", async (req: Request, res: Response) => {
   try {
     // ========================================================================
     // STEP 1: Verify webhook signature
@@ -1107,4 +1108,8 @@ router.post("/webhook/resend", async (req: Request, res: Response) => {
   }
 });
 
+// Export both routers
+// publicRouter: Contains webhook endpoint (no auth required)
+// router: Contains all other email routes (auth required)
 export default router;
+export { publicRouter };
