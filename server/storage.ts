@@ -36,7 +36,7 @@ import { createClient } from "redis";
 const REDIS_HOST = process.env.REDIS_HOST || "redis-18908.crce197.us-east-2-1.ec2.cloud.redislabs.com";
 const REDIS_PORT = parseInt(process.env.REDIS_PORT || "18908", 10);
 const REDIS_PASSWORD = process.env.REDIS_PASSWORD;
-const REDIS_TLS = process.env.REDIS_TLS === "true"; // Default to false - enable with REDIS_TLS=true if needed
+const REDIS_TLS = process.env.REDIS_TLS !== "false"; // Default to TRUE for Redis Cloud (requires TLS)
 
 // Create Redis client for session storage with TLS (required for Redis Cloud)
 const redisClient = createClient({
