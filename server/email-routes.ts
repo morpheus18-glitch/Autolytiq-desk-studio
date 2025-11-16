@@ -777,6 +777,7 @@ router.get("/unread-counts", async (req: Request, res: Response) => {
  * Receive webhook events from Resend for real-time inbox syncing
  * 
  * Events handled:
+ * - email.received - NEW EMAIL RECEIVED (creates inbox message)
  * - email.sent - Email was accepted by Resend
  * - email.delivered - Email was delivered to recipient
  * - email.delivery_delayed - Delivery delayed
@@ -843,6 +844,181 @@ router.post("/webhook/resend", async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid event structure' });
     }
 
+    // Import database dependencies
+    const db = await import("./db").then((m) => m.db);
+    const { emailMessages } = await import("@shared/schema");
+    const { eq } = await import("drizzle-orm");
+    const { nanoid } = await import("nanoid");
+
+    // ========================================================================
+    // HANDLE INBOUND EMAILS (email.received)
+    // ========================================================================
+    if (eventType === 'email.received') {
+      console.log('[Resend Webhook] Processing inbound email:', {
+        from: eventData.from,
+        to: eventData.to,
+        subject: eventData.subject,
+        timestamp: new Date().toISOString()
+      });
+
+      try {
+        // Helper function to parse email addresses
+        const parseEmailAddress = (addr: any): { email: string; name: string | null } => {
+          if (!addr) return { email: '', name: null };
+          
+          // If already structured object { email, name }
+          if (typeof addr === 'object' && addr.email) {
+            return { email: addr.email, name: addr.name || null };
+          }
+          
+          // If string, parse "Name <email@domain.com>" or "email@domain.com"
+          const addrStr = typeof addr === 'string' ? addr : String(addr);
+          const match = addrStr.match(/^(.+?)\s*<(.+)>$/);
+          return match 
+            ? { email: match[2].trim(), name: match[1].trim() }
+            : { email: addrStr.trim(), name: null };
+        };
+
+        // Parse sender
+        const fromParsed = parseEmailAddress(eventData.from);
+        const fromAddress = fromParsed.email;
+        const fromName = fromParsed.name;
+
+        // Parse recipients
+        const toParsed = Array.isArray(eventData.to)
+          ? eventData.to.map((addr: any) => parseEmailAddress(addr)).filter((addr: any) => addr.email)
+          : eventData.to
+            ? [parseEmailAddress(eventData.to)].filter((addr: any) => addr.email)
+            : [];
+
+        if (toParsed.length === 0) {
+          console.error('[Resend Webhook] No valid recipient addresses');
+          return res.status(200).json({ 
+            success: false, 
+            message: 'No valid recipient addresses' 
+          });
+        }
+
+        // Parse CC addresses
+        const ccParsed = Array.isArray(eventData.cc)
+          ? eventData.cc.map((addr: any) => parseEmailAddress(addr)).filter((addr: any) => addr.email)
+          : [];
+
+        // Parse BCC addresses
+        const bccParsed = Array.isArray(eventData.bcc)
+          ? eventData.bcc.map((addr: any) => parseEmailAddress(addr)).filter((addr: any) => addr.email)
+          : [];
+
+        // Determine dealership by matching recipient email to dealership email
+        const { dealershipSettings } = await import("@shared/schema");
+        const recipientEmails = toParsed.map((r: any) => r.email.toLowerCase());
+        
+        const dealerships = await db
+          .select({ 
+            id: dealershipSettings.id,
+            email: dealershipSettings.email 
+          })
+          .from(dealershipSettings);
+
+        // Find matching dealership
+        let dealershipId: string | null = null;
+        for (const d of dealerships) {
+          if (d.email && recipientEmails.includes(d.email.toLowerCase())) {
+            dealershipId = d.id;
+            break;
+          }
+        }
+
+        // If no match, use the first dealership (fallback for development)
+        if (!dealershipId && dealerships.length > 0) {
+          dealershipId = dealerships[0].id;
+          console.warn('[Resend Webhook] No email match found, using default dealership');
+        }
+
+        if (!dealershipId) {
+          console.error('[Resend Webhook] No dealership found');
+          return res.status(200).json({ 
+            success: false, 
+            message: 'No dealership configured' 
+          });
+        }
+
+        // Check for duplicate message (idempotency)
+        const messageId = eventData.email_id || eventData.message_id;
+        if (messageId) {
+          const existing = await db
+            .select({ id: emailMessages.id })
+            .from(emailMessages)
+            .where(eq(emailMessages.messageId, messageId))
+            .limit(1);
+
+          if (existing.length > 0) {
+            console.log('[Resend Webhook] Duplicate message, skipping:', messageId);
+            return res.status(200).json({
+              success: true,
+              message: 'Duplicate message already processed',
+              emailId: existing[0].id
+            });
+          }
+        }
+
+        // Parse timestamps
+        const receivedAt = eventData.created_at 
+          ? new Date(eventData.created_at)
+          : eventData.timestamp
+            ? new Date(eventData.timestamp)
+            : new Date();
+
+        // Create new email record for received email
+        const newEmail = await db.insert(emailMessages).values({
+          dealershipId,
+          userId: null, // Inbound email has no user initially
+          messageId: messageId || nanoid(),
+          fromAddress,
+          fromName,
+          toAddresses: toParsed,
+          ccAddresses: ccParsed,
+          bccAddresses: bccParsed,
+          subject: eventData.subject || '(No Subject)',
+          htmlBody: eventData.html || null,
+          textBody: eventData.text || null,
+          folder: 'inbox',
+          isRead: false,
+          isStarred: false,
+          isDraft: false,
+          resendStatus: 'received',
+          customerId: null,
+          dealId: null,
+          receivedAt,
+        }).returning();
+
+        console.log('[Resend Webhook] ✓ Created inbound email:', {
+          id: newEmail[0]?.id,
+          dealershipId,
+          from: fromAddress,
+          subject: eventData.subject
+        });
+
+        return res.status(200).json({
+          success: true,
+          message: 'Inbound email received',
+          emailId: newEmail[0]?.id
+        });
+      } catch (error) {
+        console.error('[Resend Webhook] Error creating inbound email:', error);
+        // Always return 200 to prevent Resend retries
+        return res.status(200).json({
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          message: 'Error logged, webhook acknowledged'
+        });
+      }
+    }
+
+    // ========================================================================
+    // HANDLE OUTBOUND EMAIL STATUS UPDATES (sent, delivered, bounced, etc.)
+    // ========================================================================
+    
     // Get email ID from event (could be email_id or message_id depending on event type)
     const emailId = eventData.email_id || eventData.message_id;
     
@@ -850,11 +1026,6 @@ router.post("/webhook/resend", async (req: Request, res: Response) => {
       console.error('[Resend Webhook] No email ID in event');
       return res.status(400).json({ error: 'No email ID provided' });
     }
-
-    // Find the email in our database by Resend ID
-    const db = await import("./db").then((m) => m.db);
-    const { emailMessages } = await import("@shared/schema");
-    const { eq } = await import("drizzle-orm");
 
     const emails = await db
       .select()
