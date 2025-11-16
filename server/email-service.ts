@@ -257,7 +257,14 @@ export async function listEmails(
   // Build conditions
   const conditions = [eq(emailMessages.dealershipId, dealershipId)];
 
-  if (userId) {
+  // Folder visibility rules:
+  // - inbox/archive (or undefined): Show all dealership emails (including webhook-received with null userId)
+  // - sent/drafts/trash/starred: User-specific only
+  const inboundFolders = ['inbox', 'archive'];
+  const isInboundFolder = !folder || inboundFolders.includes(folder);
+  const shouldFilterByUser = userId && !isInboundFolder;
+  
+  if (shouldFilterByUser) {
     conditions.push(eq(emailMessages.userId, userId));
   }
 
