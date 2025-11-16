@@ -1,23 +1,41 @@
 /**
  * EMAIL API ROUTES
  *
- * RESTful API endpoints for email management.
+ * RESTful API endpoints for comprehensive email management.
  *
- * Endpoints:
- * - GET    /api/email/messages - List emails
+ * MESSAGE ENDPOINTS:
+ * - GET    /api/email/messages - List emails with filters
  * - GET    /api/email/messages/:id - Get single email
  * - POST   /api/email/send - Send new email
  * - POST   /api/email/drafts - Save draft
- * - PUT    /api/email/messages/:id - Update email (draft)
  * - DELETE /api/email/messages/:id - Delete email
  * - POST   /api/email/messages/:id/read - Mark as read
  * - POST   /api/email/messages/:id/star - Toggle star
  * - POST   /api/email/messages/:id/move - Move to folder
- * - POST   /api/email/bulk/read - Bulk mark as read
- * - POST   /api/email/bulk/delete - Bulk delete
- * - GET    /api/email/folders - List folders
- * - POST   /api/email/folders - Create folder
- * - GET    /api/email/unread-counts - Get unread counts
+ *
+ * BULK OPERATIONS:
+ * - POST   /api/email/bulk/mark-read - Bulk mark as read/unread
+ * - POST   /api/email/bulk/delete - Bulk delete emails
+ * - POST   /api/email/bulk/move-folder - Bulk move to folder
+ *
+ * RULES & FILTERS:
+ * - GET    /api/email/rules - List email rules
+ * - POST   /api/email/rules - Create email rule
+ * - PATCH  /api/email/rules/:id - Update email rule
+ * - DELETE /api/email/rules/:id - Delete email rule
+ *
+ * LABELS & CATEGORIES:
+ * - GET    /api/email/labels - List email labels
+ * - POST   /api/email/labels - Create email label
+ * - PATCH  /api/email/labels/:id - Update email label
+ * - DELETE /api/email/labels/:id - Delete email label
+ * - POST   /api/email/messages/:id/labels - Add label to email
+ * - DELETE /api/email/messages/:id/labels/:labelId - Remove label from email
+ *
+ * FOLDERS & COUNTS:
+ * - GET    /api/email/folders - List custom folders
+ * - POST   /api/email/folders - Create custom folder
+ * - GET    /api/email/unread-counts - Get unread counts by folder
  */
 
 import { Router, Request, Response } from "express";
@@ -663,6 +681,60 @@ router.post("/bulk/delete", async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/email/bulk/move-folder
+ * Bulk move emails to folder
+ */
+router.post("/bulk/move-folder", async (req: Request, res: Response) => {
+  try {
+    // @ts-ignore
+    const dealershipId = req.user?.dealershipId || "default";
+    const { emailIds, folder } = req.body;
+
+    if (!Array.isArray(emailIds) || emailIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "emailIds array is required",
+      });
+    }
+
+    if (!folder) {
+      return res.status(400).json({
+        success: false,
+        error: "folder is required",
+      });
+    }
+
+    // Import database dependencies
+    const db = await import("./db").then((m) => m.db);
+    const { emailMessages } = await import("@shared/schema");
+    const { inArray, eq, and } = await import("drizzle-orm");
+
+    // Update all emails to the new folder
+    const result = await db
+      .update(emailMessages)
+      .set({ folder, updatedAt: new Date() })
+      .where(
+        and(
+          eq(emailMessages.dealershipId, dealershipId),
+          inArray(emailMessages.id, emailIds)
+        )
+      );
+
+    res.json({
+      success: true,
+      count: emailIds.length,
+      message: `${emailIds.length} emails moved to ${folder}`,
+    });
+  } catch (error) {
+    console.error("[EmailRoutes] Error bulk moving emails:", error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+/**
  * GET /api/email/folders
  * List user's custom folders
  */
@@ -762,6 +834,382 @@ router.get("/unread-counts", async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("[EmailRoutes] Error fetching unread counts:", error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+/**
+ * GET /api/email/rules
+ * List email rules
+ */
+router.get("/rules", async (req: Request, res: Response) => {
+  try {
+    // @ts-ignore
+    const userId = req.user?.id;
+    // @ts-ignore
+    const dealershipId = req.user?.dealershipId || "default";
+
+    const db = await import("./db").then((m) => m.db);
+    const { emailRules } = await import("@shared/schema");
+    const { eq, or, and, isNull } = await import("drizzle-orm");
+
+    const rules = await db
+      .select()
+      .from(emailRules)
+      .where(
+        and(
+          eq(emailRules.dealershipId, dealershipId),
+          or(eq(emailRules.userId, userId), isNull(emailRules.userId))
+        )
+      )
+      .orderBy(emailRules.priority);
+
+    res.json({ success: true, data: rules });
+  } catch (error) {
+    console.error("[EmailRoutes] Error fetching rules:", error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+/**
+ * POST /api/email/rules
+ * Create email rule
+ */
+router.post("/rules", async (req: Request, res: Response) => {
+  try {
+    // @ts-ignore
+    const userId = req.user?.id;
+    // @ts-ignore
+    const dealershipId = req.user?.dealershipId || "default";
+
+    const db = await import("./db").then((m) => m.db);
+    const { emailRules } = await import("@shared/schema");
+
+    const ruleData = {
+      dealershipId,
+      userId,
+      name: req.body.name,
+      description: req.body.description,
+      priority: req.body.priority || 0,
+      isActive: req.body.isActive !== false,
+      conditions: req.body.conditions || {},
+      actions: req.body.actions || {},
+    };
+
+    const [rule] = await db.insert(emailRules).values(ruleData).returning();
+
+    res.status(201).json({ success: true, data: rule });
+  } catch (error) {
+    console.error("[EmailRoutes] Error creating rule:", error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+/**
+ * PATCH /api/email/rules/:id
+ * Update email rule
+ */
+router.patch("/rules/:id", async (req: Request, res: Response) => {
+  try {
+    // @ts-ignore
+    const userId = req.user?.id;
+    // @ts-ignore
+    const dealershipId = req.user?.dealershipId || "default";
+
+    const db = await import("./db").then((m) => m.db);
+    const { emailRules } = await import("@shared/schema");
+    const { eq, and } = await import("drizzle-orm");
+
+    const updates: any = {};
+    if (req.body.name !== undefined) updates.name = req.body.name;
+    if (req.body.description !== undefined) updates.description = req.body.description;
+    if (req.body.priority !== undefined) updates.priority = req.body.priority;
+    if (req.body.isActive !== undefined) updates.isActive = req.body.isActive;
+    if (req.body.conditions !== undefined) updates.conditions = req.body.conditions;
+    if (req.body.actions !== undefined) updates.actions = req.body.actions;
+    updates.updatedAt = new Date();
+
+    const [rule] = await db
+      .update(emailRules)
+      .set(updates)
+      .where(
+        and(
+          eq(emailRules.id, req.params.id),
+          eq(emailRules.dealershipId, dealershipId),
+          eq(emailRules.userId, userId)
+        )
+      )
+      .returning();
+
+    if (!rule) {
+      return res.status(404).json({ success: false, error: "Rule not found" });
+    }
+
+    res.json({ success: true, data: rule });
+  } catch (error) {
+    console.error("[EmailRoutes] Error updating rule:", error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+/**
+ * DELETE /api/email/rules/:id
+ * Delete email rule
+ */
+router.delete("/rules/:id", async (req: Request, res: Response) => {
+  try {
+    // @ts-ignore
+    const userId = req.user?.id;
+    // @ts-ignore
+    const dealershipId = req.user?.dealershipId || "default";
+
+    const db = await import("./db").then((m) => m.db);
+    const { emailRules } = await import("@shared/schema");
+    const { eq, and } = await import("drizzle-orm");
+
+    await db
+      .delete(emailRules)
+      .where(
+        and(
+          eq(emailRules.id, req.params.id),
+          eq(emailRules.dealershipId, dealershipId),
+          eq(emailRules.userId, userId)
+        )
+      );
+
+    res.json({ success: true, message: "Rule deleted" });
+  } catch (error) {
+    console.error("[EmailRoutes] Error deleting rule:", error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+/**
+ * GET /api/email/labels
+ * List email labels
+ */
+router.get("/labels", async (req: Request, res: Response) => {
+  try {
+    // @ts-ignore
+    const userId = req.user?.id;
+    // @ts-ignore
+    const dealershipId = req.user?.dealershipId || "default";
+
+    const db = await import("./db").then((m) => m.db);
+    const { emailLabels } = await import("@shared/schema");
+    const { eq, or, and, isNull } = await import("drizzle-orm");
+
+    const labels = await db
+      .select()
+      .from(emailLabels)
+      .where(
+        and(
+          eq(emailLabels.dealershipId, dealershipId),
+          or(eq(emailLabels.userId, userId), isNull(emailLabels.userId))
+        )
+      )
+      .orderBy(emailLabels.sortOrder);
+
+    res.json({ success: true, data: labels });
+  } catch (error) {
+    console.error("[EmailRoutes] Error fetching labels:", error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+/**
+ * POST /api/email/labels
+ * Create email label
+ */
+router.post("/labels", async (req: Request, res: Response) => {
+  try {
+    // @ts-ignore
+    const userId = req.user?.id;
+    // @ts-ignore
+    const dealershipId = req.user?.dealershipId || "default";
+
+    const db = await import("./db").then((m) => m.db);
+    const { emailLabels } = await import("@shared/schema");
+
+    const labelData = {
+      dealershipId,
+      userId,
+      name: req.body.name,
+      color: req.body.color || "#3b82f6",
+      icon: req.body.icon,
+      showInSidebar: req.body.showInSidebar !== false,
+      sortOrder: req.body.sortOrder || 0,
+    };
+
+    const [label] = await db.insert(emailLabels).values(labelData).returning();
+
+    res.status(201).json({ success: true, data: label });
+  } catch (error) {
+    console.error("[EmailRoutes] Error creating label:", error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+/**
+ * PATCH /api/email/labels/:id
+ * Update email label
+ */
+router.patch("/labels/:id", async (req: Request, res: Response) => {
+  try {
+    // @ts-ignore
+    const userId = req.user?.id;
+    // @ts-ignore
+    const dealershipId = req.user?.dealershipId || "default";
+
+    const db = await import("./db").then((m) => m.db);
+    const { emailLabels } = await import("@shared/schema");
+    const { eq, and } = await import("drizzle-orm");
+
+    const updates: any = {};
+    if (req.body.name !== undefined) updates.name = req.body.name;
+    if (req.body.color !== undefined) updates.color = req.body.color;
+    if (req.body.icon !== undefined) updates.icon = req.body.icon;
+    if (req.body.showInSidebar !== undefined) updates.showInSidebar = req.body.showInSidebar;
+    if (req.body.sortOrder !== undefined) updates.sortOrder = req.body.sortOrder;
+    updates.updatedAt = new Date();
+
+    const [label] = await db
+      .update(emailLabels)
+      .set(updates)
+      .where(
+        and(
+          eq(emailLabels.id, req.params.id),
+          eq(emailLabels.dealershipId, dealershipId),
+          eq(emailLabels.userId, userId)
+        )
+      )
+      .returning();
+
+    if (!label) {
+      return res.status(404).json({ success: false, error: "Label not found" });
+    }
+
+    res.json({ success: true, data: label });
+  } catch (error) {
+    console.error("[EmailRoutes] Error updating label:", error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+/**
+ * DELETE /api/email/labels/:id
+ * Delete email label
+ */
+router.delete("/labels/:id", async (req: Request, res: Response) => {
+  try {
+    // @ts-ignore
+    const userId = req.user?.id;
+    // @ts-ignore
+    const dealershipId = req.user?.dealershipId || "default";
+
+    const db = await import("./db").then((m) => m.db);
+    const { emailLabels } = await import("@shared/schema");
+    const { eq, and } = await import("drizzle-orm");
+
+    await db
+      .delete(emailLabels)
+      .where(
+        and(
+          eq(emailLabels.id, req.params.id),
+          eq(emailLabels.dealershipId, dealershipId),
+          eq(emailLabels.userId, userId)
+        )
+      );
+
+    res.json({ success: true, message: "Label deleted" });
+  } catch (error) {
+    console.error("[EmailRoutes] Error deleting label:", error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+/**
+ * POST /api/email/messages/:id/labels
+ * Add label to email
+ */
+router.post("/messages/:id/labels", async (req: Request, res: Response) => {
+  try {
+    // @ts-ignore
+    const userId = req.user?.id;
+    const { labelId } = req.body;
+
+    const db = await import("./db").then((m) => m.db);
+    const { emailMessageLabels } = await import("@shared/schema");
+
+    const [messageLabel] = await db
+      .insert(emailMessageLabels)
+      .values({
+        emailMessageId: req.params.id,
+        labelId,
+        isAutoApplied: false,
+        appliedBy: userId,
+      })
+      .returning();
+
+    res.status(201).json({ success: true, data: messageLabel });
+  } catch (error) {
+    console.error("[EmailRoutes] Error adding label:", error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+/**
+ * DELETE /api/email/messages/:id/labels/:labelId
+ * Remove label from email
+ */
+router.delete("/messages/:id/labels/:labelId", async (req: Request, res: Response) => {
+  try {
+    const db = await import("./db").then((m) => m.db);
+    const { emailMessageLabels } = await import("@shared/schema");
+    const { eq, and } = await import("drizzle-orm");
+
+    await db
+      .delete(emailMessageLabels)
+      .where(
+        and(
+          eq(emailMessageLabels.emailMessageId, req.params.id),
+          eq(emailMessageLabels.labelId, req.params.labelId)
+        )
+      );
+
+    res.json({ success: true, message: "Label removed" });
+  } catch (error) {
+    console.error("[EmailRoutes] Error removing label:", error);
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
