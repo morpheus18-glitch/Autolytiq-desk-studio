@@ -94,6 +94,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup local tax rate lookup routes (ZIP code to local rates)
   app.use('/api/tax', localTaxRoutes);
 
+  // Setup address validation route (validates customer addresses for tax calculation)
+  const { validateAddressHandler } = await import('./address-validation');
+  app.post('/api/address/validate', requireAuth, validateAddressHandler);
+
   // Setup rooftop configuration routes (multi-location support)
   const rooftopRoutes = (await import('./rooftop-routes')).default;
   app.use('/api/rooftops', rooftopRoutes);
