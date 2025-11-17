@@ -3743,6 +3743,364 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== HIERARCHY & PERFORMANCE OPTIMIZATION =====
+
+  // Import hierarchy services
+  const { hierarchicalOscillatorNetwork } = await import('./ml/hierarchical-oscillator');
+  const { UserRole, getDefaultRoleSettings, ROLE_METADATA } = await import('./ml/role-hierarchy');
+
+  // POST /api/hierarchy/add-user - Add user to hierarchical network
+  app.post('/api/hierarchy/add-user', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+      const addUserSchema = z.object({
+        id: z.string(),
+        name: z.string(),
+        role: z.string(),
+        managerId: z.string().optional(),
+        settings: z.any().optional(), // Optional custom settings
+      });
+
+      const { id, name, role, managerId, settings } = addUserSchema.parse(req.body);
+
+      // Get default settings or use provided
+      const roleSettings = settings || getDefaultRoleSettings(role as UserRole);
+
+      hierarchicalOscillatorNetwork.addUserToNetwork(
+        id,
+        name,
+        role as UserRole,
+        roleSettings,
+        managerId
+      );
+
+      res.json({
+        status: 'added',
+        id,
+        name,
+        role,
+        managerId,
+        timestamp: new Date().toISOString(),
+      });
+
+    } catch (error: any) {
+      console.error('Add User to Hierarchy Error:', error);
+      res.status(500).json({
+        error: 'Failed to add user to hierarchy',
+        message: error.message,
+      });
+    }
+  });
+
+  // DELETE /api/hierarchy/user/:id - Remove user from network
+  app.delete('/api/hierarchy/user/:id', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      hierarchicalOscillatorNetwork.removeUserFromNetwork(id);
+
+      res.json({
+        status: 'removed',
+        id,
+        timestamp: new Date().toISOString(),
+      });
+
+    } catch (error: any) {
+      console.error('Remove User from Hierarchy Error:', error);
+      res.status(500).json({
+        error: 'Failed to remove user from hierarchy',
+        message: error.message,
+      });
+    }
+  });
+
+  // GET /api/hierarchy/user/:id - Get user details with role and settings
+  app.get('/api/hierarchy/user/:id', requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const osc = hierarchicalOscillatorNetwork.getHierarchicalOscillator(id);
+      if (!osc) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      res.json({
+        id: osc.id,
+        name: osc.name,
+        role: osc.role,
+        roleLevel: osc.roleLevel,
+        managerId: osc.managerId,
+        subordinateIds: osc.subordinateIds,
+        settings: osc.settings,
+        metrics: osc.metrics,
+        roleState: osc.roleState,
+        phase: osc.phase,
+        activeDeals: osc.activeDeals,
+        skillLevel: osc.skillLevel,
+        timestamp: new Date().toISOString(),
+      });
+
+    } catch (error: any) {
+      console.error('Get User Error:', error);
+      res.status(500).json({
+        error: 'Failed to get user',
+        message: error.message,
+      });
+    }
+  });
+
+  // PATCH /api/hierarchy/user/:id/settings - Update user settings
+  app.patch('/api/hierarchy/user/:id/settings', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const settingsUpdate = req.body;
+
+      const osc = hierarchicalOscillatorNetwork.getHierarchicalOscillator(id);
+      if (!osc) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      // Deep merge settings
+      osc.settings = {
+        ...osc.settings,
+        ...settingsUpdate,
+        performanceTargets: {
+          ...osc.settings.performanceTargets,
+          ...(settingsUpdate.performanceTargets || {}),
+        },
+        permissions: {
+          ...osc.settings.permissions,
+          ...(settingsUpdate.permissions || {}),
+        },
+        compensation: {
+          ...osc.settings.compensation,
+          ...(settingsUpdate.compensation || {}),
+        },
+        features: {
+          ...osc.settings.features,
+          ...(settingsUpdate.features || {}),
+        },
+        workflow: {
+          ...osc.settings.workflow,
+          ...(settingsUpdate.workflow || {}),
+        },
+        notifications: {
+          ...osc.settings.notifications,
+          ...(settingsUpdate.notifications || {}),
+        },
+        intelligence: {
+          ...osc.settings.intelligence,
+          ...(settingsUpdate.intelligence || {}),
+        },
+      };
+
+      res.json({
+        status: 'updated',
+        id,
+        settings: osc.settings,
+        timestamp: new Date().toISOString(),
+      });
+
+    } catch (error: any) {
+      console.error('Update User Settings Error:', error);
+      res.status(500).json({
+        error: 'Failed to update user settings',
+        message: error.message,
+      });
+    }
+  });
+
+  // POST /api/hierarchy/user/:id/metrics - Update performance metrics
+  app.post('/api/hierarchy/user/:id/metrics', requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const metricsUpdate = req.body;
+
+      hierarchicalOscillatorNetwork.updatePerformanceMetrics(id, metricsUpdate);
+
+      res.json({
+        status: 'updated',
+        id,
+        timestamp: new Date().toISOString(),
+      });
+
+    } catch (error: any) {
+      console.error('Update Metrics Error:', error);
+      res.status(500).json({
+        error: 'Failed to update metrics',
+        message: error.message,
+      });
+    }
+  });
+
+  // GET /api/hierarchy/team/:managerId - Get team performance for a manager
+  app.get('/api/hierarchy/team/:managerId', requireAuth, async (req, res) => {
+    try {
+      const { managerId } = req.params;
+
+      const teamPerformance = hierarchicalOscillatorNetwork.getTeamPerformance(managerId);
+
+      if (!teamPerformance) {
+        return res.status(404).json({ error: 'Manager not found or has no team' });
+      }
+
+      res.json({
+        ...teamPerformance,
+        timestamp: new Date().toISOString(),
+      });
+
+    } catch (error: any) {
+      console.error('Get Team Performance Error:', error);
+      res.status(500).json({
+        error: 'Failed to get team performance',
+        message: error.message,
+      });
+    }
+  });
+
+  // GET /api/hierarchy/optimization/:userId - Get performance optimization for user
+  app.get('/api/hierarchy/optimization/:userId', requireAuth, async (req, res) => {
+    try {
+      const { userId } = req.params;
+
+      const optimization = hierarchicalOscillatorNetwork.getPerformanceOptimization(userId);
+
+      if (!optimization) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      res.json({
+        ...optimization,
+        timestamp: new Date().toISOString(),
+      });
+
+    } catch (error: any) {
+      console.error('Get Performance Optimization Error:', error);
+      res.status(500).json({
+        error: 'Failed to get performance optimization',
+        message: error.message,
+      });
+    }
+  });
+
+  // GET /api/hierarchy/roles - Get all available roles and metadata
+  app.get('/api/hierarchy/roles', requireAuth, async (req, res) => {
+    try {
+      res.json({
+        roles: ROLE_METADATA,
+        timestamp: new Date().toISOString(),
+      });
+
+    } catch (error: any) {
+      console.error('Get Roles Error:', error);
+      res.status(500).json({
+        error: 'Failed to get roles',
+        message: error.message,
+      });
+    }
+  });
+
+  // GET /api/hierarchy/default-settings/:role - Get default settings for a role
+  app.get('/api/hierarchy/default-settings/:role', requireAuth, async (req, res) => {
+    try {
+      const { role } = req.params;
+
+      const defaultSettings = getDefaultRoleSettings(role as UserRole);
+
+      res.json({
+        role,
+        settings: defaultSettings,
+        timestamp: new Date().toISOString(),
+      });
+
+    } catch (error: any) {
+      console.error('Get Default Settings Error:', error);
+      res.status(500).json({
+        error: 'Failed to get default settings',
+        message: error.message,
+      });
+    }
+  });
+
+  // GET /api/hierarchy/all-users - Get all users in hierarchy
+  app.get('/api/hierarchy/all-users', requireAuth, async (req, res) => {
+    try {
+      const allUsers = hierarchicalOscillatorNetwork.getAllHierarchicalOscillators();
+
+      res.json({
+        users: allUsers.map(osc => ({
+          id: osc.id,
+          name: osc.name,
+          role: osc.role,
+          roleLevel: osc.roleLevel,
+          managerId: osc.managerId,
+          subordinateCount: osc.subordinateIds.length,
+          activeDeals: osc.activeDeals,
+          dealsToday: osc.dealsClosedToday,
+          dealsThisMonth: osc.metrics.dealsThisMonth,
+          phase: osc.phase,
+          skillLevel: osc.skillLevel,
+        })),
+        total: allUsers.length,
+        timestamp: new Date().toISOString(),
+      });
+
+    } catch (error: any) {
+      console.error('Get All Users Error:', error);
+      res.status(500).json({
+        error: 'Failed to get all users',
+        message: error.message,
+      });
+    }
+  });
+
+  // GET /api/hierarchy/analytics - Get comprehensive hierarchy analytics
+  app.get('/api/hierarchy/analytics', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+      const allUsers = hierarchicalOscillatorNetwork.getAllHierarchicalOscillators();
+
+      // Managers only
+      const managers = allUsers.filter(osc =>
+        ROLE_METADATA[osc.role].isManagement && osc.subordinateIds.length > 0
+      );
+
+      // Get team performance for each manager
+      const teamPerformances = managers.map(manager =>
+        hierarchicalOscillatorNetwork.getTeamPerformance(manager.id)
+      ).filter(tp => tp !== null);
+
+      // Overall statistics
+      const totalDeals = allUsers.reduce((sum, osc) => sum + osc.metrics.dealsThisMonth, 0);
+      const totalRevenue = allUsers.reduce((sum, osc) => sum + osc.metrics.revenueThisMonth, 0);
+      const avgSatisfaction = allUsers.reduce((sum, osc) => sum + osc.metrics.avgCustomerSatisfaction, 0) / allUsers.length;
+
+      // Role distribution
+      const roleDistribution: Record<string, number> = {};
+      allUsers.forEach(osc => {
+        roleDistribution[osc.role] = (roleDistribution[osc.role] || 0) + 1;
+      });
+
+      res.json({
+        overview: {
+          totalUsers: allUsers.length,
+          totalManagers: managers.length,
+          totalDeals,
+          totalRevenue,
+          avgSatisfaction,
+        },
+        roleDistribution,
+        teamPerformances,
+        timestamp: new Date().toISOString(),
+      });
+
+    } catch (error: any) {
+      console.error('Get Analytics Error:', error);
+      res.status(500).json({
+        error: 'Failed to get analytics',
+        message: error.message,
+      });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
