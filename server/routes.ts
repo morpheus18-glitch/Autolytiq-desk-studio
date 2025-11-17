@@ -3324,6 +3324,152 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== ML OPTIMIZATION =====
+
+  // Import ML services
+  const { dealAnalyzer } = await import('./services/deal-analyzer');
+  const { primeEngine } = await import('./ml/prime-engine');
+
+  // POST /api/ml/analyze - Analyze deal with local AI + ML recommendations
+  app.post('/api/ml/analyze', requireAuth, async (req, res) => {
+    try {
+      const analyzeRequestSchema = z.object({
+        vehiclePrice: z.number().positive(),
+        downPayment: z.number().nonnegative().optional(),
+        tradeValue: z.number().nonnegative().optional(),
+        tradePayoff: z.number().nonnegative().optional(),
+        termMonths: z.number().int().positive().optional(),
+        interestRate: z.number().nonnegative().optional(),
+        zipCode: z.string().min(5).max(10),
+        customerFico: z.number().int().min(300).max(850).optional(),
+        customerMonthlyIncome: z.number().positive().optional(),
+      });
+
+      const request = analyzeRequestSchema.parse(req.body);
+
+      // Get rule-based analysis from local AI agent
+      const analysis = await dealAnalyzer.analyzeDeal(request);
+
+      // Get ML-optimized strategy recommendation from Prime Engine
+      const mlRecommendation = primeEngine.getRecommendation({
+        vehiclePrice: request.vehiclePrice,
+        downPayment: request.downPayment || 0,
+        termMonths: request.termMonths || 60,
+        tradeValue: request.tradeValue,
+        customerFico: request.customerFico,
+        loanToValue: analysis.dealMetrics.loanToValue,
+      });
+
+      res.json({
+        analysis,
+        mlOptimization: mlRecommendation,
+        timestamp: new Date().toISOString(),
+      });
+
+    } catch (error: any) {
+      console.error('ML Analysis Error:', error);
+
+      if (error.name === 'ZodError') {
+        return res.status(400).json({
+          error: 'Invalid request data',
+          details: error.errors,
+        });
+      }
+
+      res.status(500).json({
+        error: 'Failed to analyze deal',
+        message: error.message,
+      });
+    }
+  });
+
+  // POST /api/ml/feedback - Record deal outcome to train ML engine
+  app.post('/api/ml/feedback', requireAuth, async (req, res) => {
+    try {
+      const feedbackSchema = z.object({
+        dealId: z.string().uuid(),
+        strategyKey: z.string(),
+        success: z.boolean(),
+        metadata: z.object({
+          closeDate: z.string().optional(),
+          finalPayment: z.number().optional(),
+          customerSatisfaction: z.number().min(1).max(5).optional(),
+        }).optional(),
+      });
+
+      const feedback = feedbackSchema.parse(req.body);
+
+      // Record outcome in Prime Engine (this is how it learns!)
+      primeEngine.recordOutcome(feedback.strategyKey, feedback.success);
+
+      console.log(
+        `[ML Feedback] Deal ${feedback.dealId} using strategy "${feedback.strategyKey}": ` +
+        `${feedback.success ? 'SUCCESS' : 'FAILURE'}`
+      );
+
+      res.json({
+        status: 'recorded',
+        strategyKey: feedback.strategyKey,
+        success: feedback.success,
+        timestamp: new Date().toISOString(),
+      });
+
+    } catch (error: any) {
+      console.error('ML Feedback Error:', error);
+
+      if (error.name === 'ZodError') {
+        return res.status(400).json({
+          error: 'Invalid feedback data',
+          details: error.errors,
+        });
+      }
+
+      res.status(500).json({
+        error: 'Failed to record feedback',
+        message: error.message,
+      });
+    }
+  });
+
+  // GET /api/ml/performance - Get ML engine performance metrics
+  app.get('/api/ml/performance', requireAuth, async (req, res) => {
+    try {
+      const report = primeEngine.getPerformanceReport();
+
+      res.json({
+        ...report,
+        message: 'ML engine performance metrics',
+      });
+
+    } catch (error: any) {
+      console.error('ML Performance Error:', error);
+      res.status(500).json({
+        error: 'Failed to get performance metrics',
+        message: error.message,
+      });
+    }
+  });
+
+  // POST /api/ml/reset - Reset ML statistics (admin only, for testing)
+  app.post('/api/ml/reset', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+      primeEngine.resetStatistics();
+
+      res.json({
+        status: 'reset',
+        message: 'ML engine statistics have been reset',
+        timestamp: new Date().toISOString(),
+      });
+
+    } catch (error: any) {
+      console.error('ML Reset Error:', error);
+      res.status(500).json({
+        error: 'Failed to reset ML engine',
+        message: error.message,
+      });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
