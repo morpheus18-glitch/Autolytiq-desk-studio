@@ -41,6 +41,24 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 **Database Performance**: Comprehensive indexing for multi-tenant queries on Customers, Deals, Vehicles, and Users tables. Enabled `pg_trgm` extension and GIN trigram indexes for text search optimization.
 **Tax Jurisdiction Auto-Fill**: Customer ZIP codes automatically map to tax jurisdictions in deal scenarios. The `zipCodeLookup` table links ZIP codes to tax jurisdictions for auto-population. Backend API (`GET /api/tax-jurisdictions/lookup?zipCode=`) performs lookups. Manual override available for edge cases.
 
+**Recent Database Changes (November 16, 2025)**:
+- **Deal Scenarios Reciprocity**: Confirmed `deal_scenarios` table includes reciprocity columns (`origin_tax_state`, `origin_tax_amount`, `origin_tax_paid_date`) for cross-state tax credit tracking. These fields are optional/nullable and fully synced between database and schema.
+- **Customer Enhancements**: Added 11 new columns to `customers` table: 7 vehicle fields (`current_vehicle_year`, `current_vehicle_make`, `current_vehicle_model`, `current_vehicle_trim`, `current_vehicle_vin`, `current_vehicle_mileage`, `current_vehicle_color`) and 4 trade-in fields (`trade_allowance`, `trade_acv`, `trade_payoff`, `trade_payoff_to`) for quick access to customer vehicle and trade-in information.
+- **Customer Vehicles Table**: Created `customer_vehicles` table for garage functionality allowing customers to have multiple vehicles tracked with `is_primary` flag for designating primary vehicle.
+- **Customer History Table**: Created `customer_history` table for audit logging with nullable `user_id` (supports system events), action tracking (`create`, `update`, `note_added`, `vehicle_added`, `deal_created`), and indexed timestamp for chronological history viewing.
+
+**Tax Calculation System (AutoTaxEngine)**:
+- **Primary Tax Engine**: AutoTaxEngine (backend `/api/tax/calculate` endpoint) is the single source of truth for all tax calculations
+- **State/ZIP Auto-Population**: TaxBreakdownForm auto-populates state and ZIP code from customer address data with "From customer" badge indicator
+- **Registration State Handling**: Uses `scenario.registrationState` (if set) or falls back to `stateCode` for proper out-of-state deal support and home delivery scenarios
+- **Component Integration**: TaxBreakdownForm and TaxBreakdown components exclusively use AutoTaxEngine types (`TaxCalculationResult` from `use-tax-calculation.ts`)
+- **Schema Field Mapping**: Trade vehicle uses `allowance` field, scenarios store `totalTax` and `totalFees` from AutoTaxEngine results
+- **Reciprocity Support**: AutoTaxEngine handles cross-state tax credits using `originTaxState`, `originTaxAmount`, and `originTaxPaidDate` fields
+- **Deprecated**: Legacy `tax-calculator.ts` and ScenarioCalculator tax logic are not used in DealWorksheetV2
+
+**Known Issues**:
+- `db:push` workflow blocks on interactive prompt for `lender_programs` table conflict. Workaround: Use manual SQL for schema changes or resolve migration baseline.
+
 ### Authentication and Authorization
 
 **Authentication System**: Session-based using Passport.js (LocalStrategy) with Redis-backed sessions for performance.
@@ -48,7 +66,7 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 **Account Security**: Account lockout, rate limiting on auth endpoints, Helmet middleware for security headers.
 **Role-Based Access**: Four roles (salesperson, sales_manager, finance_manager, admin) with `requireAuth()` and `requireRole()` middleware. Granular permissions and permission-based RBAC (`requirePermission()` middleware).
 **User Management**: Admin-only user management UI at `/settings/users` allows creating users with custom roles via POST `/api/admin/users` endpoint. Enforces password complexity (8+ chars, upper/lower/number), validates unique username/email, logs security events, and maintains multi-tenant isolation using dealershipId. Automatically sends welcome email with credentials via Resend when new users are created.
-**Master Admin Account**: `admin@autolytiq.com` / `Admin123!` (change after first login)
+**Master Admin Account**: Username `admin` / Password `Admin123!` / Email `admin@autolytiq.com` (change password after first login)
 **Email Configuration**: System emails sent from `support@autolytiq.com` (configured in `server/email-config.ts`). Welcome emails include username and password for new users.
 
 ### Email Messaging System

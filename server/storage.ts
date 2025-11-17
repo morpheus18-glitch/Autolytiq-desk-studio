@@ -3,7 +3,7 @@ import {
   users, customers, vehicles, tradeVehicles, deals, dealScenarios, auditLog, taxJurisdictions, taxRuleGroups, zipCodeLookup,
   lenders, lenderPrograms, rateRequests, approvedLenders, quickQuotes, quickQuoteContacts, feePackageTemplates,
   dealershipSettings, dealNumberSequences, dealershipStockSettings, permissions, rolePermissions, securityAuditLog,
-  customerNotes,
+  customerNotes, customerVehicles, customerHistory,
   type User, type InsertUser,
   type Customer, type InsertCustomer,
   type Vehicle, type InsertVehicle,
@@ -27,6 +27,8 @@ import {
   type RolePermission, type InsertRolePermission,
   type SecurityAuditLog, type InsertSecurityAuditLog,
   type CustomerNote, type InsertCustomerNote,
+  type CustomerVehicle, type InsertCustomerVehicle,
+  type CustomerHistory, type InsertCustomerHistory,
 } from "@shared/schema";
 import { db, pool } from "./db";
 import { eq, desc, and, or, like, sql, gte, lte, gt, asc } from "drizzle-orm";
@@ -38,15 +40,20 @@ import { createClient } from "redis";
 const REDIS_HOST = process.env.REDIS_HOST || "redis-18908.crce197.us-east-2-1.ec2.cloud.redislabs.com";
 const REDIS_PORT = parseInt(process.env.REDIS_PORT || "18908", 10);
 const REDIS_PASSWORD = process.env.REDIS_PASSWORD;
-const REDIS_TLS = process.env.REDIS_TLS !== "false"; // Default to TRUE for Redis Cloud (requires TLS)
+const REDIS_TLS = process.env.REDIS_TLS === "true"; // Default to FALSE - enable TLS only if explicitly set
 
-// Create Redis client for session storage with TLS (required for Redis Cloud)
+// Create Redis client for session storage
 const redisClient = createClient({
-  socket: {
-    host: REDIS_HOST,
-    port: REDIS_PORT,
-    tls: REDIS_TLS, // Enable TLS for secure connections to Redis Cloud
-  },
+  socket: REDIS_TLS 
+    ? {
+        host: REDIS_HOST,
+        port: REDIS_PORT,
+        tls: true, // Enable TLS for secure connections
+      }
+    : {
+        host: REDIS_HOST,
+        port: REDIS_PORT,
+      },
   password: REDIS_PASSWORD || undefined, // Optional for local dev, required for production
 });
 

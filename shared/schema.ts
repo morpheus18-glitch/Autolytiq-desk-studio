@@ -214,6 +214,21 @@ export const customers = pgTable("customers", {
   // Showroom status tracking
   status: text("status").notNull().default("prospect"), // prospect, qualified, active, sold, lost, inactive
 
+  // Current vehicle (vehicle customer is driving/owns)
+  currentVehicleYear: integer("current_vehicle_year"),
+  currentVehicleMake: text("current_vehicle_make"),
+  currentVehicleModel: text("current_vehicle_model"),
+  currentVehicleTrim: text("current_vehicle_trim"),
+  currentVehicleVin: text("current_vehicle_vin"),
+  currentVehicleMileage: integer("current_vehicle_mileage"),
+  currentVehicleColor: text("current_vehicle_color"),
+
+  // Trade-in information
+  tradeAllowance: decimal("trade_allowance", { precision: 12, scale: 2 }),
+  tradeACV: decimal("trade_acv", { precision: 12, scale: 2 }), // Actual Cash Value
+  tradePayoff: decimal("trade_payoff", { precision: 12, scale: 2 }),
+  tradePayoffTo: text("trade_payoff_to"), // Lender name for payoff
+
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
@@ -268,6 +283,56 @@ export const insertCustomerNoteSchema = createInsertSchema(customerNotes).omit({
 });
 export type InsertCustomerNote = z.infer<typeof insertCustomerNoteSchema>;
 export type CustomerNote = typeof customerNotes.$inferSelect;
+
+// ===== CUSTOMER VEHICLES TABLE (Garage) =====
+export const customerVehicles = pgTable("customer_vehicles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  customerId: uuid("customer_id").notNull().references(() => customers.id, { onDelete: "cascade" }),
+  year: integer("year").notNull(),
+  make: text("make").notNull(),
+  model: text("model").notNull(),
+  trim: text("trim"),
+  vin: text("vin"),
+  mileage: integer("mileage"),
+  color: text("color"),
+  notes: text("notes"),
+  isPrimary: boolean("is_primary").notNull().default(false), // Mark primary vehicle
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  customerIdx: index("customer_vehicles_customer_idx").on(table.customerId),
+}));
+
+export const insertCustomerVehicleSchema = createInsertSchema(customerVehicles).omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true 
+});
+export type InsertCustomerVehicle = z.infer<typeof insertCustomerVehicleSchema>;
+export type CustomerVehicle = typeof customerVehicles.$inferSelect;
+
+// ===== CUSTOMER HISTORY TABLE (Audit Log) =====
+export const customerHistory = pgTable("customer_history", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  customerId: uuid("customer_id").notNull().references(() => customers.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").references(() => users.id), // Who made the change (null for system events)
+  action: text("action").notNull(), // create, update, note_added, vehicle_added, deal_created
+  entityType: text("entity_type").notNull(), // customer, vehicle, deal, note
+  fieldName: text("field_name"),
+  oldValue: text("old_value"),
+  newValue: text("new_value"),
+  description: text("description"), // Human-readable description
+  metadata: jsonb("metadata"), // Additional context as JSON
+  timestamp: timestamp("timestamp", { precision: 6 }).notNull().defaultNow(),
+}, (table) => ({
+  customerIdx: index("customer_history_customer_idx").on(table.customerId),
+  timestampIdx: index("customer_history_timestamp_idx").on(table.timestamp),
+  userIdx: index("customer_history_user_idx").on(table.userId),
+}));
+
+export const insertCustomerHistorySchema = createInsertSchema(customerHistory).omit({ id: true, timestamp: true });
+export type InsertCustomerHistory = z.infer<typeof insertCustomerHistorySchema>;
+export type CustomerHistory = typeof customerHistory.$inferSelect;
 
 // ===== VEHICLES TABLE =====
 export const vehicles = pgTable("vehicles", {
