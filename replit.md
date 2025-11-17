@@ -47,6 +47,15 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 - **Customer Vehicles Table**: Created `customer_vehicles` table for garage functionality allowing customers to have multiple vehicles tracked with `is_primary` flag for designating primary vehicle.
 - **Customer History Table**: Created `customer_history` table for audit logging with nullable `user_id` (supports system events), action tracking (`create`, `update`, `note_added`, `vehicle_added`, `deal_created`), and indexed timestamp for chronological history viewing.
 
+**Tax Calculation System (AutoTaxEngine)**:
+- **Primary Tax Engine**: AutoTaxEngine (backend `/api/tax/calculate` endpoint) is the single source of truth for all tax calculations
+- **State/ZIP Auto-Population**: TaxBreakdownForm auto-populates state and ZIP code from customer address data with "From customer" badge indicator
+- **Registration State Handling**: Uses `scenario.registrationState` (if set) or falls back to `stateCode` for proper out-of-state deal support and home delivery scenarios
+- **Component Integration**: TaxBreakdownForm and TaxBreakdown components exclusively use AutoTaxEngine types (`TaxCalculationResult` from `use-tax-calculation.ts`)
+- **Schema Field Mapping**: Trade vehicle uses `allowance` field, scenarios store `totalTax` and `totalFees` from AutoTaxEngine results
+- **Reciprocity Support**: AutoTaxEngine handles cross-state tax credits using `originTaxState`, `originTaxAmount`, and `originTaxPaidDate` fields
+- **Deprecated**: Legacy `tax-calculator.ts` and ScenarioCalculator tax logic are not used in DealWorksheetV2
+
 **Known Issues**:
 - `db:push` workflow blocks on interactive prompt for `lender_programs` table conflict. Workaround: Use manual SQL for schema changes or resolve migration baseline.
 
