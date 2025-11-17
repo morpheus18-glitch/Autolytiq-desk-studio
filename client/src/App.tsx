@@ -16,7 +16,6 @@ import QuickQuote from "@/pages/quick-quote";
 import Inventory from "@/pages/inventory";
 import InventoryNew from "@/pages/inventory-new";
 import Customers from "@/pages/customers";
-import Showroom from "@/pages/showroom";
 import VINDecoder from "@/pages/vin-decoder";
 import Analytics from "@/pages/analytics";
 import CreditCenter from "@/pages/credit-center";
@@ -87,11 +86,6 @@ function Router() {
       <Route path="/customers">
         <ProtectedRoute>
           <Customers />
-        </ProtectedRoute>
-      </Route>
-      <Route path="/showroom">
-        <ProtectedRoute>
-          <Showroom />
         </ProtectedRoute>
       </Route>
       <Route path="/analytics">
