@@ -28,6 +28,7 @@ import {
   X,
   History,
   MessageSquare,
+  Car,
 } from 'lucide-react';
 
 interface CustomerDetailSheetProps {
@@ -253,6 +254,78 @@ export function CustomerDetailSheet({ customer, open, onOpenChange, onEdit }: Cu
                     </Badge>
                   </div>
                 </div>
+              </div>
+              <Separator />
+            </>
+          )}
+
+          {/* Current Vehicle & Trade */}
+          {(customer.currentVehicleYear || customer.currentVehicleMake || customer.currentVehicleModel || customer.tradeAllowance) && (
+            <>
+              <div className="space-y-3">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Car className="w-4 h-4" />
+                  Vehicle & Trade Information
+                </h3>
+                
+                {/* Current Vehicle */}
+                {(customer.currentVehicleYear || customer.currentVehicleMake || customer.currentVehicleModel) && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Current Vehicle</p>
+                    <div className="text-sm space-y-1">
+                      {customer.currentVehicleYear && customer.currentVehicleMake && customer.currentVehicleModel && (
+                        <p className="font-medium">
+                          {customer.currentVehicleYear} {customer.currentVehicleMake} {customer.currentVehicleModel}
+                          {customer.currentVehicleTrim && ` ${customer.currentVehicleTrim}`}
+                        </p>
+                      )}
+                      {customer.currentVehicleVin && (
+                        <p className="text-muted-foreground font-mono text-xs">VIN: {customer.currentVehicleVin}</p>
+                      )}
+                      <div className="flex gap-3 text-muted-foreground">
+                        {customer.currentVehicleMileage && (
+                          <span>{customer.currentVehicleMileage.toLocaleString()} miles</span>
+                        )}
+                        {customer.currentVehicleColor && (
+                          <span>• {customer.currentVehicleColor}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Trade-In Information */}
+                {(customer.tradeAllowance || customer.tradeACV || customer.tradePayoff) && (
+                  <div className="space-y-2 pt-2">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Trade-In</p>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      {customer.tradeAllowance && (
+                        <div>
+                          <span className="text-muted-foreground">Allowance:</span>
+                          <p className="font-medium">${Number(customer.tradeAllowance).toLocaleString()}</p>
+                        </div>
+                      )}
+                      {customer.tradeACV && (
+                        <div>
+                          <span className="text-muted-foreground">ACV:</span>
+                          <p className="font-medium">${Number(customer.tradeACV).toLocaleString()}</p>
+                        </div>
+                      )}
+                      {customer.tradePayoff && (
+                        <div>
+                          <span className="text-muted-foreground">Payoff:</span>
+                          <p className="font-medium">${Number(customer.tradePayoff).toLocaleString()}</p>
+                        </div>
+                      )}
+                      {customer.tradePayoffTo && (
+                        <div className="col-span-2">
+                          <span className="text-muted-foreground">Lender:</span>
+                          <p className="font-medium">{customer.tradePayoffTo}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
               <Separator />
             </>

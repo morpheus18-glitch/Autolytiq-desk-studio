@@ -81,6 +81,17 @@ export function CustomerFormSheet({
       notes: '',
       photoUrl: '',
       licenseImageUrl: '',
+      currentVehicleYear: undefined,
+      currentVehicleMake: '',
+      currentVehicleModel: '',
+      currentVehicleTrim: '',
+      currentVehicleVin: '',
+      currentVehicleMileage: undefined,
+      currentVehicleColor: '',
+      tradeAllowance: '',
+      tradeACV: '',
+      tradePayoff: '',
+      tradePayoffTo: '',
     },
   });
 
@@ -109,6 +120,17 @@ export function CustomerFormSheet({
         notes: customer.notes || '',
         photoUrl: customer.photoUrl || '',
         licenseImageUrl: customer.licenseImageUrl || '',
+        currentVehicleYear: customer.currentVehicleYear || undefined,
+        currentVehicleMake: customer.currentVehicleMake || '',
+        currentVehicleModel: customer.currentVehicleModel || '',
+        currentVehicleTrim: customer.currentVehicleTrim || '',
+        currentVehicleVin: customer.currentVehicleVin || '',
+        currentVehicleMileage: customer.currentVehicleMileage || undefined,
+        currentVehicleColor: customer.currentVehicleColor || '',
+        tradeAllowance: customer.tradeAllowance?.toString() || '',
+        tradeACV: customer.tradeACV?.toString() || '',
+        tradePayoff: customer.tradePayoff?.toString() || '',
+        tradePayoffTo: customer.tradePayoffTo || '',
       });
     } else {
       form.reset({
@@ -133,6 +155,17 @@ export function CustomerFormSheet({
         notes: '',
         photoUrl: '',
         licenseImageUrl: '',
+        currentVehicleYear: undefined,
+        currentVehicleMake: '',
+        currentVehicleModel: '',
+        currentVehicleTrim: '',
+        currentVehicleVin: '',
+        currentVehicleMileage: undefined,
+        currentVehicleColor: '',
+        tradeAllowance: '',
+        tradeACV: '',
+        tradePayoff: '',
+        tradePayoffTo: '',
       });
     }
   }, [mode, customer, form, open]);
@@ -217,11 +250,12 @@ export function CustomerFormSheet({
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-6">
             <Tabs defaultValue="personal" className="w-full">
-              <TabsList className="grid w-full grid-cols-5 sticky top-0 z-10 bg-background">
+              <TabsList className="grid w-full grid-cols-6 sticky top-0 z-10 bg-background">
                 <TabsTrigger value="personal">Personal</TabsTrigger>
                 <TabsTrigger value="residency">Residency</TabsTrigger>
                 <TabsTrigger value="identification">ID</TabsTrigger>
                 <TabsTrigger value="employment">Employment</TabsTrigger>
+                <TabsTrigger value="vehicle">Vehicle</TabsTrigger>
                 <TabsTrigger value="other">Other</TabsTrigger>
               </TabsList>
 
@@ -567,6 +601,258 @@ export function CustomerFormSheet({
                     </FormItem>
                   )}
                 />
+              </TabsContent>
+
+              {/* Vehicle & Trade Tab */}
+              <TabsContent value="vehicle" className="space-y-6 mt-4">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 pb-2">
+                    <h3 className="text-sm font-semibold">Current Vehicle</h3>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="currentVehicleYear"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Year</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="2020"
+                              {...field}
+                              value={field.value || ''}
+                              data-testid="input-currentVehicleYear"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="currentVehicleMileage"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Mileage</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="50000"
+                              {...field}
+                              value={field.value || ''}
+                              data-testid="input-currentVehicleMileage"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="currentVehicleMake"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Make</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Toyota"
+                            {...field}
+                            value={field.value || ''}
+                            data-testid="input-currentVehicleMake"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="currentVehicleModel"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Model</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Camry"
+                            {...field}
+                            value={field.value || ''}
+                            data-testid="input-currentVehicleModel"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="currentVehicleTrim"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Trim</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="XLE"
+                              {...field}
+                              value={field.value || ''}
+                              data-testid="input-currentVehicleTrim"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="currentVehicleColor"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Color</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Silver"
+                              {...field}
+                              value={field.value || ''}
+                              data-testid="input-currentVehicleColor"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="currentVehicleVin"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>VIN</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="1HGCM82633A123456"
+                            {...field}
+                            value={field.value || ''}
+                            data-testid="input-currentVehicleVin"
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          17-character vehicle identification number
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="space-y-4 pt-4 border-t">
+                  <div className="flex items-center gap-2 pb-2">
+                    <h3 className="text-sm font-semibold">Trade-In Information</h3>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="tradeAllowance"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Trade Allowance</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="15000"
+                              {...field}
+                              value={field.value || ''}
+                              data-testid="input-tradeAllowance"
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Amount offered for trade-in
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="tradeACV"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Trade ACV</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="14000"
+                              {...field}
+                              value={field.value || ''}
+                              data-testid="input-tradeACV"
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Actual cash value
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="tradePayoff"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Payoff Amount</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="12000"
+                              {...field}
+                              value={field.value || ''}
+                              data-testid="input-tradePayoff"
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Remaining loan balance
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="tradePayoffTo"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Payoff To</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Bank of America"
+                              {...field}
+                              value={field.value || ''}
+                              data-testid="input-tradePayoffTo"
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Lender name
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
               </TabsContent>
 
               {/* Other Tab */}

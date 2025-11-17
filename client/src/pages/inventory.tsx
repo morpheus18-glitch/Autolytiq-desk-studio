@@ -77,11 +77,10 @@ interface InventoryResponse {
 }
 
 // Vehicle Card Component
-function VehicleCard({ vehicle, onViewDetails, onStartDeal, onQuickQuote }: {
+function VehicleCard({ vehicle, onViewDetails, onStartDeal }: {
   vehicle: Vehicle;
   onViewDetails: () => void;
   onStartDeal: () => void;
-  onQuickQuote: () => void;
 }) {
   const [showInternalMetrics, setShowInternalMetrics] = useState(false);
   
@@ -119,7 +118,7 @@ function VehicleCard({ vehicle, onViewDetails, onStartDeal, onQuickQuote }: {
     }
   };
 
-  const stockDisplay = vehicle.stockNumber.substring(0, 8).toUpperCase();
+  const stockDisplay = vehicle.stockNumber?.substring(0, 8).toUpperCase() || 'N/A';
   const images = (vehicle.images as string[]) || [];
   const primaryImage = images[0] || '/api/placeholder/400/300';
 
@@ -256,22 +255,10 @@ function VehicleCard({ vehicle, onViewDetails, onStartDeal, onQuickQuote }: {
           <Button
             variant="outline"
             size="sm"
-            className="col-span-2"
             onClick={onViewDetails}
             data-testid={`button-view-details-${vehicle.id}`}
           >
             View Details
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="gap-1"
-            onClick={onQuickQuote}
-            disabled={vehicle.status !== 'available'}
-            data-testid={`button-quick-quote-${vehicle.id}`}
-          >
-            <Zap className="w-4 h-4" />
-            Quick Quote
           </Button>
           <Button
             size="sm"
@@ -281,7 +268,7 @@ function VehicleCard({ vehicle, onViewDetails, onStartDeal, onQuickQuote }: {
             data-testid={`button-start-deal-${vehicle.id}`}
           >
             <Plus className="w-4 h-4" />
-            Full Desk
+            Start Deal
           </Button>
         </div>
       </CardContent>
@@ -741,7 +728,7 @@ function VehicleQuickView({
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
                     <span className="text-muted-foreground">Stock #</span>
-                    <p className="font-medium">{vehicle.stockNumber.substring(0, 8).toUpperCase()}</p>
+                    <p className="font-medium">{vehicle.stockNumber?.substring(0, 8).toUpperCase() || 'N/A'}</p>
                   </div>
                   <div>
                     <span className="text-muted-foreground">VIN</span>
@@ -988,11 +975,6 @@ export default function InventoryPage() {
 
   const handleStartDeal = (vehicle: Vehicle) => {
     createDealMutation.mutate(vehicle.id);
-  };
-  
-  const handleQuickQuote = (vehicle: Vehicle) => {
-    const price = vehicle.internetPrice || vehicle.price;
-    setLocation(`/quick-quote?vehiclePrice=${price}&vehicleId=${vehicle.id}`);
   };
 
   const handleSortChange = (sortBy: string) => {
@@ -1295,7 +1277,6 @@ export default function InventoryPage() {
                       vehicle={vehicle}
                       onViewDetails={() => handleViewDetails(vehicle)}
                       onStartDeal={() => handleStartDeal(vehicle)}
-                      onQuickQuote={() => handleQuickQuote(vehicle)}
                     />
                   ))}
                 </div>
