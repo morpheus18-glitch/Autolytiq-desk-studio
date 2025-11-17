@@ -88,5 +88,29 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+
+    // Start intelligence background tasks
+    import('./services/intelligence-background').then(({ startIntelligenceBackgroundTasks }) => {
+      startIntelligenceBackgroundTasks();
+    }).catch((error) => {
+      console.error('Failed to start intelligence background tasks:', error);
+    });
+  });
+
+  // Graceful shutdown
+  process.on('SIGTERM', async () => {
+    log('SIGTERM received, shutting down gracefully');
+
+    // Stop intelligence background tasks
+    const { stopIntelligenceBackgroundTasks, saveIntelligenceStates } = await import('./services/intelligence-background');
+    stopIntelligenceBackgroundTasks();
+
+    // Save states one last time
+    await saveIntelligenceStates();
+
+    server.close(() => {
+      log('Server closed');
+      process.exit(0);
+    });
   });
 })();

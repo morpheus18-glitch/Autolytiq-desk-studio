@@ -3470,6 +3470,279 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== INTELLIGENCE (WHACO + OSCILLATOR COORDINATION) =====
+
+  // Import intelligence service
+  const { intelligenceService } = await import('./services/intelligence-service');
+
+  // POST /api/intelligence/analyze-customer - Analyze customer with WHACO + assign salesperson
+  app.post('/api/intelligence/analyze-customer', requireAuth, async (req, res) => {
+    try {
+      const analyzeCustomerSchema = z.object({
+        customerId: z.string(),
+        creditScore: z.number().int().min(300).max(850).optional(),
+        annualIncome: z.number().positive().optional(),
+        vehiclePrice: z.number().positive(),
+        downPayment: z.number().nonnegative().optional(),
+        tradeValue: z.number().nonnegative().optional(),
+        visitCount: z.number().int().nonnegative().optional(),
+        timeOnLot: z.number().nonnegative().optional(), // minutes
+        engagement: z.number().min(0).max(1).optional(),
+        coBuyer: z.boolean().optional(),
+        termMonths: z.number().int().positive().optional(),
+        paymentSensitivity: z.number().min(0).max(1).optional(),
+      });
+
+      const customerData = analyzeCustomerSchema.parse(req.body);
+
+      const analysis = intelligenceService.analyzeCustomer(customerData);
+
+      res.json({
+        ...analysis,
+        timestamp: new Date().toISOString(),
+      });
+
+    } catch (error: any) {
+      console.error('Intelligence Analysis Error:', error);
+
+      if (error.name === 'ZodError') {
+        return res.status(400).json({
+          error: 'Invalid customer data',
+          details: error.errors,
+        });
+      }
+
+      res.status(500).json({
+        error: 'Failed to analyze customer',
+        message: error.message,
+      });
+    }
+  });
+
+  // GET /api/intelligence/team-status - Get current team coordination status
+  app.get('/api/intelligence/team-status', requireAuth, async (req, res) => {
+    try {
+      const status = intelligenceService.getTeamStatus();
+
+      res.json({
+        ...status,
+        timestamp: new Date().toISOString(),
+      });
+
+    } catch (error: any) {
+      console.error('Team Status Error:', error);
+      res.status(500).json({
+        error: 'Failed to get team status',
+        message: error.message,
+      });
+    }
+  });
+
+  // GET /api/intelligence/customer-segments - Get customer clustering summary
+  app.get('/api/intelligence/customer-segments', requireAuth, async (req, res) => {
+    try {
+      const segments = intelligenceService.getCustomerSegments();
+
+      res.json({
+        segments,
+        timestamp: new Date().toISOString(),
+      });
+
+    } catch (error: any) {
+      console.error('Customer Segments Error:', error);
+      res.status(500).json({
+        error: 'Failed to get customer segments',
+        message: error.message,
+      });
+    }
+  });
+
+  // GET /api/intelligence/anomalies - Get recent anomalous customers
+  app.get('/api/intelligence/anomalies', requireAuth, async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 20;
+      const anomalies = intelligenceService.getRecentAnomalies(limit);
+
+      res.json({
+        anomalies,
+        total: anomalies.length,
+        timestamp: new Date().toISOString(),
+      });
+
+    } catch (error: any) {
+      console.error('Anomalies Error:', error);
+      res.status(500).json({
+        error: 'Failed to get anomalies',
+        message: error.message,
+      });
+    }
+  });
+
+  // POST /api/intelligence/deal-closed - Record deal closed event
+  app.post('/api/intelligence/deal-closed', requireAuth, async (req, res) => {
+    try {
+      const dealClosedSchema = z.object({
+        salespersonId: z.string(),
+        dealId: z.string(),
+      });
+
+      const { salespersonId, dealId } = dealClosedSchema.parse(req.body);
+
+      intelligenceService.recordDealClosed(salespersonId);
+
+      // Save states in background (don't wait)
+      intelligenceService.saveStates().catch(err =>
+        console.error('Error saving intelligence states:', err)
+      );
+
+      res.json({
+        status: 'recorded',
+        salespersonId,
+        dealId,
+        timestamp: new Date().toISOString(),
+      });
+
+    } catch (error: any) {
+      console.error('Deal Closed Recording Error:', error);
+
+      if (error.name === 'ZodError') {
+        return res.status(400).json({
+          error: 'Invalid request data',
+          details: error.errors,
+        });
+      }
+
+      res.status(500).json({
+        error: 'Failed to record deal closed',
+        message: error.message,
+      });
+    }
+  });
+
+  // POST /api/intelligence/update-team - Manual trigger to update oscillator network
+  app.post('/api/intelligence/update-team', requireAuth, async (req, res) => {
+    try {
+      intelligenceService.updateTeamState();
+
+      res.json({
+        status: 'updated',
+        timestamp: new Date().toISOString(),
+      });
+
+    } catch (error: any) {
+      console.error('Team Update Error:', error);
+      res.status(500).json({
+        error: 'Failed to update team state',
+        message: error.message,
+      });
+    }
+  });
+
+  // GET /api/intelligence/insights - Get comprehensive intelligence insights
+  app.get('/api/intelligence/insights', requireAuth, async (req, res) => {
+    try {
+      const insights = intelligenceService.getTeamInsights();
+
+      res.json({
+        ...insights,
+        timestamp: new Date().toISOString(),
+      });
+
+    } catch (error: any) {
+      console.error('Intelligence Insights Error:', error);
+      res.status(500).json({
+        error: 'Failed to get intelligence insights',
+        message: error.message,
+      });
+    }
+  });
+
+  // POST /api/intelligence/add-salesperson - Add salesperson to oscillator network
+  app.post('/api/intelligence/add-salesperson', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+      const addSalespersonSchema = z.object({
+        id: z.string(),
+        name: z.string(),
+        skillLevel: z.number().min(0).max(1).optional(),
+        naturalFrequency: z.number().positive().optional(),
+      });
+
+      const { id, name, skillLevel, naturalFrequency } = addSalespersonSchema.parse(req.body);
+
+      intelligenceService.addSalesperson(id, name, skillLevel, naturalFrequency);
+
+      // Save state
+      await intelligenceService.saveStates();
+
+      res.json({
+        status: 'added',
+        id,
+        name,
+        timestamp: new Date().toISOString(),
+      });
+
+    } catch (error: any) {
+      console.error('Add Salesperson Error:', error);
+
+      if (error.name === 'ZodError') {
+        return res.status(400).json({
+          error: 'Invalid request data',
+          details: error.errors,
+        });
+      }
+
+      res.status(500).json({
+        error: 'Failed to add salesperson',
+        message: error.message,
+      });
+    }
+  });
+
+  // DELETE /api/intelligence/salesperson/:id - Remove salesperson from network
+  app.delete('/api/intelligence/salesperson/:id', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      intelligenceService.removeSalesperson(id);
+
+      // Save state
+      await intelligenceService.saveStates();
+
+      res.json({
+        status: 'removed',
+        id,
+        timestamp: new Date().toISOString(),
+      });
+
+    } catch (error: any) {
+      console.error('Remove Salesperson Error:', error);
+      res.status(500).json({
+        error: 'Failed to remove salesperson',
+        message: error.message,
+      });
+    }
+  });
+
+  // POST /api/intelligence/reset - Reset intelligence engines (admin only)
+  app.post('/api/intelligence/reset', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+      intelligenceService.reset();
+
+      res.json({
+        status: 'reset',
+        message: 'Intelligence engines have been reset',
+        timestamp: new Date().toISOString(),
+      });
+
+    } catch (error: any) {
+      console.error('Intelligence Reset Error:', error);
+      res.status(500).json({
+        error: 'Failed to reset intelligence engines',
+        message: error.message,
+      });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
