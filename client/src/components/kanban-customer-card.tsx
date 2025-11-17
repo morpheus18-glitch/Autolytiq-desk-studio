@@ -4,6 +4,7 @@ import type { Customer } from '@shared/schema';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Mail, Phone, User } from 'lucide-react';
+import { CustomerActionMenu } from './customer-action-menu';
 
 interface KanbanCustomerCardProps {
   customer: Customer;
@@ -32,15 +33,17 @@ export function KanbanCustomerCard({ customer, isDragging = false }: KanbanCusto
     <Card
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
-      className={`cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow ${
+      className={`cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow relative ${
         isDragging ? 'shadow-xl rotate-3' : ''
       }`}
     >
       <CardContent className="p-3 space-y-2">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+          <div
+            {...attributes}
+            {...listeners}
+            className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0"
+          >
             {customer.photoUrl ? (
               <img
                 src={customer.photoUrl}
@@ -51,7 +54,7 @@ export function KanbanCustomerCard({ customer, isDragging = false }: KanbanCusto
               <span className="text-xs font-bold text-primary">{initials}</span>
             )}
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0" {...attributes} {...listeners}>
             <p className="font-medium text-sm truncate">
               {customer.firstName} {customer.lastName}
             </p>
@@ -61,27 +64,32 @@ export function KanbanCustomerCard({ customer, isDragging = false }: KanbanCusto
               </p>
             )}
           </div>
+          <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+            <CustomerActionMenu customer={customer} variant="compact" />
+          </div>
         </div>
 
-        {customer.email && (
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Mail className="w-3 h-3 flex-shrink-0" />
-            <span className="truncate">{customer.email}</span>
-          </div>
-        )}
+        <div {...attributes} {...listeners}>
+          {customer.email && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Mail className="w-3 h-3 flex-shrink-0" />
+              <span className="truncate">{customer.email}</span>
+            </div>
+          )}
 
-        {customer.phone && (
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Phone className="w-3 h-3 flex-shrink-0" />
-            <span>{customer.phone}</span>
-          </div>
-        )}
+          {customer.phone && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Phone className="w-3 h-3 flex-shrink-0" />
+              <span>{customer.phone}</span>
+            </div>
+          )}
 
-        {customer.creditScore && (
-          <Badge variant="outline" className="text-xs">
-            Credit: {customer.creditScore}
-          </Badge>
-        )}
+          {customer.creditScore && (
+            <Badge variant="outline" className="text-xs">
+              Credit: {customer.creditScore}
+            </Badge>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

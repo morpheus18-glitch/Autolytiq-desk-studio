@@ -63,7 +63,6 @@ const mainNavItems: NavItem[] = [
 const toolsNavItems: NavItem[] = [
   { label: 'Add Vehicle', path: '/inventory/new', icon: Plus, testId: 'nav-inventory-new' },
   { label: 'Analytics', path: '/analytics', icon: LineChart, testId: 'nav-analytics' },
-  { label: 'Credit Center', path: '/credit-center', icon: CreditCard, testId: 'nav-credit' },
   { label: 'VIN Decoder', path: '/vin-decoder', icon: Scan, testId: 'nav-vin-decoder' },
 ];
 
