@@ -57,9 +57,9 @@ export function TaxBreakdownForm({ customer }: { customer?: Customer | null }) {
     // Get vehicle price
     const vehiclePrice = Number(scenario.vehiclePrice) || 0;
 
-    // Get trade-in values
-    const tradeValue = tradeVehicle?.estimatedValue
-      ? Number(tradeVehicle.estimatedValue)
+    // Get trade-in values (use allowance from schema)
+    const tradeValue = tradeVehicle?.allowance
+      ? Number(tradeVehicle.allowance)
       : 0;
     const tradePayoff = Number(scenario.tradePayoff) || 0;
 
@@ -72,7 +72,7 @@ export function TaxBreakdownForm({ customer }: { customer?: Customer | null }) {
       stateCode,
       zipCode: zipCode || undefined,
       dealType: isLease ? 'LEASE' : 'RETAIL',
-      registrationState: stateCode,
+      registrationState: scenario.registrationState || stateCode,
 
       // Trade-in
       tradeValue: tradeValue > 0 ? tradeValue : undefined,
@@ -115,7 +115,7 @@ export function TaxBreakdownForm({ customer }: { customer?: Customer | null }) {
     scenario.monthlyPayment,
     scenario.term,
     scenario.aftermarketProducts,
-    tradeVehicle?.estimatedValue,
+    tradeVehicle?.allowance,
     stateCode,
     zipCode,
     isLease,
@@ -143,8 +143,8 @@ export function TaxBreakdownForm({ customer }: { customer?: Customer | null }) {
   useEffect(() => {
     if (taxResult && !isCalculating) {
       updateMultipleFields({
-        salesTax: new Decimal(taxResult.totalTax).toFixed(2),
-        // Note: We don't update totalTax/totalFees as they might not exist in schema
+        totalTax: new Decimal(taxResult.totalTax).toFixed(2),
+        totalFees: new Decimal(taxResult.totalFees).toFixed(2),
       });
     }
   }, [taxResult, isCalculating, updateMultipleFields]);
