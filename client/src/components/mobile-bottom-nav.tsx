@@ -22,6 +22,7 @@ import {
   Building2,
   UserCog,
   Mail,
+  Store,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { queryClient, apiRequest } from '@/lib/queryClient';
@@ -41,6 +42,7 @@ const primaryNavItems: NavItem[] = [
   { label: 'Deals', path: '/deals', icon: FileText, testId: 'nav-deals' },
   { label: 'Inventory', path: '/inventory', icon: Car, testId: 'nav-inventory' },
   { label: 'Customers', path: '/customers', icon: Users, testId: 'nav-customers' },
+  { label: 'Showroom', path: '/showroom', icon: Store, testId: 'nav-showroom' },
 ];
 
 const allNavItems: NavItem[] = [
@@ -49,14 +51,14 @@ const allNavItems: NavItem[] = [
   { label: 'Inventory', path: '/inventory', icon: Car, testId: 'menu-inventory' },
   { label: 'Add Vehicle', path: '/inventory/new', icon: Plus, testId: 'menu-inventory-new' },
   { label: 'Customers', path: '/customers', icon: Users, testId: 'menu-customers' },
+  { label: 'Showroom', path: '/showroom', icon: Store, testId: 'menu-showroom' },
   { label: 'Email', path: '/email', icon: Mail, testId: 'menu-email' },
   { label: 'Analytics', path: '/analytics', icon: LineChart, testId: 'menu-analytics' },
-  { label: 'Credit Center', path: '/credit-center', icon: CreditCard, testId: 'menu-credit' },
   { label: 'VIN Decoder', path: '/vin-decoder', icon: Scan, testId: 'menu-vin-decoder' },
   { label: 'Account Settings', path: '/settings/account', icon: Settings, testId: 'menu-account-settings' },
   { label: 'Dealership Settings', path: '/settings/dealership', icon: Building2, testId: 'menu-dealership-settings' },
   { label: 'User Management', path: '/settings/users', icon: UserCog, testId: 'nav-user-management' },
-  ];
+];
 
 export function MobileBottomNav() {
   const [location, setLocation] = useLocation();
@@ -132,7 +134,7 @@ export function MobileBottomNav() {
         className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-t shadow-lg md:hidden"
         data-testid="mobile-bottom-nav"
       >
-        <div className="grid grid-cols-5 gap-1 px-2 py-3 min-h-[72px]">
+        <div className="grid grid-cols-6 gap-1 px-2 py-3 min-h-[72px]">
           {/* Primary Navigation Buttons */}
           {primaryNavItems.map((item) => {
             const Icon = item.icon;

@@ -31,7 +31,7 @@ export function KanbanCustomerCard({ customer }: KanbanCustomerCardProps) {
 
   const initials = `${customer.firstName.charAt(0)}${customer.lastName.charAt(0)}`.toUpperCase();
 
-  return (
+  return }
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
       <Card 
         className="mb-3 cursor-move hover-elevate"

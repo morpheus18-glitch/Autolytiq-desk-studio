@@ -109,6 +109,11 @@ function Router() {
           <CreditCenter />
         </ProtectedRoute>
       </Route>
+      <Route path="/customers/:id/credit">
+        <ProtectedRoute>
+          <CreditCenter />
+        </ProtectedRoute>
+      </Route>
       <Route path="/email/settings">
         <ProtectedRoute>
           <EmailSettings />

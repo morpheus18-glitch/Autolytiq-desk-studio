@@ -13,6 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CustomerHistoryTimeline } from './customer-history-timeline';
 import { CustomerNotes } from './customer-notes';
+import { CustomerActionMenu } from './customer-action-menu';
 import {
   User,
   Mail,
@@ -358,6 +359,10 @@ export function CustomerDetailSheet({ customer, open, onOpenChange, onEdit }: Cu
               </Badge>
             </div>
           </div>
+
+          {/* Quick Actions */}
+          <Separator className="my-4" />
+          <CustomerActionMenu customer={customer} variant="default" />
 
           {/* Action Buttons */}
           <div className="flex gap-2 pt-4">
