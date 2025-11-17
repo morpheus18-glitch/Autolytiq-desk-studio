@@ -778,7 +778,8 @@ export class DatabaseStorage implements IStorage {
     const result = await db.query.deals.findFirst({
       where: eq(deals.id, id),
       with: {
-        customer: true,
+        // TEMP FIX: Removed customer relation - Drizzle looking for non-existent customer.status column
+        // customer: true,
         vehicle: true,
         tradeVehicle: true,
         salesperson: true,
@@ -825,7 +826,8 @@ export class DatabaseStorage implements IStorage {
     const results = await db.query.deals.findMany({
       where: whereClause,
       with: {
-        customer: true,
+        // TEMP FIX: Removed customer relation - Drizzle looking for non-existent customer.status column
+        // customer: true,
         vehicle: true,
         tradeVehicle: true,
         salesperson: true,

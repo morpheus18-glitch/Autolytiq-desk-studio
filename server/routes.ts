@@ -1162,6 +1162,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await storage.getDeals({ page, pageSize, search, status, dealershipId });
       res.json(result);
     } catch (error) {
+      console.error('[ERROR] Failed to get deals:', error);
       res.status(500).json({ error: 'Failed to get deals' });
     }
   });
@@ -1186,6 +1187,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(deal);
     } catch (error) {
+      console.error(`[ERROR] Failed to get deal ${req.params.id}:`, error);
       res.status(500).json({ error: 'Failed to get deal' });
     }
   });
