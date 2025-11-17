@@ -56,8 +56,15 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 - **Reciprocity Support**: AutoTaxEngine handles cross-state tax credits using `originTaxState`, `originTaxAmount`, and `originTaxPaidDate` fields
 - **Deprecated**: Legacy `tax-calculator.ts` and ScenarioCalculator tax logic are not used in DealWorksheetV2
 
+**Recent UI/UX Enhancements (November 17, 2025)**:
+- **Inventory Card Simplification**: Removed "Quick Quote" and "Full Desk" buttons from inventory vehicle cards. Replaced with single "Start Deal" button that creates a new draft deal and navigates to Deal Worksheet V2 for streamlined workflow.
+- **Customer Form - Vehicle & Trade Tab**: Added dedicated tab in customer form sheet for capturing current vehicle information (year, make, model, trim, VIN, mileage, color) and trade-in details (allowance, ACV, payoff, lender). All fields integrate with existing `customers` table schema columns added November 16.
+- **Customer Detail Sheet Enhancement**: Added "Vehicle & Trade Information" section in Overview tab displaying customer's current vehicle and trade-in data with conditional rendering. Uses Car icon from lucide-react.
+- **Component Files**: Modified `client/src/pages/inventory.tsx`, `client/src/components/customer-form-sheet.tsx`, `client/src/components/customer-detail-sheet.tsx`.
+
 **Known Issues**:
 - `db:push` workflow blocks on interactive prompt for `lender_programs` table conflict. Workaround: Use manual SQL for schema changes or resolve migration baseline.
+- **Replit Environment Memory Constraints**: Platform limited to ~2GB RAM. TypeScript LSP consumes ~814MB, causing Out of Memory (OOM) crashes during heavy operations. Workaround: Kill TypeScript LSP before running dev server (`pkill -f typescript-language-server`) to free ~800MB RAM. Type Check and Build Production workflows may fail with exit code 137 (OOM) but dev server runs successfully. Playwright E2E testing not viable in this tier - defer to higher-memory environment or local machine.
 
 ### Authentication and Authorization
 
