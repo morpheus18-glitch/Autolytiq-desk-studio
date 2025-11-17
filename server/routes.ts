@@ -288,7 +288,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(400).json({ error: error.message || 'Failed to update customer' });
     }
   });
-  
+
+  // Get customer history (deals, emails, quotes)
+  app.get('/api/customers/:id/history', requireAuth, async (req, res) => {
+    try {
+      // SECURITY: Verify customer belongs to authenticated user's dealership
+      const dealershipId = (req.user as any)?.dealershipId;
+      if (!dealershipId) {
+        return res.status(403).json({ error: 'User must belong to a dealership' });
+      }
+
+      // Verify customer exists and belongs to same dealership
+      const customer = await storage.getCustomer(req.params.id);
+      if (!customer) {
+        return res.status(404).json({ error: 'Customer not found' });
+      }
+
+      if (customer.dealershipId !== dealershipId) {
+        return res.status(404).json({ error: 'Customer not found' });
+      }
+
+      const history = await storage.getCustomerHistory(req.params.id);
+      res.json(history);
+    } catch (error: any) {
+      console.error('[GET /api/customers/:id/history] Error:', error.message, error.stack);
+      res.status(500).json({ error: 'Failed to get customer history' });
+    }
+  });
+
+  // Get customer notes
+  app.get('/api/customers/:id/notes', requireAuth, async (req, res) => {
+    try {
+      // SECURITY: Verify customer belongs to authenticated user's dealership
+      const dealershipId = (req.user as any)?.dealershipId;
+      if (!dealershipId) {
+        return res.status(403).json({ error: 'User must belong to a dealership' });
+      }
+
+      const customer = await storage.getCustomer(req.params.id);
+      if (!customer) {
+        return res.status(404).json({ error: 'Customer not found' });
+      }
+
+      if (customer.dealershipId !== dealershipId) {
+        return res.status(404).json({ error: 'Customer not found' });
+      }
+
+      const notes = await storage.getCustomerNotes(req.params.id);
+      res.json(notes);
+    } catch (error: any) {
+      console.error('[GET /api/customers/:id/notes] Error:', error.message, error.stack);
+      res.status(500).json({ error: 'Failed to get customer notes' });
+    }
+  });
+
+  // Create customer note
+  app.post('/api/customers/:id/notes', requireAuth, async (req, res) => {
+    try {
+      // SECURITY: Verify customer belongs to authenticated user's dealership
+      const dealershipId = (req.user as any)?.dealershipId;
+      const userId = (req.user as any)?.id;
+
+      if (!dealershipId || !userId) {
+        return res.status(403).json({ error: 'User must belong to a dealership' });
+      }
+
+      const customer = await storage.getCustomer(req.params.id);
+      if (!customer) {
+        return res.status(404).json({ error: 'Customer not found' });
+      }
+
+      if (customer.dealershipId !== dealershipId) {
+        return res.status(404).json({ error: 'Customer not found' });
+      }
+
+      const { content, noteType = 'general', isImportant = false, dealId } = req.body;
+
+      if (!content || !content.trim()) {
+        return res.status(400).json({ error: 'Note content is required' });
+      }
+
+      const note = await storage.createCustomerNote({
+        customerId: req.params.id,
+        userId,
+        dealershipId,
+        content: content.trim(),
+        noteType,
+        isImportant,
+        dealId,
+      });
+
+      res.status(201).json(note);
+    } catch (error: any) {
+      console.error('[POST /api/customers/:id/notes] Error:', error.message, error.stack);
+      res.status(400).json({ error: error.message || 'Failed to create customer note' });
+    }
+  });
+
   // ===== VEHICLES =====
   app.get('/api/vehicles/search', requireAuth, async (req, res) => {
     try {
@@ -1405,7 +1501,168 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: 'Failed to get audit logs' });
     }
   });
-  
+
+  // ===== PDF GENERATION =====
+  app.post('/api/deals/:id/pdf', requireAuth, async (req, res) => {
+    try {
+      // SECURITY: Verify deal belongs to authenticated user's dealership
+      const dealershipId = (req.user as any)?.dealershipId;
+      if (!dealershipId) {
+        return res.status(403).json({ error: 'User must belong to a dealership' });
+      }
+
+      const deal = await storage.getDeal(req.params.id);
+      if (!deal) {
+        return res.status(404).json({ error: 'Deal not found' });
+      }
+
+      // Verify deal belongs to same dealership as authenticated user
+      if (deal.dealershipId !== dealershipId) {
+        return res.status(404).json({ error: 'Deal not found' });
+      }
+
+      const { scenarioId } = req.body;
+
+      // Import Puppeteer dynamically to avoid loading it on every request
+      const puppeteer = await import('puppeteer');
+
+      // Generate PDF using Puppeteer
+      const browser = await puppeteer.default.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      });
+
+      const page = await browser.newPage();
+
+      // Build HTML content for the deal summary
+      const scenario = deal.scenarios?.find(s => s.id === scenarioId) || deal.scenarios?.[0];
+      const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Deal Summary - ${deal.dealNumber || 'Draft'}</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      margin: 40px;
+      color: #1f2937;
+    }
+    h1 { font-size: 24px; margin-bottom: 20px; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; }
+    h2 { font-size: 18px; margin-top: 30px; margin-bottom: 15px; color: #3b82f6; }
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+    th { background-color: #f3f4f6; font-weight: 600; }
+    .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .summary-box { background: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb; }
+    .summary-label { font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
+    .summary-value { font-size: 20px; font-weight: 600; margin-top: 5px; }
+    .badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+    .badge-draft { background: #fef3c7; color: #92400e; }
+    .badge-approved { background: #d1fae5; color: #065f46; }
+    .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; }
+  </style>
+</head>
+<body>
+  <h1>Deal Summary: ${deal.dealNumber || 'Draft Deal'}</h1>
+
+  <div style="margin-bottom: 30px;">
+    <span class="badge badge-${deal.dealState?.toLowerCase()}">${deal.dealState?.replace('_', ' ')}</span>
+  </div>
+
+  <h2>Customer Information</h2>
+  ${deal.customer ? `
+    <table>
+      <tr><th>Name</th><td>${deal.customer.firstName} ${deal.customer.lastName}</td></tr>
+      ${deal.customer.email ? `<tr><th>Email</th><td>${deal.customer.email}</td></tr>` : ''}
+      ${deal.customer.phone ? `<tr><th>Phone</th><td>${deal.customer.phone}</td></tr>` : ''}
+      ${deal.customer.address ? `<tr><th>Address</th><td>${deal.customer.address}${deal.customer.city ? `, ${deal.customer.city}` : ''}${deal.customer.state ? `, ${deal.customer.state}` : ''}${deal.customer.zipCode ? ` ${deal.customer.zipCode}` : ''}</td></tr>` : ''}
+    </table>
+  ` : '<p>No customer attached</p>'}
+
+  <h2>Vehicle Information</h2>
+  ${deal.vehicle ? `
+    <table>
+      <tr><th>Vehicle</th><td>${deal.vehicle.year} ${deal.vehicle.make} ${deal.vehicle.model}${deal.vehicle.trim ? ` ${deal.vehicle.trim}` : ''}</td></tr>
+      <tr><th>VIN</th><td>${deal.vehicle.vin}</td></tr>
+      <tr><th>Stock Number</th><td>${deal.vehicle.stockNumber || 'N/A'}</td></tr>
+      <tr><th>Mileage</th><td>${deal.vehicle.mileage.toLocaleString()} miles</td></tr>
+      <tr><th>Condition</th><td>${deal.vehicle.condition}</td></tr>
+    </table>
+  ` : '<p>No vehicle selected</p>'}
+
+  ${scenario ? `
+    <h2>Payment Summary</h2>
+    <div class="summary-grid">
+      <div class="summary-box">
+        <div class="summary-label">Vehicle Price</div>
+        <div class="summary-value">$${Number(scenario.vehiclePrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+      </div>
+      <div class="summary-box">
+        <div class="summary-label">Down Payment</div>
+        <div class="summary-value">$${Number(scenario.downPayment).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+      </div>
+      <div class="summary-box">
+        <div class="summary-label">Total Tax</div>
+        <div class="summary-value">$${Number(scenario.totalTax).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+      </div>
+      <div class="summary-box">
+        <div class="summary-label">Total Fees</div>
+        <div class="summary-value">$${Number(scenario.totalFees).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+      </div>
+    </div>
+
+    ${scenario.scenarioType !== 'CASH_DEAL' ? `
+      <h2>Financing Details</h2>
+      <table>
+        <tr><th>Type</th><td>${scenario.scenarioType.replace('_', ' ')}</td></tr>
+        <tr><th>Amount Financed</th><td>$${Number(scenario.amountFinanced).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>
+        ${scenario.apr ? `<tr><th>APR</th><td>${Number(scenario.apr)}%</td></tr>` : ''}
+        ${scenario.term ? `<tr><th>Term</th><td>${scenario.term} months</td></tr>` : ''}
+        <tr><th>Monthly Payment</th><td>$${Number(scenario.monthlyPayment).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>
+      </table>
+    ` : ''}
+
+    <div class="summary-box" style="margin-top: 30px; background: #eff6ff; border-color: #3b82f6;">
+      <div class="summary-label">Total Amount / Cash Due</div>
+      <div class="summary-value" style="color: #1e40af;">$${Number(scenario.totalCost || scenario.cashDueAtSigning).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+    </div>
+  ` : ''}
+
+  <div class="footer">
+    <p>Generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>
+    <p>This document is for informational purposes only and does not constitute a binding contract.</p>
+  </div>
+</body>
+</html>
+      `;
+
+      await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+
+      // Generate PDF
+      const pdf = await page.pdf({
+        format: 'A4',
+        printBackground: true,
+        margin: {
+          top: '20px',
+          right: '20px',
+          bottom: '20px',
+          left: '20px',
+        },
+      });
+
+      await browser.close();
+
+      // Send PDF as response
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="deal-${deal.dealNumber || deal.id}.pdf"`);
+      res.send(Buffer.from(pdf));
+    } catch (error: any) {
+      console.error('[POST /api/deals/:id/pdf] Error:', error.message, error.stack);
+      res.status(500).json({ error: 'Failed to generate PDF' });
+    }
+  });
+
   // ===== TAX CALCULATIONS =====
   app.get('/api/tax/states', async (req, res) => {
     try {

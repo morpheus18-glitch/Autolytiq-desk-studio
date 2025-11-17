@@ -1,8 +1,9 @@
 // Referenced from javascript_database blueprint integration
-import { 
+import {
   users, customers, vehicles, tradeVehicles, deals, dealScenarios, auditLog, taxJurisdictions, taxRuleGroups, zipCodeLookup,
   lenders, lenderPrograms, rateRequests, approvedLenders, quickQuotes, quickQuoteContacts, feePackageTemplates,
   dealershipSettings, dealNumberSequences, dealershipStockSettings, permissions, rolePermissions, securityAuditLog,
+  customerNotes,
   type User, type InsertUser,
   type Customer, type InsertCustomer,
   type Vehicle, type InsertVehicle,
@@ -25,6 +26,7 @@ import {
   type Permission, type InsertPermission,
   type RolePermission, type InsertRolePermission,
   type SecurityAuditLog, type InsertSecurityAuditLog,
+  type CustomerNote, type InsertCustomerNote,
 } from "@shared/schema";
 import { db, pool } from "./db";
 import { eq, desc, and, or, like, sql, gte, lte, gt, asc } from "drizzle-orm";
@@ -86,7 +88,10 @@ export interface IStorage {
   searchCustomers(query: string, dealershipId: string): Promise<Customer[]>;
   createCustomer(customer: InsertCustomer, dealershipId: string): Promise<Customer>;
   updateCustomer(id: string, customer: Partial<InsertCustomer>): Promise<Customer>;
-  
+  getCustomerHistory(customerId: string): Promise<any[]>;
+  getCustomerNotes(customerId: string): Promise<CustomerNote[]>;
+  createCustomerNote(note: Omit<InsertCustomerNote, 'id' | 'createdAt' | 'updatedAt'> & { customerId: string; userId: string; dealershipId: string }): Promise<CustomerNote>;
+
   // Vehicles
   getVehicle(id: string): Promise<Vehicle | undefined>;
   getVehicleByStock(stockNumber: string, dealershipId: string): Promise<Vehicle | undefined>;
@@ -338,7 +343,114 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return customer;
   }
-  
+
+  async getCustomerHistory(customerId: string): Promise<any[]> {
+    // Fetch all historical interactions for a customer
+    const history: any[] = [];
+
+    try {
+      // 1. Get deals for this customer
+      const customerDeals = await db.select({
+        id: deals.id,
+        dealNumber: deals.dealNumber,
+        dealState: deals.dealState,
+        createdAt: deals.createdAt,
+        updatedAt: deals.updatedAt,
+        vehicleId: deals.vehicleId,
+      })
+        .from(deals)
+        .where(eq(deals.customerId, customerId))
+        .orderBy(desc(deals.createdAt));
+
+      for (const deal of customerDeals) {
+        // Get vehicle details if available
+        let vehicleInfo = null;
+        if (deal.vehicleId) {
+          const [vehicle] = await db.select({
+            year: vehicles.year,
+            make: vehicles.make,
+            model: vehicles.model,
+            stockNumber: vehicles.stockNumber,
+          })
+            .from(vehicles)
+            .where(eq(vehicles.id, deal.vehicleId));
+          vehicleInfo = vehicle;
+        }
+
+        history.push({
+          type: 'deal',
+          timestamp: deal.createdAt,
+          data: {
+            ...deal,
+            vehicle: vehicleInfo,
+          },
+        });
+      }
+
+      // 2. Get customer record creation
+      const [customer] = await db.select({
+        createdAt: customers.createdAt,
+        firstName: customers.firstName,
+        lastName: customers.lastName,
+      })
+        .from(customers)
+        .where(eq(customers.id, customerId));
+
+      if (customer) {
+        history.push({
+          type: 'customer_created',
+          timestamp: customer.createdAt,
+          data: {
+            name: `${customer.firstName} ${customer.lastName}`,
+          },
+        });
+      }
+
+      // Sort all history by timestamp descending (most recent first)
+      history.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+      return history;
+    } catch (error) {
+      console.error('[getCustomerHistory] Error:', error);
+      throw error;
+    }
+  }
+
+  async getCustomerNotes(customerId: string): Promise<CustomerNote[]> {
+    try {
+      const notes = await db.select()
+        .from(customerNotes)
+        .where(eq(customerNotes.customerId, customerId))
+        .orderBy(desc(customerNotes.createdAt));
+
+      return notes;
+    } catch (error) {
+      console.error('[getCustomerNotes] Error:', error);
+      throw error;
+    }
+  }
+
+  async createCustomerNote(note: Omit<InsertCustomerNote, 'id' | 'createdAt' | 'updatedAt'> & { customerId: string; userId: string; dealershipId: string }): Promise<CustomerNote> {
+    try {
+      const [newNote] = await db.insert(customerNotes)
+        .values({
+          customerId: note.customerId,
+          userId: note.userId,
+          dealershipId: note.dealershipId,
+          content: note.content,
+          noteType: note.noteType || 'general',
+          isImportant: note.isImportant || false,
+          dealId: note.dealId || null,
+        })
+        .returning();
+
+      return newNote;
+    } catch (error) {
+      console.error('[createCustomerNote] Error:', error);
+      throw error;
+    }
+  }
+
   // Vehicles
   async getVehicle(id: string): Promise<Vehicle | undefined> {
     const [vehicle] = await db.select().from(vehicles).where(eq(vehicles.id, id));

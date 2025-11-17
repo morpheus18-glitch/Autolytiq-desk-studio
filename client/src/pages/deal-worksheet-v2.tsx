@@ -48,6 +48,7 @@ export default function DealWorksheetV2() {
   const [activeScenarioId, setActiveScenarioId] = useState<string>('');
   const [vehicleSwitcherOpen, setVehicleSwitcherOpen] = useState(false);
   const [customerSelectorOpen, setCustomerSelectorOpen] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
   const setActiveDealId = useStore(state => state.setActiveDealId);
   
   const { data: deal, isLoading } = useQuery<DealWithRelations>({
@@ -67,6 +68,44 @@ export default function DealWorksheetV2() {
       setActiveScenarioId(deal.scenarios[0].id);
     }
   }, [deal, activeScenarioId]);
+
+  const handlePrint = async () => {
+    if (!dealId) return;
+
+    try {
+      setIsPrinting(true);
+      const response = await fetch(`/api/deals/${dealId}/pdf`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          scenarioId: activeScenarioId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF');
+      }
+
+      // Get the PDF blob
+      const blob = await response.blob();
+
+      // Create a URL for the blob
+      const url = window.URL.createObjectURL(blob);
+
+      // Open in new window/tab
+      window.open(url, '_blank');
+
+      // Clean up the URL after a delay
+      setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      setIsPrinting(false);
+    }
+  };
   
   if (isLoading || !deal) {
     return (
@@ -182,9 +221,15 @@ export default function DealWorksheetV2() {
           <History className="w-4 h-4 mr-2" />
           History
         </Button>
-        <Button variant="outline" size="sm" data-testid="button-print">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handlePrint}
+          disabled={isPrinting}
+          data-testid="button-print"
+        >
           <Printer className="w-4 h-4 mr-2" />
-          Print
+          {isPrinting ? 'Generating...' : 'Print'}
         </Button>
         <Button variant="default" size="sm" data-testid="button-export">
           <FileText className="w-4 h-4 mr-2" />

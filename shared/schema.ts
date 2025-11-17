@@ -206,28 +206,68 @@ export const customers = pgTable("customers", {
   preferredContactMethod: text("preferred_contact_method"), // email, phone, sms
   marketingOptIn: boolean("marketing_opt_in").notNull().default(false),
   notes: text("notes"),
-  
+
   // Photos
   photoUrl: text("photo_url"), // Customer photo (cropped from license or uploaded)
   licenseImageUrl: text("license_image_url"), // Full driver's license scan (optional)
-  
+
+  // Showroom status tracking
+  status: text("status").notNull().default("prospect"), // prospect, qualified, active, sold, lost, inactive
+
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
   nameIdx: index("customers_name_idx").on(table.firstName, table.lastName),
   customerNumberIdx: index("customers_number_idx").on(table.customerNumber),
   emailIdx: index("customers_email_idx").on(table.email),
+  statusIdx: index("customers_status_idx").on(table.status),
 }));
 
-export const insertCustomerSchema = createInsertSchema(customers).omit({ 
-  id: true, 
+export const insertCustomerSchema = createInsertSchema(customers).omit({
+  id: true,
   dealershipId: true, // Set by system
   customerNumber: true, // Auto-generated
-  createdAt: true, 
-  updatedAt: true 
+  createdAt: true,
+  updatedAt: true
 });
 export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
 export type Customer = typeof customers.$inferSelect;
+
+// ===== CUSTOMER NOTES TABLE =====
+export const customerNotes = pgTable("customer_notes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  customerId: uuid("customer_id").notNull().references(() => customers.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "set null" }), // User who created the note
+  dealershipId: uuid("dealership_id").notNull().references(() => dealershipSettings.id, { onDelete: "cascade" }), // Multi-tenant isolation
+
+  // Note content
+  content: text("content").notNull(),
+  noteType: text("note_type").notNull().default("general"), // general, call, meeting, email, follow_up, etc.
+
+  // Related entities (optional)
+  dealId: uuid("deal_id").references(() => deals.id, { onDelete: "set null" }), // Link to related deal if applicable
+
+  // Metadata
+  isImportant: boolean("is_important").notNull().default(false),
+
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  customerIdx: index("customer_notes_customer_idx").on(table.customerId),
+  userIdx: index("customer_notes_user_idx").on(table.userId),
+  dealershipIdx: index("customer_notes_dealership_idx").on(table.dealershipId),
+  createdAtIdx: index("customer_notes_created_at_idx").on(table.createdAt),
+}));
+
+export const insertCustomerNoteSchema = createInsertSchema(customerNotes).omit({
+  id: true,
+  dealershipId: true, // Set by system
+  userId: true, // Set by system
+  createdAt: true,
+  updatedAt: true
+});
+export type InsertCustomerNote = z.infer<typeof insertCustomerNoteSchema>;
+export type CustomerNote = typeof customerNotes.$inferSelect;
 
 // ===== VEHICLES TABLE =====
 export const vehicles = pgTable("vehicles", {

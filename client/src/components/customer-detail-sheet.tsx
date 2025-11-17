@@ -10,6 +10,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CustomerHistoryTimeline } from './customer-history-timeline';
+import { CustomerNotes } from './customer-notes';
 import {
   User,
   Mail,
@@ -23,6 +26,8 @@ import {
   Camera,
   Edit,
   X,
+  History,
+  MessageSquare,
 } from 'lucide-react';
 
 interface CustomerDetailSheetProps {
@@ -61,7 +66,23 @@ export function CustomerDetailSheet({ customer, open, onOpenChange, onEdit }: Cu
           </SheetDescription>
         </SheetHeader>
 
-        <div className="space-y-6 py-6">
+        <Tabs defaultValue="overview" className="py-6">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="overview">
+              <User className="w-4 h-4 mr-2" />
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="history">
+              <History className="w-4 h-4 mr-2" />
+              History
+            </TabsTrigger>
+            <TabsTrigger value="notes">
+              <MessageSquare className="w-4 h-4 mr-2" />
+              Notes
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-6 mt-6">
           {/* Customer Header */}
           <div className="flex items-center gap-4">
             <div className="w-20 h-20 rounded-full bg-primary/20 backdrop-blur-sm flex items-center justify-center border-2 border-primary/30 overflow-hidden">
@@ -267,8 +288,8 @@ export function CustomerDetailSheet({ customer, open, onOpenChange, onEdit }: Cu
 
           {/* Action Buttons */}
           <div className="flex gap-2 pt-4">
-            <Button 
-              className="flex-1 gap-2" 
+            <Button
+              className="flex-1 gap-2"
               onClick={() => onEdit?.(customer)}
               data-testid="button-edit-customer"
             >
@@ -276,7 +297,26 @@ export function CustomerDetailSheet({ customer, open, onOpenChange, onEdit }: Cu
               Edit Customer
             </Button>
           </div>
-        </div>
+          </TabsContent>
+
+          <TabsContent value="history" className="space-y-4 mt-6">
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Customer activity timeline showing deals, interactions, and history.
+              </p>
+              <CustomerHistoryTimeline customerId={customer.id} />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="notes" className="space-y-4 mt-6">
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Add and view notes about this customer.
+              </p>
+              <CustomerNotes customerId={customer.id} />
+            </div>
+          </TabsContent>
+        </Tabs>
       </SheetContent>
     </Sheet>
   );

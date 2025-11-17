@@ -36,6 +36,7 @@ import {
   ChevronDown,
   Clock,
   Mail,
+  Store,
 } from 'lucide-react';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -55,6 +56,7 @@ const mainNavItems: NavItem[] = [
   { label: 'Deals', path: '/deals', icon: FileText, testId: 'nav-deals' },
   { label: 'Inventory', path: '/inventory', icon: Car, testId: 'nav-inventory' },
   { label: 'Customers', path: '/customers', icon: Users, testId: 'nav-customers' },
+  { label: 'Showroom', path: '/showroom', icon: Store, testId: 'nav-showroom' },
   { label: 'Email', path: '/email', icon: Mail, testId: 'nav-email' },
 ];
 
