@@ -70,7 +70,6 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
   - **BUSINESS IMPACT**: Critical - incorrect calculations lead to incorrect customer quotes and legal liability
 
 **Known Issues**:
-- **Deals API - Customer Relation Broken**: Drizzle ORM looking for non-existent `customer.status` column when loading deals with customer relations. Temporary fix: commented out `customer: true` in `getDeal()` and `getDeals()` functions in `server/storage.ts`. Deals now load but customer info missing from deal views. Root cause unknown - no explicit `customer.status` references found in codebase.
 - `db:push` workflow blocks on interactive prompt for `lender_programs` table conflict. Workaround: Use manual SQL for schema changes or resolve migration baseline.
 - **Replit Environment Memory Constraints**: Platform limited to ~2GB RAM. TypeScript LSP consumes ~814MB, causing Out of Memory (OOM) crashes during heavy operations. Workaround: Kill TypeScript LSP before running dev server (`pkill -f typescript-language-server`) to free ~800MB RAM. Type Check and Build Production workflows may fail with exit code 137 (OOM) but dev server runs successfully. Playwright E2E testing not viable in this tier - defer to higher-memory environment or local machine.
 
