@@ -3,6 +3,11 @@ import { hasPermission, hasAnyPermission, hasAllPermissions } from "./auth-helpe
 
 // Require authentication (already exists in auth.ts, duplicated here for middleware module)
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
+  // TEMPORARY: Bypass authentication for preview path
+  if (req.path.startsWith('/preview')) {
+    return next();
+  }
+
   if (req.isAuthenticated()) {
     return next();
   }

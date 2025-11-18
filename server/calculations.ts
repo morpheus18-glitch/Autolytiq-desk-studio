@@ -266,3 +266,445 @@ export function calculateSalesTax(input: TaxCalculationInput): number {
 
   return totalTax.toDecimalPlaces(2).toNumber();
 }
+
+// ============================================================================
+// DEALER-GRADE LEASE CALCULATION ENGINE
+// ============================================================================
+
+// Input interface for comprehensive lease calculation
+export interface DealerGradeLeaseInput {
+  // Vehicle
+  msrp: number;
+  sellingPrice: number;
+  residualPercent: number; // e.g., 0.60 for 60%
+  term: number; // months
+  moneyFactor: number; // e.g., 0.00250
+
+  // Capitalized fees (rolled into lease)
+  acquisitionFee: number;
+  acquisitionFeeCapitalized: boolean;
+  docFee: number;
+  docFeeCapitalized: boolean;
+  dealerFees: Array<{
+    name: string;
+    amount: number;
+    capitalized: boolean;
+    taxable: boolean;
+  }>;
+  governmentFees: Array<{
+    name: string;
+    amount: number;
+    capitalized: boolean;
+  }>;
+  accessories: Array<{
+    name: string;
+    amount: number;
+    capitalized: boolean;
+    taxable: boolean;
+  }>;
+  aftermarketProducts: Array<{
+    category: string;
+    name: string;
+    price: number;
+    capitalized: boolean;
+    taxable: boolean;
+  }>;
+
+  // Cap cost reductions
+  cashDown: number;
+  tradeAllowance: number;
+  tradePayoff: number;
+  manufacturerRebate: number;
+  otherIncentives: number;
+
+  // Tax configuration
+  taxMethod: 'payment' | 'total_cap' | 'selling_price' | 'cap_reduction';
+  taxRate: number; // Combined state + local rate (e.g., 0.095 for 9.5%)
+  stateCode: string;
+
+  // Optional
+  securityDeposit?: number;
+  firstPaymentDueAtSigning?: boolean;
+}
+
+// Output interface for comprehensive lease calculation
+export interface DealerGradeLeaseOutput {
+  // Intermediate calculations
+  residualValue: number;
+  grossCapCost: number;
+  totalCapReductions: number;
+  adjustedCapCost: number;
+  depreciation: number;
+  monthlyDepreciationCharge: number;
+  monthlyRentCharge: number;
+
+  // Payment results
+  baseMonthlyPayment: number; // Pre-tax
+  monthlyTax: number;
+  totalMonthlyPayment: number;
+  aprEquivalent: number; // Money factor × 2400
+
+  // Drive-off breakdown
+  driveOffTotal: number;
+  driveOffBreakdown: {
+    firstPayment: number;
+    cashDown: number;
+    acquisitionFee: number;
+    docFee: number;
+    upfrontFees: number;
+    upfrontTax: number;
+    securityDeposit: number;
+    otherCharges: number;
+  };
+
+  // Total lease cost
+  totalOfPayments: number;
+  totalLeaseCost: number;
+
+  // For backward compatibility
+  monthlyPayment: number;
+  amountFinanced: number;
+  totalCost: number;
+}
+
+// Money Factor <-> APR conversion utilities
+export function moneyFactorToAPR(moneyFactor: number): number {
+  return new Decimal(moneyFactor).times(2400).toDecimalPlaces(2).toNumber();
+}
+
+export function aprToMoneyFactor(apr: number): number {
+  return new Decimal(apr).div(2400).toDecimalPlaces(6).toNumber();
+}
+
+/**
+ * DEALER-GRADE LEASE CALCULATION ENGINE
+ *
+ * This function implements a complete, accurate automotive lease calculation
+ * following industry-standard formulas used by OEMs and dealerships.
+ *
+ * Tax Methods Supported:
+ * - "payment": Tax applied to each monthly payment (CA, FL, NY, etc.)
+ * - "total_cap": Tax applied upfront on adjusted cap cost (TX, etc.)
+ * - "selling_price": Tax applied upfront on selling price only (IL, etc.)
+ * - "cap_reduction": Tax on cap reduction + tax on payment (special cases)
+ */
+export function calculateDealerGradeLease(input: DealerGradeLeaseInput): DealerGradeLeaseOutput {
+  const {
+    msrp,
+    sellingPrice,
+    residualPercent,
+    term,
+    moneyFactor,
+    acquisitionFee,
+    acquisitionFeeCapitalized,
+    docFee,
+    docFeeCapitalized,
+    dealerFees,
+    governmentFees,
+    accessories,
+    aftermarketProducts,
+    cashDown,
+    tradeAllowance,
+    tradePayoff,
+    manufacturerRebate,
+    otherIncentives,
+    taxMethod,
+    taxRate,
+    securityDeposit = 0,
+    firstPaymentDueAtSigning = true,
+  } = input;
+
+  // ============================================================================
+  // STEP 1: Calculate Residual Value (ALWAYS based on MSRP)
+  // ============================================================================
+  const residualValue = new Decimal(msrp).times(residualPercent);
+
+  // ============================================================================
+  // STEP 2: Calculate Gross Capitalized Cost
+  // ============================================================================
+  let grossCapCost = new Decimal(sellingPrice);
+
+  // Add capitalized fees
+  if (acquisitionFeeCapitalized) {
+    grossCapCost = grossCapCost.plus(acquisitionFee);
+  }
+  if (docFeeCapitalized) {
+    grossCapCost = grossCapCost.plus(docFee);
+  }
+
+  // Add capitalized dealer fees
+  const capitalizedDealerFees = dealerFees
+    .filter(f => f.capitalized)
+    .reduce((sum, f) => sum.plus(f.amount), new Decimal(0));
+  grossCapCost = grossCapCost.plus(capitalizedDealerFees);
+
+  // Add capitalized government fees
+  const capitalizedGovFees = governmentFees
+    .filter(f => f.capitalized)
+    .reduce((sum, f) => sum.plus(f.amount), new Decimal(0));
+  grossCapCost = grossCapCost.plus(capitalizedGovFees);
+
+  // Add capitalized accessories
+  const capitalizedAccessories = accessories
+    .filter(a => a.capitalized)
+    .reduce((sum, a) => sum.plus(a.amount), new Decimal(0));
+  grossCapCost = grossCapCost.plus(capitalizedAccessories);
+
+  // Add capitalized aftermarket products
+  const capitalizedProducts = aftermarketProducts
+    .filter(p => p.capitalized)
+    .reduce((sum, p) => sum.plus(p.price), new Decimal(0));
+  grossCapCost = grossCapCost.plus(capitalizedProducts);
+
+  // ============================================================================
+  // STEP 3: Calculate Cap Cost Reductions
+  // ============================================================================
+  // Handle trade equity (positive reduces cap, negative increases cap)
+  const tradeEquity = new Decimal(tradeAllowance).minus(tradePayoff);
+  const positiveTradeEquity = tradeEquity.gt(0) ? tradeEquity : new Decimal(0);
+  const negativeEquity = tradeEquity.lt(0) ? tradeEquity.abs() : new Decimal(0);
+
+  // Total reductions (only positive amounts reduce cap cost)
+  const totalCapReductions = new Decimal(cashDown)
+    .plus(positiveTradeEquity)
+    .plus(manufacturerRebate)
+    .plus(otherIncentives);
+
+  // ============================================================================
+  // STEP 4: Calculate Adjusted Capitalized Cost
+  // ============================================================================
+  // Negative equity gets ADDED to gross cap (it's a cost, not a reduction)
+  let adjustedCapCost = grossCapCost
+    .plus(negativeEquity)
+    .minus(totalCapReductions);
+
+  // Ensure non-negative adjusted cap cost
+  if (adjustedCapCost.lt(0)) {
+    adjustedCapCost = new Decimal(0);
+  }
+
+  // ============================================================================
+  // STEP 5: Calculate Depreciation
+  // ============================================================================
+  const depreciation = adjustedCapCost.minus(residualValue);
+  const monthlyDepreciationCharge = depreciation.div(term);
+
+  // ============================================================================
+  // STEP 6: Calculate Rent Charge (Finance Charge)
+  // ============================================================================
+  const monthlyRentCharge = adjustedCapCost.plus(residualValue).times(moneyFactor);
+
+  // ============================================================================
+  // STEP 7: Calculate Base Monthly Payment (Pre-Tax)
+  // ============================================================================
+  const baseMonthlyPayment = monthlyDepreciationCharge.plus(monthlyRentCharge);
+
+  // ============================================================================
+  // STEP 8: Apply Tax Based on Method
+  // ============================================================================
+  let monthlyTax = new Decimal(0);
+  let upfrontTax = new Decimal(0);
+
+  switch (taxMethod) {
+    case 'payment':
+      // Most common: Tax applied to each monthly payment
+      monthlyTax = baseMonthlyPayment.times(taxRate);
+      break;
+
+    case 'total_cap':
+      // TX style: Full tax on adjusted cap cost upfront
+      upfrontTax = adjustedCapCost.times(taxRate);
+      break;
+
+    case 'selling_price':
+      // IL style: Tax on selling price only (not full cap)
+      upfrontTax = new Decimal(sellingPrice).times(taxRate);
+      break;
+
+    case 'cap_reduction':
+      // Rare: Tax on cap reduction PLUS tax on payment
+      const capReductionTaxable = cashDown.plus(positiveTradeEquity);
+      upfrontTax = new Decimal(capReductionTaxable).times(taxRate);
+      monthlyTax = baseMonthlyPayment.times(taxRate);
+      break;
+
+    default:
+      // Default to payment method
+      monthlyTax = baseMonthlyPayment.times(taxRate);
+  }
+
+  // ============================================================================
+  // STEP 9: Calculate Total Monthly Payment
+  // ============================================================================
+  const totalMonthlyPayment = baseMonthlyPayment.plus(monthlyTax);
+
+  // ============================================================================
+  // STEP 10: Calculate Drive-Off / Due at Signing
+  // ============================================================================
+  // Upfront fees (not capitalized)
+  let upfrontFees = new Decimal(0);
+
+  // Doc fee if not capitalized
+  const upfrontDocFee = docFeeCapitalized ? 0 : docFee;
+  upfrontFees = upfrontFees.plus(upfrontDocFee);
+
+  // Acquisition fee if not capitalized
+  const upfrontAcqFee = acquisitionFeeCapitalized ? 0 : acquisitionFee;
+  upfrontFees = upfrontFees.plus(upfrontAcqFee);
+
+  // Government fees not capitalized
+  const upfrontGovFees = governmentFees
+    .filter(f => !f.capitalized)
+    .reduce((sum, f) => sum.plus(f.amount), new Decimal(0));
+  upfrontFees = upfrontFees.plus(upfrontGovFees);
+
+  // Dealer fees not capitalized
+  const upfrontDealerFees = dealerFees
+    .filter(f => !f.capitalized)
+    .reduce((sum, f) => sum.plus(f.amount), new Decimal(0));
+  upfrontFees = upfrontFees.plus(upfrontDealerFees);
+
+  // First payment
+  const firstPayment = firstPaymentDueAtSigning ? totalMonthlyPayment : new Decimal(0);
+
+  // Total drive-off
+  const driveOffTotal = firstPayment
+    .plus(cashDown)
+    .plus(upfrontFees)
+    .plus(upfrontTax)
+    .plus(securityDeposit);
+
+  // ============================================================================
+  // STEP 11: Calculate Total Lease Cost
+  // ============================================================================
+  const totalOfPayments = totalMonthlyPayment.times(term);
+  const totalLeaseCost = totalOfPayments.plus(driveOffTotal);
+
+  // ============================================================================
+  // STEP 12: Calculate APR Equivalent
+  // ============================================================================
+  const aprEquivalent = moneyFactorToAPR(moneyFactor);
+
+  // ============================================================================
+  // RETURN RESULTS
+  // ============================================================================
+  return {
+    // Intermediate calculations
+    residualValue: residualValue.toDecimalPlaces(2).toNumber(),
+    grossCapCost: grossCapCost.toDecimalPlaces(2).toNumber(),
+    totalCapReductions: totalCapReductions.toDecimalPlaces(2).toNumber(),
+    adjustedCapCost: adjustedCapCost.toDecimalPlaces(2).toNumber(),
+    depreciation: depreciation.toDecimalPlaces(2).toNumber(),
+    monthlyDepreciationCharge: monthlyDepreciationCharge.toDecimalPlaces(2).toNumber(),
+    monthlyRentCharge: monthlyRentCharge.toDecimalPlaces(2).toNumber(),
+
+    // Payment results
+    baseMonthlyPayment: baseMonthlyPayment.toDecimalPlaces(2).toNumber(),
+    monthlyTax: monthlyTax.toDecimalPlaces(2).toNumber(),
+    totalMonthlyPayment: totalMonthlyPayment.toDecimalPlaces(2).toNumber(),
+    aprEquivalent,
+
+    // Drive-off breakdown
+    driveOffTotal: driveOffTotal.toDecimalPlaces(2).toNumber(),
+    driveOffBreakdown: {
+      firstPayment: firstPayment.toDecimalPlaces(2).toNumber(),
+      cashDown: cashDown,
+      acquisitionFee: upfrontAcqFee,
+      docFee: upfrontDocFee,
+      upfrontFees: upfrontFees.minus(upfrontAcqFee).minus(upfrontDocFee).toDecimalPlaces(2).toNumber(),
+      upfrontTax: upfrontTax.toDecimalPlaces(2).toNumber(),
+      securityDeposit: securityDeposit,
+      otherCharges: 0,
+    },
+
+    // Total lease cost
+    totalOfPayments: totalOfPayments.toDecimalPlaces(2).toNumber(),
+    totalLeaseCost: totalLeaseCost.toDecimalPlaces(2).toNumber(),
+
+    // Backward compatibility
+    monthlyPayment: totalMonthlyPayment.toDecimalPlaces(2).toNumber(),
+    amountFinanced: adjustedCapCost.toDecimalPlaces(2).toNumber(),
+    totalCost: totalLeaseCost.toDecimalPlaces(2).toNumber(),
+  };
+}
+
+// ============================================================================
+// STATE TAX CONFIGURATION FOR LEASES
+// ============================================================================
+
+export interface StateLeaseTaxConfig {
+  stateCode: string;
+  taxMethod: 'payment' | 'total_cap' | 'selling_price' | 'cap_reduction';
+  stateTaxRate: number;
+  rebateReducesTaxable: boolean;
+  docFeeTaxable: boolean;
+  acquisitionFeeTaxable: boolean;
+  capReductionTaxable: boolean;
+  tradeCreditReducesTaxable: boolean;
+  negativeEquityTaxable: boolean;
+}
+
+// Default lease tax configurations for common states
+export const STATE_LEASE_TAX_CONFIG: Record<string, Partial<StateLeaseTaxConfig>> = {
+  CA: {
+    taxMethod: 'payment',
+    stateTaxRate: 0.0725, // Base rate, varies by locality
+  },
+  TX: {
+    taxMethod: 'total_cap',
+    stateTaxRate: 0.0625,
+    capReductionTaxable: true, // TX taxes everything
+  },
+  FL: {
+    taxMethod: 'payment',
+    stateTaxRate: 0.06,
+  },
+  NY: {
+    taxMethod: 'payment',
+    stateTaxRate: 0.04, // Base rate + local
+  },
+  IL: {
+    taxMethod: 'selling_price',
+    stateTaxRate: 0.0625,
+  },
+  PA: {
+    taxMethod: 'payment',
+    stateTaxRate: 0.06,
+  },
+  OH: {
+    taxMethod: 'payment',
+    stateTaxRate: 0.0575,
+  },
+  NJ: {
+    taxMethod: 'payment',
+    stateTaxRate: 0.06625,
+  },
+  IN: {
+    taxMethod: 'payment',
+    stateTaxRate: 0.07,
+  },
+  MI: {
+    taxMethod: 'payment',
+    stateTaxRate: 0.06,
+  },
+};
+
+/**
+ * Get lease tax configuration for a state
+ * Falls back to default "payment" method if state not found
+ */
+export function getLeaseTaxConfig(stateCode: string): StateLeaseTaxConfig {
+  const stateConfig = STATE_LEASE_TAX_CONFIG[stateCode.toUpperCase()];
+
+  return {
+    stateCode: stateCode.toUpperCase(),
+    taxMethod: stateConfig?.taxMethod || 'payment',
+    stateTaxRate: stateConfig?.stateTaxRate || 0,
+    rebateReducesTaxable: stateConfig?.rebateReducesTaxable ?? true,
+    docFeeTaxable: stateConfig?.docFeeTaxable ?? true,
+    acquisitionFeeTaxable: stateConfig?.acquisitionFeeTaxable ?? true,
+    capReductionTaxable: stateConfig?.capReductionTaxable ?? false,
+    tradeCreditReducesTaxable: stateConfig?.tradeCreditReducesTaxable ?? true,
+    negativeEquityTaxable: stateConfig?.negativeEquityTaxable ?? true,
+  };
+}

@@ -768,18 +768,41 @@ export const dealScenarios = pgTable("deal_scenarios", {
   moneyFactor: decimal("money_factor", { precision: 8, scale: 6 }).default("0"),
   residualValue: decimal("residual_value", { precision: 12, scale: 2 }).default("0"),
   residualPercent: decimal("residual_percent", { precision: 5, scale: 2 }).default("0"),
-  
+
+  // NEW LEASE-SPECIFIC FIELDS (Dealer-Grade Enhancement)
+  msrp: decimal("msrp", { precision: 12, scale: 2 }).default("0"), // Manufacturer's Suggested Retail Price
+  sellingPrice: decimal("selling_price", { precision: 12, scale: 2 }).default("0"), // Negotiated price (may differ from vehiclePrice)
+
+  // Acquisition fee handling
+  acquisitionFee: decimal("acquisition_fee", { precision: 12, scale: 2 }).default("0"),
+  acquisitionFeeCapitalized: boolean("acquisition_fee_capitalized").default(true), // true = rolled into lease, false = upfront
+
+  // Doc fee handling
+  docFeeCapitalized: boolean("doc_fee_capitalized").default(true),
+
+  // Government fees (DMV, title, registration) - stored as JSONB
+  governmentFees: jsonb("government_fees").notNull().default([]),
+  // [{name: "DMV Fee", amount: 450, capitalized: false}, ...]
+
+  // Cap cost reductions (separate from downPayment for clarity)
+  cashDown: decimal("cash_down", { precision: 12, scale: 2 }).default("0"), // Customer cash at signing
+  manufacturerRebate: decimal("manufacturer_rebate", { precision: 12, scale: 2 }).default("0"), // Factory incentives (non-taxable)
+  otherIncentives: decimal("other_incentives", { precision: 12, scale: 2 }).default("0"), // Dealer cash, loyalty, etc.
+
   // Trade-in
   tradeAllowance: decimal("trade_allowance", { precision: 12, scale: 2 }).notNull().default("0"),
   tradePayoff: decimal("trade_payoff", { precision: 12, scale: 2 }).notNull().default("0"),
-  
-  // Fees and accessories (stored as JSONB array)
-  dealerFees: jsonb("dealer_fees").notNull().default([]), // [{name: string, amount: number, taxable: boolean}]
-  accessories: jsonb("accessories").notNull().default([]), // [{name: string, amount: number, taxable: boolean}]
-  aftermarketProducts: jsonb("aftermarket_products").notNull().default([]), // F&I products and physical add-ons
+
+  // Fees and accessories (stored as JSONB array) - ENHANCED with 'capitalized' flag
+  dealerFees: jsonb("dealer_fees").notNull().default([]), // [{name: string, amount: number, capitalized: boolean, taxable: boolean}]
+  accessories: jsonb("accessories").notNull().default([]), // [{name: string, amount: number, capitalized: boolean, taxable: boolean}]
+  aftermarketProducts: jsonb("aftermarket_products").notNull().default([]), // [{category: string, name: string, price: number, capitalized: boolean, taxable: boolean}]
   
   // Tax jurisdiction
   taxJurisdictionId: uuid("tax_jurisdiction_id").references(() => taxJurisdictions.id),
+
+  // Tax configuration (NEW - supports multiple tax methods)
+  taxMethod: text("tax_method").default("payment"), // payment | total_cap | selling_price | cap_reduction
 
   // Reciprocity / Prior Tax Paid (for cross-state deals)
   originTaxState: text("origin_tax_state"), // State where tax was previously paid (e.g., "CA", "TX")
@@ -793,6 +816,28 @@ export const dealScenarios = pgTable("deal_scenarios", {
   monthlyPayment: decimal("monthly_payment", { precision: 12, scale: 2 }).notNull().default("0"),
   totalCost: decimal("total_cost", { precision: 12, scale: 2 }).notNull().default("0"),
   cashDueAtSigning: decimal("cash_due_at_signing", { precision: 12, scale: 2 }).notNull().default("0"),
+
+  // NEW CALCULATED LEASE VALUES (stored for performance and audit trail)
+  grossCapCost: decimal("gross_cap_cost", { precision: 12, scale: 2 }).default("0"),
+  totalCapReductions: decimal("total_cap_reductions", { precision: 12, scale: 2 }).default("0"),
+  adjustedCapCost: decimal("adjusted_cap_cost", { precision: 12, scale: 2 }).default("0"),
+  depreciation: decimal("depreciation", { precision: 12, scale: 2 }).default("0"),
+  monthlyDepreciationCharge: decimal("monthly_depreciation_charge", { precision: 12, scale: 2 }).default("0"),
+  monthlyRentCharge: decimal("monthly_rent_charge", { precision: 12, scale: 2 }).default("0"),
+  baseMonthlyPayment: decimal("base_monthly_payment", { precision: 12, scale: 2 }).default("0"), // Pre-tax
+  monthlyTax: decimal("monthly_tax", { precision: 12, scale: 2 }).default("0"),
+  upfrontTax: decimal("upfront_tax", { precision: 12, scale: 2 }).default("0"),
+
+  // Security deposit (rare but some states/lenders require)
+  securityDeposit: decimal("security_deposit", { precision: 12, scale: 2 }).default("0"),
+
+  // Drive-off breakdown (stored as JSONB for itemization)
+  driveOffBreakdown: jsonb("drive_off_breakdown").notNull().default({}),
+  // {firstPayment: number, cashDown: number, acquisitionFee: number, upfrontFees: number, upfrontTax: number, securityDeposit: number, otherCharges: number}
+
+  // Total lease cost (for comparison)
+  totalOfPayments: decimal("total_of_payments", { precision: 12, scale: 2 }).default("0"),
+  totalLeaseCost: decimal("total_lease_cost", { precision: 12, scale: 2 }).default("0"),
   
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

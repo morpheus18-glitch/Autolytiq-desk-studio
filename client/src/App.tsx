@@ -10,7 +10,7 @@ import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { ProtectedRoute } from "@/components/protected-route";
 import Dashboard from "@/pages/dashboard";
 import DealsList from "@/pages/deals-list";
-import DealWorksheetV2 from "@/pages/deal-worksheet-v2";
+import DealWorksheetV3 from "@/pages/deal-worksheet-v3";
 import DealWorksheetTabsPage from "@/pages/deal-worksheet-tabs";
 import QuickQuote from "@/pages/quick-quote";
 import Inventory from "@/pages/inventory";
@@ -72,7 +72,7 @@ function Router() {
       </Route>
       <Route path="/deals/new">
         <ProtectedRoute>
-          <DealWorksheetV2 />
+          <DealWorksheetV3 />
         </ProtectedRoute>
       </Route>
       <Route path="/inventory">
@@ -137,7 +137,7 @@ function Router() {
       </Route>
       <Route path="/deals/:id">
         <ProtectedRoute>
-          <DealWorksheetV2 />
+          <DealWorksheetV3 />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />
