@@ -62,7 +62,15 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 - **Customer Detail Sheet Enhancement**: Added "Vehicle & Trade Information" section in Overview tab displaying customer's current vehicle and trade-in data with conditional rendering. Uses Car icon from lucide-react.
 - **Component Files**: Modified `client/src/pages/inventory.tsx`, `client/src/components/customer-form-sheet.tsx`, `client/src/components/customer-detail-sheet.tsx`.
 
+**Critical Issues** (November 18, 2025):
+- 🚨 **LEASE & TAX CALCULATIONS ARE INCORRECT**: Lease payment calculations and tax calculations are fundamentally wrong and "literal miles from being correct". See `CALCULATION_ISSUES_CRITICAL.md` for complete details. Affected files:
+  - Lease: `client/src/lib/calculations.ts`, `server/calculations.ts`
+  - Tax: `client/src/lib/tax-calculator.ts`, `server/shared/autoTaxEngine.ts`, `server/shared/tax-data.ts`
+  - **ACTION REQUIRED**: Complete audit and rewrite of calculation logic using industry-standard formulas and state-specific tax rules
+  - **BUSINESS IMPACT**: Critical - incorrect calculations lead to incorrect customer quotes and legal liability
+
 **Known Issues**:
+- **Deals API - Customer Relation Broken**: Drizzle ORM looking for non-existent `customer.status` column when loading deals with customer relations. Temporary fix: commented out `customer: true` in `getDeal()` and `getDeals()` functions in `server/storage.ts`. Deals now load but customer info missing from deal views. Root cause unknown - no explicit `customer.status` references found in codebase.
 - `db:push` workflow blocks on interactive prompt for `lender_programs` table conflict. Workaround: Use manual SQL for schema changes or resolve migration baseline.
 - **Replit Environment Memory Constraints**: Platform limited to ~2GB RAM. TypeScript LSP consumes ~814MB, causing Out of Memory (OOM) crashes during heavy operations. Workaround: Kill TypeScript LSP before running dev server (`pkill -f typescript-language-server`) to free ~800MB RAM. Type Check and Build Production workflows may fail with exit code 137 (OOM) but dev server runs successfully. Playwright E2E testing not viable in this tier - defer to higher-memory environment or local machine.
 
