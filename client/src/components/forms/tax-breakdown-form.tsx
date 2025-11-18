@@ -50,7 +50,7 @@ export function TaxBreakdownForm({ customer }: { customer?: Customer | null }) {
     useLeaseCalculationMethod(stateCode);
 
   // Determine if this is a lease deal
-  const isLease = scenario.scenarioType === 'LEASE';
+  const isLease = scenario.scenarioType === 'LEASE_DEAL';
 
   // Build tax calculation params from scenario
   const taxParams: TaxCalculationParams = useMemo(() => {

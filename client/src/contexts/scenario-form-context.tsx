@@ -231,6 +231,29 @@ export function ScenarioFormProvider({
       aftermarketTotal,
     };
   }, [scenario]);
+
+  // Auto-update scenario with calculated values
+  useEffect(() => {
+    const currentPayment = new Decimal(scenario.monthlyPayment || 0);
+    const calculatedPayment = calculations.monthlyPayment;
+
+    // Only update if payment changed significantly (more than 1 cent difference)
+    if (calculatedPayment.minus(currentPayment).abs().greaterThan(0.01)) {
+      setScenario(prev => ({
+        ...prev,
+        monthlyPayment: calculatedPayment.toFixed(2),
+        amountFinanced: calculations.amountFinanced.toFixed(2),
+        totalCost: calculations.totalCost.toFixed(2),
+      }));
+      setDirtyFields(prev => {
+        const next = new Set(prev);
+        next.add('monthlyPayment');
+        next.add('amountFinanced');
+        next.add('totalCost');
+        return next;
+      });
+    }
+  }, [calculations.monthlyPayment, calculations.amountFinanced, calculations.totalCost]);
   
   const updateField = useCallback((field: keyof DealScenario, value: any) => {
     setScenario(prev => ({ ...prev, [field]: value }));

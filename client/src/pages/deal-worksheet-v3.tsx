@@ -308,9 +308,9 @@ export default function DealWorksheetV3() {
           </div>
         </div>
         <div className="flex-1 overflow-hidden">
-          <div className="max-w-[1800px] mx-auto px-4 md:px-6 py-6">
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-6">
-              <div className="space-y-6">
+          <div className="max-w-[1800px] mx-auto px-3 md:px-6 py-3 md:py-6">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-3 md:gap-6">
+              <div className="space-y-3 md:space-y-6">
                 {Array.from({ length: 4 }).map((_, i) => (
                   <div key={i} className="space-y-4">
                     <PremiumSkeleton className="h-6 w-32" />
@@ -447,11 +447,11 @@ export default function DealWorksheetV3() {
 
       {/* ========== MAIN CONTENT ========== */}
       <div className="flex-1">
-        <div className="max-w-[1800px] mx-auto px-4 md:px-6 py-6">
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-6">
+        <div className="max-w-[1800px] mx-auto px-3 md:px-6 py-3 md:py-6">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-3 md:gap-6">
             {/* LEFT COLUMN - Deal Structure */}
             <ScenarioFormProvider dealId={dealId!} scenario={activeScenario}>
-              <div className="space-y-4">
+              <div className="space-y-3 md:space-y-4">
                 {/* Vehicle Price */}
                 <DeskSection
                   title="Vehicle Price"
@@ -475,23 +475,25 @@ export default function DealWorksheetV3() {
                   <TradeForm />
                 </DeskSection>
 
-                {/* Cap Cost Calculation (Lease Only) */}
+                {/* Cap Cost Calculation (Lease Only) - Hidden on mobile */}
                 {isLease && (
-                  <DeskSection
-                    title="Cap Cost Calculation"
-                    icon={Calculator}
-                    summary={`Adj. Cap: $${scenarioValues.adjustedCapCost.toLocaleString()}`}
-                    alwaysExpanded
-                  >
-                    <CapCostBreakdown
-                      grossCapCost={scenarioValues.grossCapCost}
-                      totalCapReductions={scenarioValues.totalCapReductions}
-                      adjustedCapCost={scenarioValues.adjustedCapCost}
-                      cashDown={scenarioValues.cashDown}
-                      tradeEquity={scenarioValues.tradeEquity}
-                      manufacturerRebate={scenarioValues.manufacturerRebate}
-                    />
-                  </DeskSection>
+                  <div className="hidden md:block">
+                    <DeskSection
+                      title="Cap Cost Calculation"
+                      icon={Calculator}
+                      summary={`Adj. Cap: $${scenarioValues.adjustedCapCost.toLocaleString()}`}
+                      alwaysExpanded
+                    >
+                      <CapCostBreakdown
+                        grossCapCost={scenarioValues.grossCapCost}
+                        totalCapReductions={scenarioValues.totalCapReductions}
+                        adjustedCapCost={scenarioValues.adjustedCapCost}
+                        cashDown={scenarioValues.cashDown}
+                        tradeEquity={scenarioValues.tradeEquity}
+                        manufacturerRebate={scenarioValues.manufacturerRebate}
+                      />
+                    </DeskSection>
+                  </div>
                 )}
 
                 {/* Fees & Charges */}
@@ -510,25 +512,27 @@ export default function DealWorksheetV3() {
                   <TaxBreakdownForm />
                 </DeskSection>
 
-                {/* Lease Calculation Breakdown (Lease Only) */}
+                {/* Lease Calculation Breakdown (Lease Only) - Hidden on mobile */}
                 {isLease && (
-                  <DeskSection
-                    title="Lease Calculation Breakdown"
-                    icon={Calculator}
-                    alwaysExpanded
-                  >
-                    <LeaseCalculationReadonly
-                      residualValue={scenarioValues.residualValue}
-                      residualPercent={scenarioValues.residualPercent}
-                      depreciation={scenarioValues.depreciation}
-                      monthlyDepreciationCharge={scenarioValues.monthlyDepreciationCharge}
-                      monthlyRentCharge={scenarioValues.monthlyRentCharge}
-                      baseMonthlyPayment={scenarioValues.baseMonthlyPayment}
-                      monthlyTax={scenarioValues.monthlyTax}
-                      moneyFactor={scenarioValues.moneyFactor}
-                      taxRate={taxRate}
-                    />
-                  </DeskSection>
+                  <div className="hidden md:block">
+                    <DeskSection
+                      title="Lease Calculation Breakdown"
+                      icon={Calculator}
+                      alwaysExpanded
+                    >
+                      <LeaseCalculationReadonly
+                        residualValue={scenarioValues.residualValue}
+                        residualPercent={scenarioValues.residualPercent}
+                        depreciation={scenarioValues.depreciation}
+                        monthlyDepreciationCharge={scenarioValues.monthlyDepreciationCharge}
+                        monthlyRentCharge={scenarioValues.monthlyRentCharge}
+                        baseMonthlyPayment={scenarioValues.baseMonthlyPayment}
+                        monthlyTax={scenarioValues.monthlyTax}
+                        moneyFactor={scenarioValues.moneyFactor}
+                        taxRate={taxRate}
+                      />
+                    </DeskSection>
+                  </div>
                 )}
 
                 {/* Lease Terms (Lease Only) */}
@@ -570,13 +574,13 @@ export default function DealWorksheetV3() {
             </ScenarioFormProvider>
 
             {/* RIGHT COLUMN - Scenarios & Summary */}
-            <div className="space-y-4 lg:sticky lg:top-[200px] lg:self-start">
+            <div className="space-y-3 md:space-y-4 lg:sticky lg:top-[200px] lg:self-start">
               {/* Scenario Strip */}
-              <Card className="p-4">
-                <h3 className="text-sm font-semibold mb-3 uppercase tracking-wide text-muted-foreground">
+              <Card className="p-3 md:p-4">
+                <h3 className="text-xs md:text-sm font-semibold mb-2 md:mb-3 uppercase tracking-wide text-muted-foreground">
                   Payment Scenarios
                 </h3>
-                <div className="flex gap-3 overflow-x-auto pb-2">
+                <div className="flex gap-2 md:gap-3 overflow-x-auto pb-2">
                   {deal.scenarios.map(scenario => (
                     <ScenarioCardV2
                       key={scenario.id}

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useScenarioForm } from '@/contexts/scenario-form-context';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,6 +25,20 @@ export function LeaseTermsForm() {
   // Calculate residual value and APR equivalent
   const residualValue = msrp * (residualPercent / 100);
   const aprEquivalent = moneyFactor * 2400;
+
+  // Auto-update residualValue when MSRP or residualPercent changes
+  useEffect(() => {
+    const currentResidual = parseFloat(String(scenario.residualValue || 0));
+    const calculatedResidual = msrp * (residualPercent / 100);
+
+    // Only update if there's a meaningful difference (more than $1)
+    if (Math.abs(calculatedResidual - currentResidual) > 1 && msrp > 0) {
+      updateMultipleFields({
+        residualValue: calculatedResidual.toFixed(2) as any,
+        residualPercent: residualPercent.toString() as any,
+      });
+    }
+  }, [msrp, residualPercent, scenario.residualValue, updateMultipleFields]);
 
   return (
     <div className="space-y-6">
