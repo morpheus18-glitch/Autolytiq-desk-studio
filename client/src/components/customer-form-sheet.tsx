@@ -36,6 +36,8 @@ import {
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { AddressAutocomplete } from '@/components/address-autocomplete';
+import type { AddressComponents } from '@/hooks/use-google-autocomplete';
 
 // Use the base insert schema directly
 type CustomerFormData = InsertCustomer;
@@ -388,14 +390,23 @@ export function CustomerFormSheet({
                     <FormItem>
                       <FormLabel>Street Address</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="123 Main St"
+                        <AddressAutocomplete
                           {...field}
                           value={field.value || ''}
+                          onAddressSelect={(address: AddressComponents) => {
+                            // Auto-fill all address fields
+                            form.setValue('address', address.street);
+                            form.setValue('city', address.city);
+                            form.setValue('state', address.stateCode);
+                            form.setValue('zipCode', address.zipCode);
+                          }}
                           data-testid="input-address"
                         />
                       </FormControl>
                       <FormMessage />
+                      <FormDescription className="text-xs">
+                        Start typing to see address suggestions
+                      </FormDescription>
                     </FormItem>
                   )}
                 />

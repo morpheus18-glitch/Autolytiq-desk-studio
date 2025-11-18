@@ -29,6 +29,7 @@ import PasswordResetRequest from "@/pages/password-reset-request";
 import PasswordResetConfirm from "@/pages/password-reset-confirm";
 import Email from "@/pages/email";
 import EmailSettings from "@/pages/email-settings";
+import Hierarchy from "@/pages/hierarchy";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -122,6 +123,11 @@ function Router() {
       <Route path="/email">
         <ProtectedRoute>
           <Email />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/hierarchy">
+        <ProtectedRoute>
+          <Hierarchy />
         </ProtectedRoute>
       </Route>
       <Route path="/deals/:id/tabs">

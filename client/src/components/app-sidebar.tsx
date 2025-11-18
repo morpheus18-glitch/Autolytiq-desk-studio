@@ -37,6 +37,7 @@ import {
   Clock,
   Mail,
   Store,
+  Network,
 } from 'lucide-react';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -63,6 +64,7 @@ const mainNavItems: NavItem[] = [
 const toolsNavItems: NavItem[] = [
   { label: 'Add Vehicle', path: '/inventory/new', icon: Plus, testId: 'nav-inventory-new' },
   { label: 'Analytics', path: '/analytics', icon: LineChart, testId: 'nav-analytics' },
+  { label: 'Hierarchy', path: '/hierarchy', icon: Network, testId: 'nav-hierarchy' },
   { label: 'VIN Decoder', path: '/vin-decoder', icon: Scan, testId: 'nav-vin-decoder' },
 ];
 
