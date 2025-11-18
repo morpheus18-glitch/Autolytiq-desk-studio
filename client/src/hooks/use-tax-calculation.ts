@@ -58,22 +58,55 @@ export interface TaxCalculationParams {
 }
 
 export interface TaxCalculationResult {
+  // Base amounts
   taxableAmount: number;
+
+  // Tax components
   stateTax: number;
   stateTaxRate: number;
   localTax: number;
   localTaxRate: number;
+  luxuryTax: number;
+  luxuryTaxRate: number;
   totalTax: number;
   effectiveTaxRate: number;
+
+  // Fees
   titleFee: number;
   registrationFee: number;
+  docFeeTax: number;
   totalFees: number;
-  totalTaxAndFees: number;
+
+  // Trade-in benefit
   tradeInTaxSavings: number;
-  reciprocityCredit?: number; // Tax credit from prior tax paid
-  taxAfterReciprocity?: number; // Total tax after reciprocity credit applied
+  tradeInCreditApplied: number;
+
+  // EV considerations
+  evIncentive: number;
+  evAdditionalFee: number;
+
+  // Special adjustments
+  taxCapApplied: boolean;
+  taxCapAmount?: number;
+
+  // Grand total
+  totalTaxAndFees: number;
+
+  // Breakdown details
+  breakdown: Array<{
+    label: string;
+    taxable: number;
+    rate: number;
+    tax: number;
+  }>;
+
+  // Compliance notes
   notes: string[];
   warnings: string[];
+
+  // Reciprocity (optional - for special cases)
+  reciprocityCredit?: number;
+  taxAfterReciprocity?: number;
   engineResult?: {
     taxableAmount: number;
     totalTax: number;

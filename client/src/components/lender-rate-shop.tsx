@@ -125,29 +125,26 @@ export function LenderRateShop({
   const { data: ratesData, isLoading, refetch } = useQuery({
     queryKey: ['/api/lenders/shop', dealId, creditScore, loanAmount, selectedTerm],
     queryFn: async () => {
-      const response = await apiRequest('/api/lenders/shop', {
-        method: 'POST',
-        body: JSON.stringify({
-          dealId,
-          scenarioId,
-          creditScore,
-          cobuyerCreditScore,
-          vehiclePrice,
-          requestedAmount: loanAmount,
-          downPayment,
-          tradeValue,
-          tradePayoff,
-          requestedTerm: selectedTerm,
-          vehicleType,
-          vehicleYear,
-          vehicleMileage,
-          monthlyIncome,
-          monthlyDebt,
-          state,
-          requestType: 'soft_pull'
-        })
+      const response = await apiRequest('POST', '/api/lenders/shop', {
+        dealId,
+        scenarioId,
+        creditScore,
+        cobuyerCreditScore,
+        vehiclePrice,
+        requestedAmount: loanAmount,
+        downPayment,
+        tradeValue,
+        tradePayoff,
+        requestedTerm: selectedTerm,
+        vehicleType,
+        vehicleYear,
+        vehicleMileage,
+        monthlyIncome,
+        monthlyDebt,
+        state,
+        requestType: 'soft_pull'
       });
-      return response;
+      return await response.json();
     },
     staleTime: 5 * 60 * 1000, // Consider data stale after 5 minutes
   });
@@ -155,10 +152,8 @@ export function LenderRateShop({
   // Select lender mutation
   const selectLenderMutation = useMutation({
     mutationFn: async ({ approvedLenderId, userId }: { approvedLenderId: string; userId: string }) => {
-      return await apiRequest('/api/lenders/select', {
-        method: 'POST',
-        body: JSON.stringify({ approvedLenderId, userId })
-      });
+      const response = await apiRequest('POST', '/api/lenders/select', { approvedLenderId, userId });
+      return await response.json();
     },
     onSuccess: (data) => {
       toast({

@@ -58,7 +58,7 @@ export function CustomerSelectorSheet({
   
   // Form for creating new customer
   const form = useForm<InsertCustomer>({
-    resolver: zodResolver(insertCustomerSchema.omit({ dealershipId: true, customerNumber: true })),
+    resolver: zodResolver(insertCustomerSchema),
     defaultValues: {
       firstName: '',
       lastName: '',
@@ -235,10 +235,11 @@ export function CustomerSelectorSheet({
                           <FormControl>
                             <div className="relative">
                               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                              <Input 
-                                {...field} 
-                                type="email" 
-                                placeholder="john@example.com" 
+                              <Input
+                                {...field}
+                                value={field.value || ''}
+                                type="email"
+                                placeholder="john@example.com"
                                 className="pl-10"
                                 data-testid="input-customer-email"
                               />
@@ -258,10 +259,11 @@ export function CustomerSelectorSheet({
                           <FormControl>
                             <div className="relative">
                               <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                              <Input 
-                                {...field} 
-                                type="tel" 
-                                placeholder="(555) 123-4567" 
+                              <Input
+                                {...field}
+                                value={field.value || ''}
+                                type="tel"
+                                placeholder="(555) 123-4567"
                                 className="pl-10"
                                 data-testid="input-customer-phone"
                               />
@@ -280,7 +282,7 @@ export function CustomerSelectorSheet({
                         <FormItem>
                           <FormLabel>Address</FormLabel>
                           <FormControl>
-                            <Input {...field} placeholder="123 Main St" data-testid="input-customer-address" />
+                            <Input {...field} value={field.value || ''} placeholder="123 Main St" data-testid="input-customer-address" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -295,7 +297,7 @@ export function CustomerSelectorSheet({
                           <FormItem>
                             <FormLabel>City</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="New York" data-testid="input-customer-city" />
+                              <Input {...field} value={field.value || ''} placeholder="New York" data-testid="input-customer-city" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -308,7 +310,7 @@ export function CustomerSelectorSheet({
                           <FormItem>
                             <FormLabel>State</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="NY" maxLength={2} data-testid="input-customer-state" />
+                              <Input {...field} value={field.value || ''} placeholder="NY" maxLength={2} data-testid="input-customer-state" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -323,7 +325,7 @@ export function CustomerSelectorSheet({
                         <FormItem>
                           <FormLabel>ZIP Code</FormLabel>
                           <FormControl>
-                            <Input {...field} placeholder="10001" data-testid="input-customer-zipcode" />
+                            <Input {...field} value={field.value || ''} placeholder="10001" data-testid="input-customer-zipcode" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
