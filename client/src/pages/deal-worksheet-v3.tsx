@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRoute, useLocation } from 'wouter';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
 import {
   Car,
   User,
@@ -13,7 +14,9 @@ import {
   Receipt,
   DollarSign,
   Calculator,
-  Package
+  Package,
+  Calendar,
+  Hash
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import type { DealWithRelations, DealScenario } from '@shared/schema';
@@ -40,7 +43,6 @@ import { DealerFeesForm } from '@/components/forms/dealer-fees-form';
 import { VehicleSwitcher } from '@/components/vehicle-switcher';
 import { CustomerSelectorSheet } from '@/components/customer-selector-sheet';
 import { DealTypeSwitcherCompact } from '@/components/deal-type-switcher';
-import { useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 
 const DEAL_STATE_COLORS: Record<string, string> = {
@@ -152,10 +154,27 @@ export default function DealWorksheetV3() {
   const [vehicleSwitcherOpen, setVehicleSwitcherOpen] = useState(false);
   const [customerSelectorOpen, setCustomerSelectorOpen] = useState(false);
   const setActiveDealId = useStore(state => state.setActiveDealId);
+  const { toast } = useToast();
+
+  // Refs for scrolling to sections
+  const termsRef = useRef<HTMLDivElement>(null);
+  const productsRef = useRef<HTMLDivElement>(null);
 
   const { data: deal, isLoading } = useQuery<DealWithRelations>({
     queryKey: ['/api/deals', dealId],
     enabled: !!dealId,
+  });
+
+  // Fetch tax rate based on customer's zip code
+  const customerZip = deal?.customer?.zipCode;
+  const { data: taxData } = useQuery<{
+    zipCode: string;
+    effectiveTaxRate: number;
+    localTaxRate: number;
+    stateTaxRate: number;
+  }>({
+    queryKey: ['/api/tax/zip', customerZip],
+    enabled: !!customerZip,
   });
 
   useEffect(() => {
@@ -186,6 +205,97 @@ export default function DealWorksheetV3() {
 
   const handleDealTypeChange = (newType: 'FINANCE_DEAL' | 'LEASE_DEAL' | 'CASH_DEAL') => {
     updateScenarioType(newType);
+  };
+
+  // Mutation to create new scenario
+  const { mutate: createScenario, isPending: isCreatingScenario } = useMutation({
+    mutationFn: async () => {
+      if (!dealId || !deal) return;
+      const baseScenario = deal.scenarios[0] || {};
+      return apiRequest('POST', `/api/deals/${dealId}/scenarios`, {
+        dealId,
+        scenarioType: baseScenario.scenarioType || 'FINANCE_DEAL',
+        name: `Scenario ${deal.scenarios.length + 1}`,
+        vehiclePrice: String(baseScenario.vehiclePrice || '0'),
+        downPayment: String(baseScenario.downPayment || '0'),
+        apr: String(baseScenario.apr ?? '5.99'),
+        term: baseScenario.term || 60,
+        moneyFactor: String(baseScenario.moneyFactor || '0.00125'),
+        residualValue: '0',
+        residualPercent: '0',
+        tradeAllowance: String(baseScenario.tradeAllowance || '0'),
+        tradePayoff: String(baseScenario.tradePayoff || '0'),
+        dealerFees: [],
+        accessories: [],
+        aftermarketProducts: [],
+        totalTax: '0',
+        totalFees: '0',
+        amountFinanced: '0',
+        monthlyPayment: '0',
+        totalCost: '0',
+        cashDueAtSigning: '0',
+      }).then(res => res.json());
+    },
+    onSuccess: (newScenario) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/deals', dealId] });
+      if (newScenario?.id) {
+        setActiveScenarioId(newScenario.id);
+      }
+      toast({
+        title: 'Scenario created',
+        description: 'New payment scenario is ready to configure.',
+      });
+    },
+    onError: () => {
+      toast({
+        title: 'Creation failed',
+        description: 'Failed to create scenario. Please try again.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Mutation to update deal state (submit)
+  const { mutate: updateDealState, isPending: isSubmitting } = useMutation({
+    mutationFn: async (newState: string) => {
+      if (!dealId) return;
+      return apiRequest('PATCH', `/api/deals/${dealId}/state`, { state: newState });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/deals', dealId] });
+      toast({
+        title: 'Deal submitted',
+        description: 'Deal has been moved to In Progress.',
+      });
+    },
+    onError: () => {
+      toast({
+        title: 'Submit failed',
+        description: 'Failed to submit deal. Please try again.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Handler functions for command bar
+  const handleEditTerms = () => {
+    termsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const handleAddProducts = () => {
+    productsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const handleSubmit = () => {
+    if (deal?.dealState === 'DRAFT') {
+      updateDealState('IN_PROGRESS');
+    } else if (deal?.dealState === 'IN_PROGRESS') {
+      updateDealState('APPROVED');
+    }
+  };
+
+  const handleAddScenario = () => {
+    createScenario();
   };
 
   // Loading state
@@ -238,7 +348,8 @@ export default function DealWorksheetV3() {
 
   const scenarioValues = getScenarioValues(activeScenario);
   const isLease = activeScenario.scenarioType === 'LEASE_DEAL';
-  const taxRate = 0.095; // TODO: Get from tax jurisdiction
+  // Use dynamic tax rate from customer's zip code, fallback to 9.5% if not available
+  const taxRate = taxData?.effectiveTaxRate ?? 0.095;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -267,7 +378,7 @@ export default function DealWorksheetV3() {
                   </Badge>
                 </div>
 
-                <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
                   <button
                     onClick={() => setCustomerSelectorOpen(true)}
                     className="flex items-center gap-1.5 hover:text-foreground transition-colors"
@@ -286,6 +397,21 @@ export default function DealWorksheetV3() {
                       ? `${deal.vehicle.year} ${deal.vehicle.make} ${deal.vehicle.model}`
                       : "Select Vehicle"}
                   </button>
+                  {deal.vehicle?.stockNumber && (
+                    <span className="flex items-center gap-1.5">
+                      <Hash className="w-3.5 h-3.5" />
+                      {deal.vehicle.stockNumber}
+                    </span>
+                  )}
+                  <span className="flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5" />
+                    {new Date(deal.createdAt).toLocaleDateString()}
+                  </span>
+                  {deal.salesperson && (
+                    <span className="text-xs px-2 py-0.5 bg-muted rounded">
+                      {deal.salesperson.fullName}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -313,10 +439,10 @@ export default function DealWorksheetV3() {
         aprEquivalent={scenarioValues.aprEquivalent}
         residualPercent={isLease ? scenarioValues.residualPercent : undefined}
         dealType={activeScenario.scenarioType as any}
-        onEditTerms={() => {/* TODO */}}
-        onAddProducts={() => {/* TODO */}}
+        onEditTerms={handleEditTerms}
+        onAddProducts={handleAddProducts}
         onChangeVehicle={() => setVehicleSwitcherOpen(true)}
-        onSubmit={() => {/* TODO */}}
+        onSubmit={handleSubmit}
       />
 
       {/* ========== MAIN CONTENT ========== */}
@@ -407,33 +533,39 @@ export default function DealWorksheetV3() {
 
                 {/* Lease Terms (Lease Only) */}
                 {isLease && (
-                  <DeskSection
-                    title="Lease Terms"
-                    icon={Calculator}
-                    defaultExpanded
-                  >
-                    <LeaseTermsForm />
-                  </DeskSection>
+                  <div ref={termsRef}>
+                    <DeskSection
+                      title="Lease Terms"
+                      icon={Calculator}
+                      defaultExpanded
+                    >
+                      <LeaseTermsForm />
+                    </DeskSection>
+                  </div>
                 )}
 
                 {/* Finance Terms (Finance Only) */}
                 {!isLease && (
-                  <DeskSection
-                    title="Finance Terms"
-                    icon={Calculator}
-                    defaultExpanded
-                  >
-                    <FinanceLeaseForm />
-                  </DeskSection>
+                  <div ref={termsRef}>
+                    <DeskSection
+                      title="Finance Terms"
+                      icon={Calculator}
+                      defaultExpanded
+                    >
+                      <FinanceLeaseForm />
+                    </DeskSection>
+                  </div>
                 )}
 
                 {/* F&I Products */}
-                <DeskSection
-                  title="F&I Products"
-                  icon={Package}
-                >
-                  <FIGrid />
-                </DeskSection>
+                <div ref={productsRef}>
+                  <DeskSection
+                    title="F&I Products"
+                    icon={Package}
+                  >
+                    <FIGrid />
+                  </DeskSection>
+                </div>
               </div>
             </ScenarioFormProvider>
 
@@ -457,7 +589,7 @@ export default function DealWorksheetV3() {
                       onClick={() => setActiveScenarioId(scenario.id)}
                     />
                   ))}
-                  <AddScenarioButton onClick={() => {/* TODO */}} />
+                  <AddScenarioButton onClick={handleAddScenario} />
                 </div>
               </Card>
 

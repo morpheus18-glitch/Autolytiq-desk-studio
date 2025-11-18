@@ -7,6 +7,7 @@ interface ScenarioCardV2Props {
   term: number;
   dueAtSigning: number;
   cashDown?: number;
+  lenderTier?: string;
   isActive?: boolean;
   onClick?: () => void;
   className?: string;
@@ -18,6 +19,7 @@ export function ScenarioCardV2({
   term,
   dueAtSigning,
   cashDown = 0,
+  lenderTier,
   isActive = false,
   onClick,
   className,
@@ -54,12 +56,19 @@ export function ScenarioCardV2({
         ${Math.round(dueAtSigning).toLocaleString()} DAS
       </div>
 
-      {/* Zero Down Badge */}
-      {cashDown === 0 && (
-        <Badge variant="secondary" className="mt-2 text-xs w-fit">
-          Zero Down
-        </Badge>
-      )}
+      {/* Badges */}
+      <div className="flex flex-wrap gap-1 mt-2">
+        {cashDown === 0 && (
+          <Badge variant="secondary" className="text-xs">
+            Zero Down
+          </Badge>
+        )}
+        {lenderTier && (
+          <Badge variant="outline" className="text-xs">
+            {lenderTier}
+          </Badge>
+        )}
+      </div>
     </button>
   );
 }
