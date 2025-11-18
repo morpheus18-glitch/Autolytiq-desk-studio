@@ -509,7 +509,7 @@ export default function DealWorksheetV3() {
                   title="Taxes"
                   icon={DollarSign}
                 >
-                  <TaxBreakdownForm />
+                  <TaxBreakdownForm customer={deal.customer} />
                 </DeskSection>
 
                 {/* Lease Calculation Breakdown (Lease Only) - Hidden on mobile */}
