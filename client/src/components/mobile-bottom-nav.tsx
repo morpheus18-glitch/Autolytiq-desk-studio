@@ -131,10 +131,10 @@ export function MobileBottomNav() {
     <>
       {/* Bottom Navigation Bar - Sticky at bottom of screen */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-t shadow-lg md:hidden"
+        className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t-2 border-neutral-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] md:hidden"
         data-testid="mobile-bottom-nav"
       >
-        <div className="grid grid-cols-6 gap-1 px-2 py-3 min-h-[72px]">
+        <div className="grid grid-cols-6 gap-2 px-3 py-2 min-h-[64px]">
           {/* Primary Navigation Buttons */}
           {primaryNavItems.map((item) => {
             const Icon = item.icon;
@@ -145,13 +145,25 @@ export function MobileBottomNav() {
                 onClick={() => handleNavigation(item.path)}
                 data-testid={item.testId}
                 className={cn(
-                  'flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-md transition-colors',
-                  'hover-elevate active-elevate-2',
-                  active ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:text-foreground'
+                  'relative flex flex-col items-center justify-center gap-0.5 px-1 py-1.5 rounded-lg transition-all',
+                  'active:scale-95',
+                  active
+                    ? 'text-primary'
+                    : 'text-neutral-500 hover:text-neutral-700'
                 )}
               >
-                <Icon className={cn('w-6 h-6', active && 'text-primary')} />
-                <span className="text-xs font-medium truncate w-full text-center">
+                {/* Active indicator bar */}
+                {active && (
+                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-6 h-1 bg-primary rounded-full" />
+                )}
+                <Icon className={cn(
+                  'w-5 h-5 transition-transform',
+                  active && 'scale-110'
+                )} />
+                <span className={cn(
+                  'text-[10px] truncate w-full text-center',
+                  active ? 'font-bold' : 'font-medium'
+                )}>
                   {item.label}
                 </span>
               </button>
@@ -162,10 +174,10 @@ export function MobileBottomNav() {
           <button
             onClick={() => setIsMenuOpen(true)}
             data-testid="button-open-menu"
-            className="flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-md text-muted-foreground hover:text-foreground transition-colors hover-elevate active-elevate-2"
+            className="relative flex flex-col items-center justify-center gap-0.5 px-1 py-1.5 rounded-lg text-neutral-500 hover:text-neutral-700 transition-all active:scale-95"
           >
-            <Menu className="w-6 h-6" />
-            <span className="text-xs font-medium">Menu</span>
+            <Menu className="w-5 h-5" />
+            <span className="text-[10px] font-medium">Menu</span>
           </button>
         </div>
       </nav>

@@ -5,16 +5,20 @@ import { Button } from '@/components/ui/button';
 import { PageLayout } from '@/components/page-layout';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  TrendingUp, 
-  DollarSign, 
-  FileText, 
-  CheckCircle, 
+import {
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  FileText,
+  CheckCircle,
   Clock,
   Users,
   Car,
   LayoutDashboard,
-  Zap
+  Zap,
+  ArrowUpRight,
+  ArrowDownRight,
+  Target
 } from 'lucide-react';
 import type { User as UserType } from '@shared/schema';
 
@@ -115,133 +119,144 @@ export default function Dashboard() {
       
       {/* Dashboard Content */}
       <div className="container mx-auto px-4 md:px-6 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-          {/* Total Deals */}
-          <Card className="border-none shadow-md hover-elevate transition-all bg-gradient-to-br from-card to-card/80">
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-3">
-              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Total Deals</CardTitle>
-              <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
-                <FileText className="w-5 h-5 text-primary" />
+        {/* LEADER METRIC - Revenue Hero */}
+        <Card className="mb-6 border-l-4 border-l-emerald-500 shadow-lg bg-gradient-to-r from-emerald-50 to-white dark:from-emerald-950/20 dark:to-card rounded-lg">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider mb-1">
+                  Total Revenue
+                </p>
+                <div className="text-4xl md:text-5xl font-black tabular-nums text-emerald-900 dark:text-emerald-100" data-testid="metric-total-revenue-hero">
+                  ${statsLoading ? '-' : (stats?.totalRevenue || 0).toLocaleString()}
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-600">
+                    <ArrowUpRight className="w-4 h-4" />
+                    12%
+                  </span>
+                  <span className="text-sm text-muted-foreground">vs last month</span>
+                </div>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold tabular-nums" data-testid="metric-total-deals">
+              <div className="hidden md:flex items-center justify-center w-16 h-16 rounded-xl bg-emerald-500/20">
+                <DollarSign className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* PRIMARY METRICS - Command Center Style */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {/* Total Deals - Blue */}
+          <Card className="border-l-4 border-l-blue-500 shadow-md rounded-lg">
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between mb-2">
+                <FileText className="w-5 h-5 text-blue-600" />
+                <span className="text-xs font-bold text-blue-600 bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 rounded">
+                  DEALS
+                </span>
+              </div>
+              <div className="text-3xl font-black tabular-nums" data-testid="metric-total-deals">
                 {statsLoading ? '-' : stats?.total || 0}
               </div>
-              <p className="text-xs text-muted-foreground mt-2 font-medium">
-                All time
+              <p className="text-xs text-muted-foreground mt-1 font-medium">
+                Total all time
               </p>
             </CardContent>
           </Card>
-          
-          {/* In Progress */}
-          <Card className="border-none shadow-md hover-elevate transition-all bg-gradient-to-br from-card to-card/80">
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-3">
-              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">In Progress</CardTitle>
-              <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-500/10">
-                <Clock className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+
+          {/* In Progress - Orange/Amber */}
+          <Card className="border-l-4 border-l-amber-500 shadow-md rounded-lg">
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between mb-2">
+                <Clock className="w-5 h-5 text-amber-600" />
+                <span className="text-xs font-bold text-amber-600 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded">
+                  ACTIVE
+                </span>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold tabular-nums" data-testid="metric-in-progress">
+              <div className="text-3xl font-black tabular-nums" data-testid="metric-in-progress">
                 {statsLoading ? '-' : stats?.inProgress || 0}
               </div>
-              <p className="text-xs text-muted-foreground mt-2 font-medium">
-                Active deals
+              <p className="text-xs text-muted-foreground mt-1 font-medium">
+                In progress
               </p>
             </CardContent>
           </Card>
-          
-          {/* Approved */}
-          <Card className="border-none shadow-md hover-elevate transition-all bg-gradient-to-br from-card to-card/80">
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-3">
-              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Approved</CardTitle>
-              <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-green-500/10">
-                <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+
+          {/* Approved - Green */}
+          <Card className="border-l-4 border-l-green-500 shadow-md rounded-lg">
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between mb-2">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+                <span className="text-xs font-bold text-green-600 bg-green-100 dark:bg-green-900/30 px-2 py-0.5 rounded">
+                  WON
+                </span>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold tabular-nums" data-testid="metric-approved">
+              <div className="text-3xl font-black tabular-nums" data-testid="metric-approved">
                 {statsLoading ? '-' : stats?.approved || 0}
               </div>
-              <p className="text-xs text-muted-foreground mt-2 font-medium">
-                Closed deals
+              <p className="text-xs text-muted-foreground mt-1 font-medium">
+                Approved deals
               </p>
             </CardContent>
           </Card>
-          
-          {/* Conversion Rate */}
-          <Card className="border-none shadow-md hover-elevate transition-all bg-gradient-to-br from-card to-card/80">
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-3">
-              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Conversion</CardTitle>
-              <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-purple-500/10">
-                <TrendingUp className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+
+          {/* Conversion Rate - Purple */}
+          <Card className="border-l-4 border-l-purple-500 shadow-md rounded-lg">
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between mb-2">
+                <Target className="w-5 h-5 text-purple-600" />
+                <span className="inline-flex items-center gap-0.5 text-xs font-bold text-green-600">
+                  <ArrowUpRight className="w-3 h-3" />
+                  5%
+                </span>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold tabular-nums" data-testid="metric-conversion-rate">
+              <div className="text-3xl font-black tabular-nums" data-testid="metric-conversion-rate">
                 {statsLoading ? '-' : `${Math.round((stats?.conversionRate || 0) * 100)}%`}
               </div>
-              <p className="text-xs text-muted-foreground mt-2 font-medium">
-                Draft to approved
+              <p className="text-xs text-muted-foreground mt-1 font-medium">
+                Conversion rate
               </p>
             </CardContent>
           </Card>
         </div>
         
-        {/* Secondary Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
-          {/* Revenue */}
-          <Card className="border-none shadow-md hover-elevate transition-all bg-gradient-to-br from-card to-card/80">
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-3">
-              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Total Revenue</CardTitle>
-              <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-emerald-500/10">
-                <DollarSign className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold tabular-nums" data-testid="metric-total-revenue">
-                ${statsLoading ? '-' : (stats?.totalRevenue || 0).toLocaleString()}
-              </div>
-              <p className="text-xs text-muted-foreground mt-2 font-medium">
-                From approved deals
-              </p>
-            </CardContent>
-          </Card>
-          
+        {/* Secondary Metrics - Tighter layout */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           {/* Avg Deal Value */}
-          <Card className="border-none shadow-md hover-elevate transition-all bg-gradient-to-br from-card to-card/80">
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-3">
-              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Avg Deal Value</CardTitle>
-              <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-amber-500/10">
-                <DollarSign className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+          <Card className="border-l-4 border-l-neutral-400 shadow-md rounded-lg">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1">
+                    Avg Deal Value
+                  </p>
+                  <div className="text-2xl font-black tabular-nums" data-testid="metric-avg-deal-value">
+                    ${statsLoading ? '-' : Math.round(stats?.avgDealValue || 0).toLocaleString()}
+                  </div>
+                </div>
+                <DollarSign className="w-6 h-6 text-neutral-400" />
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold tabular-nums" data-testid="metric-avg-deal-value">
-                ${statsLoading ? '-' : Math.round(stats?.avgDealValue || 0).toLocaleString()}
-              </div>
-              <p className="text-xs text-muted-foreground mt-2 font-medium">
-                Per approved deal
-              </p>
             </CardContent>
           </Card>
-          
-          {/* Draft Deals */}
-          <Card className="border-none shadow-md hover-elevate transition-all bg-gradient-to-br from-card to-card/80">
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-3">
-              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Draft Deals</CardTitle>
-              <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-orange-500/10">
-                <FileText className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+
+          {/* Draft Deals - Needs Attention */}
+          <Card className="border-l-4 border-l-red-500 shadow-md rounded-lg">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-red-600 uppercase tracking-wide mb-1">
+                    Needs Attention
+                  </p>
+                  <div className="text-2xl font-black tabular-nums" data-testid="metric-draft">
+                    {statsLoading ? '-' : stats?.draft || 0}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Draft deals waiting
+                  </p>
+                </div>
+                <FileText className="w-6 h-6 text-red-500" />
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold tabular-nums" data-testid="metric-draft">
-                {statsLoading ? '-' : stats?.draft || 0}
-              </div>
-              <p className="text-xs text-muted-foreground mt-2 font-medium">
-                Need attention
-              </p>
             </CardContent>
           </Card>
         </div>

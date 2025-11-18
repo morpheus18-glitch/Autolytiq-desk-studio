@@ -8,7 +8,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Link, useLocation } from "wouter";
 import { useEffect, useState } from "react";
-import { Loader2, Eye, EyeOff } from "lucide-react";
+import { Loader2, Eye, EyeOff, Car } from "lucide-react";
 
 export default function Login() {
   const { login, isLoggingIn, isAuthenticated } = useAuth();
@@ -35,14 +35,24 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4 bg-background">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
-          <CardDescription>
-            Sign in to your account to continue
-          </CardDescription>
-        </CardHeader>
+    <div className="flex min-h-screen items-center justify-center p-4 bg-gradient-to-br from-neutral-50 via-blue-50/30 to-neutral-100 dark:from-neutral-950 dark:via-blue-950/20 dark:to-neutral-900">
+      <div className="w-full max-w-md">
+        {/* Brand Identity */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/80 shadow-lg shadow-primary/25 mb-4">
+            <Car className="w-8 h-8 text-primary-foreground" />
+          </div>
+          <h1 className="text-2xl font-bold text-foreground">Autolytiq</h1>
+          <p className="text-sm text-muted-foreground mt-1">Dealership Intelligence OS</p>
+        </div>
+
+        <Card className="shadow-xl border-0">
+          <CardHeader className="space-y-1 pb-4">
+            <CardTitle className="text-xl font-bold text-center">Welcome back</CardTitle>
+            <CardDescription className="text-center">
+              Sign in to your account to continue
+            </CardDescription>
+          </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -103,7 +113,8 @@ export default function Login() {
               <Button
                 data-testid="button-login"
                 type="submit"
-                className="w-full"
+                size="lg"
+                className="w-full font-semibold shadow-lg shadow-primary/25 mt-2"
                 disabled={isLoggingIn}
               >
                 {isLoggingIn && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -131,7 +142,8 @@ export default function Login() {
             </p>
           </div>
         </CardFooter>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 }
