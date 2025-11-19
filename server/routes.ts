@@ -1883,8 +1883,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const options = taxCalculationSchema.parse(req.body);
 
       // Use the AutoTaxEngine for accurate calculations
-      const { calculateTax, getRulesForState, getLocalTaxRate } = await import('../shared/autoTaxEngine');
-      const { STATE_TAX_DATA } = await import('../shared/tax-data');
+      const { calculateTax, getRulesForState } = await import('../shared/autoTaxEngine');
+      const { STATE_TAX_DATA, getLocalTaxRate } = await import('../shared/tax-data');
 
       // Get state rules from autoTaxEngine
       const rules = getRulesForState(options.stateCode);
@@ -1951,15 +1951,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       // Calculate tax using autoTaxEngine
-      const result = calculateTax(taxInput, rules);
+      const result = calculateTax(taxInput as any, rules);
+
+      // Extract values from the new result structure
+      const totalTax = result.taxes?.totalTax ?? 0;
+      const taxableBase = result.bases?.taxableBase ?? 0;
+      const effectiveRate = totalTax / (taxableBase || 1);
 
       // Audit log (basic console logging for now)
       console.log('[TAX-CALC]', {
         timestamp: new Date().toISOString(),
         stateCode: options.stateCode,
-        dealType: taxInput.dealType,
+        dealType: (taxInput as any).dealType,
         vehiclePrice: options.vehiclePrice,
-        totalTax: result.totalTax,
+        totalTax: totalTax,
         user: (req as any).user?.username ?? 'anonymous',
       });
 
@@ -1970,20 +1975,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Format response to match legacy API
       res.json({
-        taxableAmount: result.taxableAmount,
-        stateTax: result.stateTax,
-        stateTaxRate: result.effectiveRate,
-        localTax: result.localTax ?? 0,
+        taxableAmount: taxableBase,
+        stateTax: totalTax, // Simplified - full breakdown in engineResult
+        stateTaxRate: effectiveRate,
+        localTax: 0, // TODO: Extract from componentTaxes
         localTaxRate: localTaxRate,
-        totalTax: result.totalTax,
-        effectiveTaxRate: result.effectiveRate,
+        totalTax: totalTax,
+        effectiveTaxRate: effectiveRate,
         titleFee,
         registrationFee,
         totalFees: titleFee + registrationFee,
-        totalTaxAndFees: result.totalTax + titleFee + registrationFee,
-        tradeInTaxSavings: result.tradeInSavings ?? 0,
-        notes: result.notes,
-        warnings: result.warnings ?? [],
+        totalTaxAndFees: totalTax + titleFee + registrationFee,
+        tradeInTaxSavings: 0, // TODO: Calculate from bases
+        notes: result.debug?.notes ?? [],
+        warnings: result.debug?.warnings ?? [],
         // Include full engine result for advanced clients
         engineResult: result,
       });
