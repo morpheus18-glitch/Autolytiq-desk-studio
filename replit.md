@@ -70,7 +70,7 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
   - **BUSINESS IMPACT**: Critical - incorrect calculations lead to incorrect customer quotes and legal liability
 
 **Known Issues**:
-- `db:push` workflow blocks on interactive prompt for `lender_programs` table conflict. Workaround: Use manual SQL for schema changes or resolve migration baseline.
+- **Database Migration Workflow**: `drizzle-kit push` blocks on interactive prompts for tables (appointments, lender_programs) due to schema drift. Manual SQL hotfixes bypass Drizzle's migration journal causing schema/meta mismatch. **Workaround**: Use manual SQL via `execute_sql_tool` for schema changes, then periodically reconcile with `drizzle-kit generate` + `drizzle-kit push --force` when RAM allows. For CI/CD automation, use `--yes --force` flags after schema validation.
 - **Replit Environment Memory Constraints**: Platform limited to ~2GB RAM. TypeScript LSP consumes ~814MB, causing Out of Memory (OOM) crashes during heavy operations. Workaround: Kill TypeScript LSP before running dev server (`pkill -f typescript-language-server`) to free ~800MB RAM. Type Check and Build Production workflows may fail with exit code 137 (OOM) but dev server runs successfully. Playwright E2E testing not viable in this tier - defer to higher-memory environment or local machine.
 
 ### Authentication and Authorization
