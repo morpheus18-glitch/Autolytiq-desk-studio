@@ -476,7 +476,7 @@ export const US_WY: TaxRulesConfig = {
       "Manufacturer rebates NOT taxable (reduce sale price). Doc fee taxable, NO CAP (avg " +
       "$200-300, among lowest in nation). VSC and GAP NOT taxable. Lease: MONTHLY taxation " +
       "(pure monthly method, no upfront tax on cap reduction). Reciprocity: YES (credit for " +
-      "taxes paid to other states). NO STATE INCOME TAX. Business-friendly environment with " +
+      "taxes paid to other states). NO STATE INCOME TAX. business-friendly environment with " +
       "simple tax structure and low rates.",
     stateRate: 4.0,
     countyRateRange: { min: 0, max: 1.0 },

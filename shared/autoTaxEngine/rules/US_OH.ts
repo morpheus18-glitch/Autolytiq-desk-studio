@@ -541,7 +541,7 @@ export const US_OH: TaxRulesConfig = {
       "(6) Seven reciprocal states (AZ, CA, FL, IN, MA, MI, SC) require Ohio tax collection.",
 
     keyDifferencesFromOtherStates: [
-      "Trade-in credit ONLY for new vehicles (USED vehicles get NO credit)",
+      "Trade-in credit ONLY for NEW vehicles (USED vehicles get NO credit)",
       "Lease tax paid UPFRONT on all payments (not monthly like IN/MI)",
       "VSC and GAP taxable on leases (most states exempt these)",
       "Doc fee NOT taxable (differs from many states)",

@@ -309,7 +309,7 @@ export const US_IA: TaxRulesConfig = {
     notes:
       "Iowa leases use FULL UPFRONT taxation on total lease price. " +
       "Lease price = (monthly payment × months) + down payment + trade-in value. " +
-      "⚠️ CRITICAL: Trade-ins are ADDED to lease price (not subtracted). " +
+      "⚠️ CRITICAL: Trade-ins are ADDED to lease price (opposite of retail). " +
       "Cap cost reductions are included in taxable lease price. " +
       "Registration fee: $10 + (lease price × 5%) + local option tax. " +
       "Per Iowa Admin. Code 701-31.5. Applies to leases of 12+ months.",

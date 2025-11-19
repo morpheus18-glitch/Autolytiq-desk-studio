@@ -63,7 +63,7 @@ import { TaxRulesConfig } from "../types";
  */
 export const US_AK: TaxRulesConfig = {
   stateCode: "AK",
-  version: 2,
+  version: 1,
 
   // ============================================================================
   // RETAIL TRANSACTION RULES
@@ -267,7 +267,7 @@ export const US_AK: TaxRulesConfig = {
      * Doc fees paid at lease inception are typically not taxed separately.
      * Only monthly lease payments are subject to local sales tax.
      */
-    docFeeTaxability: "NEVER",
+    docFeeTaxability: "FOLLOW_RETAIL_RULE",
 
     /**
      * Trade-in Credit on Leases: FULL
@@ -372,7 +372,7 @@ export const US_AK: TaxRulesConfig = {
    * and brought into Alaska, as there is no state sales or use tax.
    */
   reciprocity: {
-    enabled: false,
+    enabled: true,
     scope: "BOTH",
     homeStateBehavior: "NONE",
     requireProofOfTaxPaid: false,
@@ -397,18 +397,20 @@ export const US_AK: TaxRulesConfig = {
       "Alaska Administrative Code",
     ],
     notes:
-      "Alaska is one of 5 states with NO state sales tax (along with DE, MT, NH, OR). Only " +
-      "local boroughs and municipalities may impose sales taxes (0%-7.5%+). 151 local tax " +
-      "jurisdictions, average rate 1.76%. Major cities Anchorage and Fairbanks have 0% local " +
-      "tax. Juneau (capital) has 5% local tax. Trade-in credit applies where local tax exists. " +
-      "Manufacturer rebates reduce taxable base. Doc fees average ~$80 (NO state cap). VSC and " +
-      "GAP NOT taxable. Leases: monthly taxation on payments only. NO state use tax on out-of-" +
-      "state purchases. Title fee $15, registration varies by vehicle weight and type.",
+      "Alaska has NO state sales tax (one of five states without sales tax). Uses LOCAL_ONLY tax " +
+      "scheme where only local municipalities may impose sales taxes. Tax rates varies by municipality " +
+      "from 0% to 7%. 151 local tax jurisdictions, average rate 1.76%. Major cities " +
+      "Anchorage and Fairbanks have 0% local tax. Juneau (capital) has 5% local tax. Trade-in " +
+      "credit applies where local tax exists. Manufacturer rebates reduce taxable base. Doc fees " +
+      "average ~$80 (NO state cap). VSC and GAP NOT taxable. Leases: monthly taxation on payments " +
+      "only. NO state use tax on out-of-state purchases. Title fee $15, registration varies by " +
+      "vehicle weight and type.",
+    stateSalesRate: 0,
     stateAutomotiveSalesRate: 0.0,
     stateAutomotiveLeaseRate: 0.0,
-    localRateRange: { min: 0.0, max: 7.5 },
-    localTaxRange: { min: 0.0, max: 7.5 },  // Alias for test compatibility
-    combinedRateRange: { min: 0.0, max: 7.5 },
+    localRateRange: { min: 0.0, max: 7 },
+    localTaxRange: { min: 0.0, max: 7 },  // Alias for test compatibility
+    combinedRateRange: { min: 0.0, max: 7 },
     avgDocFee: 80,
     titleFee: 15.0,
     jurisdictionCount: 151,

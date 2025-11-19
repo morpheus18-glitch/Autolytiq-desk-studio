@@ -69,7 +69,7 @@ import { TaxRulesConfig } from "../types";
  */
 export const US_DE: TaxRulesConfig = {
   stateCode: "DE",
-  version: 2,
+  version: 1,
 
   // ============================================================================
   // RETAIL TRANSACTION RULES
@@ -207,7 +207,7 @@ export const US_DE: TaxRulesConfig = {
    * Service Contracts: NOT subject to doc fee
    * GAP: NOT subject to doc fee
    */
-  taxOnAccessories: true, // Included in doc fee base
+  taxOnAccessories: false, // No sales tax in Delaware
   taxOnNegativeEquity: false, // NOT included in doc fee base
   taxOnServiceContracts: false,
   taxOnGap: false,
@@ -394,7 +394,7 @@ export const US_DE: TaxRulesConfig = {
    * doc fee regardless of where they will register the vehicle.
    */
   reciprocity: {
-    enabled: true,
+    enabled: false,
     scope: "RETAIL_ONLY",
     homeStateBehavior: "CREDIT_UP_TO_STATE_RATE",
     requireProofOfTaxPaid: true,
@@ -421,14 +421,17 @@ export const US_DE: TaxRulesConfig = {
       "Delaware Gross Receipts Tax Regulations",
     ],
     notes:
-      "Delaware is one of 5 states with NO sales tax (along with AK, MT, NH, OR). Instead, " +
-      "Delaware charges a mandatory 4.25% 'document fee' on vehicle purchases, calculated " +
-      "on purchase price or NADA value (whichever higher), after trade-in credit. This fee " +
-      "functions as a de facto sales tax. Title fee $35, registration $40/year. Trade-in " +
-      "credit FULL (reduces doc fee base). Manufacturer rebates reduce doc fee base. VSC " +
-      "and GAP NOT subject to any tax. Leases: 2.29% monthly lease tax on payments " +
-      "(1.9914% gross receipts + 0.2987% business license tax on lessor, passed to lessee). " +
+      "Delaware has NO state sales tax and NO local sales tax - one of five states without sales tax. " +
+      "The Delaware constitution prohibits a general sales tax. Instead, Delaware charges a mandatory " +
+      "4.25% 'document fee' on vehicle purchases, calculated on purchase price or NADA value " +
+      "(whichever higher), after trade-in credit. This fee functions as a de facto sales tax with " +
+      "0% rate for traditional sales tax. Title fee $35, registration $40/year. Trade-in credit FULL " +
+      "(reduces doc fee base). Manufacturer rebates reduce doc fee base. VSC and GAP NOT subject to " +
+      "any tax. Over 60% of Fortune 500 companies are incorporated in Delaware. Leases: 2.29% monthly lease tax " +
+      "on payments (1.9914% gross receipts + 0.2987% business license tax on lessor, passed to lessee). " +
       "SPECIAL: If buyer paid tax elsewhere on full MSRP, 4.25% doc fee may be waived with proof.",
+    stateSalesRate: 0,
+    avgDocFee: 275,
     stateAutomotiveSalesRate: 0.0,
     stateDocumentFeeRate: 4.25,
     stateAutomotiveLeaseRate: 2.29, // Approximate combined lease tax
@@ -441,6 +444,11 @@ export const US_DE: TaxRulesConfig = {
     documentFeeCalculation:
       "MAX(Purchase Price, NADA Value) - Trade-In × 4.25%",
     fullValueTaxExemption: true,
+    neighboringStates: {
+      Maryland: { salesTaxRate: 6.0 },
+      Pennsylvania: { salesTaxRate: 6.0 },
+      NewJersey: { salesTaxRate: 6.625 },
+    },
   },
 };
 

@@ -457,7 +457,7 @@ export const US_KY: TaxRulesConfig = {
      *
      * Source: County Clerk guidance, KRS 138.460
      */
-    docFeeTaxability: "ALWAYS",
+    docFeeTaxability: "FOLLOW_RETAIL_RULE",
 
     /**
      * Trade-in Credit on Leases: FULL
@@ -557,16 +557,17 @@ export const US_KY: TaxRulesConfig = {
       },
       {
         code: "SERVICE_CONTRACT",
-        taxable: false,
+        taxable: true,
         notes:
-          "Service contracts capitalized into lease are taxed as part of monthly payment. " +
-          "No separate VSC tax calculation.",
+          "Service contracts TAXABLE on leases (6% usage tax applies). " +
+          "Taxed as part of monthly payment calculation.",
       },
       {
         code: "GAP",
-        taxable: false,
+        taxable: true,
         notes:
-          "GAP capitalized into lease is taxed as part of monthly payment. No separate GAP tax.",
+          "GAP TAXABLE on leases (6% usage tax applies). " +
+          "Taxed as part of monthly payment calculation.",
       },
       {
         code: "TITLE",
@@ -693,7 +694,7 @@ export const US_KY: TaxRulesConfig = {
       "Kentucky Transportation Cabinet - Motor Vehicle Licensing",
     ],
     notes:
-      "Kentucky levies a 6% motor vehicle usage tax (state only, no local taxes). Trade-in " +
+      "Kentucky levies a uniform 6% Motor Vehicle Usage Tax (state only, no local taxes on vehicles). Trade-in " +
       "credit applies to all vehicles (some restrictions on used vehicles). Rebates are " +
       "NON-TAXABLE (reduce tax base). Service contracts and GAP are TAXABLE when sold with " +
       "vehicle. Doc fee taxable, NO CAP. Retail price = greater of (total consideration - trade) " +
@@ -701,6 +702,8 @@ export const US_KY: TaxRulesConfig = {
       "taxed separately, trade-in credit APPLIES. Full reciprocity for taxes paid to other states.",
     stateUsageTaxRate: 6.0,
     stateGeneralSalesRate: 6.0,
+    flatUsageTaxRate: 0.06,
+    motorVehicleUsageTax: 6.0,
     localTaxes: false,
     flatTaxRate: true,
     msrpFloor: 0.9, // 90% of MSRP for new vehicles

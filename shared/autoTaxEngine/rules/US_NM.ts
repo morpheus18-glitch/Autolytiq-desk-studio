@@ -633,15 +633,16 @@ export const US_NM: TaxRulesConfig = {
       "Federation of Tax Administrators - State Tax Data",
     ],
     notes:
-      "New Mexico uses a GROSS RECEIPTS TAX (GRT) system, not a traditional sales tax. State " +
-      "GRT 5.125% + local (county + municipal) 1.0625% to 3.4375% = 6.1875% to 8.5625% combined. " +
+      "New Mexico uses a Gross Receipts Tax (GRT) system (a privilege tax on seller), not a traditional sales tax. State " +
+      "GRT 5.125% + local up to 4.1875% = combined rate 5.125% to 9.3125% maximum. " +
       "UNIQUE: VSC and GAP are TAXABLE (most states exempt). This significantly increases backend " +
       "product costs. Manufacturer rebates reduce tax base (favorable). Full trade-in credit. No " +
       "doc fee cap (avg $399). Monthly lease taxation. Full reciprocity with credit for out-of-state " +
       "taxes paid. Nonresident deduction available for out-of-state buyers. Title fee: $17.",
     stateGRTRate: 5.125,
-    localGRTRange: { min: 1.0625, max: 3.4375 },
-    combinedGRTRange: { min: 6.1875, max: 8.5625 },
+    localGRTRange: { min: 0, max: 4.1875 },
+    combinedRateRange: { min: 5.125, max: 9.3125 },
+    combinedGRTRange: { min: 5.125, max: 9.3125 },
     avgDocFee: 399,
     titleFee: 17.0,
     majorJurisdictions: {

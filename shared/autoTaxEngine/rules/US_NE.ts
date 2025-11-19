@@ -121,11 +121,10 @@ export const US_NE: TaxRulesConfig = {
   rebates: [
     {
       appliesTo: "MANUFACTURER",
-      taxable: true,
+      taxable: false,
       notes:
-        "Manufacturer rebates: Nebraska guidance not definitive. Conservative approach treats " +
-        "rebates as taxable (tax on full price before rebate). Verify with Nebraska DOR for " +
-        "specific situations.",
+        "Manufacturer rebates reduce the taxable base (tax calculated on price after rebate). " +
+        "Verify with Nebraska DOR for specific situations.",
     },
     {
       appliesTo: "DEALER",
@@ -491,7 +490,7 @@ export const US_NE: TaxRulesConfig = {
 
     notes:
       "Nebraska: MONTHLY lease taxation (standard method) - tax collected on gross lease receipts. " +
-      "Alternative: Lessor may elect (Form 15) to pay tax on vehicle cost upfront instead of " +
+      "Alternative: lessor election (Form 15) allows paying tax on vehicle cost upfront instead of " +
       "collecting on lease receipts. Mandatory charges (insurance, refueling, property taxes) ARE " +
       "TAXABLE even if separately stated. GAP waivers TAXABLE as part of lease price. Service " +
       "contracts generally not taxable when separately stated. Trade-in reduces cap cost (monthly method). " +
@@ -584,13 +583,14 @@ export const US_NE: TaxRulesConfig = {
       "PrivateAuto - Nebraska Sales Taxes",
     ],
     notes:
-      "Nebraska has 5.5% state sales tax + local (county + city) for combined 5.5% to 8.0%. " +
+      "Nebraska has 5.5% state sales tax + local (county + city) for combined 5.5% to 8% maximum. " +
       "Full trade-in credit on both retail and leases (monthly method). Manufacturer rebate treatment " +
       "not definitive (conservative: taxable). Doc fees taxable, NO CAP (avg $280). Lease: MONTHLY " +
       "taxation standard, or lessor may elect to pay tax on vehicle cost (Form 15). Mandatory lease " +
-      "charges (insurance, refueling) ARE TAXABLE. GAP waivers TAXABLE (unique feature). Service " +
-      "contracts generally not taxable when separately stated. Reciprocity with reciprocal states. " +
-      "Tax collected at registration (within 30 days). Highest rate: Gage County 8.0%.",
+      "charges (insurance, refueling) ARE TAXABLE. GAP waivers TAXABLE per Revenue Ruling RR-011601 " +
+      "(unique feature). Service contracts generally not taxable when separately stated. Reciprocity " +
+      "with reciprocal states. Tax collected at registration (within 30 days). Highest rate: Gage County 8%.",
+    stateSalesRate: 5.5,
     stateRate: 5.5,
     localRateRange: {
       min: 0.0,

@@ -69,7 +69,7 @@ import { TaxRulesConfig } from "../types";
  */
 export const US_ID: TaxRulesConfig = {
   stateCode: "ID",
-  version: 2,
+  version: 1,
 
   // ============================================================================
   // RETAIL TRANSACTION RULES
@@ -241,8 +241,8 @@ export const US_ID: TaxRulesConfig = {
    *
    * Tax is based on the location of the dealership.
    */
-  vehicleTaxScheme: "STATE_PLUS_LOCAL",
-  vehicleUsesLocalSalesTax: true,
+  vehicleTaxScheme: "STATE_ONLY",
+  vehicleUsesLocalSalesTax: false,
 
   // ============================================================================
   // LEASE TRANSACTION RULES
@@ -451,13 +451,15 @@ export const US_ID: TaxRulesConfig = {
       "Idaho Sales and Use Tax Guide for Vehicle Transactions",
     ],
     notes:
-      "Idaho has 6% state sales tax + local taxes (0%-3%) for total 6%-9%. Full trade-in credit " +
+      "Idaho has uniform 6% flat rate statewide. No local taxes on vehicles. Full trade-in credit " +
       "applies (dealer sales only, NOT private party). Manufacturer rebates reduce taxable base. " +
-      "Doc fees TAXABLE (no state cap). VSC and GAP NOT taxable when separately stated as optional. " +
+      "Doc fees TAXABLE (no state cap). Service contracts are exempt when separately stated as optional. " +
+      "GAP NOT taxable when separately stated. " +
       "Leases: MONTHLY taxation on payments (true lease). Trade-in credit ALLOWED on leases " +
       "(reduces monthly payments and tax). Lease with option to purchase: monthly payments taxed, " +
       "plus tax on buyout. Lease-purchase: taxed as full retail sale at delivery. Limited reciprocity " +
       "with other states. Title and registration fees NOT taxable.",
+    stateSalesRate: 6,
     stateAutomotiveSalesRate: 6.0,
     stateAutomotiveLeaseRate: 6.0,
     localRateRange: { min: 0.0, max: 3.0 },

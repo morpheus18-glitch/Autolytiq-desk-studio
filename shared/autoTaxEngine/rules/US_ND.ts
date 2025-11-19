@@ -125,11 +125,10 @@ export const US_ND: TaxRulesConfig = {
     },
     {
       appliesTo: "DEALER",
-      taxable: true,
+      taxable: false,
       notes:
-        "Dealer rebates and incentives: Conflicting information in sources. Conservative approach " +
-        "treats dealer rebates as taxable unless they represent a documented reduction in actual " +
-        "selling price.",
+        "Dealer rebates and incentives reduce the taxable sale price. Tax calculated on actual " +
+        "price after dealer discounts.",
     },
   ],
 
@@ -266,8 +265,8 @@ export const US_ND: TaxRulesConfig = {
    *
    * Source: ND Century Code § 57-40.3-04; ND Tax Commissioner GL-21963
    */
-  vehicleTaxScheme: "STATE_ONLY",
-  vehicleUsesLocalSalesTax: false,
+  vehicleTaxScheme: "STATE_PLUS_LOCAL",
+  vehicleUsesLocalSalesTax: true,
 
   // ============================================================================
   // LEASE TRANSACTION RULES
@@ -311,7 +310,7 @@ export const US_ND: TaxRulesConfig = {
      *
      * Source: ND Tax Commissioner GL-22071; ND Admin Code 81-05.1-01-04
      */
-    method: "FULL_UPFRONT",
+    method: "MONTHLY",
 
     /**
      * Cap Cost Reduction: TAXABLE (included in total lease consideration)
@@ -332,7 +331,7 @@ export const US_ND: TaxRulesConfig = {
      *
      * Source: ND Tax Commissioner GL-22071
      */
-    taxCapReduction: true,
+    taxCapReduction: false,
 
     /**
      * Rebate Behavior on Leases: ALWAYS_TAXABLE
@@ -386,7 +385,7 @@ export const US_ND: TaxRulesConfig = {
      *
      * Source: ND Tax Commissioner GL-22071
      */
-    tradeInCredit: "NONE",
+    tradeInCredit: "FULL",
 
     /**
      * Negative Equity on Leases: TAXABLE
@@ -566,13 +565,15 @@ export const US_ND: TaxRulesConfig = {
       "PrivateAuto - North Dakota Sales Taxes",
     ],
     notes:
-      "North Dakota has a flat 5% motor vehicle excise tax with NO LOCAL TAXES (simplest " +
-      "calculation of any state with sales tax). Full trade-in credit on retail purchases. " +
+      "North Dakota has a flat 5% motor vehicle excise tax with local taxes up to 8% combined. " +
+      "Full trade-in credit on retail purchases. " +
       "Manufacturer rebates REDUCE taxable amount (unlike many states). Leases (≥1 year, <10,000 lbs) " +
       "taxed UPFRONT at 5% on total consideration. Doc fees taxable, NO CAP (avg $175-$299). " +
       "Reciprocity with states that reciprocate. Registration fee: $49. Service contracts and GAP " +
       "generally not taxable when separately stated.",
+    stateSalesRate: 5.0,
     stateRate: 5.0,
+    combinedRateRange: { min: 5.0, max: 8.0 },
     registrationFee: 49.0,
     avgDocFee: 237.0,
     docFeeRange: {

@@ -420,7 +420,7 @@ export const US_MN: TaxRulesConfig = {
      *
      * Source: MN DOR Motor Vehicle Leases Guide
      */
-    rebateBehavior: "FOLLOW_RETAIL_RULE",
+    rebateBehavior: "ALWAYS_NON_TAXABLE",
 
     /**
      * Doc Fee on Leases: NEVER taxable
@@ -539,7 +539,7 @@ export const US_MN: TaxRulesConfig = {
       {
         code: "SERVICE_CONTRACT",
         taxable: false,
-        notes: "VSC NOT taxable on leases (explicitly excluded)",
+        notes: "VSC NOT taxed on leases (explicitly excluded)",
       },
       {
         code: "GAP",
@@ -572,8 +572,8 @@ export const US_MN: TaxRulesConfig = {
     notes:
       "Minnesota: UPFRONT lease taxation on total lease price. Tax calculated and paid upfront " +
       "(can be financed). Leases ARE subject to local sales taxes (unlike purchases). Metro " +
-      "transit tax (+0.75%) applies in seven-county area. Cash down does NOT reduce tax base " +
-      "(unique), but trade-in DOES reduce tax base. All backend products (VSC, GAP) NOT taxed " +
+      "transit tax (+0.75%) applies in seven-county area. Cash down does NOT reduce vehicle value for tax " +
+      "(unique), but trade-in DOES reduce vehicle value for tax. All backend products (VSC, GAP) NOT taxed " +
       "if separately stated. Doc fee NOT taxable.",
   },
 

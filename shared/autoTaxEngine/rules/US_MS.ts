@@ -493,8 +493,8 @@ export const US_MS: TaxRulesConfig = {
    *
    * Source: Miss. Code § 27-65-201, Mississippi DOR Sales Tax Rate Tables
    */
-  vehicleTaxScheme: "STATE_ONLY",
-  vehicleUsesLocalSalesTax: false,
+  vehicleTaxScheme: "STATE_PLUS_LOCAL",
+  vehicleUsesLocalSalesTax: true,
 
   // ============================================================================
   // LEASE TRANSACTION RULES
@@ -948,9 +948,11 @@ export const US_MS: TaxRulesConfig = {
       "UNIQUE: Manufacturer rebates TAXABLE (do NOT reduce tax base), but dealer rebates NON-TAXABLE. " +
       "Doc fee taxable with district-based caps (7 districts, cap = avg + 25%, avg ~$425). Service " +
       "contracts and GAP NOT taxed at time of sale (only subsequent repairs taxed). Lease taxation: " +
-      "MONTHLY at 5%, cap reduction NOT taxed upfront, trade-in credit APPLIES. NO RECIPROCITY - " +
+      "MONTHLY at 5%, cap reduction NOT taxed upfront, trade-in credit APPLIES. NO reciprocity - " +
       "no credit for taxes paid to other states (potential double taxation). Heavy truck rate provides " +
       "significant savings for commercial vehicles.",
+    stateSalesRate: 5,
+    heavyTruckRate: 3,
     stateVehicleSalesRate: 5.0,
     stateHeavyTruckRate: 3.0, // Trucks > 10,000 lbs GVW
     stateGeneralSalesRate: 7.0,

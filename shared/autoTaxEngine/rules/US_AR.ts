@@ -359,7 +359,7 @@ const AR_RULES: TaxRulesConfig = {
   // within 60-day windows.
   reciprocity: {
     enabled: false, // NO reciprocity for out-of-state vehicle taxes
-    scope: "RETAIL_ONLY",
+    scope: "NONE",
     homeStateBehavior: "NONE",
     requireProofOfTaxPaid: false, // N/A - no credit given regardless of proof
     basis: "TAX_PAID",

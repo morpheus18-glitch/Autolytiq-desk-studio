@@ -473,13 +473,14 @@ export const US_MT: TaxRulesConfig = {
       "Car and Driver - Montana Register Cars Law Change (2024)",
     ],
     notes:
-      "Montana is one of 5 states with NO SALES TAX on vehicles (along with AK, DE, NH, OR). " +
+      "Montana is one of five states with NO state sales tax on vehicles (0% rate, along with AK, DE, NH, OR). " +
       "Instead of sales tax, Montana collects age-based registration fees: $217 (0-4 years), " +
       "$87 (5-10 years), $28 (11+ years) annually, OR $87.50 permanent registration for 11+ year " +
-      "vehicles. Luxury vehicle tax: $825/year for MSRP ≥ $150,000 until 11 years old. Title fee: " +
+      "vehicles. A luxury vehicle fee of $825/year applies for vehicles with MSRP ≥ $150,000 until 11 years old. Title fee: " +
       "$12 (standard), $18.50 (salvage). Doc fee: avg $224, NO CAP. County option tax may apply " +
       "based on depreciated MSRP. Montana LLC registration popular for tax avoidance but neighboring " +
       "states increasingly enforce use tax requirements.",
+    stateSalesRate: 0,
     stateRate: 0.0,
     registrationFees: {
       age0to4: 217.0,

@@ -1351,13 +1351,6 @@ publicRouter.post("/resend", async (req: Request, res: Response) => {
     // STEP 2: Process verified webhook event
     // ========================================================================
     const event = verifiedEvent;
-    const eventType = event?.type;
-    const eventData = event?.data;
-
-    if (!eventType || !eventData) {
-      console.error('[Resend Webhook] Invalid event structure');
-      return res.status(400).json({ error: 'Invalid event structure' });
-    }
 
     // Import database dependencies
     const db = await import("./db").then((m) => m.db);
@@ -1366,9 +1359,23 @@ publicRouter.post("/resend", async (req: Request, res: Response) => {
     const { nanoid } = await import("nanoid");
 
     // ========================================================================
-    // HANDLE INBOUND EMAILS (email.received)
+    // HANDLE INBOUND EMAILS
+    // Resend inbound can send as:
+    // 1. Direct email object (from, to, subject, html, text)
+    // 2. Wrapped event { type: 'email.received', data: {...} }
     // ========================================================================
-    if (eventType === 'email.received') {
+
+    // Check if this is a direct inbound email (has from/to/subject at root)
+    const isDirectInbound = event?.from && (event?.to || event?.subject);
+    const eventType = isDirectInbound ? 'email.received' : event?.type;
+    const eventData = isDirectInbound ? event : event?.data;
+
+    if (!eventType && !isDirectInbound) {
+      console.error('[Resend Webhook] Invalid event structure:', JSON.stringify(event).slice(0, 200));
+      return res.status(400).json({ error: 'Invalid event structure' });
+    }
+
+    if (eventType === 'email.received' || isDirectInbound) {
       console.log('[Resend Webhook] Processing inbound email:', {
         from: eventData.from,
         to: eventData.to,
@@ -1533,10 +1540,15 @@ publicRouter.post("/resend", async (req: Request, res: Response) => {
     // ========================================================================
     // HANDLE OUTBOUND EMAIL STATUS UPDATES (sent, delivered, bounced, etc.)
     // ========================================================================
-    
+
+    if (!eventData) {
+      console.error('[Resend Webhook] No event data for status update');
+      return res.status(400).json({ error: 'No event data provided' });
+    }
+
     // Get email ID from event (could be email_id or message_id depending on event type)
     const emailId = eventData.email_id || eventData.message_id;
-    
+
     if (!emailId) {
       console.error('[Resend Webhook] No email ID in event');
       return res.status(400).json({ error: 'No email ID provided' });

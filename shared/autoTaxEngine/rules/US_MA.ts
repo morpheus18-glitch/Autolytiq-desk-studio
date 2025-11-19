@@ -237,7 +237,7 @@ export const US_MA: TaxRulesConfig = {
      *
      * This lowers the monthly payment and thus the tax paid monthly.
      */
-    rebateBehavior: "FOLLOW_RETAIL_RULE",
+    rebateBehavior: "ALWAYS_NON_TAXABLE",
 
     /**
      * Doc Fee on Leases: ALWAYS taxable

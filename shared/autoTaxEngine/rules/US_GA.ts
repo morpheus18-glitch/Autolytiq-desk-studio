@@ -240,7 +240,7 @@ export const US_GA: TaxRulesConfig = {
      * Even though Georgia has a special TAVT system for retail purchases,
      * leases use standard sales tax with no special scheme.
      */
-    specialScheme: "NONE",
+    specialScheme: "GA_TAVT",
 
     notes:
       "Georgia leases use 4% state sales tax on monthly payments (NOT TAVT). " +
@@ -305,7 +305,7 @@ export const US_GA: TaxRulesConfig = {
     notes:
       "Georgia uses TAVT (Title Ad Valorem Tax) for retail purchases at 7% of fair market value. " +
       "TAVT is a ONE-TIME tax that replaces annual property tax. " +
-      "Leases are taxed differently: 4% state sales tax on monthly payments (not TAVT). " +
+      "For leases, 4% state sales tax applies on monthly payments (not TAVT). " +
       "TAVT base is higher of purchase price or DMV assessed value. " +
       "Trade-in gets full credit. Limited reciprocity with proof of prior tax paid.",
     tavtRate: 7.0,

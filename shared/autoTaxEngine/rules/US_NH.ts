@@ -601,13 +601,14 @@ export const US_NH: TaxRulesConfig = {
       "Federation of Tax Administrators - State Sales Tax Rates",
     ],
     notes:
-      "New Hampshire is one of five states with NO SALES TAX (NH, OR, DE, MT, AK). Vehicle " +
-      "purchases are tax-free at point of sale. However, out-of-state buyers must pay use tax " +
-      "in their home state. Long-term leases (12+ months) are EXEMPT from the 9% Meals and " +
-      "Rentals Tax. Short-term rentals (< 12 months) are subject to 9% rental tax. Registration " +
-      "fees are based on vehicle age and MSRP (Year 1: $31.20 per $1,000). Title fee: $25. No " +
-      "doc fee cap (avg ~$399). NH dealers attract buyers from high-tax border states (MA, VT, ME).",
-    stateSalesRate: 0.0,
+      "New Hampshire has NO state sales tax and NO local sales tax - one of five states without sales tax " +
+      "(Live Free or Die). Vehicle purchases have absolutely zero sales tax at point of sale. However, " +
+      "out-of-state buyers must pay use tax in their home state upon registration. Long-term leases " +
+      "(12+ months) are EXEMPT from the 9% Meals and Rentals Tax. Short-term rentals (< 12 months) " +
+      "are subject to 9% rental tax. registration fees exist separately and are based on vehicle age " +
+      "and MSRP (Year 1: $31.20 per $1,000). Title fee: $25. No doc fee cap (avg ~$399). Rate is 0% " +
+      "statewide. NH dealers attract buyers from high-tax border states (MA, VT, ME).",
+    stateSalesRate: 0,
     stateRentalTaxRate: 9.0,
     rentalTaxExemptionThreshold: "12 months",
     titleFee: 25.0,
@@ -620,6 +621,11 @@ export const US_NH: TaxRulesConfig = {
     avgDocFee: 399,
     noSalesTaxStates: ["NH", "OR", "DE", "MT", "AK"],
     borderStates: {
+      Massachusetts: { salesTaxRate: 6.25 },
+      Vermont: { salesTaxRate: 6.0 },
+      Maine: { salesTaxRate: 5.5 },
+    },
+    neighboringStates: {
       Massachusetts: { salesTaxRate: 6.25 },
       Vermont: { salesTaxRate: 6.0 },
       Maine: { salesTaxRate: 5.5 },

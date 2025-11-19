@@ -295,7 +295,7 @@ export const US_PA: TaxRulesConfig = {
         code: "GAP",
         taxable: true,
         notes:
-          "GAP IS taxable on leases (unlike retail where it's not taxable)",
+          "GAP TAXABLE on leases (unlike retail where it's not taxable)",
       },
       { code: "TITLE", taxable: false },
       { code: "REG", taxable: false },
@@ -529,7 +529,7 @@ export const US_PA: TaxRulesConfig = {
       "Doc fees are NOT taxable and capped at $464 (electronic) or $387 (non-electronic) for 2025 " +
       "(adjusted annually by CPI). Both manufacturer AND dealer rebates reduce taxable amount " +
       "(uncommon - most states tax dealer rebates). Full trade-in credit available. " +
-      "LEASES: Unique dual-tax structure with 6% sales tax + 3% motor vehicle lease tax = 9% total " +
+      "LEASES: DUAL TAX STRUCTURE with 6% sales tax + 3% motor vehicle lease tax = 9% total " +
       "on monthly payments. GAP is NOT taxable on retail but IS taxable on leases. " +
       "Service contracts are taxable on both retail and leases. " +
       "RECIPROCITY: Requires MUTUAL CREDIT - PA only gives credit if origin state would reciprocate. " +

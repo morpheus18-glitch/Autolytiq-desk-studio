@@ -284,7 +284,7 @@ export const US_ME: TaxRulesConfig = {
   taxOnAccessories: true,
   taxOnNegativeEquity: true,
   taxOnServiceContracts: true,
-  taxOnGap: true,
+  taxOnGap: false,
 
   /**
    * Vehicle Tax Scheme: STATE_ONLY
@@ -554,7 +554,7 @@ export const US_ME: TaxRulesConfig = {
     specialScheme: "NONE",
 
     notes:
-      "Maine: MONTHLY lease taxation (NEW as of 1/1/2025). Long-term leases (≥1 year): 5% tax " +
+      "Maine: MONTHLY lease taxation (NEW as of Jan 1, 2025). Long-term leases (≥1 year): 5% tax " +
       "on each payment. Short-term rentals (<1 year): 10% tax. Cap cost reduction NOT taxed " +
       "separately (only payments taxed). Trade-in credit APPLIES to leases (reduces monthly " +
       "payment and tax). Each payment period is a separate sale. Doc fee taxable. Backend " +
@@ -643,10 +643,11 @@ export const US_ME: TaxRulesConfig = {
       "Maine levies a 5.5% sales tax on vehicles (state only, no local taxes). Trade-in credit " +
       "FULL (applies to purchase price). Rebates are NON-TAXABLE (reduce tax base). Service " +
       "contracts and GAP are TAXABLE when sold with vehicle. Doc fee taxable, NO CAP (avg $410). " +
-      "MAJOR CHANGE (1/1/2025): Lease taxation now MONTHLY. Long-term leases (≥1 year): 5% tax on " +
-      "each payment. Short-term rentals (<1 year): 10% tax. Cap reduction NOT taxed separately, " +
+      "MAJOR CHANGE (Jan 1, 2025): Lease taxation now MONTHLY. Long-term leases (≥1 year): 5% tax on " +
+      "each payment. short-term rentals (<1 year): 10% tax. Cap reduction NOT taxed separately, " +
       "trade-in credit APPLIES. Non-resident exemption for out-of-state use. Annual excise tax " +
       "is SEPARATE from sales tax.",
+    stateSalesRate: 5.5,
     stateSalesTaxRate: 5.5,
     stateLongTermLeaseRate: 5.0,
     stateShortTermRentalRate: 10.0,

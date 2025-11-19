@@ -552,7 +552,8 @@ export const US_WI: TaxRulesConfig = {
       "TAXABLE (unusual - most states treat as non-taxable). Dealer discounts NOT taxable. " +
       "Service contracts TAXABLE (unusual - most states exempt VSC). GAP NOT taxable if " +
       "separately stated. Doc fee taxable with NO CAP (average $299). Leases: Monthly " +
-      "taxation with cap cost reduction (including trade-in) taxed upfront. Wheel tax: " +
+      "taxation with cap cost reduction (including trade-in) taxed upfront. Trade-in on lease IS taxed " +
+      "(different from purchase where trade-in is NOT taxed). Wheel tax: " +
       "68 jurisdictions collect $10-$80 annually (county/city registration fee, NOT sales tax). " +
       "Milwaukee County: 0.9% rate (increased Jan 1, 2024). Stadium tax eliminated Mar 31, 2020.",
     stateRate: 5.0,

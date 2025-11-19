@@ -297,7 +297,7 @@ export const US_FL: TaxRulesConfig = {
     capAtThisStatesTax: false,
     hasLeaseException: false,
     notes:
-      "Florida does not provide reciprocity credits. Out-of-state vehicle purchases " +
+      "Florida does not provide reciprocity credits, similar to California. Out-of-state vehicle purchases " +
       "owe full FL use tax (6% + county surtax) regardless of tax paid elsewhere. " +
       "No credit given for taxes paid in other states.",
   },
@@ -312,8 +312,8 @@ export const US_FL: TaxRulesConfig = {
       "TIP 04A01-12 - Motor Vehicle Sales and Leases",
     ],
     notes:
-      "Florida has 6% state sales tax with county surtax up to 2% (max 8% combined). " +
-      "Doc fees are capped at $995 (one of the highest caps in US). " +
+      "Florida has 6% state sales tax with county surtax up to 2% (max 8% combined). Tax based on " +
+      "location where the vehicle is registered. Doc fees are capped at $995 (one of the highest caps in US). " +
       "Service contracts and GAP are taxed on retail but NOT on leases. " +
       "No reciprocity - full use tax owed on out-of-state purchases.",
     docFeeCapAmount: 995,

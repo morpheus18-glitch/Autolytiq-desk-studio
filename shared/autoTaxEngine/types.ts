@@ -50,6 +50,7 @@ export type LeaseMethod =
 
 export type LeaseRebateBehavior =
   | "ALWAYS_TAXABLE"
+  | "ALWAYS_NON_TAXABLE"
   | "FOLLOW_RETAIL_RULE"
   | "NON_TAXABLE_IF_AT_SIGNING"
   | "NON_TAXABLE_IF_ASSIGNABLE";
@@ -76,7 +77,8 @@ export type LeaseSpecialScheme =
   | "TX_LEASE_SPECIAL"
   | "VA_USAGE"
   | "MD_UPFRONT_GAIN"
-  | "CO_HOME_RULE_LEASE";
+  | "CO_HOME_RULE_LEASE"
+  | "GA_TAVT";
 
 // ---- DSL: Reciprocity Rules (Cross-State Tax Credit) ----
 
@@ -87,6 +89,7 @@ export type ReciprocityMode =
   | "HOME_STATE_ONLY"; // tax liability is determined by home/registration state
 
 export type ReciprocityScope =
+  | "NONE"
   | "RETAIL_ONLY"
   | "LEASE_ONLY"
   | "BOTH";
@@ -114,6 +117,12 @@ export interface ReciprocityRules {
   // State-specific overrides for pairwise reciprocity
   // Example: PA requires mutual credit, NC has 90-day window
   overrides?: ReciprocityOverrideRule[];
+
+  // States that are exempt from reciprocity (no credit given)
+  exemptStates?: string[];
+
+  // States that don't reciprocate (no mutual credit agreement)
+  nonReciprocalStates?: string[];
 
   notes?: string;
 }

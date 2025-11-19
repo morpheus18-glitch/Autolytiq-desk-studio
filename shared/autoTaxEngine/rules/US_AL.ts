@@ -779,8 +779,8 @@ export const US_AL: TaxRulesConfig = {
     notes:
       "Alabama provides FULL reciprocal credit for taxes paid to other states, capped at AL tax " +
       "amount. Credit given EVEN IF other state wouldn't reciprocate (unilateral). Proof of " +
-      "payment required. Drive-Out Provision (July 1, 2022): Out-of-state buyers pay 2% state " +
-      "tax only (no local), capped at destination state rate. Vehicle must be removed within 72 " +
+      "payment required. Drive-Out Provision (July 1, 2022): out-of-state buyers pay state tax only " +
+      "(NO local taxes), capped at destination state rate. Vehicle must be removed within 72 " +
       "hours. Buyers from no-tax states pay $0.",
   },
 

@@ -74,12 +74,12 @@ const MI_RULES: TaxRulesConfig = {
     {
       code: "SERVICE_CONTRACT",
       taxable: false, // CORRECTED: VSC NOT taxable if optional and separately itemized
-      notes: "Taxable only if mandatory or bundled with vehicle purchase"
+      notes: "NOT taxable if optional and separately stated. Taxable only if mandatory or bundled."
     },
     {
       code: "GAP",
       taxable: false, // CORRECTED: GAP insurance NOT taxable (insurance premiums exempt)
-      notes: "Insurance premiums and related services exempt from Michigan sales tax"
+      notes: "Insurance premiums exempt from Michigan sales tax"
     },
     { code: "TITLE", taxable: false },
     { code: "REG", taxable: false },
@@ -144,10 +144,13 @@ const MI_RULES: TaxRulesConfig = {
     basis: "TAX_PAID",
     capAtThisStatesTax: true, // Collect lesser of MI 6% or buyer's home state rate
     hasLeaseException: false,
+    exemptStates: ["AK", "DE", "MT", "NH", "NM", "OR"],
+    nonReciprocalStates: ["AR", "DC", "GA", "MD", "MS", "NE", "NC", "OK", "SC", "SD", "WV"],
   },
 
   extras: {
     flatSalesTaxRate: 0.06,
+    tradeInCap: 11000,
     description: "Michigan uses flat 6% sales/use tax with no local additions for vehicles",
     tradeInCapNote: "Trade-in credit: $11,000 cap for motor vehicles (2025). NO LIMIT for recreational vehicles traded for RV.",
     docFeeCap: "$260 or 5% of cash price, whichever is less (adjusted every 2 years for CPI)",
@@ -156,6 +159,8 @@ const MI_RULES: TaxRulesConfig = {
     leaseTradeInException: "Trade-in credit statute does NOT extend to lease transactions. Leases use 6% use tax, not sales tax.",
     capReductionTaxation: "Capitalized cost reduction (down payment) on leases is treated as first payment and subject to use tax. Lessor remits this tax.",
     formReference: "Form 485 (2025) - Instructions for Michigan Vehicle Dealers Collecting Sales Tax",
+    exemptStates: ["AK", "DE", "MT", "NH", "NM", "OR"],
+    nonReciprocalStates: ["AR", "DC", "GA", "MD", "MS", "NE", "NC", "OK", "SC", "SD", "WV"],
   },
 };
 
