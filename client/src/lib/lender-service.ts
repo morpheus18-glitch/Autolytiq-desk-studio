@@ -283,7 +283,7 @@ export const MOCK_LENDERS: Array<Lender & { programs: LenderProgram[] }> = [
         incentives: ["$2,500 lease cash on Explorer"],
         originationFee: "0.00",
         maxAdvance: null,
-        moneyFactor: 0.00125,
+        moneyFactor: "0.00125",
         residualPercents: {
           "24": 0.62,
           "36": 0.54,
@@ -830,7 +830,7 @@ export async function shopRates(
           apr = tier.apr || 0;
           buyRate = tier.buyRate || apr;
           if (tier.moneyFactor) {
-            moneyFactor = tier.moneyFactor;
+            moneyFactor = String(tier.moneyFactor);
             // Convert money factor to APR for display
             apr = new Decimal(moneyFactor).times(2400).toNumber();
           }

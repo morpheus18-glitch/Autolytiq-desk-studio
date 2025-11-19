@@ -944,7 +944,7 @@ export const lenders = pgTable("lenders", {
   minCreditScore: integer("min_credit_score").notNull().default(300),
   maxLtv: decimal("max_ltv", { precision: 5, scale: 2 }).notNull().default("125.00"), // Maximum loan-to-value ratio
   maxDti: decimal("max_dti", { precision: 5, scale: 2 }).notNull().default("50.00"), // Maximum debt-to-income ratio
-  states: jsonb("states").notNull().default('[]'), // Array of state codes where lender operates
+  states: jsonb("states").$type<string[]>().notNull().default([]), // Array of state codes where lender operates
   active: boolean("active").notNull().default(true),
   dealerReserveMaxBps: integer("dealer_reserve_max_bps").notNull().default(250), // Max dealer reserve in basis points
   flatMaxBps: integer("flat_max_bps").notNull().default(200), // Max flat fee in basis points
@@ -986,10 +986,10 @@ export const lenderPrograms = pgTable("lender_programs", {
   // Term configuration
   minTerm: integer("min_term").notNull().default(12),
   maxTerm: integer("max_term").notNull().default(72),
-  availableTerms: jsonb("available_terms").notNull().default('[]'), // [36, 48, 60, 72]
-  
+  availableTerms: jsonb("available_terms").$type<number[]>().notNull().default([]), // [36, 48, 60, 72]
+
   // Rate tiers based on credit score
-  rateTiers: jsonb("rate_tiers").notNull().default('[]'), // Array of {minScore, maxScore, apr, buyRate}
+  rateTiers: jsonb("rate_tiers").$type<Array<{ minScore: number; maxScore: number; apr?: number; buyRate?: number; moneyFactor?: number }>>().notNull().default([]), // Array of {minScore, maxScore, apr, buyRate}
   
   // Requirements
   minCreditScore: integer("min_credit_score").notNull().default(580),
@@ -998,8 +998,8 @@ export const lenderPrograms = pgTable("lender_programs", {
   minDownPercent: decimal("min_down_percent", { precision: 5, scale: 2 }).notNull().default("0.00"),
   
   // Special conditions
-  requirements: jsonb("requirements").notNull().default('[]'), // Array of requirement strings
-  incentives: jsonb("incentives").notNull().default('[]'), // Current promotional rates or cash back
+  requirements: jsonb("requirements").$type<string[]>().notNull().default([]), // Array of requirement strings
+  incentives: jsonb("incentives").$type<string[]>().notNull().default([]), // Current promotional rates or cash back
   
   // Fees
   originationFee: decimal("origination_fee", { precision: 12, scale: 2 }).notNull().default("0.00"),
@@ -1007,7 +1007,7 @@ export const lenderPrograms = pgTable("lender_programs", {
   
   // Lease-specific (if applicable)
   moneyFactor: decimal("money_factor", { precision: 8, scale: 6 }), // For lease calculations
-  residualPercents: jsonb("residual_percents").notNull().default('{}'), // {36: 0.58, 48: 0.45, ...}
+  residualPercents: jsonb("residual_percents").$type<Record<string, number>>().notNull().default({}), // {36: 0.58, 48: 0.45, ...}
   acquisitionFee: decimal("acquisition_fee", { precision: 12, scale: 2 }),
   
   active: boolean("active").notNull().default(true),
