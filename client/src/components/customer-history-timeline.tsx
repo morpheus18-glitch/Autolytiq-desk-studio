@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Calendar, FileText, UserPlus, Car } from 'lucide-react';
+import { Calendar, FileText, UserPlus, Car, MessageSquare, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow, format } from 'date-fns';
 
 interface HistoryEvent {
-  type: 'deal' | 'customer_created' | 'email' | 'quote';
+  type: 'deal' | 'customer_created' | 'email' | 'quote' | 'note';
   timestamp: string;
   data: any;
 }
@@ -73,6 +73,8 @@ export function CustomerHistoryTimeline({ customerId }: CustomerHistoryTimelineP
         return <UserPlus className="w-5 h-5" />;
       case 'email':
         return <FileText className="w-5 h-5" />;
+      case 'note':
+        return <MessageSquare className="w-5 h-5" />;
       default:
         return <Calendar className="w-5 h-5" />;
     }
@@ -86,6 +88,8 @@ export function CustomerHistoryTimeline({ customerId }: CustomerHistoryTimelineP
         return 'bg-green-500';
       case 'email':
         return 'bg-purple-500';
+      case 'note':
+        return 'bg-yellow-500';
       default:
         return 'bg-gray-500';
     }
@@ -99,6 +103,8 @@ export function CustomerHistoryTimeline({ customerId }: CustomerHistoryTimelineP
         return 'Customer Created';
       case 'email':
         return 'Email Sent';
+      case 'note':
+        return event.data.isImportant ? 'Important Note' : 'Note Added';
       default:
         return 'Activity';
     }
@@ -113,6 +119,10 @@ export function CustomerHistoryTimeline({ customerId }: CustomerHistoryTimelineP
         return 'Vehicle deal';
       case 'customer_created':
         return `${event.data.name} was added to the system`;
+      case 'note':
+        // Truncate long notes
+        const content = event.data.content || '';
+        return content.length > 100 ? `${content.substring(0, 100)}...` : content;
       default:
         return '';
     }
@@ -182,6 +192,20 @@ export function CustomerHistoryTimeline({ customerId }: CustomerHistoryTimelineP
                   {event.data.vehicle?.stockNumber && (
                     <Badge variant="outline">
                       Stock: {event.data.vehicle.stockNumber}
+                    </Badge>
+                  )}
+                </div>
+              )}
+
+              {/* Additional info for notes */}
+              {event.type === 'note' && (
+                <div className="flex gap-2 items-center">
+                  {event.data.isImportant && (
+                    <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                  )}
+                  {event.data.noteType && event.data.noteType !== 'general' && (
+                    <Badge variant="outline" className="text-xs">
+                      {event.data.noteType}
                     </Badge>
                   )}
                 </div>

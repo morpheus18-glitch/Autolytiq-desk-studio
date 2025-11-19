@@ -394,7 +394,32 @@ export class DatabaseStorage implements IStorage {
         });
       }
 
-      // 2. Get customer record creation
+      // 2. Get customer notes
+      const customerNotesData = await db.select({
+        id: customerNotes.id,
+        content: customerNotes.content,
+        noteType: customerNotes.noteType,
+        isImportant: customerNotes.isImportant,
+        createdAt: customerNotes.createdAt,
+      })
+        .from(customerNotes)
+        .where(eq(customerNotes.customerId, customerId))
+        .orderBy(desc(customerNotes.createdAt));
+
+      for (const note of customerNotesData) {
+        history.push({
+          type: 'note',
+          timestamp: note.createdAt,
+          data: {
+            id: note.id,
+            content: note.content,
+            noteType: note.noteType,
+            isImportant: note.isImportant,
+          },
+        });
+      }
+
+      // 3. Get customer record creation
       const [customer] = await db.select({
         createdAt: customers.createdAt,
         firstName: customers.firstName,
