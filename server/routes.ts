@@ -160,11 +160,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isActive: true, // Admin-created users are active immediately
       }, dealershipId);
 
-      // Send welcome email with credentials
-      const { sendWelcomeEmail } = await import('./email-service');
-      await sendWelcomeEmail(newUser.email, username, password).catch(err =>
-        console.error('Failed to send welcome email:', err)
-      );
+      // TODO: Send welcome email with credentials
+      // Note: sendWelcomeEmail function needs to be implemented in email-service.ts
+      // const { sendWelcomeEmail } = await import('./email-service');
+      // await sendWelcomeEmail(newUser.email, username, password).catch(err =>
+      //   console.error('Failed to send welcome email:', err)
+      // );
 
       // Remove password from response
       const { password: _, ...userWithoutPassword } = newUser;
@@ -814,7 +815,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       const data = inventoryCreateSchema.parse(req.body);
-      const vehicle = await storage.createVehicle(data);
+      const dealershipId = (req.user as any)?.dealershipId;
+      if (!dealershipId) {
+        return res.status(401).json({ error: 'User dealership not found' });
+      }
+      const vehicle = await storage.createVehicle(data, dealershipId);
       res.status(201).json(vehicle);
     } catch (error: any) {
       res.status(400).json({ error: error.message || 'Failed to create vehicle' });
@@ -3870,12 +3875,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id, name, role, managerId, settings } = addUserSchema.parse(req.body);
 
       // Get default settings or use provided
-      const roleSettings = settings || getDefaultRoleSettings(role as UserRole);
+      const roleSettings = settings || getDefaultRoleSettings(role as any);
 
       hierarchicalOscillatorNetwork.addUserToNetwork(
         id,
         name,
-        role as UserRole,
+        role as any,
         roleSettings,
         managerId
       );
@@ -4111,7 +4116,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { role } = req.params;
 
-      const defaultSettings = getDefaultRoleSettings(role as UserRole);
+      const defaultSettings = getDefaultRoleSettings(role as any);
 
       res.json({
         role,
