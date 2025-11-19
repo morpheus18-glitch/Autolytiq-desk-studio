@@ -15,8 +15,8 @@ router.post('/api/setup-admin-now', async (req, res) => {
 
     if (existingDealerships.length === 0) {
       const newDealership = await db.insert(dealershipSettings).values({
-        id: 'default',
-        name: 'Autolytiq Dealership',
+        dealershipId: 'default',
+        dealershipName: 'Autolytiq Dealership',
         email: 'support@autolytiq.com',
       }).returning();
       dealershipId = newDealership[0].id;
@@ -33,10 +33,9 @@ router.post('/api/setup-admin-now', async (req, res) => {
     const newUser = await db.insert(users).values({
       username: 'admin@autolytiq.com',
       email: 'admin@autolytiq.com',
+      fullName: 'Admin User',
       password: hashedPassword,
       role: 'admin',
-      firstName: 'Admin',
-      lastName: 'User',
       dealershipId,
       isActive: true,
     }).returning();
