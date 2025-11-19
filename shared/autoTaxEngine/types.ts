@@ -26,6 +26,7 @@ export interface FeeTaxRule {
 export type VehicleTaxScheme =
   | "STATE_ONLY" // flat vehicle tax, no local stacking (e.g. IN, MI, KY)
   | "STATE_PLUS_LOCAL" // full stacked jurisdictions (CA, CO, OH, IL, etc.)
+  | "LOCAL_ONLY" // no state tax, only local jurisdictions (e.g. AK, MT)
   | "SPECIAL_HUT" // NC-style Highway Use Tax
   | "SPECIAL_TAVT" // GA-style Title Ad Valorem Tax
   | "DMV_PRIVILEGE_TAX"; // WV-style privilege/title tax
