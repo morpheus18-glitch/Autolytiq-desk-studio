@@ -401,20 +401,18 @@ export async function searchJurisdictions(
   const normalizedQuery = query.trim().toLowerCase();
 
   try {
-    let queryBuilder = db
+    const searchCondition = sql`LOWER(${zipToLocalTaxRates.cityName}) LIKE ${`%${normalizedQuery}%`} OR LOWER(${zipToLocalTaxRates.countyName}) LIKE ${`%${normalizedQuery}%`}`;
+
+    const whereCondition = stateCode
+      ? and(searchCondition, eq(zipToLocalTaxRates.stateCode, stateCode.toUpperCase()))
+      : searchCondition;
+
+    const results = await db
       .select()
       .from(zipToLocalTaxRates)
-      .where(
-        sql`LOWER(${zipToLocalTaxRates.cityName}) LIKE ${`%${normalizedQuery}%`} OR LOWER(${zipToLocalTaxRates.countyName}) LIKE ${`%${normalizedQuery}%`}`
-      );
+      .where(whereCondition)
+      .limit(50);
 
-    if (stateCode) {
-      queryBuilder = queryBuilder.where(
-        eq(zipToLocalTaxRates.stateCode, stateCode.toUpperCase())
-      );
-    }
-
-    const results = await queryBuilder.limit(50);
     return results;
   } catch (error) {
     console.error(
