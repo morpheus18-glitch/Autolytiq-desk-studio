@@ -382,9 +382,16 @@ const vehicleData: InsertVehicle[] = [
 async function seedVehicles() {
   try {
     console.log('Seeding vehicles...');
-    
+
+    // Get the first dealership to assign vehicles to
+    const [dealership] = await db.select().from(require('@shared/schema').dealerships).limit(1);
+    if (!dealership) {
+      console.error('No dealership found. Please create a dealership first.');
+      process.exit(1);
+    }
+
     for (const vehicle of vehicleData) {
-      await db.insert(vehicles).values(vehicle);
+      await db.insert(vehicles).values({ ...vehicle, dealershipId: dealership.id });
       console.log(`Added ${vehicle.year} ${vehicle.make} ${vehicle.model}`);
     }
     

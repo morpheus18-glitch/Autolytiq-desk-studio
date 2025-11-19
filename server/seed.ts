@@ -500,7 +500,8 @@ async function seed() {
       }
     ];
     
-    const insertedVehicles = await db.insert(vehicles).values(vehiclesData).returning();
+    const vehiclesWithDealership = vehiclesData.map(v => ({ ...v, dealershipId: dealership.id }));
+    const insertedVehicles = await db.insert(vehicles).values(vehiclesWithDealership).returning();
     console.log('✓ Created vehicles');
     
     // Create tax jurisdictions with multi-level support
