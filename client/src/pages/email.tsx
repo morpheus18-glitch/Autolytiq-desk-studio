@@ -17,6 +17,8 @@ import {
   Settings,
   Menu,
   RefreshCw,
+  Archive,
+  Shield,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -31,7 +33,6 @@ import { useUnreadCounts, type EmailMessage } from '@/hooks/use-email';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { Archive } from 'lucide-react';
 
 const FOLDERS = [
   { id: 'inbox', label: 'Inbox', icon: Inbox },
@@ -101,31 +102,31 @@ export default function EmailPage() {
 
   // Folder Sidebar Component
   const FolderSidebar = ({ className }: { className?: string }) => (
-    <div className={cn('flex flex-col h-full', className)}>
-      <div className="p-4 space-y-2">
+    <div className={cn('flex flex-col h-full bg-card/30 backdrop-blur-sm', className)}>
+      <div className="p-4 space-y-3">
         <Button
           onClick={() => setComposeOpen(true)}
-          className="w-full"
+          className="w-full gap-2 shadow-lg shadow-primary/20"
           size="lg"
         >
-          <Plus className="h-4 w-4 mr-2" />
+          <Plus className="h-4 w-4" />
           Compose
         </Button>
         <Button
           onClick={() => syncMutation.mutate()}
           variant="outline"
-          className="w-full"
+          className="w-full gap-2 backdrop-blur-sm bg-background/50 hover:bg-background/80"
           disabled={syncMutation.isPending}
         >
-          <RefreshCw className={cn("h-4 w-4 mr-2", syncMutation.isPending && "animate-spin")} />
+          <RefreshCw className={cn("h-4 w-4", syncMutation.isPending && "animate-spin")} />
           {syncMutation.isPending ? 'Syncing...' : 'Sync Inbox'}
         </Button>
       </div>
 
-      <Separator />
+      <Separator className="opacity-50" />
 
       <ScrollArea className="flex-1">
-        <nav className="p-2 space-y-1">
+        <nav className="p-3 space-y-1">
           {FOLDERS.map((folder) => {
             const Icon = folder.icon;
             const unreadCount = unreadCounts[folder.id] || 0;
@@ -135,18 +136,27 @@ export default function EmailPage() {
                 key={folder.id}
                 onClick={() => handleFolderSelect(folder.id)}
                 className={cn(
-                  'w-full flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                  'w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
                   selectedFolder === folder.id
-                    ? 'bg-accent text-accent-foreground'
+                    ? 'bg-primary/10 text-primary shadow-sm'
                     : 'hover:bg-accent/50 text-muted-foreground hover:text-foreground'
                 )}
               >
                 <div className="flex items-center gap-3">
-                  <Icon className="h-4 w-4" />
+                  <Icon className={cn(
+                    "h-4 w-4",
+                    selectedFolder === folder.id && "text-primary"
+                  )} />
                   <span>{folder.label}</span>
                 </div>
                 {unreadCount > 0 && (
-                  <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                  <Badge
+                    variant={selectedFolder === folder.id ? "default" : "secondary"}
+                    className={cn(
+                      "h-5 px-1.5 text-xs font-semibold",
+                      selectedFolder === folder.id && "bg-primary text-primary-foreground"
+                    )}
+                  >
                     {unreadCount}
                   </Badge>
                 )}
@@ -156,68 +166,95 @@ export default function EmailPage() {
         </nav>
       </ScrollArea>
 
-      <Separator />
+      <Separator className="opacity-50" />
 
-      <div className="p-2">
+      <div className="p-3">
         <Button
           variant="ghost"
-          className="w-full justify-start"
+          className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
           size="sm"
           onClick={() => window.location.href = '/email/settings'}
         >
-          <Settings className="h-4 w-4 mr-2" />
+          <Settings className="h-4 w-4" />
           Settings
         </Button>
       </div>
 
-      <div className="p-4 text-center border-t">
-        <p className="text-xs text-muted-foreground">
-          🛡️ Secured by Airlock System
-        </p>
+      <div className="p-4 border-t border-border/50">
+        <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+          <Shield className="h-3 w-3" />
+          <span>Secured by Airlock System</span>
+        </div>
       </div>
     </div>
   );
 
   return (
-    <PageLayout>
-      <div className="flex h-[calc(100vh-4rem)] overflow-hidden bg-background">
-        {/* Mobile Header */}
-        <div className="md:hidden border-b p-3 flex items-center gap-3 absolute top-0 left-0 right-0 z-10 bg-background">
-          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-            <SheetTrigger asChild>
-              <Button size="icon" variant="ghost">
-                <Menu className="h-5 w-5" />
+    <PageLayout className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      {/* Hero Header */}
+      <div className="sticky top-0 z-40 backdrop-blur-lg bg-background/90 border-b shadow-sm">
+        <div className="container mx-auto px-4 md:px-6 py-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              {/* Mobile Menu Button */}
+              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                <SheetTrigger asChild className="md:hidden">
+                  <Button size="icon" variant="ghost">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="p-0 w-[280px]">
+                  <FolderSidebar />
+                </SheetContent>
+              </Sheet>
+
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-primary via-primary/90 to-primary/70 shadow-lg shadow-primary/25">
+                <Mail className="w-6 h-6 text-primary-foreground" />
+              </div>
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                  Email
+                </h1>
+                <p className="text-sm text-muted-foreground font-medium mt-0.5">
+                  Secure communications center
+                </p>
+              </div>
+            </div>
+            <div className="hidden md:flex items-center gap-3">
+              <Button
+                variant="outline"
+                onClick={() => syncMutation.mutate()}
+                disabled={syncMutation.isPending}
+                className="gap-2"
+              >
+                <RefreshCw className={cn("h-4 w-4", syncMutation.isPending && "animate-spin")} />
+                {syncMutation.isPending ? 'Syncing...' : 'Sync'}
               </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-[280px]">
-              <FolderSidebar />
-            </SheetContent>
-          </Sheet>
-
-          <h1 className="text-lg font-semibold capitalize">{selectedFolder}</h1>
-
-          <Button
-            size="icon"
-            variant="ghost"
-            className="ml-auto"
-            onClick={() => syncMutation.mutate()}
-            disabled={syncMutation.isPending}
-          >
-            <RefreshCw className={cn("h-4 w-4", syncMutation.isPending && "animate-spin")} />
-          </Button>
+              <Button
+                size="lg"
+                onClick={() => setComposeOpen(true)}
+                className="gap-2 shadow-lg shadow-primary/20"
+              >
+                <Plus className="w-4 h-4" />
+                Compose
+              </Button>
+            </div>
+          </div>
         </div>
+      </div>
 
-        {/* Desktop Layout */}
-        <div className="flex w-full pt-[52px] md:pt-0">
+      {/* Main Content Area */}
+      <div className="container mx-auto px-4 md:px-6 py-6">
+        <div className="flex h-[calc(100vh-12rem)] overflow-hidden rounded-xl border shadow-sm backdrop-blur-md bg-card/40">
           {/* Sidebar - Desktop only */}
-          <div className="hidden md:block w-64 border-r flex-shrink-0">
+          <div className="hidden md:block w-64 border-r border-border/50 flex-shrink-0">
             <FolderSidebar />
           </div>
 
           {/* Email List */}
           <div
             className={cn(
-              'w-full md:w-96 border-r flex-shrink-0',
+              'w-full md:w-96 border-r border-border/50 flex-shrink-0 bg-background/50',
               selectedEmail && 'hidden md:block'
             )}
           >
@@ -231,7 +268,7 @@ export default function EmailPage() {
           {/* Email Detail */}
           <div
             className={cn(
-              'flex-1',
+              'flex-1 bg-background/30',
               !selectedEmail && 'hidden md:block'
             )}
           >
@@ -241,10 +278,10 @@ export default function EmailPage() {
             />
           </div>
         </div>
-
-        {/* Compose Dialog */}
-        <EmailComposeDialog open={composeOpen} onOpenChange={setComposeOpen} />
       </div>
+
+      {/* Compose Dialog */}
+      <EmailComposeDialog open={composeOpen} onOpenChange={setComposeOpen} />
     </PageLayout>
   );
 }
