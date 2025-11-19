@@ -95,8 +95,10 @@ export function EmailDetail({ emailId, onClose }: EmailDetailProps) {
 
   // Format quoted text for reply/forward
   const getQuotedText = (email: EmailMessage) => {
-    const dateStr = format(new Date(email.sentAt || email.createdAt), 'PPpp');
-    const from = email.fromName || email.fromAddress;
+    const dateStr = email.sentAt || email.createdAt
+      ? format(new Date(email.sentAt || email.createdAt), 'PPpp')
+      : 'Unknown date';
+    const from = email.fromName || email.fromAddress || 'Unknown sender';
     const body = email.textBody || email.htmlBody?.replace(/<[^>]*>/g, '') || '';
 
     return `On ${dateStr}, ${from} wrote:\n\n${body}`;
@@ -107,14 +109,16 @@ export function EmailDetail({ emailId, onClose }: EmailDetailProps) {
     const ccEmails: string[] = [];
 
     // Add all original To recipients except the current user
-    email.toAddresses.forEach(addr => {
-      ccEmails.push(addr.email);
-    });
+    if (email.toAddresses && Array.isArray(email.toAddresses)) {
+      email.toAddresses.forEach(addr => {
+        if (addr?.email) ccEmails.push(addr.email);
+      });
+    }
 
     // Add all original Cc recipients
-    if (email.ccAddresses) {
+    if (email.ccAddresses && Array.isArray(email.ccAddresses)) {
       email.ccAddresses.forEach(addr => {
-        ccEmails.push(addr.email);
+        if (addr?.email) ccEmails.push(addr.email);
       });
     }
 
@@ -134,8 +138,13 @@ export function EmailDetail({ emailId, onClose }: EmailDetailProps) {
     markAsRead.mutate({ id: email.id, isRead: false });
   };
 
-  const formatDate = (dateString: string) => {
-    return format(new Date(dateString), 'PPpp');
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'Unknown date';
+    try {
+      return format(new Date(dateString), 'PPpp');
+    } catch {
+      return 'Invalid date';
+    }
   };
 
   return (
@@ -237,20 +246,24 @@ export function EmailDetail({ emailId, onClose }: EmailDetailProps) {
             {/* Recipients */}
             <div className="text-sm">
               <span className="text-muted-foreground">To: </span>
-              {email.toAddresses.map((r, i) => (
-                <span key={i}>
-                  {r.name || r.email}
-                  {i < email.toAddresses.length - 1 && ', '}
-                </span>
-              ))}
+              {email.toAddresses && Array.isArray(email.toAddresses) ? (
+                email.toAddresses.map((r, i) => (
+                  <span key={i}>
+                    {r?.name || r?.email || 'Unknown'}
+                    {i < email.toAddresses.length - 1 && ', '}
+                  </span>
+                ))
+              ) : (
+                <span className="text-muted-foreground">No recipients</span>
+              )}
             </div>
 
-            {email.ccAddresses && email.ccAddresses.length > 0 && (
+            {email.ccAddresses && Array.isArray(email.ccAddresses) && email.ccAddresses.length > 0 && (
               <div className="text-sm">
                 <span className="text-muted-foreground">Cc: </span>
                 {email.ccAddresses.map((r, i) => (
                   <span key={i}>
-                    {r.name || r.email}
+                    {r?.name || r?.email || 'Unknown'}
                     {i < (email.ccAddresses?.length || 0) - 1 && ', '}
                   </span>
                 ))}

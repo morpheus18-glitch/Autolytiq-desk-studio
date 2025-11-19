@@ -169,19 +169,26 @@ export function EmailListEnhanced({
     deleteEmail.mutate({ id: emailId });
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
 
-    if (diffDays === 0) {
-      return format(date, 'h:mm a');
-    } else if (diffDays === 1) {
-      return 'Yesterday';
-    } else if (diffDays < 7) {
-      return format(date, 'EEE');
-    } else {
-      return format(date, 'MMM d');
+      const now = new Date();
+      const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 0) {
+        return format(date, 'h:mm a');
+      } else if (diffDays === 1) {
+        return 'Yesterday';
+      } else if (diffDays < 7) {
+        return format(date, 'EEE');
+      } else {
+        return format(date, 'MMM d');
+      }
+    } catch {
+      return '';
     }
   };
 
@@ -380,9 +387,9 @@ export function EmailListEnhanced({
                         </div>
                       )}
 
-                      {folder === 'sent' && email.toAddresses && (
+                      {folder === 'sent' && email.toAddresses && Array.isArray(email.toAddresses) && (
                         <div className="text-xs text-muted-foreground mt-1">
-                          To: {email.toAddresses.map((r) => r.email).join(', ')}
+                          To: {email.toAddresses.map((r) => r?.email || 'Unknown').join(', ')}
                         </div>
                       )}
                     </div>
