@@ -16,6 +16,8 @@ import Decimal from 'decimal.js';
 import type { DealScenario, TradeVehicle, DealerFee, Accessory, TaxJurisdictionWithRules, AftermarketProduct, Deal } from '@shared/schema';
 import { calculateFinancePayment, calculateLeasePayment, calculateSalesTax, moneyFactorToAPR, aprToMoneyFactor } from '@/lib/calculations';
 import { LenderRateShop } from './lender-rate-shop';
+import { TaxJurisdictionSelector } from './tax-jurisdiction-selector';
+import { AmortizationTable } from './amortization-table';
 import { useToast } from '@/hooks/use-toast';
 
 // Configure Decimal for financial precision
@@ -207,7 +209,7 @@ export function ScenarioCalculator({ scenario, dealId, tradeVehicle, customerZip
     setFormData(prev => ({ ...prev, [field]: value }));
   };
   
-  const handleTaxJurisdictionChange = (jurisdiction: TaxJurisdiction | null) => {
+  const handleTaxJurisdictionChange = (jurisdiction: TaxJurisdictionWithRules | null) => {
     setSelectedTaxJurisdiction(jurisdiction);
     const updatedData = {
       ...formData,
@@ -424,19 +426,19 @@ export function ScenarioCalculator({ scenario, dealId, tradeVehicle, customerZip
                           id="apr"
                           type="number"
                           step="0.01"
-                          value={formData.apr}
+                          value={formData.apr ?? ''}
                           onChange={(e) => handleFieldChange('apr', e.target.value)}
                           className="font-mono"
                           data-testid="input-apr"
                         />
                       </div>
-                      
+
                       <div>
                         <Label htmlFor="term">Term (months)</Label>
                         <Input
                           id="term"
                           type="number"
-                          value={formData.term}
+                          value={formData.term ?? ''}
                           onChange={(e) => handleFieldChange('term', parseInt(e.target.value) || 0)}
                           className="font-mono"
                           data-testid="input-term"
@@ -451,7 +453,7 @@ export function ScenarioCalculator({ scenario, dealId, tradeVehicle, customerZip
                           id="money-factor"
                           type="number"
                           step="0.000001"
-                          value={formData.moneyFactor}
+                          value={formData.moneyFactor ?? ''}
                           onChange={(e) => handleFieldChange('moneyFactor', e.target.value)}
                           className="font-mono"
                           data-testid="input-money-factor"
@@ -460,19 +462,19 @@ export function ScenarioCalculator({ scenario, dealId, tradeVehicle, customerZip
                           Equivalent APR: {moneyFactorToAPR(parseFloat(formData.moneyFactor as any) || 0).toFixed(2)}%
                         </div>
                       </div>
-                      
+
                       <div>
                         <Label htmlFor="lease-term">Term (months)</Label>
                         <Input
                           id="lease-term"
                           type="number"
-                          value={formData.term}
+                          value={formData.term ?? ''}
                           onChange={(e) => handleFieldChange('term', parseInt(e.target.value) || 0)}
                           className="font-mono"
                           data-testid="input-lease-term"
                         />
                       </div>
-                      
+
                       <div>
                         <Label htmlFor="residual-value">Residual Value</Label>
                         <div className="relative">
@@ -481,21 +483,21 @@ export function ScenarioCalculator({ scenario, dealId, tradeVehicle, customerZip
                             id="residual-value"
                             type="number"
                             step="0.01"
-                            value={formData.residualValue}
+                            value={formData.residualValue ?? ''}
                             onChange={(e) => handleFieldChange('residualValue', e.target.value)}
                             className="pl-10 font-mono"
                             data-testid="input-residual-value"
                           />
                         </div>
                       </div>
-                      
+
                       <div>
                         <Label htmlFor="residual-percent">Residual %</Label>
                         <Input
                           id="residual-percent"
                           type="number"
                           step="0.01"
-                          value={formData.residualPercent}
+                          value={formData.residualPercent ?? ''}
                           onChange={(e) => handleFieldChange('residualPercent', e.target.value)}
                           className="font-mono"
                           data-testid="input-residual-percent"
@@ -692,6 +694,8 @@ export function ScenarioCalculator({ scenario, dealId, tradeVehicle, customerZip
               handleFieldChange('term', offer.term);
               
               // Calculate new payment with the selected rate
+              const totalFeesAmount = dealerFees.reduce((sum, f) => sum + (Number(f.amount) || 0), 0) +
+                accessories.reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
               const newPayment = calculateFinancePayment({
                 vehiclePrice: parseFloat(formData.vehiclePrice as any) || 0,
                 downPayment: parseFloat(formData.downPayment as any) || 0,
@@ -699,9 +703,8 @@ export function ScenarioCalculator({ scenario, dealId, tradeVehicle, customerZip
                 tradePayoff: parseFloat(formData.tradePayoff as any) || 0,
                 apr: parseFloat(offer.apr),
                 term: offer.term,
-                dealerFees: dealerFees.map(f => ({ amount: f.amount, taxable: f.taxable })),
-                accessories: accessories.map(a => ({ amount: a.amount, taxable: a.taxable })),
-                tax: parseFloat(formData.totalTax as any) || 0,
+                totalTax: parseFloat(formData.totalTax as any) || 0,
+                totalFees: totalFeesAmount,
               });
               
               // Update the form data
