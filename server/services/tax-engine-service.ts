@@ -58,12 +58,13 @@ export async function calculateTaxProfile(input: TaxQuoteInput): Promise<TaxProf
   const method = determineTaxMethod(stateRules, input.dealType);
 
   // 6. Build rate breakdown
+  const stateRulesAny = stateRules as any;
   const rates = {
-    stateRate: stateRules.rates?.stateRate || 0.07,
+    stateRate: stateRulesAny.rates?.stateRate || 0.07,
     countyRate: localRates?.countyRate || 0,
     cityRate: localRates?.cityRate || 0,
     specialRate: localRates?.specialDistrictRate || 0,
-    combinedRate: localRates?.totalRate || stateRules.rates?.stateRate || 0.07,
+    combinedRate: localRates?.totalRate || stateRulesAny.rates?.stateRate || 0.07,
   };
 
   // 7. Build rules from state config
@@ -71,11 +72,11 @@ export async function calculateTaxProfile(input: TaxQuoteInput): Promise<TaxProf
     tradeInReducesTaxBase: stateRules.tradeInPolicy?.type === 'FULL' ||
       stateRules.tradeInPolicy?.type === 'CAPPED',
     docFeeTaxable: isDocFeeTaxable(stateRules),
-    docFeeCap: stateRules.fees?.docFeeCap,
+    docFeeCap: stateRulesAny.fees?.docFeeCap as number | undefined,
     gapTaxable: isProductTaxable(stateRules, 'GAP'),
     vscTaxable: isProductTaxable(stateRules, 'VSC'),
-    luxuryTaxThreshold: stateRules.extras?.luxuryTaxThreshold,
-    luxuryTaxRate: stateRules.extras?.luxuryTaxRate,
+    luxuryTaxThreshold: stateRulesAny.extras?.luxuryTaxThreshold as number | undefined,
+    luxuryTaxRate: stateRulesAny.extras?.luxuryTaxRate as number | undefined,
   };
 
   // 8. Precompute values based on deal data
@@ -88,8 +89,8 @@ export async function calculateTaxProfile(input: TaxQuoteInput): Promise<TaxProf
     calculatedAt: new Date().toISOString(),
     jurisdiction: {
       stateCode: customer.state,
-      countyName: localRates?.countyName || customer.county,
-      cityName: localRates?.cityName || customer.city,
+      countyName: localRates?.countyName || customer.county || undefined,
+      cityName: localRates?.cityName || customer.city || undefined,
     },
     rates,
     method,
