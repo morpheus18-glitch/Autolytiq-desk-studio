@@ -393,6 +393,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== APPOINTMENTS =====
+  // Get appointments for a specific date
+  app.get('/api/appointments/date/:date', requireAuth, async (req, res) => {
+    try {
+      const dealershipId = (req.user as any)?.dealershipId;
+      if (!dealershipId) {
+        return res.status(403).json({ error: 'User must belong to a dealership' });
+      }
+
+      const date = new Date(req.params.date);
+      if (isNaN(date.getTime())) {
+        return res.status(400).json({ error: 'Invalid date format' });
+      }
+
+      const appointments = await storage.getAppointmentsByDate(date, dealershipId);
+      res.json(appointments);
+    } catch (error: any) {
+      console.error('[GET /api/appointments/date/:date] Error:', error.message);
+      res.status(500).json({ error: 'Failed to fetch appointments' });
+    }
+  });
+
+  // Get all appointments with optional filters
+  app.get('/api/appointments', requireAuth, async (req, res) => {
+    try {
+      const dealershipId = (req.user as any)?.dealershipId;
+      if (!dealershipId) {
+        return res.status(403).json({ error: 'User must belong to a dealership' });
+      }
+
+      const options: any = {};
+      if (req.query.startDate) options.startDate = new Date(req.query.startDate as string);
+      if (req.query.endDate) options.endDate = new Date(req.query.endDate as string);
+      if (req.query.userId) options.userId = req.query.userId as string;
+      if (req.query.customerId) options.customerId = req.query.customerId as string;
+
+      const appointments = await storage.getAppointments(dealershipId, options);
+      res.json(appointments);
+    } catch (error: any) {
+      console.error('[GET /api/appointments] Error:', error.message);
+      res.status(500).json({ error: 'Failed to fetch appointments' });
+    }
+  });
+
+  // Create appointment
+  app.post('/api/appointments', requireAuth, async (req, res) => {
+    try {
+      const dealershipId = (req.user as any)?.dealershipId;
+      const userId = (req.user as any)?.id;
+      if (!dealershipId) {
+        return res.status(403).json({ error: 'User must belong to a dealership' });
+      }
+
+      const { title, description, appointmentType, scheduledAt, duration, location, customerId, dealId, vehicleId, notes } = req.body;
+
+      if (!title || !scheduledAt) {
+        return res.status(400).json({ error: 'Title and scheduled time are required' });
+      }
+
+      const appointment = await storage.createAppointment({
+        title,
+        description,
+        appointmentType: appointmentType || 'consultation',
+        scheduledAt: new Date(scheduledAt),
+        duration: duration || 30,
+        location: location || 'dealership',
+        customerId: customerId || null,
+        dealId: dealId || null,
+        vehicleId: vehicleId || null,
+        notes,
+        userId: req.body.userId || userId, // Allow assigning to another user
+        dealershipId,
+      });
+
+      res.status(201).json(appointment);
+    } catch (error: any) {
+      console.error('[POST /api/appointments] Error:', error.message);
+      res.status(400).json({ error: error.message || 'Failed to create appointment' });
+    }
+  });
+
+  // Update appointment
+  app.patch('/api/appointments/:id', requireAuth, async (req, res) => {
+    try {
+      const appointment = await storage.updateAppointment(req.params.id, req.body);
+      res.json(appointment);
+    } catch (error: any) {
+      console.error('[PATCH /api/appointments/:id] Error:', error.message);
+      res.status(400).json({ error: error.message || 'Failed to update appointment' });
+    }
+  });
+
+  // Delete appointment
+  app.delete('/api/appointments/:id', requireAuth, async (req, res) => {
+    try {
+      await storage.deleteAppointment(req.params.id);
+      res.status(204).send();
+    } catch (error: any) {
+      console.error('[DELETE /api/appointments/:id] Error:', error.message);
+      res.status(400).json({ error: error.message || 'Failed to delete appointment' });
+    }
+  });
+
   // ===== VEHICLES =====
   app.get('/api/vehicles/search', requireAuth, async (req, res) => {
     try {

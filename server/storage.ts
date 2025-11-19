@@ -29,6 +29,8 @@ import {
   type CustomerNote, type InsertCustomerNote,
   type CustomerVehicle, type InsertCustomerVehicle,
   type CustomerHistory, type InsertCustomerHistory,
+  type Appointment, type InsertAppointment,
+  appointments,
 } from "@shared/schema";
 import { db, pool } from "./db";
 import { eq, desc, and, or, like, sql, gte, lte, gt, asc } from "drizzle-orm";
@@ -98,6 +100,13 @@ export interface IStorage {
   getCustomerHistory(customerId: string): Promise<any[]>;
   getCustomerNotes(customerId: string): Promise<CustomerNote[]>;
   createCustomerNote(note: Omit<InsertCustomerNote, 'id' | 'createdAt' | 'updatedAt'> & { customerId: string; userId: string; dealershipId: string }): Promise<CustomerNote>;
+
+  // Appointments
+  getAppointmentsByDate(date: Date, dealershipId: string): Promise<Appointment[]>;
+  getAppointments(dealershipId: string, options?: { startDate?: Date; endDate?: Date; userId?: string; customerId?: string }): Promise<Appointment[]>;
+  createAppointment(appointment: Omit<InsertAppointment, 'id' | 'createdAt' | 'updatedAt'> & { dealershipId: string }): Promise<Appointment>;
+  updateAppointment(id: string, appointment: Partial<InsertAppointment>): Promise<Appointment>;
+  deleteAppointment(id: string): Promise<void>;
 
   // Vehicles
   getVehicle(id: string): Promise<Vehicle | undefined>;
@@ -479,6 +488,114 @@ export class DatabaseStorage implements IStorage {
       return newNote;
     } catch (error) {
       console.error('[createCustomerNote] Error:', error);
+      throw error;
+    }
+  }
+
+  // Appointments
+  async getAppointmentsByDate(date: Date, dealershipId: string): Promise<Appointment[]> {
+    try {
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const result = await db.select()
+        .from(appointments)
+        .where(and(
+          eq(appointments.dealershipId, dealershipId),
+          gte(appointments.scheduledAt, startOfDay),
+          lte(appointments.scheduledAt, endOfDay)
+        ))
+        .orderBy(asc(appointments.scheduledAt));
+
+      return result;
+    } catch (error) {
+      console.error('[getAppointmentsByDate] Error:', error);
+      throw error;
+    }
+  }
+
+  async getAppointments(dealershipId: string, options?: { startDate?: Date; endDate?: Date; userId?: string; customerId?: string }): Promise<Appointment[]> {
+    try {
+      const conditions = [eq(appointments.dealershipId, dealershipId)];
+
+      if (options?.startDate) {
+        conditions.push(gte(appointments.scheduledAt, options.startDate));
+      }
+      if (options?.endDate) {
+        conditions.push(lte(appointments.scheduledAt, options.endDate));
+      }
+      if (options?.userId) {
+        conditions.push(eq(appointments.userId, options.userId));
+      }
+      if (options?.customerId) {
+        conditions.push(eq(appointments.customerId, options.customerId));
+      }
+
+      const result = await db.select()
+        .from(appointments)
+        .where(and(...conditions))
+        .orderBy(asc(appointments.scheduledAt));
+
+      return result;
+    } catch (error) {
+      console.error('[getAppointments] Error:', error);
+      throw error;
+    }
+  }
+
+  async createAppointment(appointment: Omit<InsertAppointment, 'id' | 'createdAt' | 'updatedAt'> & { dealershipId: string }): Promise<Appointment> {
+    try {
+      // Calculate end time if not provided
+      const scheduledAt = new Date(appointment.scheduledAt);
+      const endTime = appointment.endTime || new Date(scheduledAt.getTime() + (appointment.duration || 30) * 60000);
+
+      const [newAppointment] = await db.insert(appointments)
+        .values({
+          ...appointment,
+          endTime,
+        })
+        .returning();
+
+      return newAppointment;
+    } catch (error) {
+      console.error('[createAppointment] Error:', error);
+      throw error;
+    }
+  }
+
+  async updateAppointment(id: string, appointment: Partial<InsertAppointment>): Promise<Appointment> {
+    try {
+      // Recalculate end time if scheduledAt or duration changed
+      let updateData: any = { ...appointment, updatedAt: new Date() };
+
+      if (appointment.scheduledAt || appointment.duration) {
+        const existing = await db.select().from(appointments).where(eq(appointments.id, id));
+        if (existing.length > 0) {
+          const scheduledAt = appointment.scheduledAt ? new Date(appointment.scheduledAt) : existing[0].scheduledAt;
+          const duration = appointment.duration || existing[0].duration;
+          updateData.endTime = new Date(scheduledAt.getTime() + duration * 60000);
+        }
+      }
+
+      const [updated] = await db.update(appointments)
+        .set(updateData)
+        .where(eq(appointments.id, id))
+        .returning();
+
+      return updated;
+    } catch (error) {
+      console.error('[updateAppointment] Error:', error);
+      throw error;
+    }
+  }
+
+  async deleteAppointment(id: string): Promise<void> {
+    try {
+      await db.delete(appointments).where(eq(appointments.id, id));
+    } catch (error) {
+      console.error('[deleteAppointment] Error:', error);
       throw error;
     }
   }

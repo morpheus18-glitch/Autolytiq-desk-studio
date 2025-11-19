@@ -285,6 +285,59 @@ export const insertCustomerNoteSchema = createInsertSchema(customerNotes).omit({
 export type InsertCustomerNote = z.infer<typeof insertCustomerNoteSchema>;
 export type CustomerNote = typeof customerNotes.$inferSelect;
 
+// ===== APPOINTMENTS TABLE =====
+export const appointments = pgTable("appointments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  customerId: uuid("customer_id").references(() => customers.id, { onDelete: "set null" }), // Optional - can have appointments without customer
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }), // Assigned salesperson
+  dealershipId: uuid("dealership_id").notNull().references(() => dealershipSettings.id, { onDelete: "cascade" }), // Multi-tenant isolation
+
+  // Appointment details
+  title: text("title").notNull(),
+  description: text("description"),
+  appointmentType: text("appointment_type").notNull().default("consultation"), // test_drive, delivery, follow_up, consultation, phone_call, walk_in
+
+  // Scheduling
+  scheduledAt: timestamp("scheduled_at").notNull(),
+  duration: integer("duration").notNull().default(30), // Duration in minutes
+  endTime: timestamp("end_time"), // Calculated end time
+
+  // Status
+  status: text("status").notNull().default("scheduled"), // scheduled, confirmed, completed, cancelled, no_show
+
+  // Location
+  location: text("location").default("dealership"), // dealership, customer_location, phone, virtual
+
+  // Related entities
+  dealId: uuid("deal_id").references(() => deals.id, { onDelete: "set null" }), // Link to related deal
+  vehicleId: uuid("vehicle_id").references(() => vehicles.id, { onDelete: "set null" }), // For test drives
+
+  // Notifications
+  reminderSent: boolean("reminder_sent").notNull().default(false),
+  confirmationSent: boolean("confirmation_sent").notNull().default(false),
+
+  // Notes
+  notes: text("notes"),
+
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  customerIdx: index("appointments_customer_idx").on(table.customerId),
+  userIdx: index("appointments_user_idx").on(table.userId),
+  dealershipIdx: index("appointments_dealership_idx").on(table.dealershipId),
+  scheduledAtIdx: index("appointments_scheduled_at_idx").on(table.scheduledAt),
+  statusIdx: index("appointments_status_idx").on(table.status),
+}));
+
+export const insertAppointmentSchema = createInsertSchema(appointments).omit({
+  id: true,
+  dealershipId: true, // Set by system
+  createdAt: true,
+  updatedAt: true
+});
+export type InsertAppointment = z.infer<typeof insertAppointmentSchema>;
+export type Appointment = typeof appointments.$inferSelect;
+
 // ===== CUSTOMER VEHICLES TABLE (Garage) =====
 export const customerVehicles = pgTable("customer_vehicles", {
   id: uuid("id").primaryKey().defaultRandom(),

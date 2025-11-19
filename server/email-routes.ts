@@ -842,6 +842,72 @@ router.get("/unread-counts", async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/email/sync
+ * Manually trigger inbox sync (checks webhook configuration status)
+ *
+ * Note: Emails are automatically synced via Resend webhooks.
+ * This endpoint is for manual refresh and status check.
+ */
+router.post("/sync", async (req: Request, res: Response) => {
+  try {
+    // @ts-ignore
+    const userId = req.user?.id;
+    // @ts-ignore
+    const dealershipId = req.user?.dealershipId || "default";
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: "Unauthorized",
+      });
+    }
+
+    // Check if Resend webhook is configured
+    const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
+    const resendApiKey = process.env.RESEND_API_KEY;
+
+    if (!webhookSecret || !resendApiKey) {
+      return res.status(400).json({
+        success: false,
+        error: "Email service not fully configured. Please set up RESEND_API_KEY and RESEND_WEBHOOK_SECRET in your environment variables.",
+        newMessages: 0,
+      });
+    }
+
+    // Get current unread count as indicator of sync status
+    const counts = await getUnreadCounts(dealershipId, userId);
+    const totalUnread = Object.values(counts).reduce((sum: number, count: number) => sum + count, 0);
+
+    // Log the sync request
+    logSecurityEvent({
+      timestamp: new Date(),
+      userId,
+      dealershipId,
+      action: "email_manual_sync",
+      severity: "low",
+      details: {
+        unreadCount: totalUnread,
+      },
+    });
+
+    res.json({
+      success: true,
+      message: "Inbox sync verified. Emails are automatically received via webhooks.",
+      newMessages: 0, // Webhooks handle real-time updates
+      unreadCount: totalUnread,
+      webhookConfigured: true,
+    });
+  } catch (error) {
+    console.error("[EmailRoutes] Error syncing inbox:", error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+      newMessages: 0,
+    });
+  }
+});
+
+/**
  * GET /api/email/rules
  * List email rules
  */
