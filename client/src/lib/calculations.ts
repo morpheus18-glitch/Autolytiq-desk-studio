@@ -24,6 +24,13 @@ export interface LeaseCalculationInput {
   residualValue: number;
   totalTax: number;
   totalFees: number;
+  // Tax method determines how tax is applied to lease
+  // - 'payment': Tax applied to each monthly payment (most common - CA, FL, IN, etc.)
+  // - 'cap_cost': Tax added to cap cost upfront (TX style)
+  // - 'hybrid': Some upfront + some on payment
+  taxMethod?: 'payment' | 'cap_cost' | 'hybrid';
+  // Tax rate for payment-based taxation (combined state + local)
+  taxRate?: number;
 }
 
 export interface PaymentCalculationResult {
@@ -109,8 +116,19 @@ export function calculateFinancePayment(input: FinanceCalculationInput): Payment
 }
 
 /**
- * Calculate lease payment
- * Depreciation + Finance Charge
+ * Calculate lease payment using industry-standard formula
+ *
+ * Industry-Standard Lease Formula:
+ * 1. Depreciation = (Adjusted Cap Cost - Residual Value) / Term
+ * 2. Finance Charge = (Adjusted Cap Cost + Residual Value) * Money Factor
+ * 3. Base Monthly Payment = Depreciation + Finance Charge
+ * 4. Tax Treatment depends on state method:
+ *    - 'payment': Tax applied to base monthly payment (most common)
+ *    - 'cap_cost': Tax included in cap cost upfront
+ *    - 'hybrid': Combination of both
+ *
+ * IMPORTANT: Money factor is NOT APR. Money Factor = APR / 2400
+ * Example: 6% APR = 0.0025 money factor
  */
 export function calculateLeasePayment(input: LeaseCalculationInput): PaymentCalculationResult {
   const {
@@ -122,44 +140,102 @@ export function calculateLeasePayment(input: LeaseCalculationInput): PaymentCalc
     term,
     residualValue,
     totalTax,
-    totalFees
+    totalFees,
+    taxMethod = 'payment', // Default to most common method
+    taxRate = 0
   } = input;
-  
-  // Calculate net trade equity
-  const tradeEquity = tradeAllowance - tradePayoff;
-  
-  // Capitalized cost = vehicle price + fees + tax - down payment - trade equity
-  const capitalizedCost = new Decimal(vehiclePrice)
-    .plus(totalFees)
-    .plus(totalTax)
-    .minus(downPayment)
-    .minus(tradeEquity);
-  
-  if (capitalizedCost.lte(0) || term === 0) {
+
+  // Calculate net trade equity (positive = customer has equity, negative = underwater)
+  const tradeEquity = new Decimal(tradeAllowance).minus(tradePayoff);
+
+  // Build Gross Capitalized Cost
+  // Gross Cap = Vehicle Price + Fees
+  // Note: Tax is handled separately based on taxMethod
+  let grossCapCost = new Decimal(vehiclePrice).plus(totalFees);
+
+  // For cap_cost tax method (like TX), add tax to gross cap cost
+  if (taxMethod === 'cap_cost') {
+    grossCapCost = grossCapCost.plus(totalTax);
+  }
+
+  // Calculate Cap Cost Reductions
+  // Reductions = Down Payment + Trade Equity (if positive)
+  let capReductions = new Decimal(downPayment);
+
+  // Trade equity reduces cap cost if positive
+  // If negative (underwater), it's added to gross cap cost
+  if (tradeEquity.gt(0)) {
+    capReductions = capReductions.plus(tradeEquity);
+  } else if (tradeEquity.lt(0)) {
+    // Negative equity (underwater trade) INCREASES cap cost
+    grossCapCost = grossCapCost.plus(tradeEquity.abs());
+  }
+
+  // Adjusted Capitalized Cost = Gross Cap Cost - Cap Reductions
+  const adjustedCapCost = grossCapCost.minus(capReductions);
+
+  if (adjustedCapCost.lte(0) || term === 0) {
     return {
       monthlyPayment: 0,
-      amountFinanced: capitalizedCost.toNumber(),
-      totalCost: capitalizedCost.toNumber(),
+      amountFinanced: adjustedCapCost.toNumber(),
+      totalCost: adjustedCapCost.toNumber(),
     };
   }
-  
+
   const residual = new Decimal(residualValue);
-  
-  // Depreciation = (Capitalized Cost - Residual Value) / Term
-  const depreciation = capitalizedCost.minus(residual).div(term);
-  
-  // Finance charge = (Capitalized Cost + Residual Value) * Money Factor
-  const financeCharge = capitalizedCost.plus(residual).times(moneyFactor);
-  
-  // Monthly payment = Depreciation + Finance Charge
-  const monthlyPayment = depreciation.plus(financeCharge);
-  
-  const totalPaid = monthlyPayment.times(term);
-  
+
+  // STANDARD LEASE CALCULATION FORMULA
+  // ===================================
+
+  // Depreciation = (Adjusted Cap Cost - Residual Value) / Term
+  // This is the monthly amount for vehicle value lost during lease
+  const depreciation = adjustedCapCost.minus(residual).div(term);
+
+  // Finance Charge = (Adjusted Cap Cost + Residual Value) * Money Factor
+  // This is the monthly interest/rent charge
+  const financeCharge = adjustedCapCost.plus(residual).times(moneyFactor);
+
+  // Base Monthly Payment = Depreciation + Finance Charge
+  const baseMonthlyPayment = depreciation.plus(financeCharge);
+
+  // Apply tax based on method
+  let monthlyPayment: Decimal;
+  let totalCost: Decimal;
+
+  switch (taxMethod) {
+    case 'payment':
+      // Tax applied to each monthly payment (most common - CA, FL, IN, MI, etc.)
+      // This is the most common method
+      const monthlyTax = baseMonthlyPayment.times(taxRate);
+      monthlyPayment = baseMonthlyPayment.plus(monthlyTax);
+      totalCost = monthlyPayment.times(term);
+      break;
+
+    case 'cap_cost':
+      // Tax already included in cap cost (TX style)
+      // No additional tax on payment
+      monthlyPayment = baseMonthlyPayment;
+      totalCost = monthlyPayment.times(term);
+      break;
+
+    case 'hybrid':
+      // Some states have hybrid approaches
+      // For now, treat similar to payment method
+      const hybridMonthlyTax = baseMonthlyPayment.times(taxRate);
+      monthlyPayment = baseMonthlyPayment.plus(hybridMonthlyTax);
+      totalCost = monthlyPayment.times(term).plus(totalTax);
+      break;
+
+    default:
+      // Default to payment method
+      monthlyPayment = baseMonthlyPayment.plus(baseMonthlyPayment.times(taxRate));
+      totalCost = monthlyPayment.times(term);
+  }
+
   return {
     monthlyPayment: monthlyPayment.toDecimalPlaces(2).toNumber(),
-    amountFinanced: capitalizedCost.toDecimalPlaces(2).toNumber(),
-    totalCost: totalPaid.toDecimalPlaces(2).toNumber(),
+    amountFinanced: adjustedCapCost.toDecimalPlaces(2).toNumber(),
+    totalCost: totalCost.toDecimalPlaces(2).toNumber(),
   };
 }
 
@@ -258,40 +334,55 @@ export function calculateSalesTax(input: TaxCalculationInput): number {
     specialDistrictTaxRate = 0,
     tradeInCreditType,
   } = input;
-  
+
   let taxableAmount = new Decimal(vehiclePrice);
-  
+
   // Apply trade-in credit based on jurisdiction rules
-  if (tradeInCreditType === 'tax_on_difference') {
-    taxableAmount = taxableAmount.minus(tradeAllowance);
+  // State rules use: 'full' | 'partial' | 'none' | 'tax_on_difference'
+  switch (tradeInCreditType) {
+    case 'tax_on_difference':
+    case 'full':
+      // Trade allowance reduces taxable amount (most states)
+      taxableAmount = taxableAmount.minus(tradeAllowance);
+      break;
+
+    case 'partial':
+      // Partial credit - would need a cap amount
+      // For now, treat same as full (the cap is applied elsewhere)
+      taxableAmount = taxableAmount.minus(tradeAllowance);
+      break;
+
+    case 'none':
+    default:
+      // No trade-in credit - taxed on full amount (CA, MD, WA, etc.)
+      // Trade allowance does NOT reduce taxable amount
+      break;
   }
-  // full_credit: Trade allowance doesn't reduce taxable amount
-  // none: No trade-in credit
-  
+
   // Add taxable fees
   const taxableFees = dealerFees
     .filter(f => f.taxable)
     .reduce((sum, f) => sum.plus(f.amount), new Decimal(0));
-  
+
   const taxableAccessories = accessories
     .filter(a => a.taxable)
     .reduce((sum, a) => sum.plus(a.amount), new Decimal(0));
-  
+
   taxableAmount = taxableAmount.plus(taxableFees).plus(taxableAccessories);
-  
-  // Ensure non-negative
+
+  // Ensure non-negative taxable amount
   if (taxableAmount.lt(0)) {
     taxableAmount = new Decimal(0);
   }
-  
+
   // Calculate total tax rate (cumulative) including all jurisdiction levels
   const totalRate = new Decimal(stateTaxRate)
     .plus(countyTaxRate)
     .plus(cityTaxRate)
     .plus(townshipTaxRate)
     .plus(specialDistrictTaxRate);
-  
+
   const totalTax = taxableAmount.times(totalRate);
-  
+
   return totalTax.toDecimalPlaces(2).toNumber();
 }

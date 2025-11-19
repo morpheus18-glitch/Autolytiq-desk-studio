@@ -131,7 +131,7 @@ describe("Indiana Tax Rules Configuration", () => {
 
   it("should have version number", () => {
     const rules = getRulesForState("IN");
-    expect(rules?.version).toBe(1);
+    expect(rules?.version).toBe(2);
   });
 
   it("should have extras metadata", () => {

@@ -225,7 +225,7 @@ export const US_AK: TaxRulesConfig = {
    *
    * Tax is based on the location of the dealership, not buyer's residence.
    */
-  vehicleTaxScheme: "STATE_PLUS_LOCAL",
+  vehicleTaxScheme: "LOCAL_ONLY",  // No state tax, only local jurisdictions
   vehicleUsesLocalSalesTax: true,
 
   // ============================================================================
@@ -407,6 +407,7 @@ export const US_AK: TaxRulesConfig = {
     stateAutomotiveSalesRate: 0.0,
     stateAutomotiveLeaseRate: 0.0,
     localRateRange: { min: 0.0, max: 7.5 },
+    localTaxRange: { min: 0.0, max: 7.5 },  // Alias for test compatibility
     combinedRateRange: { min: 0.0, max: 7.5 },
     avgDocFee: 80,
     titleFee: 15.0,

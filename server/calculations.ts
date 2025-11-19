@@ -60,6 +60,10 @@ export interface LeaseCalculationInput {
   residualValue: number;
   totalTax: number;
   totalFees: number;
+  // Tax method determines how tax is applied to lease
+  taxMethod?: 'payment' | 'cap_cost' | 'hybrid';
+  // Tax rate for payment-based taxation
+  taxRate?: number;
 }
 
 export interface PaymentCalculationResult {
@@ -134,34 +138,81 @@ export function calculateLeasePayment(input: LeaseCalculationInput): PaymentCalc
     term,
     residualValue,
     totalTax,
-    totalFees
+    totalFees,
+    taxMethod = 'payment',
+    taxRate = 0
   } = input;
-  
-  const tradeEquity = tradeAllowance - tradePayoff;
-  const capitalizedCost = new Decimal(vehiclePrice)
-    .plus(totalFees)
-    .plus(totalTax)
-    .minus(downPayment)
-    .minus(tradeEquity);
-  
-  if (capitalizedCost.lte(0) || term === 0) {
+
+  // Calculate net trade equity
+  const tradeEquity = new Decimal(tradeAllowance).minus(tradePayoff);
+
+  // Build Gross Capitalized Cost
+  let grossCapCost = new Decimal(vehiclePrice).plus(totalFees);
+
+  // For cap_cost tax method, add tax to gross cap cost
+  if (taxMethod === 'cap_cost') {
+    grossCapCost = grossCapCost.plus(totalTax);
+  }
+
+  // Calculate Cap Cost Reductions
+  let capReductions = new Decimal(downPayment);
+
+  // Trade equity reduces cap cost if positive, increases if negative
+  if (tradeEquity.gt(0)) {
+    capReductions = capReductions.plus(tradeEquity);
+  } else if (tradeEquity.lt(0)) {
+    grossCapCost = grossCapCost.plus(tradeEquity.abs());
+  }
+
+  // Adjusted Capitalized Cost
+  const adjustedCapCost = grossCapCost.minus(capReductions);
+
+  if (adjustedCapCost.lte(0) || term === 0) {
     return {
       monthlyPayment: 0,
-      amountFinanced: capitalizedCost.toNumber(),
-      totalCost: capitalizedCost.toNumber(),
+      amountFinanced: adjustedCapCost.toNumber(),
+      totalCost: adjustedCapCost.toNumber(),
     };
   }
-  
+
   const residual = new Decimal(residualValue);
-  const depreciation = capitalizedCost.minus(residual).div(term);
-  const financeCharge = capitalizedCost.plus(residual).times(moneyFactor);
-  const monthlyPayment = depreciation.plus(financeCharge);
-  const totalPaid = monthlyPayment.times(term);
-  
+
+  // Standard lease formula
+  const depreciation = adjustedCapCost.minus(residual).div(term);
+  const financeCharge = adjustedCapCost.plus(residual).times(moneyFactor);
+  const baseMonthlyPayment = depreciation.plus(financeCharge);
+
+  // Apply tax based on method
+  let monthlyPayment: Decimal;
+  let totalCost: Decimal;
+
+  switch (taxMethod) {
+    case 'payment':
+      const monthlyTax = baseMonthlyPayment.times(taxRate);
+      monthlyPayment = baseMonthlyPayment.plus(monthlyTax);
+      totalCost = monthlyPayment.times(term);
+      break;
+
+    case 'cap_cost':
+      monthlyPayment = baseMonthlyPayment;
+      totalCost = monthlyPayment.times(term);
+      break;
+
+    case 'hybrid':
+      const hybridTax = baseMonthlyPayment.times(taxRate);
+      monthlyPayment = baseMonthlyPayment.plus(hybridTax);
+      totalCost = monthlyPayment.times(term).plus(totalTax);
+      break;
+
+    default:
+      monthlyPayment = baseMonthlyPayment.plus(baseMonthlyPayment.times(taxRate));
+      totalCost = monthlyPayment.times(term);
+  }
+
   return {
     monthlyPayment: monthlyPayment.toDecimalPlaces(2).toNumber(),
-    amountFinanced: capitalizedCost.toDecimalPlaces(2).toNumber(),
-    totalCost: totalPaid.toDecimalPlaces(2).toNumber(),
+    amountFinanced: adjustedCapCost.toDecimalPlaces(2).toNumber(),
+    totalCost: totalCost.toDecimalPlaces(2).toNumber(),
   };
 }
 
@@ -505,10 +556,14 @@ export function calculateDealerGradeLease(input: DealerGradeLeaseInput): DealerG
   let monthlyTax = new Decimal(0);
   let upfrontTax = new Decimal(0);
 
+  // Round base payment FIRST for consistent accounting
+  const roundedBasePayment = baseMonthlyPayment.toDecimalPlaces(2);
+
   switch (taxMethod) {
     case 'payment':
       // Most common: Tax applied to each monthly payment
-      monthlyTax = baseMonthlyPayment.times(taxRate);
+      // Use rounded base payment for tax calculation (accounting standard)
+      monthlyTax = roundedBasePayment.times(taxRate).toDecimalPlaces(2);
       break;
 
     case 'total_cap':
@@ -524,19 +579,20 @@ export function calculateDealerGradeLease(input: DealerGradeLeaseInput): DealerG
     case 'cap_reduction':
       // Rare: Tax on cap reduction PLUS tax on payment
       const capReductionTaxable = cashDown.plus(positiveTradeEquity);
-      upfrontTax = new Decimal(capReductionTaxable).times(taxRate);
-      monthlyTax = baseMonthlyPayment.times(taxRate);
+      upfrontTax = new Decimal(capReductionTaxable).times(taxRate).toDecimalPlaces(2);
+      monthlyTax = roundedBasePayment.times(taxRate).toDecimalPlaces(2);
       break;
 
     default:
       // Default to payment method
-      monthlyTax = baseMonthlyPayment.times(taxRate);
+      monthlyTax = roundedBasePayment.times(taxRate).toDecimalPlaces(2);
   }
 
   // ============================================================================
   // STEP 9: Calculate Total Monthly Payment
   // ============================================================================
-  const totalMonthlyPayment = baseMonthlyPayment.plus(monthlyTax);
+  // Use rounded values for correct accounting display
+  const totalMonthlyPayment = roundedBasePayment.plus(monthlyTax);
 
   // ============================================================================
   // STEP 10: Calculate Drive-Off / Due at Signing
