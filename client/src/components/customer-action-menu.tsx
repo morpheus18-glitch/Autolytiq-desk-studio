@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Plus, Car, Repeat, Users, FileText, CreditCard, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
 import type { Customer } from '@shared/schema';
 
 interface CustomerActionMenuProps {
@@ -18,16 +19,17 @@ export function CustomerActionMenu({ customer, variant = 'default' }: CustomerAc
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Get current user for salesperson ID
+  const { data: currentUser } = useQuery({
+    queryKey: ['/api/auth/me'],
+  });
+
   // Start deal mutation
   const startDealMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch('/api/deals', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customerId: customer.id,
-          salespersonId: customer.dealershipId, // This should be the actual salesperson ID
-        }),
+      const response = await apiRequest('POST', '/api/deals', {
+        customerId: customer.id,
+        salespersonId: (currentUser as any)?.id, // Use current user as salesperson
       });
 
       if (!response.ok) {
@@ -59,16 +61,17 @@ export function CustomerActionMenu({ customer, variant = 'default' }: CustomerAc
     {
       icon: Car,
       label: 'Add Vehicle',
-      description: 'Add vehicle to garage',
+      description: 'Select vehicle for deal',
       color: 'text-blue-600',
       bgColor: 'bg-blue-50 hover:bg-blue-100',
       onClick: () => {
-        // TODO: Implement add vehicle modal
-        toast({
-          title: 'Coming soon',
-          description: 'Add vehicle to customer garage',
-        });
+        // Navigate to vehicles page to select/add vehicle
+        setLocation('/vehicles?select=true');
         setIsOpen(false);
+        toast({
+          title: 'Select a Vehicle',
+          description: 'Choose a vehicle from inventory for this customer',
+        });
       },
     },
     {
@@ -77,28 +80,45 @@ export function CustomerActionMenu({ customer, variant = 'default' }: CustomerAc
       description: 'Add trade-in vehicle',
       color: 'text-green-600',
       bgColor: 'bg-green-50 hover:bg-green-100',
-      onClick: () => {
-        // TODO: Implement add trade modal
-        toast({
-          title: 'Coming soon',
-          description: 'Add trade-in vehicle',
-        });
-        setIsOpen(false);
+      onClick: async () => {
+        // Start a deal and navigate to trade section
+        try {
+          const response = await apiRequest('POST', '/api/deals', {
+            customerId: customer.id,
+            salespersonId: (currentUser as any)?.id,
+          });
+          const deal = await response.json();
+          queryClient.invalidateQueries({ queryKey: ['/api/deals'] });
+          // Navigate to deal with trade focus
+          setLocation(`/deals/${deal.id}?focus=trade`);
+          setIsOpen(false);
+          toast({
+            title: 'Deal Created',
+            description: 'Add the trade-in vehicle details',
+          });
+        } catch (error) {
+          toast({
+            title: 'Failed to create deal',
+            description: 'Please try again',
+            variant: 'destructive',
+          });
+        }
       },
     },
     {
       icon: Users,
       label: 'Add Co-Buyer',
-      description: 'Add co-buyer to account',
+      description: 'Add co-buyer to deal',
       color: 'text-purple-600',
       bgColor: 'bg-purple-50 hover:bg-purple-100',
       onClick: () => {
-        // TODO: Implement add co-buyer modal
-        toast({
-          title: 'Coming soon',
-          description: 'Add co-buyer to customer',
-        });
+        // Navigate to customers page to select co-buyer
+        setLocation(`/customers?selectCobuyer=${customer.id}`);
         setIsOpen(false);
+        toast({
+          title: 'Select Co-Buyer',
+          description: 'Choose or create a co-buyer for this customer',
+        });
       },
     },
     {
