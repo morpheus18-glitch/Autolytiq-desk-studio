@@ -38,8 +38,9 @@ import { TradeForm } from '@/components/forms/trade-form';
 import { FinanceLeaseForm } from '@/components/forms/finance-lease-form';
 import { LeaseTermsForm } from '@/components/forms/lease-terms-form';
 import { FIGrid } from '@/components/forms/fi-grid';
-import { TaxBreakdownForm } from '@/components/forms/tax-breakdown-form';
 import { DealerFeesForm } from '@/components/forms/dealer-fees-form';
+import { TaxLocationDisplay } from '@/components/tax-location-display';
+import { useDealTaxProfile } from '@/hooks/use-deal-tax-profile';
 import { VehicleSwitcher } from '@/components/vehicle-switcher';
 import { CustomerSelectorSheet } from '@/components/customer-selector-sheet';
 import { DealTypeSwitcherCompact } from '@/components/deal-type-switcher';
@@ -165,7 +166,7 @@ export default function DealWorksheetV3() {
     enabled: !!dealId,
   });
 
-  // Fetch tax rate based on customer's zip code
+  // Fetch tax rate based on customer's zip code (legacy - keeping for backward compatibility)
   const customerZip = deal?.customer?.zipCode;
   const { data: taxData } = useQuery<{
     zipCode: string;
@@ -175,6 +176,21 @@ export default function DealWorksheetV3() {
   }>({
     queryKey: ['/api/tax/zip', customerZip],
     enabled: !!customerZip,
+  });
+
+  // NEW: Centralized tax profile based on customer address
+  const {
+    taxProfile,
+    isRecalculating: isTaxRecalculating,
+    recalculateTaxes,
+    onCustomerAddressChanged,
+  } = useDealTaxProfile({
+    dealId: dealId || '',
+    customerId: deal?.customerId || null,
+    onTaxProfileUpdated: (profile) => {
+      // Invalidate deal to refresh with new tax values
+      queryClient.invalidateQueries({ queryKey: ['/api/deals', dealId] });
+    },
   });
 
   useEffect(() => {
@@ -504,12 +520,26 @@ export default function DealWorksheetV3() {
                   <DealerFeesForm />
                 </DeskSection>
 
-                {/* Taxes */}
+                {/* Tax Location (from Customer Address) */}
                 <DeskSection
-                  title="Taxes"
+                  title="Tax Location"
                   icon={DollarSign}
+                  summary={taxProfile ? `${(taxProfile.rates.combinedRate * 100).toFixed(2)}%` : undefined}
                 >
-                  <TaxBreakdownForm customer={deal.customer} />
+                  {deal.customer ? (
+                    <TaxLocationDisplay
+                      customer={deal.customer}
+                      taxProfile={taxProfile}
+                      isRecalculating={isTaxRecalculating}
+                      onRecalculate={recalculateTaxes}
+                      showRates={true}
+                      showRules={false}
+                    />
+                  ) : (
+                    <div className="text-sm text-muted-foreground p-3 bg-yellow-50 rounded-md">
+                      Attach a customer to calculate taxes based on their address
+                    </div>
+                  )}
                 </DeskSection>
 
                 {/* Lease Calculation Breakdown (Lease Only) - Hidden on mobile */}

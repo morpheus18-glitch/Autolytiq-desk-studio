@@ -191,7 +191,8 @@ export const customers = pgTable("customers", {
   city: text("city"),
   state: text("state"),
   zipCode: text("zip_code"),
-  
+  county: text("county"), // County name for tax jurisdiction (auto-detected from Google Maps)
+
   // Additional fields for expanded customer view
   dateOfBirth: timestamp("date_of_birth"),
   driversLicenseNumber: text("drivers_license_number"), // TODO: Encrypt at rest before production
@@ -834,6 +835,10 @@ export const dealScenarios = pgTable("deal_scenarios", {
   // Drive-off breakdown (stored as JSONB for itemization)
   driveOffBreakdown: jsonb("drive_off_breakdown").notNull().default({}),
   // {firstPayment: number, cashDown: number, acquisitionFee: number, upfrontFees: number, upfrontTax: number, securityDeposit: number, otherCharges: number}
+
+  // Tax Profile (computed from customer address via tax engine)
+  taxProfile: jsonb("tax_profile"), // Full TaxProfile object from tax engine
+  // Contains: addressSnapshot, jurisdiction, rates, method, rules, precomputed values
 
   // Total lease cost (for comparison)
   totalOfPayments: decimal("total_of_payments", { precision: 12, scale: 2 }).default("0"),

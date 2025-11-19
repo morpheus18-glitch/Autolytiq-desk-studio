@@ -11,6 +11,7 @@ import { setupAuth, requireAuth, requireRole } from "./auth";
 import { setupAuthRoutes } from "./auth-routes";
 import taxRoutes from "./tax-routes";
 import localTaxRoutes from "./local-tax-routes";
+import taxEngineRoutes from "./tax-engine-routes";
 
 // Rate limiting middleware - 100 requests per minute per IP
 const limiter = rateLimit({
@@ -93,6 +94,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Setup local tax rate lookup routes (ZIP code to local rates)
   app.use('/api/tax', localTaxRoutes);
+
+  // Setup centralized tax engine routes (customer-based tax calculation)
+  app.use('/api/tax', taxEngineRoutes);
 
   // Setup address validation route (validates customer addresses for tax calculation)
   const { validateAddressHandler } = await import('./address-validation');

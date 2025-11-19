@@ -70,6 +70,7 @@ export function CustomerFormSheet({
       city: '',
       state: '',
       zipCode: '',
+      county: '',
       dateOfBirth: undefined,
       driversLicenseNumber: '',
       driversLicenseState: '',
@@ -109,6 +110,7 @@ export function CustomerFormSheet({
         city: customer.city || '',
         state: customer.state || '',
         zipCode: customer.zipCode || '',
+        county: customer.county || '',
         dateOfBirth: customer.dateOfBirth || undefined,
         driversLicenseNumber: customer.driversLicenseNumber || '',
         driversLicenseState: customer.driversLicenseState || '',
@@ -144,6 +146,7 @@ export function CustomerFormSheet({
         city: '',
         state: '',
         zipCode: '',
+        county: '',
         dateOfBirth: undefined,
         driversLicenseNumber: '',
         driversLicenseState: '',
@@ -394,11 +397,14 @@ export function CustomerFormSheet({
                           {...field}
                           value={field.value || ''}
                           onAddressSelect={(address: AddressComponents) => {
-                            // Auto-fill all address fields
+                            // Auto-fill all address fields including county for tax
                             form.setValue('address', address.street);
                             form.setValue('city', address.city);
                             form.setValue('state', address.stateCode);
                             form.setValue('zipCode', address.zipCode);
+                            if (address.county) {
+                              form.setValue('county', address.county);
+                            }
                           }}
                           data-testid="input-address"
                         />
