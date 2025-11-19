@@ -146,9 +146,7 @@ export function useRemoveHierarchyUser() {
 
   return useMutation({
     mutationFn: async (userId: string) => {
-      await apiRequest(`/api/hierarchy/user/${userId}`, {
-        method: 'DELETE',
-      });
+      await apiRequest('DELETE', `/api/hierarchy/user/${userId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: hierarchyKeys.users() });

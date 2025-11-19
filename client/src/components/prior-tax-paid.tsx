@@ -177,8 +177,8 @@ export function PriorTaxPaid({
           <SelectContent>
             <SelectGroup>
               {allStates.map((state) => (
-                <SelectItem key={state.code} value={state.code}>
-                  {state.name} ({state.code})
+                <SelectItem key={state.stateCode} value={state.stateCode}>
+                  {state.stateName} ({state.stateCode})
                 </SelectItem>
               ))}
             </SelectGroup>

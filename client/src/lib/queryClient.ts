@@ -7,20 +7,50 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-export async function apiRequest(
-  method: string,
-  url: string,
+export async function apiRequest<T = Response>(
+  urlOrMethod: string,
+  urlOrData?: string | unknown,
   data?: unknown | undefined,
-): Promise<Response> {
+): Promise<T> {
+  // Support both old signature (method, url, data) and new signature (url, options)
+  let method: string;
+  let url: string;
+  let body: unknown | undefined;
+
+  if (typeof urlOrData === 'string') {
+    // Old signature: apiRequest(method, url, data)
+    method = urlOrMethod;
+    url = urlOrData;
+    body = data;
+  } else if (urlOrData && typeof urlOrData === 'object' && 'method' in urlOrData) {
+    // New signature: apiRequest(url, { method, body, headers })
+    url = urlOrMethod;
+    const options = urlOrData as { method?: string; body?: string; headers?: Record<string, string> };
+    method = options.method || 'GET';
+    body = options.body ? JSON.parse(options.body) : undefined;
+  } else {
+    // Simple GET: apiRequest(url)
+    method = 'GET';
+    url = urlOrMethod;
+    body = urlOrData;
+  }
+
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
-    body: data ? JSON.stringify(data) : undefined,
+    headers: body ? { "Content-Type": "application/json" } : {},
+    body: body ? JSON.stringify(body) : undefined,
     credentials: "include",
   });
 
   await throwIfResNotOk(res);
-  return res;
+
+  // If T is Response, return the raw response
+  // Otherwise, parse JSON and return typed data
+  const contentType = res.headers.get('content-type');
+  if (contentType && contentType.includes('application/json')) {
+    return await res.json() as T;
+  }
+  return res as unknown as T;
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";

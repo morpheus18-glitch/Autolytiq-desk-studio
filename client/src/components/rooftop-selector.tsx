@@ -37,13 +37,13 @@ export function RooftopSelector({
   showRecommendation = true,
 }: RooftopSelectorProps) {
   // Fetch all rooftops
-  const { data: rooftopsData, isLoading } = useQuery({
+  const { data: rooftopsData, isLoading } = useQuery<{ data: any[] }>({
     queryKey: ['/api/rooftops'],
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   // Fetch recommended rooftop based on registration state
-  const { data: recommendedData } = useQuery({
+  const { data: recommendedData } = useQuery<{ data: any }>({
     queryKey: [`/api/rooftops/recommended`, { registrationState }],
     enabled: showRecommendation && !!registrationState,
     staleTime: 5 * 60 * 1000,

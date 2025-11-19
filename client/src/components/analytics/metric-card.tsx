@@ -67,7 +67,7 @@ export const MetricCard = memo(function MetricCard({
   // Animated value for smooth transitions
   const animatedValue = useValueTransition(
     typeof value === 'number' ? value : 0,
-    300
+    { duration: 300 }
   );
   
   const displayValue = typeof value === 'number' 

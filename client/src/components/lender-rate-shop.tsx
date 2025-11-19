@@ -422,7 +422,7 @@ export function LenderRateShop({
             Select up to 3 offers to compare side by side. {compareOffers.size}/3 selected.
             {compareOffers.size >= 2 && (
               <Button
-                variant="link"
+                variant="ghost"
                 size="sm"
                 className="ml-2"
                 onClick={() => {/* Open comparison dialog */}}

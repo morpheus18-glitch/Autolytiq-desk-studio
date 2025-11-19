@@ -70,7 +70,7 @@ export function RooftopConfigManager() {
   const [isEditing, setIsEditing] = useState(false);
 
   // Fetch rooftops
-  const { data: rooftops, isLoading } = useQuery({
+  const { data: rooftops, isLoading } = useQuery<{ data: RooftopConfig[] }>({
     queryKey: ['/api/rooftops'],
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -378,8 +378,8 @@ export function RooftopConfigManager() {
                     </SelectTrigger>
                     <SelectContent>
                       {allStates.map((state) => (
-                        <SelectItem key={state.code} value={state.code}>
-                          {state.code} - {state.name}
+                        <SelectItem key={state.stateCode} value={state.stateCode}>
+                          {state.stateCode} - {state.stateName}
                         </SelectItem>
                       ))}
                     </SelectContent>

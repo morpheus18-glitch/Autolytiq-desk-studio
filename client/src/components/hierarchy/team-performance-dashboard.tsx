@@ -289,11 +289,11 @@ export const TeamPerformanceDashboard: React.FC<TeamPerformanceDashboardProps> =
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <div className="text-sm font-medium">Average Performance Score</div>
-                <div className="text-2xl font-bold">{performance.averagePerformanceScore.toFixed(1)}</div>
+                <div className="text-2xl font-bold">{performance.avgPerformanceScore.toFixed(1)}</div>
               </div>
               <div className="space-y-2">
                 <div className="text-sm font-medium">Total Team Members</div>
-                <div className="text-2xl font-bold">{performance.totalMembers}</div>
+                <div className="text-2xl font-bold">{performance.teamSize}</div>
               </div>
             </div>
           </CardContent>

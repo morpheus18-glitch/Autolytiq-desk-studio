@@ -57,31 +57,31 @@ export default function Analytics() {
   });
 
   // Fetch KPIs
-  const { data: kpis, isLoading: kpisLoading, refetch: refetchKpis } = useQuery({
+  const { data: kpis, isLoading: kpisLoading, refetch: refetchKpis } = useQuery<any>({
     queryKey: ['/api/analytics/kpis', queryParams.toString()],
     refetchInterval: autoRefresh ? 30000 : false,
   });
 
   // Fetch Revenue Data
-  const { data: revenueData, isLoading: revenueLoading } = useQuery({
+  const { data: revenueData, isLoading: revenueLoading } = useQuery<any[]>({
     queryKey: ['/api/analytics/revenue', queryParams.toString()],
     refetchInterval: autoRefresh ? 30000 : false,
   });
 
   // Fetch Deal Analytics
-  const { data: dealAnalytics, isLoading: dealsLoading } = useQuery({
+  const { data: dealAnalytics, isLoading: dealsLoading } = useQuery<any>({
     queryKey: ['/api/analytics/deals', queryParams.toString()],
     refetchInterval: autoRefresh ? 30000 : false,
   });
 
   // Fetch Inventory Metrics
-  const { data: inventoryMetrics, isLoading: inventoryLoading } = useQuery({
+  const { data: inventoryMetrics, isLoading: inventoryLoading } = useQuery<any>({
     queryKey: ['/api/analytics/inventory', queryParams.toString()],
     refetchInterval: autoRefresh ? 30000 : false,
   });
 
   // Fetch Team Performance
-  const { data: teamPerformance, isLoading: teamLoading } = useQuery({
+  const { data: teamPerformance, isLoading: teamLoading } = useQuery<any>({
     queryKey: ['/api/analytics/team', queryParams.toString()],
     refetchInterval: autoRefresh ? 30000 : false,
   });

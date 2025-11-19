@@ -145,7 +145,7 @@ export function CreditSimulator() {
   // Simulate credit score mutation
   const simulateMutation = useMutation({
     mutationFn: async (input: CreditSimulationInput) => {
-      const response = await apiRequest('POST', '/api/credit/simulate', input);
+      const response = await apiRequest<CreditSimulationResult>('POST', '/api/credit/simulate', input);
       return response;
     },
     onMutate: () => {
@@ -174,8 +174,8 @@ export function CreditSimulator() {
   // Simulate scenario mutation
   const scenarioMutation = useMutation({
     mutationFn: async (scenario: string) => {
-      if (!simulationResult) return;
-      const response = await apiRequest('POST', '/api/credit/scenario', {
+      if (!simulationResult) return null;
+      const response = await apiRequest<CreditSimulationResult>('POST', '/api/credit/scenario', {
         currentFactors: simulationResult.factors,
         scenario,
       });

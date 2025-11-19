@@ -105,7 +105,7 @@ const getTierBadgeClass = (tier: string): string => {
 // Custom gauge component
 function CreditScoreGauge({ score, tier }: { score: number; tier: string }) {
   const normalizedScore = ((score - 300) / 550) * 100; // Normalize to 0-100%
-  const animatedScore = useValueTransition(score, 800);
+  const animatedScore = useValueTransition(score, { duration: 800 });
   
   return (
     <div className="relative w-full max-w-sm mx-auto">

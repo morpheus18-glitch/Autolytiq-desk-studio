@@ -928,7 +928,7 @@ router.get("/rules", async (req: Request, res: Response) => {
       .where(
         and(
           eq(emailRules.dealershipId, dealershipId),
-          or(eq(emailRules.userId, userId), isNull(emailRules.userId))
+          userId ? or(eq(emailRules.userId, userId), isNull(emailRules.userId)) : isNull(emailRules.userId)
         )
       )
       .orderBy(emailRules.priority);
@@ -1011,7 +1011,7 @@ router.patch("/rules/:id", async (req: Request, res: Response) => {
         and(
           eq(emailRules.id, req.params.id),
           eq(emailRules.dealershipId, dealershipId),
-          eq(emailRules.userId, userId)
+          ...(userId ? [eq(emailRules.userId, userId)] : [])
         )
       )
       .returning();
@@ -1051,7 +1051,7 @@ router.delete("/rules/:id", async (req: Request, res: Response) => {
         and(
           eq(emailRules.id, req.params.id),
           eq(emailRules.dealershipId, dealershipId),
-          eq(emailRules.userId, userId)
+          ...(userId ? [eq(emailRules.userId, userId)] : [])
         )
       );
 
@@ -1086,7 +1086,7 @@ router.get("/labels", async (req: Request, res: Response) => {
       .where(
         and(
           eq(emailLabels.dealershipId, dealershipId),
-          or(eq(emailLabels.userId, userId), isNull(emailLabels.userId))
+          userId ? or(eq(emailLabels.userId, userId), isNull(emailLabels.userId)) : isNull(emailLabels.userId)
         )
       )
       .orderBy(emailLabels.sortOrder);
@@ -1167,7 +1167,7 @@ router.patch("/labels/:id", async (req: Request, res: Response) => {
         and(
           eq(emailLabels.id, req.params.id),
           eq(emailLabels.dealershipId, dealershipId),
-          eq(emailLabels.userId, userId)
+          ...(userId ? [eq(emailLabels.userId, userId)] : [])
         )
       )
       .returning();
@@ -1207,7 +1207,7 @@ router.delete("/labels/:id", async (req: Request, res: Response) => {
         and(
           eq(emailLabels.id, req.params.id),
           eq(emailLabels.dealershipId, dealershipId),
-          eq(emailLabels.userId, userId)
+          ...(userId ? [eq(emailLabels.userId, userId)] : [])
         )
       );
 

@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import type { UserRole, RoleLevel } from '@/lib/hierarchy-types';
+import { RoleLevel, UserRole } from '@/lib/hierarchy-types';
 import { cn } from '@/lib/utils';
 
 interface RoleSelectorProps {
@@ -27,65 +27,60 @@ const ROLE_DEFINITIONS: Record<
     description: string;
   }
 > = {
-  SALES_REP: {
-    label: 'Sales Representative',
-    level: 'ENTRY',
-    description: 'Entry-level sales position',
+  [UserRole.SALES]: {
+    label: 'Sales',
+    level: RoleLevel.ENTRY,
+    description: 'Sales representative',
   },
-  ACCOUNT_EXECUTIVE: {
-    label: 'Account Executive',
-    level: 'MID',
-    description: 'Manages client accounts',
+  [UserRole.SALES_TRAINEE]: {
+    label: 'Sales Trainee',
+    level: RoleLevel.ENTRY,
+    description: 'Entry-level sales trainee',
   },
-  SENIOR_ACCOUNT_EXECUTIVE: {
-    label: 'Senior Account Executive',
-    level: 'SENIOR',
-    description: 'Senior account management',
+  [UserRole.SENIOR_SALES]: {
+    label: 'Senior Sales',
+    level: RoleLevel.SENIOR,
+    description: 'Senior sales representative',
   },
-  SALES_MANAGER: {
+  [UserRole.BDC]: {
+    label: 'BDC',
+    level: RoleLevel.MID,
+    description: 'Business Development Center',
+  },
+  [UserRole.BDC_MANAGER]: {
+    label: 'BDC Manager',
+    level: RoleLevel.MANAGER,
+    description: 'Manages BDC team',
+  },
+  [UserRole.SALES_MANAGER]: {
     label: 'Sales Manager',
-    level: 'MANAGER',
+    level: RoleLevel.MANAGER,
     description: 'Manages sales team',
   },
-  REGIONAL_SALES_MANAGER: {
-    label: 'Regional Sales Manager',
-    level: 'MANAGER',
-    description: 'Oversees regional sales',
+  [UserRole.GENERAL_MANAGER]: {
+    label: 'General Manager',
+    level: RoleLevel.EXECUTIVE,
+    description: 'Overall dealership management',
   },
-  VP_SALES: {
-    label: 'VP of Sales',
-    level: 'EXECUTIVE',
-    description: 'Executive sales leadership',
+  [UserRole.FI_MANAGER]: {
+    label: 'F&I Manager',
+    level: RoleLevel.MANAGER,
+    description: 'Finance and Insurance manager',
   },
-  CUSTOMER_SUCCESS_REP: {
-    label: 'Customer Success Rep',
-    level: 'ENTRY',
-    description: 'Customer support role',
+  [UserRole.SERVICE_ADVISOR]: {
+    label: 'Service Advisor',
+    level: RoleLevel.MID,
+    description: 'Service department advisor',
   },
-  CUSTOMER_SUCCESS_MANAGER: {
-    label: 'Customer Success Manager',
-    level: 'MID',
-    description: 'Manages customer success',
+  [UserRole.SERVICE_MANAGER]: {
+    label: 'Service Manager',
+    level: RoleLevel.MANAGER,
+    description: 'Manages service department',
   },
-  SALES_ENGINEER: {
-    label: 'Sales Engineer',
-    level: 'MID',
-    description: 'Technical sales support',
-  },
-  SENIOR_SALES_ENGINEER: {
-    label: 'Senior Sales Engineer',
-    level: 'SENIOR',
-    description: 'Senior technical sales',
-  },
-  SALES_OPERATIONS: {
-    label: 'Sales Operations',
-    level: 'MID',
-    description: 'Sales ops specialist',
-  },
-  SALES_DIRECTOR: {
-    label: 'Sales Director',
-    level: 'EXECUTIVE',
-    description: 'Director-level sales',
+  [UserRole.ADMIN]: {
+    label: 'Admin',
+    level: RoleLevel.EXECUTIVE,
+    description: 'System administrator',
   },
 };
 
@@ -124,7 +119,7 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
     rolesByLevel[level].push(role);
   });
 
-  const levelOrder: RoleLevel[] = ['ENTRY', 'JUNIOR', 'MID', 'SENIOR', 'LEAD', 'MANAGER', 'EXECUTIVE'];
+  const levelOrder: RoleLevel[] = [RoleLevel.ENTRY, RoleLevel.JUNIOR, RoleLevel.MID, RoleLevel.SENIOR, RoleLevel.LEAD, RoleLevel.MANAGER, RoleLevel.EXECUTIVE];
 
   return (
     <Select value={value} onValueChange={onValueChange} disabled={disabled}>

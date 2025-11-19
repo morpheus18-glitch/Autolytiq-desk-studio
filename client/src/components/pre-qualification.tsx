@@ -143,7 +143,7 @@ export function PreQualification() {
 
   const preQualifyMutation = useMutation({
     mutationFn: async (data: PreQualFormData) => {
-      const response = await apiRequest('POST', '/api/credit/prequalify', data);
+      const response = await apiRequest<PreQualificationResult>('POST', '/api/credit/prequalify', data);
       return response;
     },
     onSuccess: (data) => {

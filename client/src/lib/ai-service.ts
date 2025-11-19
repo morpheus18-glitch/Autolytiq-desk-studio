@@ -113,7 +113,9 @@ export class AIService {
                     }
                   } else if (data.type === 'complete' && data.message) {
                     assistantMessage = data.message;
-                    assistantMessage.timestamp = new Date(assistantMessage.timestamp);
+                    if (assistantMessage) {
+                      assistantMessage.timestamp = new Date(assistantMessage.timestamp);
+                    }
                   } else if (data.type === 'error') {
                     throw new Error(data.error || 'Stream error');
                   }
@@ -188,7 +190,7 @@ export class AIService {
     this.conversationHistory = [{
       id: 'system',
       role: 'system',
-      content: SYSTEM_PROMPT,
+      content: 'AI Deal Assistant initialized',
       timestamp: new Date()
     }];
   }

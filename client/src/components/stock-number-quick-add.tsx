@@ -53,7 +53,7 @@ export function StockNumberQuickAdd({
 
   // Sync input with selected vehicle (handles Browse dialog and fallback search selections)
   useEffect(() => {
-    if (controlledVehicle && controlledVehicle.stockNumber !== stockNumber) {
+    if (controlledVehicle && controlledVehicle.stockNumber && controlledVehicle.stockNumber !== stockNumber) {
       setStockNumber(controlledVehicle.stockNumber);
     }
   }, [controlledVehicle]);
@@ -66,7 +66,7 @@ export function StockNumberQuickAdd({
 
     // Find exact stock number match (case insensitive)
     const exactMatch = vehicles.find(
-      v => v.stockNumber.toLowerCase() === debouncedStockNumber.toLowerCase()
+      v => v.stockNumber && v.stockNumber.toLowerCase() === debouncedStockNumber.toLowerCase()
     );
 
     // Only auto-select on exact match (not single result)
@@ -76,7 +76,7 @@ export function StockNumberQuickAdd({
   }, [vehicles, debouncedStockNumber, onVehicleSelect, controlledVehicle?.id]);
 
   const showLoading = isLoading && debouncedStockNumber.length >= 2;
-  const showSuccess = controlledVehicle && stockNumber.toLowerCase() === controlledVehicle.stockNumber.toLowerCase();
+  const showSuccess = controlledVehicle && controlledVehicle.stockNumber && stockNumber.toLowerCase() === controlledVehicle.stockNumber.toLowerCase();
   const showNotFound = !isLoading && debouncedStockNumber.length >= 2 && (!vehicles || vehicles.length === 0);
 
   const handleClear = () => {

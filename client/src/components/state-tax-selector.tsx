@@ -73,7 +73,15 @@ export function StateTaxSelector({
   const currentStateTax = value ? getStateTaxInfo(value) : null;
   
   // Auto-detect state from ZIP code
-  const { data: zipData, isLoading: isLoadingZip } = useQuery({
+  const { data: zipData, isLoading: isLoadingZip } = useQuery<{
+    stateCode: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    county: string;
+    localTaxRate: number;
+    stateTaxRate: number;
+  } | null>({
     queryKey: [`/api/tax/zip/${debouncedZipCode}`],
     enabled: debouncedZipCode.length === 5,
     staleTime: 60 * 60 * 1000, // Cache for 1 hour

@@ -497,7 +497,7 @@ export default function Showroom() {
                 <Clock className="h-12 w-12 mx-auto mb-3 opacity-30" />
                 <p>No appointments scheduled for {isToday(selectedDate) ? 'today' : format(selectedDate, 'MMM d')}</p>
                 <Button
-                  variant="link"
+                  variant="ghost"
                   size="sm"
                   onClick={() => setShowNewAppointment(true)}
                   className="mt-2"

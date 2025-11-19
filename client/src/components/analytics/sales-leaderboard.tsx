@@ -173,7 +173,7 @@ export function SalesLeaderboard({ data, loading = false, className }: SalesLead
                 ${(member.profit / 1000).toFixed(0)}K
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                ${(member.avgProfit).toFixed(0)}/deal
+                ${(member.deals > 0 ? member.profit / member.deals : 0).toFixed(0)}/deal
               </p>
             </div>
           </div>
