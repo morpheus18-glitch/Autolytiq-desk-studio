@@ -22,7 +22,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { aiService, type ChatMessage, type DealContext } from '@/lib/ai-service';
-import { ScenarioFormContext } from '@/contexts/scenario-form-context';
+import { ScenarioFormContext, useScenarioForm } from '@/contexts/scenario-form-context';
 import { useContext } from 'react';
 import { format } from 'date-fns';
 import { useIsMobile } from '@/hooks/use-mobile';

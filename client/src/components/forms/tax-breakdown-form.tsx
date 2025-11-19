@@ -72,7 +72,7 @@ export function TaxBreakdownForm({ customer }: { customer?: Customer | null }) {
       stateCode,
       zipCode: zipCode || undefined,
       dealType: isLease ? 'LEASE' : 'RETAIL',
-      registrationState: scenario.registrationState || stateCode,
+      registrationState: stateCode, // Use stateCode as default registration state
 
       // Trade-in
       tradeValue: tradeValue > 0 ? tradeValue : undefined,

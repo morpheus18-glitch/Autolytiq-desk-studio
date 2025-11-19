@@ -65,9 +65,9 @@ export function ChartCard({
 
   const toggleFullscreen = () => {
     setIsFullscreen(!isFullscreen);
-    if (!isFullscreen && document.documentElement.requestFullscreen) {
+    if (!isFullscreen && 'requestFullscreen' in document.documentElement) {
       document.querySelector(`[data-testid="${testId}"]`)?.requestFullscreen();
-    } else if (document.exitFullscreen) {
+    } else if ('exitFullscreen' in document) {
       document.exitFullscreen();
     }
   };
