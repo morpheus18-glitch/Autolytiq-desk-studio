@@ -172,11 +172,10 @@ router.post("/quote", async (req: Request, res: Response) => {
       }
     }
 
-    // Build tax calculation input
-    const taxInput: TaxCalculationInput = {
+    // Build base tax calculation input fields
+    const baseFields = {
       stateCode: context.primaryStateCode,
       asOfDate: body.asOfDate,
-      dealType: body.dealType,
 
       // Context fields (for future reciprocity logic)
       homeStateCode: context.buyerResidenceStateCode,
@@ -205,18 +204,23 @@ router.post("/quote", async (req: Request, res: Response) => {
       customerIsNewResident: body.customerIsNewResident,
     };
 
-    // Add lease fields if LEASE deal type
-    if (body.dealType === "LEASE") {
-      taxInput.grossCapCost = body.grossCapCost ?? body.vehiclePrice;
-      taxInput.capReductionCash = body.capReductionCash ?? 0;
-      taxInput.capReductionTradeIn = body.capReductionTradeIn ?? body.tradeInValue ?? 0;
-      taxInput.capReductionRebateManufacturer =
-        body.capReductionRebateManufacturer ?? body.rebateManufacturer ?? 0;
-      taxInput.capReductionRebateDealer =
-        body.capReductionRebateDealer ?? body.rebateDealer ?? 0;
-      taxInput.basePayment = body.basePayment ?? 0;
-      taxInput.paymentCount = body.paymentCount ?? 36;
-    }
+    // Build tax calculation input based on deal type
+    const taxInput: TaxCalculationInput = body.dealType === "LEASE"
+      ? {
+          ...baseFields,
+          dealType: "LEASE" as const,
+          grossCapCost: body.grossCapCost ?? body.vehiclePrice,
+          capReductionCash: body.capReductionCash ?? 0,
+          capReductionTradeIn: body.capReductionTradeIn ?? body.tradeInValue ?? 0,
+          capReductionRebateManufacturer: body.capReductionRebateManufacturer ?? body.rebateManufacturer ?? 0,
+          capReductionRebateDealer: body.capReductionRebateDealer ?? body.rebateDealer ?? 0,
+          basePayment: body.basePayment ?? 0,
+          paymentCount: body.paymentCount ?? 36,
+        }
+      : {
+          ...baseFields,
+          dealType: "RETAIL" as const,
+        };
 
     // Calculate tax
     const result = calculateTax(taxInput, rules);
