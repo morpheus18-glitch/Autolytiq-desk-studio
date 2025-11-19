@@ -125,7 +125,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider mb-1">
-                  Total Revenue
+                  Total Gross
                 </p>
                 <div className="text-4xl md:text-5xl font-black tabular-nums text-emerald-900 dark:text-emerald-100" data-testid="metric-total-revenue-hero">
                   ${statsLoading ? '-' : (stats?.totalRevenue || 0).toLocaleString()}
