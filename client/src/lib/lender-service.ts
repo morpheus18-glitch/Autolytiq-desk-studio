@@ -801,7 +801,7 @@ export async function shopRates(
   
   for (const lender of MOCK_LENDERS) {
     // Check if lender operates in state
-    if (!lender.states.includes(state)) continue;
+    if (!(lender.states as string[]).includes(state)) continue;
     
     // Check minimum credit score
     if (creditScore < lender.minCreditScore) continue;
@@ -825,7 +825,7 @@ export async function shopRates(
       let buyRate = 0;
       let moneyFactor = program.moneyFactor;
       
-      for (const tier of program.rateTiers) {
+      for (const tier of (program.rateTiers as Array<{ minScore: number; maxScore: number; apr?: number; buyRate?: number; moneyFactor?: number }>)) {
         if (creditScore >= tier.minScore && creditScore <= tier.maxScore) {
           apr = tier.apr || 0;
           buyRate = tier.buyRate || apr;
@@ -901,7 +901,7 @@ export async function shopRates(
         dti: dti ? dti.toFixed(2) : null,
         pti: pti ? pti.toFixed(2) : null,
         stipulations: stips,
-        specialConditions: program.requirements.join(", "),
+        specialConditions: (program.requirements as string[]).join(", "),
         approvalScore: Math.floor(Math.random() * 30) + 70,
         approvalLikelihood,
         incentives: program.incentives,

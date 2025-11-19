@@ -1955,7 +1955,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Extract values from the new result structure
       const totalTax = result.taxes?.totalTax ?? 0;
-      const taxableBase = result.bases?.taxableBase ?? 0;
+      const taxableBase = (result.bases as any)?.taxableBase ?? 0;
       const effectiveRate = totalTax / (taxableBase || 1);
 
       // Audit log (basic console logging for now)
@@ -1987,8 +1987,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalFees: titleFee + registrationFee,
         totalTaxAndFees: totalTax + titleFee + registrationFee,
         tradeInTaxSavings: 0, // TODO: Calculate from bases
-        notes: result.debug?.notes ?? [],
-        warnings: result.debug?.warnings ?? [],
+        notes: (result.debug as any)?.notes ?? [],
+        warnings: (result.debug as any)?.warnings ?? [],
         // Include full engine result for advanced clients
         engineResult: result,
       });
