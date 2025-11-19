@@ -168,7 +168,7 @@ function DealWorksheetTabsContent({
           <PaymentHero
             monthlyPayment={calculations.monthlyPayment.toFixed(2)}
             apr={scenario.apr || '5.99'}
-            term={scenario.term}
+            term={scenario.term ?? 60}
             downPayment={calculations.downPayment.toFixed(2)}
             amountFinanced={calculations.amountFinanced.toFixed(2)}
             totalCost={calculations.totalCost.toFixed(2)}

@@ -218,6 +218,17 @@ export function ScenarioCalculator({ scenario, dealId, tradeVehicle, customerZip
     setFormData(updatedData);
     debouncedSave(updatedData);
   };
+
+  // Adapter for TaxJurisdictionSelector which returns base TaxJurisdiction
+  const handleJurisdictionSelect = (jurisdiction: any) => {
+    // Find the full jurisdiction with rules from our loaded data
+    if (jurisdiction && jurisdictions) {
+      const fullJurisdiction = jurisdictions.find(j => j.id === jurisdiction.id);
+      handleTaxJurisdictionChange(fullJurisdiction || null);
+    } else {
+      handleTaxJurisdictionChange(null);
+    }
+  };
   
   const addDealerFee = () => {
     const newFees = [...dealerFees, { name: 'Doc Fee', amount: 0, taxable: true }];
@@ -336,7 +347,7 @@ export function ScenarioCalculator({ scenario, dealId, tradeVehicle, customerZip
               <TaxJurisdictionSelector
                 selectedJurisdictionId={formData.taxJurisdictionId || undefined}
                 initialZipCode={customerZipCode || undefined}
-                onSelect={handleTaxJurisdictionChange}
+                onSelect={handleJurisdictionSelect}
               />
             </div>
             
