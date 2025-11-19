@@ -1,7 +1,7 @@
 # Database Schema Fixes - November 19, 2025
 
 ## Summary
-Fixed critical database schema mismatches that were causing 500 errors in the application. The schema definitions in `shared/schema.ts` had evolved beyond the actual database structure.
+Fixed critical database schema mismatches that were causing 500 errors in the application. The schema definitions in `shared/schema.ts` had evolved beyond the actual database structure. Added appointments table integration for scheduling functionality.
 
 ## Issues Fixed
 
@@ -70,12 +70,60 @@ Due to **Replit 2GB RAM constraints** and **Drizzle migration journal drift**, t
 - ✅ Customer relations loading correctly
 - ✅ Deal scenarios storing lease-specific data
 
+### 4. Appointments Table Integration (November 19, 2025)
+**Problem**: Drizzle schema had appointments table defined but needed database table creation.
+
+**Fix Applied**:
+```sql
+CREATE TABLE IF NOT EXISTS "appointments" (
+    "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+    "customer_id" uuid,
+    "user_id" uuid NOT NULL,
+    "dealership_id" uuid NOT NULL,
+    "title" text NOT NULL,
+    "description" text,
+    "appointment_type" text NOT NULL DEFAULT 'consultation',
+    "scheduled_at" timestamp NOT NULL,
+    "duration" integer NOT NULL DEFAULT 30,
+    "end_time" timestamp,
+    "status" text NOT NULL DEFAULT 'scheduled',
+    "location" text DEFAULT 'dealership',
+    "deal_id" uuid,
+    "vehicle_id" uuid,
+    "reminder_sent" boolean NOT NULL DEFAULT false,
+    "confirmation_sent" boolean NOT NULL DEFAULT false,
+    "notes" text,
+    "created_at" timestamp NOT NULL DEFAULT now(),
+    "updated_at" timestamp NOT NULL DEFAULT now()
+);
+
+-- Added foreign key constraints
+ALTER TABLE appointments
+ADD CONSTRAINT appointments_customer_id_fkey 
+  FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL;
+[... additional foreign keys for user_id, dealership_id, deal_id, vehicle_id]
+
+-- Added indexes for performance
+CREATE INDEX appointments_customer_idx ON appointments(customer_id);
+CREATE INDEX appointments_user_idx ON appointments(user_id);
+CREATE INDEX appointments_dealership_idx ON appointments(dealership_id);
+CREATE INDEX appointments_scheduled_at_idx ON appointments(scheduled_at);
+CREATE INDEX appointments_status_idx ON appointments(status);
+```
+
+**Relations Added**:
+- `appointmentsRelations` - Links to customers, users, deals, and vehicles
+- Updated `usersRelations` and `customersRelations` to include appointments
+
 ## Testing Performed
 
 1. ✅ Verified all columns exist in database
 2. ✅ Restarted application - no schema errors
 3. ✅ Confirmed API endpoints return 200/304 (or 401 for unauth)
 4. ✅ No more "column does not exist" errors in logs
+5. ✅ Appointments table created with all 19 columns
+6. ✅ All foreign key constraints properly configured
+7. ✅ All indexes created for query performance
 
 ## Architect Review
 

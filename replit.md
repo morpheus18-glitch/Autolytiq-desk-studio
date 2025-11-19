@@ -38,8 +38,9 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 
 **Database**: PostgreSQL (Neon serverless with WebSocket support).
 **Schema Design**: UUID primary keys, tables for Users, Customers, Vehicles, Deals (with state machine), Deal Scenarios, Tax Rule Groups, Tax Jurisdictions, Zip Code Lookup, Fee Package Templates, and Audit Log. Monetary values use Decimal type.
-**Database Performance**: Comprehensive indexing for multi-tenant queries on Customers, Deals, Vehicles, and Users tables. Enabled `pg_trgm` extension and GIN trigram indexes for text search optimization.
+**Database Performance**: Comprehensive indexing for multi-tenant queries on Customers, Deals, Vehicles, Users, and Appointments tables. Enabled `pg_trgm` extension and GIN trigram indexes for text search optimization.
 **Tax Jurisdiction Auto-Fill**: Customer ZIP codes automatically map to tax jurisdictions in deal scenarios. The `zipCodeLookup` table links ZIP codes to tax jurisdictions for auto-population. Backend API (`GET /api/tax-jurisdictions/lookup?zipCode=`) performs lookups. Manual override available for edge cases.
+**Appointments System**: Full appointment scheduling system with `appointments` table supporting customer meetings, test drives, deliveries, and follow-ups. Tracks scheduling, status, notifications (reminder_sent, confirmation_sent), and optional links to customers, deals, and vehicles.
 
 **Recent Database Changes (November 16, 2025)**:
 - **Deal Scenarios Reciprocity**: Confirmed `deal_scenarios` table includes reciprocity columns (`origin_tax_state`, `origin_tax_amount`, `origin_tax_paid_date`) for cross-state tax credit tracking. These fields are optional/nullable and fully synced between database and schema.

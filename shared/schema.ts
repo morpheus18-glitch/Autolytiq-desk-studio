@@ -1145,10 +1145,31 @@ export const usersRelations = relations(users, ({ many }) => ({
   dealsAsSalesManager: many(deals, { relationName: "salesManager" }),
   dealsAsFinanceManager: many(deals, { relationName: "financeManager" }),
   auditLogs: many(auditLog),
+  appointments: many(appointments),
 }));
 
 export const customersRelations = relations(customers, ({ many }) => ({
   deals: many(deals),
+  appointments: many(appointments),
+}));
+
+export const appointmentsRelations = relations(appointments, ({ one }) => ({
+  customer: one(customers, {
+    fields: [appointments.customerId],
+    references: [customers.id],
+  }),
+  user: one(users, {
+    fields: [appointments.userId],
+    references: [users.id],
+  }),
+  deal: one(deals, {
+    fields: [appointments.dealId],
+    references: [deals.id],
+  }),
+  vehicle: one(vehicles, {
+    fields: [appointments.vehicleId],
+    references: [vehicles.id],
+  }),
 }));
 
 export const vehiclesRelations = relations(vehicles, ({ many }) => ({
