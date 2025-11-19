@@ -578,8 +578,8 @@ export function calculateDealerGradeLease(input: DealerGradeLeaseInput): DealerG
 
     case 'cap_reduction':
       // Rare: Tax on cap reduction PLUS tax on payment
-      const capReductionTaxable = cashDown.plus(positiveTradeEquity);
-      upfrontTax = new Decimal(capReductionTaxable).times(taxRate).toDecimalPlaces(2);
+      const capReductionTaxable = new Decimal(cashDown).plus(positiveTradeEquity);
+      upfrontTax = capReductionTaxable.times(taxRate).toDecimalPlaces(2);
       monthlyTax = roundedBasePayment.times(taxRate).toDecimalPlaces(2);
       break;
 

@@ -90,7 +90,7 @@ export const ROLE_METADATA: Record<UserRole, RoleMetadata> = {
   },
 
   [UserRole.SENIOR_SALES]: {
-    role: UserRole.SENIOR,
+    role: UserRole.SENIOR_SALES,
     level: RoleLevel.SENIOR,
     title: 'Senior Sales Consultant',
     description: 'Experienced salesperson, can mentor others',
@@ -516,6 +516,7 @@ function getDefaultCompensation(role: UserRole): CompensationSettings {
         },
         eligibleForSpiffs: true,
         eligibleForManufacturerIncentives: true,
+        hasDrawAgainstCommission: true,
         hasMinimumGuarantee: true,
         guaranteeAmount: 2500,
       };
@@ -531,6 +532,7 @@ function getDefaultCompensation(role: UserRole): CompensationSettings {
         },
         eligibleForSpiffs: false,
         eligibleForManufacturerIncentives: false,
+        hasDrawAgainstCommission: false,
         hasMinimumGuarantee: false,
       };
 
@@ -547,6 +549,7 @@ function getDefaultCompensation(role: UserRole): CompensationSettings {
         },
         eligibleForSpiffs: false,
         eligibleForManufacturerIncentives: true,
+        hasDrawAgainstCommission: false,
         hasMinimumGuarantee: false,
       };
 
@@ -556,6 +559,7 @@ function getDefaultCompensation(role: UserRole): CompensationSettings {
         bonuses: {},
         eligibleForSpiffs: false,
         eligibleForManufacturerIncentives: false,
+        hasDrawAgainstCommission: false,
         hasMinimumGuarantee: false,
       };
   }

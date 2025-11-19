@@ -108,7 +108,7 @@ export async function sendEmailMessage(
       text: textBody,
     });
 
-    resendId = resendResponse.id;
+    resendId = resendResponse.data?.id;
   } catch (error) {
     console.error("[EmailService] Error sending email:", error);
     resendStatus = "failed";
