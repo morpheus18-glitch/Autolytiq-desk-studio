@@ -491,21 +491,32 @@ export function calculateDealTax(
     throw new Error('State code is required for tax calculation');
   }
   
+  // Calculate totals from JSONB arrays
+  const dealerFeesTotal = Array.isArray(scenario.dealerFees)
+    ? scenario.dealerFees.reduce((sum: number, fee: { amount?: number }) => sum + (Number(fee.amount) || 0), 0)
+    : 0;
+  const accessoriesTotal = Array.isArray(scenario.accessories)
+    ? scenario.accessories.reduce((sum: number, acc: { amount?: number }) => sum + (Number(acc.amount) || 0), 0)
+    : 0;
+  const aftermarketTotal = Array.isArray(scenario.aftermarketProducts)
+    ? scenario.aftermarketProducts.reduce((sum: number, prod: { price?: number }) => sum + (Number(prod.price) || 0), 0)
+    : 0;
+
   const options: TaxCalculationOptions = {
     vehiclePrice: Number(scenario.vehiclePrice) || 0,
     stateCode,
     zipCode,
     tradeValue: Number(scenario.tradeAllowance) || 0,
     tradePayoff: Number(scenario.tradePayoff) || 0,
-    docFee: Number(scenario.docFee) || 0,
-    dealerFees: Number(scenario.dealerFees) || 0,
-    aftermarketProducts: Number(scenario.aftermarketTotal) || 0,
-    warrantyAmount: Number(scenario.warrantyAmount) || 0,
-    gapInsurance: Number(scenario.gapInsurance) || 0,
-    maintenanceAmount: Number(scenario.maintenanceAmount) || 0,
-    accessoriesAmount: Number(scenario.accessoriesAmount) || 0,
-    rebates: Number(scenario.rebates) || 0,
-    dealerDiscount: Number(scenario.dealerDiscount) || 0,
+    docFee: 0, // Doc fee comes from deal, not scenario
+    dealerFees: dealerFeesTotal,
+    aftermarketProducts: aftermarketTotal,
+    warrantyAmount: 0, // Would be extracted from aftermarketProducts if needed
+    gapInsurance: 0, // Would be extracted from aftermarketProducts if needed
+    maintenanceAmount: 0, // Would be extracted from aftermarketProducts if needed
+    accessoriesAmount: accessoriesTotal,
+    rebates: Number(scenario.manufacturerRebate) || 0,
+    dealerDiscount: Number(scenario.otherIncentives) || 0,
   };
   
   return calculateAutomotiveTax(options);
