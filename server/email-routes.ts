@@ -182,7 +182,6 @@ router.get("/messages", async (req: Request, res: Response) => {
       ...queryParams,
     });
 
-    // Return structured response with pagination metadata
     res.json({
       success: true,
       data: result.messages,
@@ -402,7 +401,7 @@ router.post("/send", async (req: Request, res: Response) => {
 
 /**
  * POST /api/email/drafts
- * Save or update draft email with autosave support
+ * Save draft email
  */
 router.post("/drafts", async (req: Request, res: Response) => {
   try {
@@ -420,53 +419,15 @@ router.post("/drafts", async (req: Request, res: Response) => {
 
     const data = saveDraftSchema.parse(req.body);
 
-    // Check if we're updating an existing draft
-    if (data.draftId) {
-      const message = await saveDraft({
-        dealershipId,
-        userId,
-        draftId: data.draftId,
-        to: data.to,
-        cc: data.cc,
-        bcc: data.bcc,
-        subject: data.subject,
-        htmlBody: data.htmlBody,
-        textBody: data.textBody,
-        customerId: data.customerId,
-        dealId: data.dealId,
-        attachments: data.attachments,
-      });
-
-      console.log(`[EmailRoutes] Updated draft ${data.draftId}`);
-
-      return res.status(200).json({
-        success: true,
-        data: message,
-        message: "Draft updated successfully",
-      });
-    }
-
-    // Create new draft
     const message = await saveDraft({
       dealershipId,
       userId,
-      to: data.to,
-      cc: data.cc,
-      bcc: data.bcc,
-      subject: data.subject,
-      htmlBody: data.htmlBody,
-      textBody: data.textBody,
-      customerId: data.customerId,
-      dealId: data.dealId,
-      attachments: data.attachments,
+      ...data,
     });
-
-    console.log(`[EmailRoutes] Created new draft ${message.id}`);
 
     res.status(201).json({
       success: true,
       data: message,
-      message: "Draft saved successfully",
     });
   } catch (error) {
     console.error("[EmailRoutes] Error saving draft:", error);
@@ -474,87 +435,13 @@ router.post("/drafts", async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({
         success: false,
-        errors: error.errors.map((e) => ({
-          field: e.path.join('.'),
-          message: e.message,
-        })),
+        errors: error.errors.map((e) => e.message),
       });
     }
 
     res.status(500).json({
       success: false,
-      error: error instanceof Error ? error.message : "Failed to save draft",
-    });
-  }
-});
-
-/**
- * PUT /api/email/drafts/:id
- * Update existing draft (explicit update endpoint)
- */
-router.put("/drafts/:id", async (req: Request, res: Response) => {
-  try {
-    // @ts-ignore
-    const userId = req.user?.id;
-    // @ts-ignore
-    const dealershipId = req.user?.dealershipId || "default";
-
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        error: "Unauthorized",
-      });
-    }
-
-    // Validate UUID
-    if (!validateUUID(req.params.id)) {
-      return res.status(400).json({
-        success: false,
-        error: "Invalid draft ID format",
-      });
-    }
-
-    const data = saveDraftSchema.parse(req.body);
-
-    // Update the draft
-    const message = await saveDraft({
-      dealershipId,
-      userId,
-      draftId: req.params.id,
-      to: data.to,
-      cc: data.cc,
-      bcc: data.bcc,
-      subject: data.subject,
-      htmlBody: data.htmlBody,
-      textBody: data.textBody,
-      customerId: data.customerId,
-      dealId: data.dealId,
-      attachments: data.attachments,
-    });
-
-    console.log(`[EmailRoutes] Updated draft ${req.params.id} via PUT`);
-
-    res.status(200).json({
-      success: true,
-      data: message,
-      message: "Draft updated successfully",
-    });
-  } catch (error) {
-    console.error("[EmailRoutes] Error updating draft:", error);
-
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        success: false,
-        errors: error.errors.map((e) => ({
-          field: e.path.join('.'),
-          message: e.message,
-        })),
-      });
-    }
-
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : "Failed to update draft",
+      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 });

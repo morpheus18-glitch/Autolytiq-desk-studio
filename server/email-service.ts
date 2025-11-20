@@ -135,7 +135,6 @@ export async function sendEmailMessage(
       htmlBody,
       textBody,
       folder: "sent",
-      direction: "outbound",
       isRead: true, // Sent emails are always "read"
       isDraft: false,
       resendId,
@@ -184,51 +183,30 @@ export async function saveDraft(
     textBody,
     customerId,
     dealId,
-    attachments,
   } = options;
 
   // Update existing draft
   if (draftId) {
-    // Check if draft exists and belongs to user
-    const existingDraft = await db
-      .select()
-      .from(emailMessages)
-      .where(
-        and(
-          eq(emailMessages.id, draftId),
-          eq(emailMessages.dealershipId, dealershipId),
-          eq(emailMessages.userId, userId),
-          eq(emailMessages.isDraft, true)
-        )
-      )
-      .limit(1);
-
-    if (existingDraft.length === 0) {
-      throw new Error("Draft not found or access denied");
-    }
-
     const [updated] = await db
       .update(emailMessages)
       .set({
         toAddresses: (to || []) as any,
         ccAddresses: (cc || []) as any,
         bccAddresses: (bcc || []) as any,
-        subject: subject !== undefined ? subject : existingDraft[0].subject,
-        htmlBody: htmlBody !== undefined ? htmlBody : existingDraft[0].htmlBody,
-        textBody: textBody !== undefined ? textBody : existingDraft[0].textBody,
+        subject: subject || "",
+        htmlBody,
+        textBody,
         customerId,
         dealId,
-        attachments: attachments as any,
         updatedAt: new Date(),
       })
       .where(eq(emailMessages.id, draftId))
       .returning();
 
-    console.log(`[EmailService] Updated draft ${draftId}`);
     return updated;
   }
 
-  // Create new draft with all fields properly set
+  // Create new draft
   const [message] = await db
     .insert(emailMessages)
     .values({
@@ -240,19 +218,16 @@ export async function saveDraft(
       ccAddresses: (cc || []) as any,
       bccAddresses: (bcc || []) as any,
       subject: subject || "(No Subject)",
-      htmlBody: htmlBody || "",
-      textBody: textBody || "",
+      htmlBody,
+      textBody,
       folder: "drafts",
-      direction: "outbound",
       isRead: true,
       isDraft: true,
       customerId,
       dealId,
-      attachments: attachments as any,
     })
     .returning();
 
-  console.log(`[EmailService] Created new draft ${message.id}`);
   return message;
 }
 
@@ -282,24 +257,18 @@ export async function listEmails(
   // Build conditions
   const conditions = [eq(emailMessages.dealershipId, dealershipId)];
 
-  // Folder visibility rules - FOLDER is primary, direction is supplemental
-  // This ensures backwards compatibility with existing data
-  if (folder === 'inbox') {
-    // Show all emails in inbox folder (don't filter by direction yet)
-    conditions.push(eq(emailMessages.folder, 'inbox'));
-  } else if (folder === 'sent') {
-    // Show all emails in sent folder
-    conditions.push(eq(emailMessages.folder, 'sent'));
-    if (userId) {
-      conditions.push(eq(emailMessages.userId, userId));
-    }
-  } else if (folder === 'drafts') {
-    // Show all emails in drafts folder
-    conditions.push(eq(emailMessages.folder, 'drafts'));
-    if (userId) {
-      conditions.push(eq(emailMessages.userId, userId));
-    }
-  } else if (folder) {
+  // Folder visibility rules:
+  // - inbox/archive (or undefined): Show all dealership emails (including webhook-received with null userId)
+  // - sent/drafts/trash/starred: User-specific only
+  const inboundFolders = ['inbox', 'archive'];
+  const isInboundFolder = !folder || inboundFolders.includes(folder);
+  const shouldFilterByUser = userId && !isInboundFolder;
+  
+  if (shouldFilterByUser) {
+    conditions.push(eq(emailMessages.userId, userId));
+  }
+
+  if (folder) {
     conditions.push(eq(emailMessages.folder, folder));
   }
 

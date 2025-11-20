@@ -1608,7 +1608,6 @@ export const emailMessages = pgTable("email_messages", {
 
   // Metadata
   folder: text("folder").notNull().default("inbox"), // inbox, sent, drafts, trash, archive, spam
-  direction: text("direction").notNull().default("outbound"), // inbound, outbound
   isRead: boolean("is_read").notNull().default(false),
   isStarred: boolean("is_starred").notNull().default(false),
   isDraft: boolean("is_draft").notNull().default(false),
