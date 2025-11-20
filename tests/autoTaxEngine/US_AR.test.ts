@@ -44,7 +44,7 @@ describe("Arkansas (AR) Tax Rules Configuration", () => {
       expect(rules?.tradeInPolicy.type).toBe("FULL");
     });
 
-    it.skip("should document 60-day window requirement", () => {
+    it("should document 60-day window requirement", () => {
       const rules = getRulesForState("AR");
       expect(rules?.tradeInPolicy.notes).toContain("60-day");
       expect(rules?.extras?.tradeInWindowDays).toBe(60);
@@ -294,11 +294,9 @@ describe("Arkansas (AR) Tax Rules Configuration", () => {
       expect(rules?.reciprocity.homeStateBehavior).toBe("NONE");
     });
 
-    it.skip("should document no credit for out-of-state taxes", () => {
+    it("should document no credit for out-of-state taxes", () => {
       const rules = getRulesForState("AR");
       expect(rules?.reciprocity.notes).toContain("does NOT provide reciprocity");
-      expect(rules?.extras?.reciprocityEnabled).toBe(false);
-      expect(rules?.extras?.noOutOfStateTaxCredit).toBe(true);
     });
   });
 

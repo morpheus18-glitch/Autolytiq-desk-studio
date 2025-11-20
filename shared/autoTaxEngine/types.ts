@@ -5,10 +5,10 @@
 // ---- DSL: Global + Retail Rules ----
 
 export type TradeInPolicy =
-  | { type: "NONE" }
-  | { type: "FULL" }
-  | { type: "CAPPED"; capAmount: number } // e.g. MI cap
-  | { type: "PERCENT"; percent: number }; // e.g. 80% credit
+  | { type: "NONE"; notes?: string }
+  | { type: "FULL"; notes?: string }
+  | { type: "CAPPED"; capAmount: number; notes?: string } // e.g. MI cap
+  | { type: "PERCENT"; percent: number; notes?: string }; // e.g. 80% credit
 
 export interface RebateRule {
   appliesTo: "MANUFACTURER" | "DEALER" | "ANY";

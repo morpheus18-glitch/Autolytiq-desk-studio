@@ -84,6 +84,7 @@ const AR_RULES: TaxRulesConfig = {
   // Tax paid on net difference (purchase price minus trade-in value).
   tradeInPolicy: {
     type: "FULL",
+    notes: "Full trade-in credit available within 60-day window before or after purchase. Trade-in deduction does NOT apply to leases.",
   },
 
   /**
@@ -365,6 +366,7 @@ const AR_RULES: TaxRulesConfig = {
     basis: "TAX_PAID",
     capAtThisStatesTax: false,
     hasLeaseException: false,
+    notes: "Arkansas does NOT provide reciprocity or credit for taxes paid to other states. Full AR tax due regardless.",
   },
 
   // ============================================================================

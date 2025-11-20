@@ -56,6 +56,7 @@ const MI_RULES: TaxRulesConfig = {
   tradeInPolicy: {
     type: "CAPPED",
     capAmount: 11000, // $11,000 cap for motor vehicles (2025)
+    notes: "Credit is the LESSER of $11,000 or agreed-upon value, whichever is less. NO LIMIT for recreational vehicles when trading RV for RV.",
   },
   rebates: [
     {

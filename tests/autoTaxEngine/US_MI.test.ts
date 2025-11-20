@@ -39,18 +39,20 @@ describe("Michigan (MI) Tax Rules Configuration", () => {
   // ============================================================================
 
   describe("Retail Trade-In Policy", () => {
-    it.skip("should have CAPPED trade-in credit ($11,000)", () => {
+    it("should have CAPPED trade-in credit ($11,000)", () => {
       const rules = getRulesForState("MI");
       expect(rules?.tradeInPolicy.type).toBe("CAPPED");
-      expect(rules?.tradeInPolicy.cap).toBe(11000);
+      if (rules?.tradeInPolicy.type === "CAPPED") {
+        expect(rules.tradeInPolicy.capAmount).toBe(11000);
+      }
     });
 
-    it.skip("should document RV trade-in exception (no cap)", () => {
+    it("should document RV trade-in exception (no cap)", () => {
       const rules = getRulesForState("MI");
       expect(rules?.tradeInPolicy.notes).toContain("NO LIMIT for recreational vehicles");
     });
 
-    it.skip("should use lesser of $11,000 or agreed value", () => {
+    it("should use lesser of $11,000 or agreed value", () => {
       const rules = getRulesForState("MI");
       expect(rules?.tradeInPolicy.notes).toContain("whichever is less");
     });
