@@ -16,10 +16,84 @@
 import { Router, Request, Response } from "express";
 import crypto from "crypto";
 import { db } from "./db";
-import { emailMessages } from "../shared/schema";
-import { sql } from "drizzle-orm";
+import { emailMessages, dealershipSettings } from "../shared/schema";
+import { sql, eq, or, inArray } from "drizzle-orm";
 
 const router = Router();
+
+// ============================================================================
+// EMAIL ROUTING HELPER (Multi-Tenant)
+// ============================================================================
+
+/**
+ * Resolve which dealership an incoming email belongs to
+ * Matches recipient email addresses against dealership inbox addresses
+ * 
+ * Returns:
+ * - dealershipId (UUID) if exactly one match found
+ * - null if no match or ambiguous (multiple dealerships)
+ */
+async function resolveDealershipFromRecipients(
+  toAddresses: any[],
+  ccAddresses: any[] = [],
+  bccAddresses: any[] = []
+): Promise<string | null> {
+  try {
+    // Extract all recipient email addresses and normalize them
+    const allRecipients = [
+      ...toAddresses,
+      ...ccAddresses,
+      ...bccAddresses,
+    ].map(addr => {
+      const email = typeof addr === 'string' ? addr : (addr.email || addr);
+      return email.toLowerCase().trim();
+    }).filter(Boolean);
+
+    if (allRecipients.length === 0) {
+      console.warn('[EmailRouting] No recipients found in email');
+      return null;
+    }
+
+    console.log('[EmailRouting] Looking up dealerships for recipients:', allRecipients);
+
+    // Query dealerships that match any of the recipient addresses
+    // Using SQL function for case-insensitive comparison with parameterized query (safe from SQL injection)
+    const matchedDealerships = await db
+      .select({ id: dealershipSettings.id, email: dealershipSettings.email })
+      .from(dealershipSettings)
+      .where(
+        or(
+          ...allRecipients.map(email => 
+            sql`LOWER(${dealershipSettings.email}) = LOWER(${email})`
+          )
+        )
+      );
+
+    if (matchedDealerships.length === 0) {
+      console.warn('[EmailRouting] ⚠️  No dealership found for recipients:', allRecipients);
+      console.warn('[EmailRouting] Email will be skipped (no tenant match)');
+      return null;
+    }
+
+    if (matchedDealerships.length > 1) {
+      console.warn('[EmailRouting] ⚠️  Multiple dealerships match recipients:', {
+        recipients: allRecipients,
+        dealerships: matchedDealerships.map(d => d.email),
+      });
+      console.warn('[EmailRouting] Email will be skipped (ambiguous routing)');
+      return null;
+    }
+
+    // Exactly one match - use it!
+    const dealership = matchedDealerships[0];
+    console.log('[EmailRouting] ✅ Resolved to dealership:', dealership.email, '(ID:', dealership.id, ')');
+    return dealership.id;
+
+  } catch (error) {
+    console.error('[EmailRouting] ❌ Error resolving dealership:', error);
+    return null;
+  }
+}
 
 // ============================================================================
 // WEBHOOK SIGNATURE VERIFICATION
@@ -141,10 +215,6 @@ async function handleEmailReceived(data: any) {
       return;
     }
 
-    // Parse recipients to find which dealership this belongs to
-    // For now, use default dealership - you can customize this logic
-    const dealershipId = 'default'; // TODO: Map email address to dealership
-
     // Extract email addresses from to/cc/bcc fields
     const toAddresses = Array.isArray(data.to)
       ? data.to.map((addr: any) => ({ email: addr.email || addr, name: addr.name }))
@@ -157,6 +227,20 @@ async function handleEmailReceived(data: any) {
     const bccAddresses = data.bcc
       ? (Array.isArray(data.bcc) ? data.bcc : [data.bcc]).map((addr: any) => ({ email: addr.email || addr, name: addr.name }))
       : [];
+
+    // Resolve which dealership this email belongs to (multi-tenant routing)
+    const dealershipId = await resolveDealershipFromRecipients(
+      toAddresses,
+      ccAddresses,
+      bccAddresses
+    );
+
+    if (!dealershipId) {
+      console.warn('[EmailWebhook] ⚠️  Email skipped - no dealership match for:', data.subject);
+      console.warn('[EmailWebhook] Recipients:', { to: toAddresses, cc: ccAddresses, bcc: bccAddresses });
+      // Return success to prevent Resend retries, but don't save the email
+      return;
+    }
 
     // Save to database (only real incoming emails)
     await db.insert(emailMessages).values({

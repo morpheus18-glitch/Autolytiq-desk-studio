@@ -237,30 +237,28 @@ export default function Showroom() {
     <PageLayout className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       {/* Header */}
       <div className="sticky top-0 z-40 backdrop-blur-lg bg-background/90 border-b shadow-sm">
-        <div className="container mx-auto px-4 md:px-6 py-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-primary via-primary/90 to-primary/70 shadow-lg shadow-primary/25">
-                <Store className="w-6 h-6 text-primary-foreground" />
-              </div>
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-                  Showroom Manager
-                </h1>
-                <p className="text-sm text-muted-foreground font-medium mt-0.5">
-                  Manage your customer pipeline from prospect to sold
-                </p>
+        <div className="container mx-auto px-4 md:px-6 py-4">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-primary via-primary/90 to-primary/70 shadow-lg shadow-primary/25">
+                  <Store className="w-6 h-6 text-primary-foreground" />
+                </div>
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                    Showroom Manager
+                  </h1>
+                  <p className="text-sm text-muted-foreground font-medium mt-0.5">
+                    Manage your customer pipeline from prospect to sold
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
 
-      <div className="container mx-auto px-4 md:px-6 py-6 space-y-6">
-        {/* Header Actions */}
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
-            {/* Date Picker */}
+            {/* Header Actions */}
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-3">
+                {/* Date Picker */}
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -343,8 +341,13 @@ export default function Showroom() {
               Add Customer
             </Button>
           </div>
+          </div>
         </div>
+      </div>
+      </div>
 
+      {/* Main Content */}
+      <div className="container mx-auto px-4 md:px-6 py-6 space-y-6">
         {/* Kanban Board */}
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
