@@ -115,6 +115,57 @@ CREATE INDEX appointments_status_idx ON appointments(status);
 - `appointmentsRelations` - Links to customers, users, deals, and vehicles
 - Updated `usersRelations` and `customersRelations` to include appointments
 
+### 5. Performance Indexes Migration (November 20, 2025)
+**Problem**: Need to optimize query performance for multi-tenant dealership operations.
+
+**Migration Strategy**: 
+- **Issue**: `CREATE INDEX CONCURRENTLY` cannot run inside transaction block
+- **Solution**: Execute each CONCURRENTLY index via `psql "$DATABASE_URL" -c "..."` in autocommit mode
+- **Reason**: execute_sql_tool wraps statements in implicit transaction, preventing CONCURRENTLY usage
+
+**Indexes Created** (via psql autocommit):
+```bash
+# Customers indexes
+psql "$DATABASE_URL" -c "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_customers_dealership_status ON customers(dealership_id, status);"
+psql "$DATABASE_URL" -c "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_customers_dealership_created ON customers(dealership_id, created_at DESC);"
+
+# Deals indexes
+psql "$DATABASE_URL" -c "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_deals_dealership_state ON deals(dealership_id, deal_state);"
+psql "$DATABASE_URL" -c "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_deals_salesperson ON deals(salesperson_id);"
+
+# Vehicles indexes
+psql "$DATABASE_URL" -c "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_vehicles_dealership_status ON vehicles(dealership_id, status);"
+psql "$DATABASE_URL" -c "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_vehicles_dealership_condition ON vehicles(dealership_id, condition);"
+
+# Email indexes
+psql "$DATABASE_URL" -c "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_email_messages_dealership_read ON email_messages(dealership_id, is_read);"
+
+# Appointments indexes
+psql "$DATABASE_URL" -c "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_appointments_user_scheduled ON appointments(user_id, scheduled_at);"
+
+# Rate requests indexes
+psql "$DATABASE_URL" -c "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_rate_requests_deal_status ON rate_requests(deal_id, status);"
+psql "$DATABASE_URL" -c "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_approved_lenders_request_status ON approved_lenders(rate_request_id, approval_status);"
+```
+
+**Schema Consistency Improvements** (via execute_sql_tool transaction):
+- ✅ Added `updated_at` columns to 6 tables: vehicle_images, vehicle_features, vehicle_valuations, vehicle_comparables, quick_quote_contacts, email_attachments
+- ✅ Added check constraints for enum-like columns (customer_status, deal_state, vehicle_condition, vehicle_status)
+- ✅ Updated JSONB defaults for vehicles.images and vehicles.features
+- ✅ Created `update_updated_at_column()` trigger function
+- ✅ Applied auto-update triggers to 14 tables
+
+**Performance Impact**:
+- Multi-tenant queries now use composite indexes (dealership_id + filtering column)
+- Calendar views efficiently query appointments by user and date
+- Salesperson dashboards efficiently load their deals
+- Email unread counts optimized with dealership+is_read index
+
+**Migration Workflow Best Practice**:
+1. Use `psql "$DATABASE_URL" -c "..."` for each CONCURRENTLY index (autocommit mode required)
+2. Use `execute_sql_tool` for transactional schema changes (columns, constraints, triggers)
+3. Verify with `SELECT indexname FROM pg_indexes WHERE indexname LIKE 'idx_%';`
+
 ## Testing Performed
 
 1. ✅ Verified all columns exist in database
@@ -124,6 +175,9 @@ CREATE INDEX appointments_status_idx ON appointments(status);
 5. ✅ Appointments table created with all 19 columns
 6. ✅ All foreign key constraints properly configured
 7. ✅ All indexes created for query performance
+8. ✅ Performance indexes migration completed (10 CONCURRENTLY indexes)
+9. ✅ Schema consistency migration completed (6 columns, 4 constraints, 14 triggers)
+10. ✅ Application running successfully on port 5000
 
 ## Architect Review
 
