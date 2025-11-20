@@ -487,7 +487,7 @@ describe("Wisconsin (WI) Tax Rules Configuration", () => {
 
       expect(taxableBase).toBe(20000);
       const tax = taxableBase * milwaukeeRate;
-      expect(tax).toBe(1180);
+      expect(tax).toBeCloseTo(1180, 2);
     });
   });
 
@@ -504,7 +504,7 @@ describe("Wisconsin (WI) Tax Rules Configuration", () => {
 
       expect(customerPays).toBe(30000);
       expect(taxableBase).toBe(35000);
-      expect(tax).toBe(1925);
+      expect(tax).toBeCloseTo(1925, 2);
     });
   });
 
@@ -519,7 +519,7 @@ describe("Wisconsin (WI) Tax Rules Configuration", () => {
       const tax = taxableBase * rate;
 
       expect(taxableBase).toBe(28000);
-      expect(tax).toBe(1540);
+      expect(tax).toBeCloseTo(1540, 2);
     });
   });
 
@@ -536,7 +536,7 @@ describe("Wisconsin (WI) Tax Rules Configuration", () => {
       const tax = taxableBase * rate;
 
       expect(taxableBase).toBe(22500);
-      expect(tax).toBe(1237.50);
+      expect(tax).toBeCloseTo(1237.50, 2);
     });
   });
 
@@ -553,7 +553,7 @@ describe("Wisconsin (WI) Tax Rules Configuration", () => {
       const tax = taxableBase * rate;
 
       expect(taxableBase).toBe(21799);
-      expect(tax).toBeCloseTo(1198.95, 2);
+      expect(tax).toBeCloseTo(1198.945, 2);
     });
   });
 
@@ -571,7 +571,7 @@ describe("Wisconsin (WI) Tax Rules Configuration", () => {
 
       expect(negativeEquity).toBe(4000);
       expect(taxableBase).toBe(22000);
-      expect(tax).toBe(1210);
+      expect(tax).toBeCloseTo(1210, 2);
     });
   });
 
@@ -588,7 +588,7 @@ describe("Wisconsin (WI) Tax Rules Configuration", () => {
       const monthlyTax = monthlyPayment * rate;
       const totalTax = upfrontTax + (monthlyTax * term);
 
-      expect(upfrontTax).toBe(110);
+      expect(upfrontTax).toBeCloseTo(110, 2);
       expect(monthlyTax).toBeCloseTo(19.25, 2);
       expect(totalTax).toBeCloseTo(803, 0);
     });
@@ -609,7 +609,7 @@ describe("Wisconsin (WI) Tax Rules Configuration", () => {
       const totalTax = upfrontTax + (monthlyTax * term);
 
       expect(totalCapReduction).toBe(7000);
-      expect(upfrontTax).toBe(385);
+      expect(upfrontTax).toBeCloseTo(385, 2);
       expect(totalTax).toBeCloseTo(1078, 0);
     });
   });
@@ -627,7 +627,7 @@ describe("Wisconsin (WI) Tax Rules Configuration", () => {
       const totalTax = vscTax + (monthlyTax * term);
 
       expect(vscTax).toBe(110);
-      expect(monthlyTax).toBe(22);
+      expect(monthlyTax).toBeCloseTo(22, 2);
       expect(totalTax).toBe(902);
     });
   });

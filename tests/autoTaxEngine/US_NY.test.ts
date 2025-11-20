@@ -553,7 +553,7 @@ describe("New York (NY) Tax Rules Configuration", () => {
 
       expect(taxableBase).toBe(20000);
       const tax = taxableBase * rate;
-      expect(tax).toBe(1600);
+      expect(tax).toBeCloseTo(1600, 2);
     });
   });
 
@@ -570,7 +570,7 @@ describe("New York (NY) Tax Rules Configuration", () => {
       expect(customerPays).toBe(27000);
       expect(taxableBase).toBe(28000);
       const tax = taxableBase * rate;
-      expect(tax).toBe(2240);
+      expect(tax).toBeCloseTo(2240, 2);
     });
   });
 
@@ -627,7 +627,7 @@ describe("New York (NY) Tax Rules Configuration", () => {
 
       expect(netCapCost).toBe(32000);
       const monthlyTax = monthlyPayment * rate;
-      expect(monthlyTax).toBe(36);
+      expect(monthlyTax).toBeCloseTo(36, 2);
     });
   });
 
@@ -659,7 +659,7 @@ describe("New York (NY) Tax Rules Configuration", () => {
       const tax = taxableBase * monroeRate;
 
       expect(taxableBase).toBe(20175);
-      expect(tax).toBe(1614);
+      expect(tax).toBeCloseTo(1614, 2);
     });
   });
 

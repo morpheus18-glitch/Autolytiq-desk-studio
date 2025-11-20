@@ -205,7 +205,7 @@ describe("Mississippi (MS) Tax Rules Configuration", () => {
 
       // Additional tax due to rebate being taxable
       const additionalTax = mfrRebate * 0.05;
-      expect(additionalTax).toBe(150);
+      expect(additionalTax).toBeCloseTo(150, 2);
     });
   });
 
@@ -274,7 +274,7 @@ describe("Mississippi (MS) Tax Rules Configuration", () => {
 
       // Additional tax from rebate
       const additionalTax = mfrRebate * 0.07;
-      expect(additionalTax).toBe(175);
+      expect(additionalTax).toBeCloseTo(175, 2);
     });
   });
 

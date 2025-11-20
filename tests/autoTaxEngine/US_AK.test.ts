@@ -266,7 +266,7 @@ describe("Alaska (AK) Tax Rules Configuration", () => {
       const taxableBase = vehiclePrice - tradeIn + docFee;
       const tax = taxableBase * localRate;
 
-      expect(tax).toBe(0);
+      expect(tax).toBeCloseTo(0, 2);
     });
   });
 
@@ -276,7 +276,7 @@ describe("Alaska (AK) Tax Rules Configuration", () => {
       const localRate = 0.05; // 5% local tax
       const monthlyTax = monthlyPayment * localRate;
 
-      expect(monthlyTax).toBe(20);
+      expect(monthlyTax).toBeCloseTo(20, 2);
     });
   });
 
@@ -291,7 +291,7 @@ describe("Alaska (AK) Tax Rules Configuration", () => {
       const taxableBase = vehiclePrice;
       const tax = taxableBase * localRate;
 
-      expect(tax).toBe(2100);
+      expect(tax).toBeCloseTo(2100, 2);
 
       // Savings from VSC and GAP not being taxed
       const savings = (vsc + gap) * localRate;

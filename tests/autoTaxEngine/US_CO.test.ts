@@ -381,7 +381,7 @@ describe("Colorado (CO) Tax Rules Configuration", () => {
       expect(customerPays).toBe(30000);
       expect(taxableBase).toBe(35000);
       const tax = taxableBase * rate;
-      expect(tax).toBe(2625);
+      expect(tax).toBeCloseTo(2625, 2);
     });
   });
 
@@ -511,7 +511,7 @@ describe("Colorado (CO) Tax Rules Configuration", () => {
       const taxableBase = vehiclePrice; // VSC and GAP excluded
       const tax = taxableBase * rate;
 
-      expect(tax).toBe(2250);
+      expect(tax).toBeCloseTo(2250, 2);
       // If VSC and GAP were taxed (incorrectly), it would be:
       const incorrectTax = (vehiclePrice + vsc + gap) * rate;
       expect(incorrectTax).toBe(2504.625);

@@ -202,7 +202,7 @@ describe("Idaho (ID) Tax Rules Configuration", () => {
       const monthlyPayment = 400;
       const tax = monthlyPayment * 0.06;
 
-      expect(tax).toBe(24);
+      expect(tax).toBeCloseTo(24, 2);
     });
   });
 

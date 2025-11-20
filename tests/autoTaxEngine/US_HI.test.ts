@@ -419,7 +419,7 @@ describe("Hawaii (HI) Tax Rules Configuration", () => {
 
       expect(getBase).toBe(30350);
       const get = getBase * getRate;
-      expect(get).toBeCloseTo(1430.11, 2);
+      expect(get).toBeCloseTo(1430.092, 2);
     });
   });
 

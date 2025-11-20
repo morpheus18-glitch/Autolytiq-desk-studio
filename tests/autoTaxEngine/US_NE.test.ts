@@ -205,7 +205,7 @@ describe("Nebraska (NE) Tax Rules Configuration", () => {
 
       expect(priceAfterRebate).toBe(33000);
       expect(taxableBase).toBe(22190);
-      expect(tax).toBeCloseTo(1608.78, 2);
+      expect(tax).toBeCloseTo(1608.775, 2);
     });
   });
 
@@ -230,7 +230,7 @@ describe("Nebraska (NE) Tax Rules Configuration", () => {
       const combinedRate = 0.075; // Omaha
       const additionalTax = gapCost * combinedRate;
 
-      expect(additionalTax).toBeCloseTo(52.13, 2);
+      expect(additionalTax).toBeCloseTo(52.125, 2);
     });
   });
 

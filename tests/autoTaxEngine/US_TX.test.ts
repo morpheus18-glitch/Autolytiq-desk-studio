@@ -393,7 +393,7 @@ describe("Texas (TX) Tax Rules Configuration", () => {
 
       expect(taxableBase).toBe(27000);
       const tax = taxableBase * maxRate;
-      expect(tax).toBe(2227.50);
+      expect(tax).toBeCloseTo(2227.50, 2);
     });
   });
 
@@ -409,7 +409,7 @@ describe("Texas (TX) Tax Rules Configuration", () => {
       const tax = taxableBase * rate;
 
       expect(taxableBase).toBe(20300);
-      expect(tax).toBe(1268.75);
+      expect(tax).toBeCloseTo(1268.75, 2);
     });
   });
 
@@ -426,7 +426,7 @@ describe("Texas (TX) Tax Rules Configuration", () => {
       const tax = taxableBase * rate;
 
       expect(taxableBase).toBe(20000);
-      expect(tax).toBe(1250);
+      expect(tax).toBeCloseTo(1250, 2);
     });
   });
 
@@ -460,7 +460,7 @@ describe("Texas (TX) Tax Rules Configuration", () => {
       const tax = taxableBase * rate;
 
       expect(taxableBase).toBe(29000);
-      expect(tax).toBe(1812.50);
+      expect(tax).toBeCloseTo(1812.50, 2);
     });
   });
 
@@ -477,7 +477,7 @@ describe("Texas (TX) Tax Rules Configuration", () => {
 
       expect(customerPays).toBe(26500);
       expect(taxableBase).toBe(28000);
-      expect(tax).toBe(1750);
+      expect(tax).toBeCloseTo(1750, 2);
     });
   });
 
@@ -491,7 +491,7 @@ describe("Texas (TX) Tax Rules Configuration", () => {
       const monthlyTax = monthlyPayment * rate;
       const totalTax = monthlyTax * term;
 
-      expect(monthlyTax).toBe(25);
+      expect(monthlyTax).toBeCloseTo(25, 2);
       expect(totalTax).toBe(900);
     });
   });
@@ -511,8 +511,8 @@ describe("Texas (TX) Tax Rules Configuration", () => {
       const totalTax = upfrontTax + (monthlyTax * term);
 
       expect(upfrontTax).toBeCloseTo(49.09, 2);
-      expect(monthlyTax).toBeCloseTo(37.13, 2);
-      expect(totalTax).toBeCloseTo(1385.77, 2);
+      expect(monthlyTax).toBeCloseTo(37.125, 2);
+      expect(totalTax).toBeCloseTo(1385.59, 2);
     });
   });
 

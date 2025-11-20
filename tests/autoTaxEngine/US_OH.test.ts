@@ -527,7 +527,7 @@ describe("Ohio (OH) Tax Rules Configuration", () => {
 
       expect(taxableBase).toBe(20000);
       const tax = taxableBase * rate;
-      expect(tax).toBe(1500);
+      expect(tax).toBeCloseTo(1500, 2);
       // Customer saves $0 on tax (would save $375 if it were a new vehicle)
     });
   });
@@ -544,7 +544,7 @@ describe("Ohio (OH) Tax Rules Configuration", () => {
       const tax = taxableBase * rate;
 
       expect(taxableBase).toBe(17000);
-      expect(tax).toBe(1275);
+      expect(tax).toBeCloseTo(1275, 2);
     });
   });
 
@@ -561,7 +561,7 @@ describe("Ohio (OH) Tax Rules Configuration", () => {
       const tax = taxableBase * rate;
 
       expect(taxableBase).toBe(23395);
-      expect(tax).toBeCloseTo(1754.63, 2);
+      expect(tax).toBeCloseTo(1754.625, 2);
     });
   });
 

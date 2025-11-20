@@ -577,7 +577,7 @@ describe("Alabama (AL) Tax Rules Configuration", () => {
       expect(customerPays).toBe(30000);
       expect(taxableBase).toBe(35000);
       const tax = taxableBase * rate;
-      expect(tax).toBe(2100);
+      expect(tax).toBeCloseTo(2100, 2);
       // Customer pays $30,000 but is taxed on $35,000
     });
   });
@@ -692,8 +692,8 @@ describe("Alabama (AL) Tax Rules Configuration", () => {
       const creditForAlTax = alStateTax;
       const additionalGaTax = gaTax - creditForAlTax;
 
-      expect(gaTax).toBe(1400);
-      expect(additionalGaTax).toBe(1000);
+      expect(gaTax).toBeCloseTo(1400, 2);
+      expect(additionalGaTax).toBeCloseTo(1000, 2);
     });
   });
 
@@ -749,7 +749,7 @@ describe("Alabama (AL) Tax Rules Configuration", () => {
       const taxableBase = vehiclePrice;
       const tax = taxableBase * rate;
 
-      expect(tax).toBe(1500);
+      expect(tax).toBeCloseTo(1500, 2);
 
       // If VSC and GAP were taxed (incorrectly), it would be:
       const incorrectTax = (vehiclePrice + vsc + gap) * rate;

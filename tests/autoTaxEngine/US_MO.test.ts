@@ -572,7 +572,7 @@ describe("Missouri (MO) Tax Rules Configuration", () => {
       expect(negativeEquity).toBe(4000);
       expect(taxableBase).toBe(18000);
       const tax = taxableBase * rate;
-      expect(tax).toBe(1440);
+      expect(tax).toBeCloseTo(1440, 2);
       // Negative equity increases loan but not tax
     });
   });
@@ -655,7 +655,7 @@ describe("Missouri (MO) Tax Rules Configuration", () => {
       const taxableBase = vehiclePrice;
       const tax = taxableBase * rate;
 
-      expect(tax).toBe(2400);
+      expect(tax).toBeCloseTo(2400, 2);
 
       // If incorrectly included:
       const incorrectTax = (vehiclePrice + vsc + gap) * rate;

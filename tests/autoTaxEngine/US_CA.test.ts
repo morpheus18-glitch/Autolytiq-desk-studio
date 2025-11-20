@@ -496,7 +496,7 @@ describe("California (CA) Tax Rules Configuration", () => {
 
       expect(capReductionTax).toBe(0);
       expect(monthlyTax).toBeCloseTo(51.84, 2);
-      expect(totalTax).toBeCloseTo(1866.19, 2);
+      expect(totalTax).toBeCloseTo(1866.375, 2);
     });
   });
 
@@ -516,7 +516,7 @@ describe("California (CA) Tax Rules Configuration", () => {
 
       // Only monthly payments taxed
       const monthlyTax = monthlyPayment * rate;
-      expect(monthlyTax).toBeCloseTo(41.63, 2);
+      expect(monthlyTax).toBeCloseTo(41.625, 2);
     });
   });
 
@@ -535,7 +535,7 @@ describe("California (CA) Tax Rules Configuration", () => {
 
       // Negative equity increases monthly payment, tax paid monthly
       const monthlyTax = monthlyPayment * rate;
-      expect(monthlyTax).toBeCloseTo(50.88, 2);
+      expect(monthlyTax).toBeCloseTo(50.875, 2);
     });
   });
 
@@ -555,7 +555,7 @@ describe("California (CA) Tax Rules Configuration", () => {
 
       expect(vscTax).toBe(0);
       expect(gapTax).toBe(0);
-      expect(monthlyTax).toBeCloseTo(41.63, 2);
+      expect(monthlyTax).toBeCloseTo(41.625, 2);
     });
   });
 

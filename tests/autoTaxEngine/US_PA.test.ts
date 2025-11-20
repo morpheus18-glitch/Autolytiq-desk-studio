@@ -507,7 +507,7 @@ describe("Pennsylvania (PA) Tax Rules Configuration", () => {
 
       expect(taxableBase).toBe(20000);
       const tax = taxableBase * philadelphiaRate;
-      expect(tax).toBe(1600);
+      expect(tax).toBeCloseTo(1600, 2);
     });
   });
 
@@ -521,7 +521,7 @@ describe("Pennsylvania (PA) Tax Rules Configuration", () => {
 
       expect(taxableBase).toBe(27000);
       const tax = taxableBase * alleghenyRate;
-      expect(tax).toBe(1890);
+      expect(tax).toBeCloseTo(1890, 2);
     });
   });
 
@@ -537,7 +537,7 @@ describe("Pennsylvania (PA) Tax Rules Configuration", () => {
       const tax = taxableBase * rate;
 
       expect(taxableBase).toBe(26500);
-      expect(tax).toBe(1590);
+      expect(tax).toBeCloseTo(1590, 2);
     });
   });
 
@@ -554,7 +554,7 @@ describe("Pennsylvania (PA) Tax Rules Configuration", () => {
       const tax = taxableBase * rate;
 
       expect(taxableBase).toBe(22500);
-      expect(tax).toBe(1350);
+      expect(tax).toBeCloseTo(1350, 2);
     });
   });
 
@@ -573,7 +573,7 @@ describe("Pennsylvania (PA) Tax Rules Configuration", () => {
       const totalTax = downPaymentTax + totalMonthlyTax;
 
       expect(downPaymentTax).toBe(180);
-      expect(monthlyTax).toBe(36);
+      expect(monthlyTax).toBeCloseTo(36, 2);
       expect(totalMonthlyTax).toBe(1296);
       expect(totalTax).toBe(1476);
     });

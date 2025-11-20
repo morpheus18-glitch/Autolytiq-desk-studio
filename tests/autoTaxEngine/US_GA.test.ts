@@ -389,7 +389,7 @@ describe("Georgia (GA) Tax Rules Configuration", () => {
 
       expect(netPrice).toBe(23000);
       const tavt = netPrice * tavtRate;
-      expect(tavt).toBe(1610);
+      expect(tavt).toBeCloseTo(1610, 2);
     });
   });
 
@@ -406,7 +406,7 @@ describe("Georgia (GA) Tax Rules Configuration", () => {
       expect(dmvAssessedValue).toBe(25000);
       expect(tavtBase).toBe(25000); // Use higher value
       const tavt = tavtBase * tavtRate;
-      expect(tavt).toBe(1750);
+      expect(tavt).toBeCloseTo(1750, 2);
     });
   });
 
@@ -423,7 +423,7 @@ describe("Georgia (GA) Tax Rules Configuration", () => {
       expect(customerPays).toBe(25000);
       expect(tavtBase).toBe(28000);
       const tavt = tavtBase * tavtRate;
-      expect(tavt).toBe(1960);
+      expect(tavt).toBeCloseTo(1960, 2);
     });
   });
 
@@ -437,7 +437,7 @@ describe("Georgia (GA) Tax Rules Configuration", () => {
       const totalMonthly = monthlyPayment + monthlyTax;
       const totalTax = monthlyTax * term;
 
-      expect(monthlyTax).toBe(18);
+      expect(monthlyTax).toBeCloseTo(18, 2);
       expect(totalMonthly).toBe(468);
       expect(totalTax).toBe(648);
     });

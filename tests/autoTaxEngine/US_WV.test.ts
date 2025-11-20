@@ -468,7 +468,7 @@ describe("West Virginia (WV) Tax Rules Configuration", () => {
       expect(dmvAssessedValue).toBe(14000);
       expect(taxBase).toBe(14000); // Higher of two
       const tax = taxBase * taxRate;
-      expect(tax).toBe(700);
+      expect(tax).toBeCloseTo(700, 2);
 
       // Without higher-of rule, tax would be:
       const taxWithoutRule = netPrice * taxRate;
@@ -487,7 +487,7 @@ describe("West Virginia (WV) Tax Rules Configuration", () => {
 
       expect(taxBase).toBe(95000);
       const tax = taxBase * rvRate;
-      expect(tax).toBe(5700);
+      expect(tax).toBeCloseTo(5700, 2);
 
       // Standard vehicle rate would be:
       const standardRate = 0.05;
@@ -504,7 +504,7 @@ describe("West Virginia (WV) Tax Rules Configuration", () => {
       const trailerRate = 0.03; // Trailer discount rate
 
       const tax = trailerPrice * trailerRate;
-      expect(tax).toBe(450);
+      expect(tax).toBeCloseTo(450, 2);
 
       // Standard vehicle rate would be:
       const standardRate = 0.05;
@@ -562,7 +562,7 @@ describe("West Virginia (WV) Tax Rules Configuration", () => {
       expect(negativeEquity).toBe(4000);
       expect(taxBase).toBe(22000);
       const tax = taxBase * taxRate;
-      expect(tax).toBe(1100);
+      expect(tax).toBeCloseTo(1100, 2);
     });
   });
 

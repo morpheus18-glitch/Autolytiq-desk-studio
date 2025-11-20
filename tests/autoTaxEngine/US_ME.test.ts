@@ -220,7 +220,7 @@ describe("Maine (ME) Tax Rules Configuration", () => {
       const dailyRate = 100;
       const tax = dailyRate * 0.10;
 
-      expect(tax).toBe(10);
+      expect(tax).toBeCloseTo(10, 2);
     });
   });
 
@@ -229,7 +229,7 @@ describe("Maine (ME) Tax Rules Configuration", () => {
       const vscCost = 2000;
       const additionalTax = vscCost * 0.055;
 
-      expect(additionalTax).toBe(110);
+      expect(additionalTax).toBeCloseTo(110, 2);
     });
   });
 

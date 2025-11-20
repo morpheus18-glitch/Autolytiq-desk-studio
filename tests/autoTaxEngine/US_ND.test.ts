@@ -188,7 +188,7 @@ describe("North Dakota (ND) Tax Rules Configuration", () => {
       const monthlyPayment = 400;
       const tax = monthlyPayment * 0.08;
 
-      expect(tax).toBe(32);
+      expect(tax).toBeCloseTo(32, 2);
     });
   });
 

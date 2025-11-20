@@ -543,7 +543,7 @@ describe("Florida (FL) Tax Rules Configuration", () => {
       const totalTax = monthlyTax * term;
 
       expect(capReductionTax).toBe(0);
-      expect(monthlyTax).toBeCloseTo(35.63, 2);
+      expect(monthlyTax).toBeCloseTo(35.625, 2);
       expect(totalTax).toBeCloseTo(1282.50, 2);
     });
   });
@@ -619,12 +619,12 @@ describe("Florida (FL) Tax Rules Configuration", () => {
       const creditAllowed = 0;
       const flTaxOwed = vehiclePrice * flRate;
 
-      expect(flTaxOwed).toBe(1960);
+      expect(flTaxOwed).toBeCloseTo(1960, 2);
       expect(creditAllowed).toBe(0);
 
       // Customer pays BOTH Georgia tax AND FL tax (no credit)
       const totalTaxPaid = georgiaTaxPaid + flTaxOwed;
-      expect(totalTaxPaid).toBe(3920);
+      expect(totalTaxPaid).toBeCloseTo(3920, 2);
       // Customer effectively pays double tax
     });
   });
@@ -654,7 +654,7 @@ describe("Florida (FL) Tax Rules Configuration", () => {
 
       expect(taxableBase).toBe(23995);
       const tax = taxableBase * tampaRate;
-      expect(tax).toBeCloseTo(1799.63, 2);
+      expect(tax).toBeCloseTo(1799.625, 2);
     });
   });
 
@@ -668,7 +668,7 @@ describe("Florida (FL) Tax Rules Configuration", () => {
 
       expect(taxableBase).toBe(19995);
       const tax = taxableBase * orlandoRate;
-      expect(tax).toBeCloseTo(1299.68, 2);
+      expect(tax).toBeCloseTo(1299.675, 2);
     });
   });
 

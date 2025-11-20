@@ -278,7 +278,7 @@ describe("Kentucky (KY) Tax Rules Configuration", () => {
       const monthlyPayment = 450;
       const tax = monthlyPayment * 0.06;
 
-      expect(tax).toBe(27);
+      expect(tax).toBeCloseTo(27, 2);
 
       const totalOver36Months = (monthlyPayment + tax) * 36;
       expect(totalOver36Months).toBe(17172);
