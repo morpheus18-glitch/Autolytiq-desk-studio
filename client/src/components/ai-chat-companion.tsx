@@ -190,7 +190,7 @@ export function AIChatCompanion() {
             exit={{ scale: 0, opacity: 0 }}
             className={cn(
               "fixed z-50",
-              isMobile ? "bottom-20 right-4" : "bottom-8 right-8"
+              isMobile ? "bottom-24 right-4 safe-area-inset-bottom" : "bottom-8 right-8"
             )}
           >
             <Tooltip>

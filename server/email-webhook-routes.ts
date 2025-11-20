@@ -130,6 +130,17 @@ async function handleEmailReceived(data: any) {
   console.log('[EmailWebhook] Processing received email:', data.id);
 
   try {
+    // Get our verified FROM email to check if this is our own sent email
+    const { getVerifiedFromEmail } = await import('./email-config');
+    const ourFromEmail = await getVerifiedFromEmail();
+
+    // Skip if this is an email we sent (it's already in sent folder)
+    const fromEmail = data.from?.email || data.from;
+    if (fromEmail === ourFromEmail) {
+      console.log('[EmailWebhook] Skipping our own sent email');
+      return;
+    }
+
     // Parse recipients to find which dealership this belongs to
     // For now, use default dealership - you can customize this logic
     const dealershipId = 'default'; // TODO: Map email address to dealership
@@ -147,7 +158,7 @@ async function handleEmailReceived(data: any) {
       ? (Array.isArray(data.bcc) ? data.bcc : [data.bcc]).map((addr: any) => ({ email: addr.email || addr, name: addr.name }))
       : [];
 
-    // Save to database
+    // Save to database (only real incoming emails)
     await db.insert(emailMessages).values({
       dealershipId,
       messageId: data.id || data.message_id,

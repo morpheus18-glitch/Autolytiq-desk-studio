@@ -206,22 +206,26 @@ export function EmailInboxList({
               {selectedIds.size} selected
             </span>
             <div className="flex-1" />
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => handleBulkMarkAsRead(true)}
-            >
-              <MailOpen className="w-4 h-4 mr-1" />
-              Read
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => handleBulkMarkAsRead(false)}
-            >
-              <Mail className="w-4 h-4 mr-1" />
-              Unread
-            </Button>
+            {folder !== 'draft' && (
+              <>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleBulkMarkAsRead(true)}
+                >
+                  <MailOpen className="w-4 h-4 mr-1" />
+                  Read
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleBulkMarkAsRead(false)}
+                >
+                  <Mail className="w-4 h-4 mr-1" />
+                  Unread
+                </Button>
+              </>
+            )}
             <Button
               size="sm"
               variant="ghost"
@@ -262,8 +266,8 @@ export function EmailInboxList({
             selected={selectedIds.has(email.id)}
             onSelect={() => handleToggleSelect(email.id)}
             onClick={() => {
-              // Mark as read when opening
-              if (!email.isRead) {
+              // Mark as read when opening (but not for drafts)
+              if (!email.isRead && folder !== 'draft') {
                 markAsReadMutation.mutate({ id: email.id, isRead: true });
               }
               onSelectEmail(email);

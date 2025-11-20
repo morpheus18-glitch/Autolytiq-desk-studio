@@ -1445,7 +1445,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       console.log('[POST /api/deals/:dealId/scenarios] Request body:', JSON.stringify(req.body, null, 2));
-      const data = insertDealScenarioSchema.parse({ ...req.body, dealId });
+      // Remove tax_method if it exists - it belongs to calculations table, not deal_scenarios
+      const { tax_method, taxMethod, ...cleanBody } = req.body;
+      const data = insertDealScenarioSchema.parse({ ...cleanBody, dealId });
       const scenario = await storage.createScenario(data);
       
       // Create audit log only if we have a valid userId
@@ -1478,13 +1480,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!deal) {
         return res.status(404).json({ error: 'Deal not found' });
       }
-      
+
       const oldScenario = await storage.getScenario(scenarioId);
       if (!oldScenario) {
         return res.status(404).json({ error: 'Scenario not found' });
       }
-      
-      const scenario = await storage.updateScenario(scenarioId, req.body);
+
+      // Remove tax_method if it exists - it belongs to calculations table, not deal_scenarios
+      const { tax_method, taxMethod, ...cleanBody } = req.body;
+      const scenario = await storage.updateScenario(scenarioId, cleanBody);
       
       // Create audit log for significant changes
       const significantFields = ['vehicleId', 'tradeVehicleId', 'vehiclePrice', 'apr', 'term', 'moneyFactor', 'residualValue', 'downPayment', 'tradeAllowance', 'tradePayoff'];

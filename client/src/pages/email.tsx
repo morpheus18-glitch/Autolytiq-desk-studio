@@ -86,8 +86,16 @@ export default function EmailPage() {
     },
   });
 
+  const [draftToEdit, setDraftToEdit] = useState<EmailMessage | null>(null);
+
   const handleSelectEmail = (email: EmailMessage) => {
-    setSelectedEmail(email);
+    // If it's a draft, open it in the compose dialog
+    if (email.folder === 'drafts' || email.isDraft) {
+      setDraftToEdit(email);
+      setComposeOpen(true);
+    } else {
+      setSelectedEmail(email);
+    }
   };
 
   const handleCloseDetail = () => {
@@ -281,7 +289,16 @@ export default function EmailPage() {
       </div>
 
       {/* Compose Dialog */}
-      <EmailComposeDialog open={composeOpen} onOpenChange={setComposeOpen} />
+      <EmailComposeDialog
+        open={composeOpen}
+        onOpenChange={(open) => {
+          setComposeOpen(open);
+          if (!open) {
+            setDraftToEdit(null); // Clear draft when closing
+          }
+        }}
+        draft={draftToEdit}
+      />
     </PageLayout>
   );
 }

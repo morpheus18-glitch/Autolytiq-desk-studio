@@ -45,7 +45,7 @@ export function MobileActionButton() {
       {/* Floating Action Button (Custom Touch Target - No size override) */}
       <button
         onClick={() => setIsOpen(true)}
-        className="lg:hidden fixed bottom-24 right-4 z-50 flex items-center justify-center h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg hover-elevate active-elevate-2 touch-manipulation"
+        className="lg:hidden fixed bottom-36 right-4 z-50 flex items-center justify-center h-14 w-14 rounded-full bg-secondary text-secondary-foreground shadow-lg hover-elevate active-elevate-2 touch-manipulation safe-area-inset-bottom"
         data-testid="button-mobile-actions"
       >
         <MoreVertical className="w-6 h-6" />

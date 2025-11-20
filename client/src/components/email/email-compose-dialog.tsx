@@ -21,6 +21,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useSendEmail, useSaveDraft, type EmailRecipient } from '@/hooks/use-email';
 import { RichTextEditor } from './rich-text-editor';
 
+import type { EmailMessage } from '@/hooks/use-email';
+
 interface EmailComposeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -31,6 +33,7 @@ interface EmailComposeDialogProps {
   quotedText?: string;
   customerId?: string;
   dealId?: string;
+  draft?: EmailMessage | null;
 }
 
 export function EmailComposeDialog({
@@ -43,6 +46,7 @@ export function EmailComposeDialog({
   quotedText,
   customerId,
   dealId,
+  draft,
 }: EmailComposeDialogProps) {
   // Form state
   const [toInput, setToInput] = useState('');
@@ -66,30 +70,65 @@ export function EmailComposeDialog({
   // Initialize form with default values when dialog opens
   useEffect(() => {
     if (open) {
-      // Set recipients
-      if (defaultTo) {
-        setRecipients([{ email: defaultTo }]);
-      }
+      // If there's a draft, load its data
+      if (draft) {
+        setDraftId(draft.id);
 
-      // Set Cc recipients
-      if (defaultCc && defaultCc.length > 0) {
-        setCcRecipients(defaultCc.map(email => ({ email })));
-        setShowCc(true);
-      }
+        // Set recipients from draft
+        if (draft.toAddresses && draft.toAddresses.length > 0) {
+          setRecipients(draft.toAddresses.map((addr: any) => ({
+            email: addr.email || addr,
+            name: addr.name
+          })));
+        }
 
-      // Set subject
-      if (defaultSubject) {
-        setSubject(defaultSubject);
-      }
+        // Set Cc recipients from draft
+        if (draft.ccAddresses && draft.ccAddresses.length > 0) {
+          setCcRecipients(draft.ccAddresses.map((addr: any) => ({
+            email: addr.email || addr,
+            name: addr.name
+          })));
+          setShowCc(true);
+        }
 
-      // Set body with quoted text if provided
-      if (defaultBody) {
-        setBody(defaultBody);
-      } else if (quotedText) {
-        setBody(`\n\n------- Original Message -------\n${quotedText}`);
+        // Set Bcc recipients from draft
+        if (draft.bccAddresses && draft.bccAddresses.length > 0) {
+          setBccRecipients(draft.bccAddresses.map((addr: any) => ({
+            email: addr.email || addr,
+            name: addr.name
+          })));
+          setShowBcc(true);
+        }
+
+        // Set subject and body from draft
+        setSubject(draft.subject || '');
+        setBody(draft.htmlBody || draft.textBody || '');
+      } else {
+        // Use default values if not a draft
+        if (defaultTo) {
+          setRecipients([{ email: defaultTo }]);
+        }
+
+        // Set Cc recipients
+        if (defaultCc && defaultCc.length > 0) {
+          setCcRecipients(defaultCc.map(email => ({ email })));
+          setShowCc(true);
+        }
+
+        // Set subject
+        if (defaultSubject) {
+          setSubject(defaultSubject);
+        }
+
+        // Set body with quoted text if provided
+        if (defaultBody) {
+          setBody(defaultBody);
+        } else if (quotedText) {
+          setBody(`\n\n------- Original Message -------\n${quotedText}`);
+        }
       }
     }
-  }, [open, defaultTo, defaultCc, defaultSubject, defaultBody, quotedText]);
+  }, [open, defaultTo, defaultCc, defaultSubject, defaultBody, quotedText, draft]);
 
   // Email validation
   const isValidEmail = (email: string) => {
