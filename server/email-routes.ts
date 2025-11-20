@@ -182,8 +182,14 @@ router.get("/messages", async (req: Request, res: Response) => {
       ...queryParams,
     });
 
-    // Return the messages directly as an array for the frontend
-    res.json(result.messages);
+    // Return structured response with pagination metadata
+    res.json({
+      success: true,
+      data: result.messages,
+      total: result.total,
+      limit: queryParams.limit,
+      offset: queryParams.offset,
+    });
   } catch (error) {
     console.error("[EmailRoutes] Error listing emails:", error);
     res.status(500).json({
