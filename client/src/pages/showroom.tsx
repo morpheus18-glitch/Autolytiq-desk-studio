@@ -1,27 +1,28 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
 import { DndContext, DragEndEvent, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { PageLayout } from '@/components/page-layout';
-import { KanbanColumn } from '@/components/kanban-column';
-import { KanbanCustomerCard } from '@/components/kanban-customer-card';
+import { format, isToday, isSameDay } from 'date-fns';
+import { Plus, Search, Store, RefreshCw, CalendarIcon, Users, Clock, MapPin, Car, Phone, Video, User } from 'lucide-react';
+import type { Customer, Appointment } from '@shared/schema';
+import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
+import { appointmentStatusColors } from '@/lib/design-tokens';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { useToast } from '@/hooks/use-toast';
-import { apiRequest, queryClient } from '@/lib/queryClient';
-import { Plus, Search, Store, RefreshCw, CalendarIcon, Users, Clock, MapPin, Car, Phone, Video, User } from 'lucide-react';
-import { format, isToday, isSameDay, startOfDay } from 'date-fns';
-import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import type { Customer, Appointment } from '@shared/schema';
-import { useLocation } from 'wouter';
+import { PageLayout } from '@/components/page-layout';
+import { KanbanColumn } from '@/components/kanban-column';
+import { KanbanCustomerCard } from '@/components/kanban-customer-card';
 
 type CustomerStatus = 'prospect' | 'qualified' | 'active' | 'sold' | 'lost' | 'inactive';
 
@@ -233,18 +234,29 @@ export default function Showroom() {
   const activeCount = customersByStatus.active.length;
 
   return (
-    <PageLayout>
-      <div className="container mx-auto p-6 space-y-6">
-        {/* Page Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Store className="w-6 h-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold">Showroom Manager</h1>
-            <p className="text-muted-foreground">Manage your customer pipeline from prospect to sold</p>
+    <PageLayout className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      {/* Header */}
+      <div className="sticky top-0 z-40 backdrop-blur-lg bg-background/90 border-b shadow-sm">
+        <div className="container mx-auto px-4 md:px-6 py-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-primary via-primary/90 to-primary/70 shadow-lg shadow-primary/25">
+                <Store className="w-6 h-6 text-primary-foreground" />
+              </div>
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                  Showroom Manager
+                </h1>
+                <p className="text-sm text-muted-foreground font-medium mt-0.5">
+                  Manage your customer pipeline from prospect to sold
+                </p>
+              </div>
+            </div>
           </div>
         </div>
+      </div>
+
+      <div className="container mx-auto px-4 md:px-6 py-6 space-y-6">
         {/* Header Actions */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
@@ -512,11 +524,7 @@ export default function Showroom() {
                     key={apt.id}
                     className={cn(
                       "p-4 rounded-lg border transition-colors",
-                      apt.status === 'completed' && "bg-green-50 border-green-200",
-                      apt.status === 'cancelled' && "bg-gray-50 border-gray-200 opacity-60",
-                      apt.status === 'no_show' && "bg-red-50 border-red-200",
-                      apt.status === 'scheduled' && "bg-white hover:bg-muted/50",
-                      apt.status === 'confirmed' && "bg-blue-50 border-blue-200"
+                      appointmentStatusColors[apt.status] || ''
                     )}
                   >
                     <div className="flex items-start justify-between gap-2 mb-2">

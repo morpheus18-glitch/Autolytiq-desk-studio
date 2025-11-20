@@ -1,43 +1,20 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
-import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { Vehicle, User as UserType } from "@shared/schema";
-import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { PageLayout } from "@/components/page-layout";
+import { useDebouncedCallback } from "use-debounce";
 import {
   Search,
   Filter,
   X,
   Car,
   Fuel,
-  Calendar,
   Gauge,
-  DollarSign,
   ChevronRight,
-  MapPin,
   Cog,
   Zap,
   Droplets,
-  Wind,
   Battery,
   ArrowUpDown,
-  SlidersHorizontal,
   Package,
   AlertCircle,
   RefreshCw,
@@ -46,12 +23,28 @@ import {
   CreditCard,
   Eye,
   EyeOff,
-  Smartphone,
-  FileText,
   Plus
 } from "lucide-react";
-import { useDebouncedCallback } from "use-debounce";
+import type { Vehicle, User as UserType } from "@shared/schema";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
+import { vehicleConditionColors, vehicleStatusColors } from "@/lib/design-tokens";
 import { calculatePricingSummary, formatCurrency, formatPercent, getProfitColorClass } from "@/lib/pricing-utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { PageLayout } from "@/components/page-layout";
 
 // Types
 interface InventoryFilters {
@@ -99,23 +92,13 @@ function VehicleCard({ vehicle, onViewDetails, onStartDeal }: {
     vehicle.invoicePrice
   );
 
+  // Use semantic colors from design tokens for dark mode support
   const getConditionColor = (condition: string) => {
-    switch (condition) {
-      case 'new': return 'bg-green-500/10 text-green-600 border-green-500/20';
-      case 'certified': return 'bg-blue-500/10 text-blue-600 border-blue-500/20';
-      case 'used': return 'bg-amber-500/10 text-amber-600 border-amber-500/20';
-      default: return 'bg-muted text-muted-foreground';
-    }
+    return vehicleConditionColors[condition] || 'bg-muted text-muted-foreground';
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'available': return 'bg-green-500/10 text-green-600';
-      case 'hold': return 'bg-amber-500/10 text-amber-600';
-      case 'sold': return 'bg-red-500/10 text-red-600';
-      case 'in_transit': return 'bg-blue-500/10 text-blue-600';
-      default: return 'bg-muted text-muted-foreground';
-    }
+    return vehicleStatusColors[status] || 'bg-muted text-muted-foreground';
   };
 
   const stockDisplay = vehicle.stockNumber?.substring(0, 8).toUpperCase() || 'N/A';
@@ -166,11 +149,11 @@ function VehicleCard({ vehicle, onViewDetails, onStartDeal }: {
 
       <CardContent className="p-6 space-y-4">
         <div>
-          <h3 className="font-bold text-xl text-neutral-900 leading-tight" data-testid={`text-vehicle-title-${vehicle.id}`}>
+          <h3 className="font-bold text-xl text-foreground leading-tight" data-testid={`text-vehicle-title-${vehicle.id}`}>
             {vehicle.year} {vehicle.make} {vehicle.model}
           </h3>
           {vehicle.trim && (
-            <p className="text-base text-neutral-600 mt-1">{vehicle.trim}</p>
+            <p className="text-base text-muted-foreground mt-1">{vehicle.trim}</p>
           )}
         </div>
 
@@ -181,7 +164,7 @@ function VehicleCard({ vehicle, onViewDetails, onStartDeal }: {
                 {formatPrice(vehicle.msrp)}
               </span>
             )}
-            <span className="text-2xl font-bold font-mono tabular-nums text-blue-600" data-testid={`text-price-${vehicle.id}`}>
+            <span className="text-2xl font-bold font-mono tabular-nums text-primary" data-testid={`text-price-${vehicle.id}`}>
               {formatPrice(vehicle.internetPrice || vehicle.price)}
             </span>
           </div>
@@ -822,7 +805,7 @@ function VehicleQuickView({
 // Main Inventory Page Component
 export default function InventoryPage() {
   const isMobile = useIsMobile();
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const searchParams = useSearch();
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [quickViewOpen, setQuickViewOpen] = useState(false);

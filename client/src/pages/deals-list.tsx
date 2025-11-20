@@ -1,42 +1,24 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
+import { Search, Filter, ChevronLeft, ChevronRight, FileText, User, Car, Calendar, Zap } from 'lucide-react';
+import type { DealWithRelations, Vehicle, Customer, User as UserType } from '@shared/schema';
+import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
+import { premiumCardClasses, dealStateColors, financialColors } from '@/lib/design-tokens';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Plus, Search, Filter, ChevronLeft, ChevronRight, FileText, User, Car, DollarSign, Calendar, Hash, Package, ArrowRight, Zap } from 'lucide-react';
-import type { DealWithRelations, Vehicle, Customer, User as UserType } from '@shared/schema';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EmptyState } from '@/components/ui/empty-state';
-import { useLocation } from 'wouter';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { cn } from '@/lib/utils';
-import { apiRequest, queryClient } from '@/lib/queryClient';
-import { useToast } from '@/hooks/use-toast';
 import { PageLayout } from '@/components/page-layout';
 import { PageHero } from '@/components/page-hero';
-import { premiumCardClasses } from '@/lib/design-tokens';
 
-const DEAL_STATE_COLORS: Record<string, string> = {
-  DRAFT: 'bg-yellow-100 text-yellow-800 border-0 shadow-md rounded-full',
-  IN_PROGRESS: 'bg-blue-100 text-blue-800 border-0 shadow-md rounded-full',
-  APPROVED: 'bg-green-100 text-green-800 border-0 shadow-md rounded-full',
-  CANCELLED: 'bg-red-100 text-red-800 border-0 shadow-md rounded-full',
-};
+// Use semantic colors from design tokens for dark mode support
 
 // Deal Card Component
 function DealCard({ deal }: { deal: DealWithRelations }) {
@@ -95,8 +77,8 @@ function DealCard({ deal }: { deal: DealWithRelations }) {
                 {new Date(deal.createdAt).toLocaleDateString()}
               </div>
             </div>
-            <Badge 
-              className={cn("text-xs font-semibold uppercase", DEAL_STATE_COLORS[deal.dealState] || '')}
+            <Badge
+              className={cn("text-xs font-semibold uppercase border-0 shadow-md rounded-full", dealStateColors[deal.dealState] || '')}
               data-testid={`badge-status-${deal.id}`}
             >
               {deal.dealState.replace('_', ' ')}
@@ -160,13 +142,13 @@ function DealCard({ deal }: { deal: DealWithRelations }) {
             </div>
             <div>
               <div className="text-muted-foreground uppercase tracking-wide mb-0.5">Trade Allowance</div>
-              <div className="font-mono tabular-nums font-semibold text-green-600">
+              <div className={cn("font-mono tabular-nums font-semibold", financialColors.positive)}>
                 {tradeAllowance !== null && tradeAllowance > 0 ? formatPrice(tradeAllowance) : '—'}
               </div>
             </div>
             <div>
               <div className="text-muted-foreground uppercase tracking-wide mb-0.5">Trade Payoff</div>
-              <div className="font-mono tabular-nums font-semibold text-red-600">
+              <div className={cn("font-mono tabular-nums font-semibold", financialColors.negative)}>
                 {tradePayoff !== null && tradePayoff > 0 ? formatPrice(tradePayoff) : '—'}
               </div>
             </div>
@@ -181,7 +163,7 @@ function DealCard({ deal }: { deal: DealWithRelations }) {
           {/* Amount Financed */}
           <div className="pt-2 border-t">
             <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Amount Financed</div>
-            <div className="font-mono tabular-nums font-bold text-lg text-blue-600" data-testid={`text-financed-${deal.id}`}>
+            <div className={cn("font-mono tabular-nums font-bold text-lg", financialColors.neutral)} data-testid={`text-financed-${deal.id}`}>
               {amountFinanced !== null && amountFinanced > 0 ? formatPrice(amountFinanced) : '—'}
             </div>
           </div>
@@ -203,7 +185,7 @@ function DealCard({ deal }: { deal: DealWithRelations }) {
               </div>
               <div>
                 <div className="text-muted-foreground uppercase tracking-wide mb-0.5">Monthly</div>
-                <div className="font-mono tabular-nums font-semibold text-blue-600" data-testid={`text-monthly-${deal.id}`}>
+                <div className={cn("font-mono tabular-nums font-semibold", financialColors.neutral)} data-testid={`text-monthly-${deal.id}`}>
                   {monthlyPayment ? `${formatPrice(monthlyPayment)}` : '—'}
                 </div>
               </div>
@@ -241,7 +223,6 @@ function DealCardSkeleton() {
 }
 
 export default function DealsList() {
-  const isMobile = useIsMobile();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');

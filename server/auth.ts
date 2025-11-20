@@ -275,10 +275,8 @@ export function setupAuth(app: Express) {
 
 // Middleware to require authentication
 export function requireAuth(req: any, res: any, next: any) {
-  // TEMPORARY: Bypass authentication for preview path
-  if (req.path.startsWith('/preview')) {
-    return next();
-  }
+  // SECURITY: Preview path bypass has been removed
+  // If preview functionality is needed, implement proper preview tokens
 
   if (!req.isAuthenticated()) {
     return res.status(401).json({ message: "Authentication required" });

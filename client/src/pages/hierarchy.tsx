@@ -1,16 +1,12 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { Building2, TrendingUp, Zap, Users } from 'lucide-react';
+import type { HierarchyUser } from '@/lib/hierarchy-types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageLayout } from '@/components/page-layout';
 import { OrgChart } from '@/components/hierarchy/org-chart';
 import { TeamPerformanceDashboard } from '@/components/hierarchy/team-performance-dashboard';
 import { PerformanceOptimization } from '@/components/hierarchy/performance-optimization';
-import type { HierarchyUser } from '@/lib/hierarchy-types';
-import {
-  Building2,
-  TrendingUp,
-  Zap,
-  Users,
-} from 'lucide-react';
 
 export default function HierarchyPage() {
   const [selectedUser, setSelectedUser] = useState<HierarchyUser | undefined>();
@@ -23,14 +19,29 @@ export default function HierarchyPage() {
   };
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight mb-2">Organization Hierarchy</h1>
-        <p className="text-muted-foreground">
-          Manage your team structure, view performance metrics, and optimize team efficiency
-        </p>
+    <PageLayout className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      {/* Header */}
+      <div className="sticky top-0 z-40 backdrop-blur-lg bg-background/90 border-b shadow-sm">
+        <div className="container mx-auto px-4 md:px-6 py-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-primary via-primary/90 to-primary/70 shadow-lg shadow-primary/25">
+                <Building2 className="w-6 h-6 text-primary-foreground" />
+              </div>
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                  Organization Hierarchy
+                </h1>
+                <p className="text-sm text-muted-foreground font-medium mt-0.5">
+                  Manage your team structure, view performance metrics, and optimize team efficiency
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+
+      <div className="container mx-auto px-4 md:px-6 py-6 space-y-6">
 
       {/* Selected User Info */}
       {selectedUser && (
@@ -137,6 +148,7 @@ export default function HierarchyPage() {
           </div>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </PageLayout>
   );
 }

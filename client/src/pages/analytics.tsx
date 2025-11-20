@@ -1,39 +1,38 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link, useLocation } from 'wouter';
-import { PageLayout } from '@/components/page-layout';
-import { 
+import { Link } from 'wouter';
+import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
-  LineChart, Line, ResponsiveContainer, XAxis, YAxis, 
-  CartesianGrid, Tooltip, Legend, FunnelChart, Funnel, 
-  LabelList, RadarChart, PolarGrid, PolarAngleAxis, 
+  ResponsiveContainer, XAxis, YAxis,
+  CartesianGrid, Tooltip, Legend, FunnelChart, Funnel,
+  LabelList, RadarChart, PolarGrid, PolarAngleAxis,
   PolarRadiusAxis, Radar
 } from 'recharts';
-import { 
+import { format } from 'date-fns';
+import {
   TrendingUp, Package, Users, DollarSign, ShoppingCart,
-  Clock, Target, Activity, Zap, TrendingDown, Award,
+  Clock, Target, Activity, Zap, Award,
   FileText, Car, CreditCard, BarChart3, PieChart as PieChartIcon,
-  Trophy, ArrowLeft
+  Trophy
 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { PageLayout } from '@/components/page-layout';
 import { MetricCard } from '@/components/analytics/metric-card';
 import { ChartCard } from '@/components/analytics/chart-card';
 import { FilterBar, type PeriodType } from '@/components/analytics/filter-bar';
 import { SalesLeaderboard } from '@/components/analytics/sales-leaderboard';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
-import { ErrorBoundary, SectionErrorBoundary } from '@/components/error-boundary';
-import { ChartSkeleton, TableSkeleton } from '@/components/skeletons/chart-skeleton';
+import { SectionErrorBoundary } from '@/components/error-boundary';
 
-// Color palette for charts
+// Color palette for charts - using CSS variables for theme support
 const CHART_COLORS = {
-  primary: 'hsl(217, 88%, 48%)',
-  secondary: 'hsl(195, 75%, 45%)',
-  success: 'hsl(158, 64%, 42%)',
-  warning: 'hsl(35, 88%, 52%)',
-  purple: 'hsl(280, 65%, 50%)',
-  accent: 'hsl(35, 85%, 95%)',
+  primary: 'hsl(var(--chart-1))',
+  secondary: 'hsl(var(--chart-2))',
+  success: 'hsl(var(--chart-3))',
+  warning: 'hsl(var(--chart-4))',
+  purple: 'hsl(var(--chart-5))',
+  accent: 'hsl(var(--accent))',
 };
 
 const COLORS_ARRAY = Object.values(CHART_COLORS);

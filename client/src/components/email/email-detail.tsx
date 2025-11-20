@@ -5,6 +5,7 @@
  */
 
 import { useState } from 'react';
+import DOMPurify from 'dompurify';
 import {
   Reply,
   ReplyAll,
@@ -359,7 +360,13 @@ export function EmailDetail({ emailId, onClose }: EmailDetailProps) {
               <Card className="p-6 backdrop-blur-sm bg-card/30 border-border/30">
                 <div
                   className="prose prose-sm max-w-none dark:prose-invert"
-                  dangerouslySetInnerHTML={{ __html: email.htmlBody }}
+                  dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(email.htmlBody, {
+                      ALLOWED_TAGS: ['p', 'br', 'b', 'i', 'u', 'strong', 'em', 'a', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'pre', 'code', 'span', 'div', 'table', 'tr', 'td', 'th', 'thead', 'tbody', 'img'],
+                      ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'style', 'target', 'rel'],
+                      ALLOW_DATA_ATTR: false,
+                    })
+                  }}
                 />
               </Card>
             ) : email.textBody ? (

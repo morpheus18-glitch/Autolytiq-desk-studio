@@ -64,8 +64,19 @@ app.use((req, res, next) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
-    res.status(status).json({ message });
-    throw err;
+    // Log error for debugging but don't expose stack trace to client
+    console.error('[Error Handler]', {
+      status,
+      message: err.message,
+      stack: err.stack,
+    });
+
+    // Don't expose internal error details in production
+    const clientMessage = process.env.NODE_ENV === 'production' && status === 500
+      ? 'Internal Server Error'
+      : message;
+
+    res.status(status).json({ message: clientMessage });
   });
 
   // importantly only setup vite in development and after

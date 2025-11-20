@@ -1,19 +1,18 @@
-import { useAuth } from "@/hooks/use-auth";
+import { useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Redirect } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useEffect } from "react";
+import { Loader2, Building2, Shield } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
-import { Loader2, Building2, Shield } from "lucide-react";
 import { PageLayout } from "@/components/page-layout";
-import { Redirect } from "wouter";
 
 const dealershipSettingsSchema = z.object({
   name: z.string().min(1, "Dealership name is required"),
@@ -111,21 +110,33 @@ export default function DealershipSettings() {
   if (!user) return null;
 
   return (
-    <PageLayout>
-      <div className="container max-w-4xl mx-auto p-4 md:p-6 space-y-6">
-        <div className="flex items-center gap-3">
-          <Building2 className="w-6 h-6" />
-          <div>
-            <h1 className="text-2xl md:text-3xl font-semibold">Dealership Settings</h1>
-            <p className="text-sm text-muted-foreground">Configure dealership information and defaults</p>
+    <PageLayout className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      {/* Header */}
+      <div className="sticky top-0 z-40 backdrop-blur-lg bg-background/90 border-b shadow-sm">
+        <div className="container mx-auto px-4 md:px-6 py-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-primary via-primary/90 to-primary/70 shadow-lg shadow-primary/25">
+                <Building2 className="w-6 h-6 text-primary-foreground" />
+              </div>
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                  Dealership Settings
+                </h1>
+                <p className="text-sm text-muted-foreground font-medium mt-0.5">
+                  Configure dealership information and defaults
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted">
+              <Shield className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium">Administrator Only</span>
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Admin Guard Badge */}
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted w-fit">
-          <Shield className="w-4 h-4 text-primary" />
-          <span className="text-sm font-medium">Administrator Only</span>
-        </div>
+      <div className="container max-w-4xl mx-auto px-4 md:px-6 py-6 space-y-6">
 
         {isLoading ? (
           <div className="flex justify-center py-12">

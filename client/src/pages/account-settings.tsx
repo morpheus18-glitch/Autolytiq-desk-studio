@@ -1,23 +1,16 @@
 import { useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { Loader2, Shield, Settings as SettingsIcon, Bell, Eye, QrCode } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
-import { Loader2, Shield, Settings as SettingsIcon, Bell, Eye, QrCode, KeyRound } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PageLayout } from "@/components/page-layout";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 
 type UserPreferences = {
   theme?: string;
@@ -136,12 +129,27 @@ export default function AccountSettings() {
   if (!user) return null;
 
   return (
-    <PageLayout>
-      <div className="container max-w-4xl mx-auto p-4 md:p-6 space-y-6">
-        <div className="flex items-center gap-3">
-          <SettingsIcon className="w-6 h-6" />
-          <h1 className="text-2xl md:text-3xl font-semibold">Account Settings</h1>
+    <PageLayout className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      {/* Header */}
+      <div className="sticky top-0 z-40 backdrop-blur-lg bg-background/90 border-b shadow-sm">
+        <div className="container mx-auto px-4 md:px-6 py-5">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-primary via-primary/90 to-primary/70 shadow-lg shadow-primary/25">
+              <SettingsIcon className="w-6 h-6 text-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                Account Settings
+              </h1>
+              <p className="text-sm text-muted-foreground font-medium mt-0.5">
+                Manage your profile and preferences
+              </p>
+            </div>
+          </div>
         </div>
+      </div>
+
+      <div className="container max-w-4xl mx-auto px-4 md:px-6 py-6 space-y-6">
 
         {/* User Info Card */}
         <Card>

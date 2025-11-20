@@ -1,13 +1,9 @@
 import { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { PageLayout } from '@/components/page-layout';
-import { 
-  Calculator, 
-  Shield, 
-  TrendingUp, 
+import { Link } from 'wouter';
+import {
+  Calculator,
+  Shield,
+  TrendingUp,
   Target,
   CreditCard,
   FileCheck,
@@ -15,36 +11,47 @@ import {
   GraduationCap,
   Sparkles
 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { PageLayout } from '@/components/page-layout';
 import { CreditSimulator } from '@/components/credit-simulator';
 import { PreQualification } from '@/components/pre-qualification';
 import { CreditDashboard } from '@/components/credit-dashboard';
-import { Link } from 'wouter';
 
 export default function CreditCenter() {
   const [activeTab, setActiveTab] = useState('dashboard');
   
   return (
-    <PageLayout className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+    <PageLayout className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       {/* Header */}
-      <div className="border-b bg-card/50 backdrop-blur-xl sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold">Credit Center</h1>
-              <p className="text-muted-foreground mt-1">
-                Understand, simulate, and improve your credit for better auto financing
-              </p>
+      <div className="sticky top-0 z-40 backdrop-blur-lg bg-background/90 border-b shadow-sm">
+        <div className="container mx-auto px-4 md:px-6 py-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-primary via-primary/90 to-primary/70 shadow-lg shadow-primary/25">
+                <CreditCard className="w-6 h-6 text-primary-foreground" />
+              </div>
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                  Credit Center
+                </h1>
+                <p className="text-sm text-muted-foreground font-medium mt-0.5">
+                  Understand, simulate, and improve your credit for better auto financing
+                </p>
+              </div>
             </div>
-            <div className="flex gap-2">
+            <div className="hidden md:flex items-center gap-3">
               <Button variant="outline" asChild data-testid="button-view-deals">
                 <Link href="/deals">
                   <FileCheck className="w-4 h-4 mr-2" />
                   View Deals
                 </Link>
               </Button>
-              <Button variant="default" asChild data-testid="button-new-deal">
+              <Button asChild data-testid="button-new-deal" className="gap-2 shadow-lg shadow-primary/20">
                 <Link href="/deals/new">
-                  <Sparkles className="w-4 h-4 mr-2" />
+                  <Sparkles className="w-4 h-4" />
                   Start New Deal
                 </Link>
               </Button>
@@ -54,7 +61,7 @@ export default function CreditCenter() {
       </div>
 
       {/* Quick Stats Cards */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="container mx-auto px-4 md:px-6 py-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <Card className="p-4 bg-gradient-to-br from-green-500/10 to-green-500/5 border-green-500/20">
             <div className="flex items-center gap-3">
