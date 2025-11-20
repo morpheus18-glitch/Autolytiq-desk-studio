@@ -115,7 +115,28 @@ CREATE INDEX appointments_status_idx ON appointments(status);
 - `appointmentsRelations` - Links to customers, users, deals, and vehicles
 - Updated `usersRelations` and `customersRelations` to include appointments
 
-### 5. Performance Indexes Migration (November 20, 2025)
+### 5. Missing `county` Column in `customers` Table (November 20, 2025)
+**Problem**: Schema defined `county` column for tax jurisdiction but database table was missing it.
+**Error**: `column "county" does not exist` when calling GET /api/customers endpoint
+**Impact**: Customers endpoint returned HTTP 500 errors, preventing customer list/search functionality
+
+**Fix Applied**:
+```sql
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS county text;
+```
+
+**Purpose**: 
+- Stores county name for tax jurisdiction lookup
+- Auto-detected from Google Maps API during address validation
+- Used by AutoTaxEngine for accurate tax calculations
+- Supports out-of-state deals with proper jurisdiction handling
+
+**Result**:
+- ✅ GET /api/customers now returns HTTP 200
+- ✅ Customer data loads successfully in frontend
+- ✅ Tax jurisdiction auto-fill ready for implementation
+
+### 6. Performance Indexes Migration (November 20, 2025)
 **Problem**: Need to optimize query performance for multi-tenant dealership operations.
 
 **Migration Strategy**: 
@@ -178,6 +199,8 @@ psql "$DATABASE_URL" -c "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_approved_le
 8. ✅ Performance indexes migration completed (10 CONCURRENTLY indexes)
 9. ✅ Schema consistency migration completed (6 columns, 4 constraints, 14 triggers)
 10. ✅ Application running successfully on port 5000
+11. ✅ County column added to customers table (November 20, 2025)
+12. ✅ GET /api/customers endpoint returning HTTP 200 with customer data
 
 ## Architect Review
 

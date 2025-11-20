@@ -48,6 +48,10 @@ The NextGen Automotive Desking Platform is a mobile-first desking tool for autom
 - **Customer Vehicles Table**: Created `customer_vehicles` table for garage functionality allowing customers to have multiple vehicles tracked with `is_primary` flag for designating primary vehicle.
 - **Customer History Table**: Created `customer_history` table for audit logging with nullable `user_id` (supports system events), action tracking (`create`, `update`, `note_added`, `vehicle_added`, `deal_created`), and indexed timestamp for chronological history viewing.
 
+**Recent Fixes (November 20, 2025)**:
+- **County Column**: Added missing `county` text column to `customers` table. Schema defined this field for tax jurisdiction lookup (auto-detected from Google Maps API), but database table was missing it, causing HTTP 500 errors on GET /api/customers endpoint. Column now present and endpoint operational.
+- **Inventory Page Components**: Fixed missing CardHeader and CardTitle imports in `client/src/pages/inventory.tsx` that were causing React component errors.
+
 **Tax Calculation System (AutoTaxEngine)**:
 - **Primary Tax Engine**: AutoTaxEngine (backend `/api/tax/calculate` endpoint) is the single source of truth for all tax calculations
 - **State/ZIP Auto-Population**: TaxBreakdownForm auto-populates state and ZIP code from customer address data with "From customer" badge indicator
