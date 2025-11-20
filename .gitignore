@@ -9,3 +9,6 @@ file-history/
 .env
 .env.local
 .env.*.local
+
+# Database backups
+backup-*.sql
