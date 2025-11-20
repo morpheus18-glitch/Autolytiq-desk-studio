@@ -282,24 +282,20 @@ export async function listEmails(
   // Build conditions
   const conditions = [eq(emailMessages.dealershipId, dealershipId)];
 
-  // Folder visibility rules:
-  // - inbox: Show only inbound emails (direction='inbound')
-  // - sent: Show only outbound emails (direction='outbound')
-  // - drafts: User-specific drafts only
-  // - trash/archive: All dealership emails
-
+  // Folder visibility rules - FOLDER is primary, direction is supplemental
+  // This ensures backwards compatibility with existing data
   if (folder === 'inbox') {
+    // Show all emails in inbox folder (don't filter by direction yet)
     conditions.push(eq(emailMessages.folder, 'inbox'));
-    conditions.push(eq(emailMessages.direction, 'inbound'));
   } else if (folder === 'sent') {
+    // Show all emails in sent folder
     conditions.push(eq(emailMessages.folder, 'sent'));
-    conditions.push(eq(emailMessages.direction, 'outbound'));
     if (userId) {
       conditions.push(eq(emailMessages.userId, userId));
     }
   } else if (folder === 'drafts') {
+    // Show all emails in drafts folder
     conditions.push(eq(emailMessages.folder, 'drafts'));
-    conditions.push(eq(emailMessages.isDraft, true));
     if (userId) {
       conditions.push(eq(emailMessages.userId, userId));
     }
