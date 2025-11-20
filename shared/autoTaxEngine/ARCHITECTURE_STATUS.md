@@ -84,44 +84,24 @@
 
 ### 1. **State Resolver System** (CRITICAL for multi-state deals)
 
-**Status:** ⚠️ MISSING (but we have fields for it)
+**Status:** ✅ COMPLETE
 
 **What we have:**
-- `stateCode` (primary state)
-- `homeStateCode` (buyer residence)
-- `registrationStateCode` (where vehicle registers)
+- `TaxContext` interface in `types.ts`
+- `RooftopConfig` interface in `types.ts`
+- `DealPartyInfo` interface in `types.ts`
+- `resolveTaxContext()` function in `engine/stateResolver.ts`
+- Helper functions: `createSimpleRooftopConfig()`, `createMultiStateRooftopConfig()`, `isMultiStateDeal()`, `getInvolvedStates()`
+- 27 comprehensive tests in `tests/autoTaxEngine/stateResolver.spec.ts`
 
-**What's missing:**
-- `TaxContext` interface (separate from input)
-- `RooftopConfig` interface (dealer configuration)
-- `resolveTaxContext()` function (resolver logic)
+**Features:**
+- DEALER_STATE, REGISTRATION_STATE, BUYER_STATE perspectives
+- State-specific overrides (forcePrimary, disallowPrimary)
+- Border city scenarios
+- Snowbird customer handling
+- Commercial fleet support
 
-**Spec defines:**
-```typescript
-interface TaxContext {
-  primaryStateCode: string;      // Which state's rules to use
-  dealerStateCode: string;        // Where dealer is located
-  buyerResidenceStateCode?: string;
-  registrationStateCode?: string;
-}
-
-interface RooftopConfig {
-  dealerStateCode: string;
-  defaultTaxPerspective: "DEALER_STATE" | "BUYER_STATE" | "REGISTRATION_STATE";
-  allowedRegistrationStates: string[];
-  stateOverrides?: { [state: string]: { forcePrimary?: boolean; disallowPrimary?: boolean } };
-}
-
-function resolveTaxContext(rooftop: RooftopConfig, deal: DealPartyInfo): TaxContext
-```
-
-**Why it matters:**
-- Determines which state's rules apply
-- Handles dealer groups with multiple rooftops
-- Manages cross-state deals (buy in OH, register in IN)
-- Supports dealer perspective vs registration perspective
-
-**Priority:** HIGH (critical for production multi-state support)
+**Priority:** ✅ DONE
 
 ### 2. **Rules Registry & Exports** (`rules/index.ts`)
 
@@ -229,15 +209,15 @@ function resolveTaxContext(rooftop: RooftopConfig, deal: DealPartyInfo): TaxCont
 | **Reciprocity Engine** | ✅ Pairwise | ✅ Pairwise | 100% |
 | **State Pair Matrix** | ✅ JSON | ✅ JSON | 100% |
 | **Main Dispatcher** | ✅ Branch logic | ✅ Branch logic | 100% |
-| **State Resolver** | ✅ TaxContext + Rooftop | ⚠️ Fields exist, no resolver | 40% |
+| **State Resolver** | ✅ TaxContext + Rooftop | ✅ Complete with tests | 100% |
 | **Rules Registry** | ✅ STATE_RULES_MAP | ❌ No central export | 0% |
 | **Title/Lien Engine** | ✅ Full package | ❌ Deferred | 0% |
 | **API Endpoints** | ✅ /quote-tax | ⚠️ Minimal server | 10% |
 | **Admin UI** | ✅ Config/audit | ❌ Deferred | 0% |
 | **Testing** | ✅ Golden cases | ✅ 34 tests | 80% |
 
-**Overall Engine Completeness:** ~80%
-**Production Readiness (Tax Only):** ~70% (missing state resolver)
+**Overall Engine Completeness:** ~85%
+**Production Readiness (Tax Only):** ~80% (state resolver complete)
 
 ---
 
@@ -251,7 +231,7 @@ function resolveTaxContext(rooftop: RooftopConfig, deal: DealPartyInfo): TaxCont
 - [x] Special scheme calculators (GA/NC/WV)
 - [x] Reciprocity engine with pairwise logic
 - [x] State pair matrix
-- [ ] State resolver with TaxContext
+- [x] State resolver with TaxContext
 - [ ] Rules registry (STATE_RULES_MAP)
 - [x] 100+ tests passing (currently 34)
 - [ ] API endpoint for tax quotes
