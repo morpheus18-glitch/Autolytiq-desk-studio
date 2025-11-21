@@ -352,7 +352,7 @@ export default function DealsList() {
       
       {/* Filters Section */}
       <div className="border-b bg-background/80 backdrop-blur-sm">
-        <div className="container mx-auto px-4 md:px-6 py-4">
+        <div className="container mx-auto px-3 md:px-6 py-4">
           <div className="flex gap-3">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

@@ -45,13 +45,8 @@ import { VehicleSwitcher } from '@/components/vehicle-switcher';
 import { CustomerSelectorSheet } from '@/components/customer-selector-sheet';
 import { DealTypeSwitcherCompact } from '@/components/deal-type-switcher';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-
-const DEAL_STATE_COLORS: Record<string, string> = {
-  DRAFT: 'bg-yellow-100 text-yellow-800 border-0',
-  IN_PROGRESS: 'bg-blue-100 text-blue-800 border-0',
-  APPROVED: 'bg-green-100 text-green-800 border-0',
-  CANCELLED: 'bg-red-100 text-red-800 border-0',
-};
+import { dealStateColors, containerPadding, layoutSpacing } from '@/lib/design-tokens';
+import { cn } from '@/lib/utils';
 
 // Helper to get scenario values with defaults
 function getScenarioValues(scenario: DealScenario | undefined) {
@@ -319,12 +314,12 @@ export default function DealWorksheetV3() {
     return (
       <div className="h-screen flex flex-col bg-background">
         <div className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur">
-          <div className="max-w-[1800px] mx-auto px-4 md:px-6 py-3">
+          <div className={cn("max-w-[1800px] mx-auto", containerPadding, layoutSpacing.compact)}>
             <DealHeaderSkeleton />
           </div>
         </div>
         <div className="flex-1 overflow-hidden">
-          <div className="max-w-[1800px] mx-auto px-3 md:px-6 py-3 md:py-6">
+          <div className={cn("max-w-[1800px] mx-auto", containerPadding, layoutSpacing.section)}>
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-3 md:gap-6">
               <div className="space-y-3 md:space-y-6">
                 {Array.from({ length: 4 }).map((_, i) => (
@@ -371,7 +366,7 @@ export default function DealWorksheetV3() {
     <div className="min-h-screen flex flex-col bg-background">
       {/* ========== HEADER ========== */}
       <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-        <div className="max-w-[1800px] mx-auto px-4 md:px-6 py-3">
+        <div className={cn("max-w-[1800px] mx-auto", containerPadding, layoutSpacing.compact)}>
           <div className="flex items-center justify-between gap-4">
             {/* Left: Navigation & Identity */}
             <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -389,7 +384,7 @@ export default function DealWorksheetV3() {
                   <h1 className="text-lg font-semibold font-mono truncate">
                     {deal.dealNumber || "New Deal"}
                   </h1>
-                  <Badge className={DEAL_STATE_COLORS[deal.dealState]}>
+                  <Badge className={cn("shadow-md rounded-full", dealStateColors[deal.dealState])}>
                     {deal.dealState.replace('_', ' ')}
                   </Badge>
                 </div>
@@ -463,7 +458,7 @@ export default function DealWorksheetV3() {
 
       {/* ========== MAIN CONTENT ========== */}
       <div className="flex-1">
-        <div className="max-w-[1800px] mx-auto px-3 md:px-6 py-3 md:py-6">
+        <div className={cn("max-w-[1800px] mx-auto", containerPadding, layoutSpacing.section)}>
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-3 md:gap-6">
             {/* LEFT COLUMN - Deal Structure */}
             <ScenarioFormProvider dealId={dealId!} scenario={activeScenario}>

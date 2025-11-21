@@ -30,7 +30,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-import { vehicleConditionColors, vehicleStatusColors } from "@/lib/design-tokens";
+import { vehicleConditionColors, vehicleStatusColors, containerPadding, layoutSpacing, gridLayouts } from "@/lib/design-tokens";
 import { calculatePricingSummary, formatCurrency, formatPercent, getProfitColorClass } from "@/lib/pricing-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1094,7 +1094,7 @@ export default function InventoryPage() {
     <PageLayout className="min-h-screen bg-background max-w-full overflow-x-clip">
       {/* Header */}
       <div className="sticky top-0 z-40 backdrop-blur-md bg-background/80 border-b">
-        <div className="container mx-auto px-4 py-4">
+        <div className={cn(containerPadding, layoutSpacing.content)}>
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <h1 className="text-2xl md:text-3xl font-semibold">Vehicle Inventory</h1>
@@ -1191,7 +1191,7 @@ export default function InventoryPage() {
       </div>
 
       {/* Main Content */}
-      <div className="container mx-auto px-3 md:px-4 py-6">
+      <div className={cn(containerPadding, layoutSpacing.section)}>
         <div className="flex flex-col md:flex-row gap-6">
           {/* Desktop Sidebar */}
           {!isMobile && (
@@ -1224,7 +1224,7 @@ export default function InventoryPage() {
                 </div>
               </Card>
             ) : isLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div className={cn(gridLayouts.fourCol, "xl:grid-cols-4")}>
                 {Array.from({ length: 8 }).map((_, i) => (
                   <VehicleCardSkeleton key={i} />
                 ))}
@@ -1253,7 +1253,7 @@ export default function InventoryPage() {
             ) : (
               <>
                 {/* Responsive Grid - All Viewports */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <div className={cn(gridLayouts.fourCol, "xl:grid-cols-4")}>
                   {sortedVehicles.map((vehicle) => (
                     <VehicleCard
                       key={vehicle.id}
