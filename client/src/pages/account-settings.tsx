@@ -11,6 +11,16 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PageLayout } from "@/components/page-layout";
+import { PageHero } from "@/components/page-hero";
+import {
+  containerPadding,
+  layoutSpacing,
+  premiumCardClasses,
+  gridLayouts,
+  formSpacing,
+  primaryButtonClasses
+} from "@/lib/design-tokens";
+import { cn } from "@/lib/utils";
 
 type UserPreferences = {
   theme?: string;
@@ -130,37 +140,24 @@ export default function AccountSettings() {
 
   return (
     <PageLayout className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      {/* Header */}
-      <div className="sticky top-0 z-40 backdrop-blur-lg bg-background/90 border-b shadow-sm">
-        <div className="container mx-auto px-4 md:px-6 py-5">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-primary via-primary/90 to-primary/70 shadow-lg shadow-primary/25">
-              <SettingsIcon className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-                Account Settings
-              </h1>
-              <p className="text-sm text-muted-foreground font-medium mt-0.5">
-                Manage your profile and preferences
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <PageHero
+        icon={SettingsIcon}
+        title="Account Settings"
+        description="Manage your profile and preferences"
+      />
 
-      <div className="container max-w-4xl mx-auto px-4 md:px-6 py-6 space-y-6">
+      <div className={cn(containerPadding, layoutSpacing.section, "max-w-4xl", formSpacing.section)}>
 
         {/* User Info Card */}
-        <Card>
+        <Card className={premiumCardClasses}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Eye className="w-5 h-5" />
               Profile Information
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <CardContent className={formSpacing.fields}>
+            <div className={gridLayouts.twoCol}>
               <div>
                 <Label className="text-xs md:text-sm font-medium">Full Name</Label>
                 <p className="text-base font-semibold">{user.fullName}</p>
@@ -182,7 +179,7 @@ export default function AccountSettings() {
         </Card>
 
         {/* Preferences Card */}
-        <Card>
+        <Card className={premiumCardClasses}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Bell className="w-5 h-5" />
@@ -190,7 +187,7 @@ export default function AccountSettings() {
             </CardTitle>
             <CardDescription>Customize your experience</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className={formSpacing.section}>
             {loadingPrefs ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="w-6 h-6 animate-spin" />
@@ -226,7 +223,7 @@ export default function AccountSettings() {
         </Card>
 
         {/* Security Card */}
-        <Card>
+        <Card className={premiumCardClasses}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="w-5 h-5" />
@@ -234,7 +231,7 @@ export default function AccountSettings() {
             </CardTitle>
             <CardDescription>Manage your account security</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className={formSpacing.section}>
             <div className="flex items-center justify-between">
               <div>
                 <Label className="text-sm md:text-base font-medium">Two-Factor Authentication</Label>
@@ -281,7 +278,7 @@ export default function AccountSettings() {
                 Scan the QR code with your authenticator app
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
+            <div className={formSpacing.fields}>
               {setup2faMutation.data?.qrCode && (
                 <div className="flex justify-center">
                   <img
@@ -292,7 +289,7 @@ export default function AccountSettings() {
                   />
                 </div>
               )}
-              <div>
+              <div className={formSpacing.fieldGroup}>
                 <Label htmlFor="mfa-token">Verification Code</Label>
                 <Input
                   id="mfa-token"

@@ -13,6 +13,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { PageLayout } from "@/components/page-layout";
+import { PageHero } from "@/components/page-hero";
+import { Badge } from "@/components/ui/badge";
+import {
+  containerPadding,
+  layoutSpacing,
+  premiumCardClasses,
+  gridLayouts,
+  formSpacing,
+  primaryButtonClasses
+} from "@/lib/design-tokens";
+import { cn } from "@/lib/utils";
 
 const dealershipSettingsSchema = z.object({
   name: z.string().min(1, "Dealership name is required"),
@@ -111,32 +122,19 @@ export default function DealershipSettings() {
 
   return (
     <PageLayout className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      {/* Header */}
-      <div className="sticky top-0 z-40 backdrop-blur-lg bg-background/90 border-b shadow-sm">
-        <div className="container mx-auto px-4 md:px-6 py-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-primary via-primary/90 to-primary/70 shadow-lg shadow-primary/25">
-                <Building2 className="w-6 h-6 text-primary-foreground" />
-              </div>
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-                  Dealership Settings
-                </h1>
-                <p className="text-sm text-muted-foreground font-medium mt-0.5">
-                  Configure dealership information and defaults
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted">
-              <Shield className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium">Administrator Only</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <PageHero
+        icon={Building2}
+        title="Dealership Settings"
+        description="Configure dealership information and defaults"
+        actions={
+          <Badge variant="outline" className="flex items-center gap-2 px-3 py-2">
+            <Shield className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium">Administrator Only</span>
+          </Badge>
+        }
+      />
 
-      <div className="container max-w-4xl mx-auto px-4 md:px-6 py-6 space-y-6">
+      <div className={cn(containerPadding, layoutSpacing.section, "max-w-4xl", formSpacing.section)}>
 
         {isLoading ? (
           <div className="flex justify-center py-12">
@@ -144,14 +142,14 @@ export default function DealershipSettings() {
           </div>
         ) : (
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className={formSpacing.section}>
               {/* Contact Information */}
-              <Card>
+              <Card className={premiumCardClasses}>
                 <CardHeader>
                   <CardTitle>Contact Information</CardTitle>
                   <CardDescription>Business contact details</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className={formSpacing.fields}>
                   <FormField
                     control={form.control}
                     name="name"
@@ -170,7 +168,7 @@ export default function DealershipSettings() {
                     )}
                   />
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className={gridLayouts.twoCol}>
                     <FormField
                       control={form.control}
                       name="phone"
@@ -227,7 +225,7 @@ export default function DealershipSettings() {
                     )}
                   />
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <FormField
                       control={form.control}
                       name="city"
@@ -287,12 +285,12 @@ export default function DealershipSettings() {
               </Card>
 
               {/* Branding */}
-              <Card>
+              <Card className={premiumCardClasses}>
                 <CardHeader>
                   <CardTitle>Branding</CardTitle>
                   <CardDescription>Visual identity and colors</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className={formSpacing.fields}>
                   <FormField
                     control={form.control}
                     name="logoUrl"
@@ -332,13 +330,13 @@ export default function DealershipSettings() {
               </Card>
 
               {/* Financial Defaults */}
-              <Card>
+              <Card className={premiumCardClasses}>
                 <CardHeader>
                   <CardTitle>Financial Defaults</CardTitle>
                   <CardDescription>Default values for new deals</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <CardContent className={formSpacing.fields}>
+                  <div className={gridLayouts.twoCol}>
                     <FormField
                       control={form.control}
                       name="defaultSalesTaxRate"
@@ -383,10 +381,11 @@ export default function DealershipSettings() {
               </Card>
 
               {/* Submit Button */}
-              <div className="flex justify-end gap-3">
+              <div className="flex justify-end gap-3 pt-6 border-t">
                 <Button
                   type="submit"
                   disabled={updateMutation.isPending}
+                  className={primaryButtonClasses}
                   data-testid="button-save-settings"
                 >
                   {updateMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

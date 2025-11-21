@@ -10,9 +10,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
-import { Search, Plus, ArrowLeft } from 'lucide-react';
+import { Search, Plus, ArrowLeft, FileText } from 'lucide-react';
 import { StockNumberQuickAdd } from '@/components/stock-number-quick-add';
 import { PageLayout } from '@/components/page-layout';
+import { PageHero } from '@/components/page-hero';
 import {
   Form,
   FormControl,
@@ -29,6 +30,15 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { Customer, Vehicle, User } from '@shared/schema';
+import {
+  containerPadding,
+  layoutSpacing,
+  premiumCardClasses,
+  formSpacing,
+  statusColors,
+  primaryButtonClasses
+} from '@/lib/design-tokens';
+import { cn } from '@/lib/utils';
 
 const newDealSchema = z.object({
   customerId: z.string().uuid('Please select a customer'),
@@ -204,43 +214,32 @@ export default function NewDeal() {
   };
   
   return (
-    <PageLayout className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b bg-card">
-        <div className="max-w-4xl mx-auto p-8">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setLocation('/deals')}
-              data-testid="button-back"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-            <div>
-              <h1 className="text-3xl font-semibold text-foreground">Create New Deal</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Set up a new deal with customer and vehicle information
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-      
+    <PageLayout className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <PageHero
+        icon={FileText}
+        title="Create New Deal"
+        description="Set up a new deal with customer and vehicle information"
+        backButton={{
+          label: "Back to Deals",
+          onClick: () => setLocation('/deals'),
+          testId: "button-back"
+        }}
+      />
+
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto p-8">
-        <div className="grid gap-6">
+      <div className={cn(containerPadding, layoutSpacing.page)}>
+        <div className="max-w-4xl mx-auto space-y-6">
           {/* Quick Start Option */}
-          <Card className="p-6 bg-primary/5 border-primary/20">
+          <Card className={cn(premiumCardClasses, statusColors.info, "p-6")}>
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <h3 className="text-lg font-semibold mb-2">Quick Start Demo</h3>
                 <p className="text-sm text-muted-foreground mb-4">
                   Create a sample deal with pre-filled customer and vehicle data to explore the platform
                 </p>
-                <Button 
+                <Button
                   onClick={createQuickDeal}
-                  className="gap-2"
+                  className={primaryButtonClasses}
                   data-testid="button-quick-start"
                 >
                   <Plus className="w-4 h-4" />
@@ -260,10 +259,10 @@ export default function NewDeal() {
           </div>
           
           {/* Manual Creation Form */}
-          <Card className="p-6">
+          <Card className={cn(premiumCardClasses, "p-6")}>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <div className="space-y-4">
+              <form onSubmit={form.handleSubmit(onSubmit)} className={formSpacing.section}>
+                <div className={formSpacing.fields}>
                   <h3 className="text-lg font-semibold">Deal Information</h3>
                   
                   <FormField
@@ -273,7 +272,7 @@ export default function NewDeal() {
                       <FormItem>
                         <FormLabel>Customer *</FormLabel>
                         <FormControl>
-                          <div className="space-y-2">
+                          <div className={formSpacing.fieldGroup}>
                             <div className="relative">
                               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                               <Input
@@ -289,9 +288,10 @@ export default function NewDeal() {
                                 {customers.map((customer) => (
                                   <div
                                     key={customer.id}
-                                    className={`p-3 cursor-pointer hover-elevate ${
-                                      field.value === customer.id ? 'bg-primary/10' : ''
-                                    }`}
+                                    className={cn(
+                                      "p-3 cursor-pointer hover-elevate",
+                                      field.value === customer.id && statusColors.info
+                                    )}
                                     onClick={() => field.onChange(customer.id)}
                                   >
                                     <div className="font-medium">
@@ -318,9 +318,9 @@ export default function NewDeal() {
                       <FormItem>
                         <FormLabel>Vehicle *</FormLabel>
                         <FormControl>
-                          <div className="space-y-4">
+                          <div className={formSpacing.fields}>
                             {/* Stock Number Quick Add - Primary Method */}
-                            <StockNumberQuickAdd 
+                            <StockNumberQuickAdd
                               onVehicleSelect={(vehicle) => {
                                 field.onChange(vehicle.id);
                                 setSelectedVehicle(vehicle);
@@ -332,7 +332,7 @@ export default function NewDeal() {
                               selectedVehicle={selectedVehicle}
                               placeholder="Type stock# for quick add..."
                             />
-                            
+
                             {/* Divider */}
                             <div className="relative">
                               <div className="absolute inset-0 flex items-center">
@@ -342,7 +342,7 @@ export default function NewDeal() {
                                 <span className="bg-background px-2 text-muted-foreground">or search</span>
                               </div>
                             </div>
-                            
+
                             {/* Text Search */}
                             <div className="relative">
                               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -359,9 +359,10 @@ export default function NewDeal() {
                                 {vehicles.map((vehicle) => (
                                   <div
                                     key={vehicle.id}
-                                    className={`p-3 cursor-pointer hover-elevate ${
-                                      field.value === vehicle.id ? 'bg-primary/10' : ''
-                                    }`}
+                                    className={cn(
+                                      "p-3 cursor-pointer hover-elevate",
+                                      field.value === vehicle.id && statusColors.info
+                                    )}
                                     onClick={() => {
                                       field.onChange(vehicle.id);
                                       setSelectedVehicle(vehicle);
@@ -384,8 +385,9 @@ export default function NewDeal() {
                     )}
                   />
                 </div>
-                
-                <div className="flex gap-3 justify-end pt-4 border-t">
+
+
+                <div className="flex gap-3 justify-end pt-6 border-t">
                   <Button
                     type="button"
                     variant="outline"
@@ -397,6 +399,7 @@ export default function NewDeal() {
                   <Button
                     type="submit"
                     disabled={createDealMutation.isPending}
+                    className={primaryButtonClasses}
                     data-testid="button-create"
                   >
                     {createDealMutation.isPending ? 'Creating...' : 'Create Deal'}

@@ -5,7 +5,15 @@ import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { premiumCardClasses, gridLayouts } from '@/lib/design-tokens';
+import {
+  premiumCardClasses,
+  gridLayouts,
+  containerPadding,
+  layoutSpacing,
+  statusColors,
+  formSpacing,
+  primaryButtonClasses
+} from '@/lib/design-tokens';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -145,7 +153,7 @@ export default function UserManagement() {
           <Button
             onClick={() => setShowCreateDialog(true)}
             size="lg"
-            className="gap-2 shadow-lg shadow-primary/20"
+            className={primaryButtonClasses}
             data-testid="button-create-user"
           >
             <Plus className="w-4 h-4" />
@@ -154,7 +162,7 @@ export default function UserManagement() {
         }
       />
 
-      <div className="container mx-auto px-4 md:px-6 py-8">
+      <div className={cn(containerPadding, layoutSpacing.page)}>
         {/* Users List */}
         {isLoading ? (
           <Card className={premiumCardClasses}>
@@ -191,7 +199,7 @@ export default function UserManagement() {
                           <Badge variant="secondary">You</Badge>
                         )}
                       </div>
-                      <div className="space-y-2">
+                      <div className={formSpacing.fieldGroup}>
                         <Badge variant={roleColors[user.role]} className="text-xs">
                           {roleLabels[user.role]}
                         </Badge>
@@ -212,7 +220,7 @@ export default function UserManagement() {
                           </Badge>
                         )}
                         {user.isActive ? (
-                          <Badge variant="default" className="text-xs bg-green-500/10 text-green-600 hover:bg-green-500/20">
+                          <Badge variant="default" className={cn("text-xs", statusColors.success)}>
                             Active
                           </Badge>
                         ) : (
@@ -248,8 +256,8 @@ export default function UserManagement() {
           </DialogHeader>
 
           <form onSubmit={handleCreateUser}>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
+            <div className={cn(formSpacing.fields, layoutSpacing.content)}>
+              <div className={formSpacing.fieldGroup}>
                 <Label htmlFor="fullName">Full Name *</Label>
                 <Input
                   id="fullName"
@@ -261,7 +269,7 @@ export default function UserManagement() {
                 />
               </div>
 
-              <div className="space-y-2">
+              <div className={formSpacing.fieldGroup}>
                 <Label htmlFor="username">Username *</Label>
                 <Input
                   id="username"
@@ -273,7 +281,7 @@ export default function UserManagement() {
                 />
               </div>
 
-              <div className="space-y-2">
+              <div className={formSpacing.fieldGroup}>
                 <Label htmlFor="email">Email *</Label>
                 <Input
                   id="email"
@@ -286,7 +294,7 @@ export default function UserManagement() {
                 />
               </div>
 
-              <div className="space-y-2">
+              <div className={formSpacing.fieldGroup}>
                 <Label htmlFor="password">Temporary Password *</Label>
                 <Input
                   id="password"
@@ -302,7 +310,7 @@ export default function UserManagement() {
                 </p>
               </div>
 
-              <div className="space-y-2">
+              <div className={formSpacing.fieldGroup}>
                 <Label htmlFor="role">Role *</Label>
                 <Select
                   value={formData.role}

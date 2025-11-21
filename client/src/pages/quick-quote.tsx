@@ -13,19 +13,30 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { PageLayout } from '@/components/page-layout';
+import { PageHero } from '@/components/page-hero';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  DollarSign, 
-  TrendingDown, 
-  Calendar, 
-  Percent, 
-  ArrowLeft, 
+import {
+  DollarSign,
+  TrendingDown,
+  Calendar,
+  Percent,
+  ArrowLeft,
   Zap,
   CheckCircle2,
   FileText
 } from 'lucide-react';
 import type { User as UserType, Vehicle } from '@shared/schema';
 import Decimal from 'decimal.js';
+import {
+  containerPadding,
+  layoutSpacing,
+  premiumCardClasses,
+  statusColors,
+  primaryButtonClasses,
+  gridLayouts,
+  formSpacing
+} from '@/lib/design-tokens';
+import { cn } from '@/lib/utils';
 
 Decimal.set({ precision: 20, rounding: Decimal.ROUND_HALF_UP });
 
@@ -188,57 +199,33 @@ export default function QuickQuote() {
   };
   
   return (
-    <PageLayout className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      {/* Header */}
-      <div className="sticky top-0 z-40 backdrop-blur-md bg-gradient-to-r from-background/90 to-primary/10 border-b neon-border-subtle">
-        <div className="container mx-auto px-3 md:px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setLocation('/')}
-                data-testid="button-back-dashboard"
-              >
-                <ArrowLeft className="w-4 h-4" />
-              </Button>
-              <div className="flex items-center gap-2">
-                <Zap className="w-8 h-8 text-primary premium-glow-market" />
-                <div>
-                  <h1 className="text-2xl md:text-3xl font-semibold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                    Deal Studio
-                  </h1>
-                  {vehicle ? (
-                    <p className="text-sm text-muted-foreground mt-1 font-mono">
-                      {vehicle.year} {vehicle.make} {vehicle.model}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Quick Build • 30-second payment quotes
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      
+    <PageLayout className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <PageHero
+        icon={Zap}
+        title="Deal Studio"
+        description={vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model}` : "Quick Build • 30-second payment quotes"}
+        backButton={{
+          label: "Back to Dashboard",
+          onClick: () => setLocation('/'),
+          testId: "button-back-dashboard"
+        }}
+      />
+
       {/* Main Content */}
-      <div className="container mx-auto px-3 md:px-4 py-6 max-w-4xl">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className={cn(containerPadding, layoutSpacing.section, "max-w-4xl")}>
+        <div className={gridLayouts.twoCol}>
           {/* Input Form */}
-          <div className="space-y-6">
-            <Card>
+          <div className={formSpacing.section}>
+            <Card className={premiumCardClasses}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <DollarSign className="w-5 h-5" />
                   Vehicle Details
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className={formSpacing.section}>
                 {/* Vehicle Price */}
-                <div className="space-y-2">
+                <div className={formSpacing.fieldGroup}>
                   <Label htmlFor="vehiclePrice" className="text-base font-medium">
                     Vehicle Price
                   </Label>
@@ -257,9 +244,9 @@ export default function QuickQuote() {
                     <p className="text-sm text-destructive">{form.formState.errors.vehiclePrice.message}</p>
                   )}
                 </div>
-                
+
                 {/* Down Payment */}
-                <div className="space-y-2">
+                <div className={formSpacing.fieldGroup}>
                   <div className="flex items-center justify-between">
                     <Label htmlFor="downPayment" className="text-base font-medium">
                       Down Payment
@@ -311,17 +298,17 @@ export default function QuickQuote() {
                 </div>
               </CardContent>
             </Card>
-            
-            <Card>
+
+            <Card className={premiumCardClasses}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Calendar className="w-5 h-5" />
                   Finance Terms
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className={formSpacing.section}>
                 {/* APR */}
-                <div className="space-y-2">
+                <div className={formSpacing.fieldGroup}>
                   <Label htmlFor="apr" className="text-base font-medium">
                     APR (%)
                   </Label>
@@ -341,9 +328,10 @@ export default function QuickQuote() {
                     <p className="text-sm text-destructive">{form.formState.errors.apr.message}</p>
                   )}
                 </div>
-                
+
+
                 {/* Term */}
-                <div className="space-y-2">
+                <div className={formSpacing.fieldGroup}>
                   <Label htmlFor="term" className="text-base font-medium">
                     Term (months)
                   </Label>
@@ -366,10 +354,11 @@ export default function QuickQuote() {
               </CardContent>
             </Card>
           </div>
-          
+
+
           {/* Payment Summary - Sticky on Desktop */}
           <div className="lg:sticky lg:top-24 lg:self-start">
-            <Card className="neon-border bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5">
+            <Card className={cn(premiumCardClasses, statusColors.info)}>
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg bg-gradient-to-r from-foreground to-foreground/60 bg-clip-text">
@@ -381,7 +370,7 @@ export default function QuickQuote() {
                   </Badge>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className={formSpacing.section}>
                 {/* Monthly Payment - Large Display */}
                 <div className="text-center py-6 px-4 bg-background/60 backdrop-blur-sm rounded-lg neon-border-subtle">
                   <p className="text-sm text-muted-foreground mb-2">Monthly Payment</p>
@@ -414,12 +403,13 @@ export default function QuickQuote() {
                     </span>
                   </div>
                 </div>
-                
+
+
                 {/* Actions */}
-                <div className="space-y-3 pt-4">
+                <div className={cn(formSpacing.fieldGroup, "pt-4")}>
                   <Button
                     size="lg"
-                    className="w-full h-14 text-base gap-2"
+                    className={cn("w-full h-14 text-base", primaryButtonClasses)}
                     onClick={handleSaveQuote}
                     disabled={createDealMutation.isPending || watchedValues.vehiclePrice <= 0}
                     data-testid="button-save-quote"
@@ -439,10 +429,10 @@ export default function QuickQuote() {
                 </div>
               </CardContent>
             </Card>
-            
+
             {/* Quick Tips */}
-            <Card className="mt-4 bg-muted/50">
-              <CardContent className="pt-6 space-y-2 text-xs text-muted-foreground">
+            <Card className={cn(premiumCardClasses, "mt-4")}>
+              <CardContent className={cn("pt-6", formSpacing.fieldGroup, "text-xs text-muted-foreground")}>
                 <p className="flex items-start gap-2">
                   <TrendingDown className="w-3 h-3 mt-0.5 shrink-0" />
                   <span>Larger down payments reduce monthly payments</span>
