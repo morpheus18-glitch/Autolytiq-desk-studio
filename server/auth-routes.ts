@@ -1,16 +1,16 @@
 import { Express, Request, Response } from "express";
 import { storage } from "./storage";
-import { requireAuth, requireRole, requirePermission } from "./middleware";
+import { requireAuth, requireRole } from "./auth";
 import { hashPassword } from "./auth";
-import { 
-  logSecurityEvent, 
-  generateResetToken, 
-  hashResetToken, 
+import {
+  generateResetToken,
+  hashResetToken,
   generateResetTokenExpiry,
   generateMfaSecret,
   generateQrCodeUrl,
   verifyTotp
-} from "./auth-helpers";
+} from "@/core/utils";
+import { logSecurityEvent } from "./auth-helpers";
 import { sendEmail, generatePasswordResetEmail, generateWelcomeEmail } from "./email-config";
 import { z } from "zod";
 import QRCode from "qrcode";

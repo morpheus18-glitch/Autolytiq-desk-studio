@@ -97,13 +97,21 @@ export default function NewDeal() {
         salesManagerId: data.salesManagerId || undefined,
       };
       const response = await apiRequest('POST', '/api/deals', dealData);
-      return await response.json();
+      const result = await response.json();
+
+      // Handle new atomic operations response format
+      if (result.success === false) {
+        throw new Error(result.error || 'Failed to create deal');
+      }
+
+      // Return the deal from the atomic operations result
+      return result.data?.deal || result;
     },
     onSuccess: (deal) => {
       toast({ title: 'Deal created successfully!' });
       setLocation(`/deals/${deal.id}`);
     },
-    onError: (error: any) => {
+    onError: (error: any) {
       toast({
         title: 'Failed to create deal',
         description: error.message || 'Please try again',
@@ -155,13 +163,20 @@ export default function NewDeal() {
       const salesperson = users.find(u => u.role === 'salesperson') || users[0];
       const salespersonId = salesperson.id;
       
-      // Create the deal
+      // Create the deal (using atomic operations)
       const dealRes = await apiRequest('POST', '/api/deals', {
         customerId: customer.id,
         vehicleId: vehicle.id,
         salespersonId,
       });
-      const deal = await dealRes.json();
+      const dealResult = await dealRes.json();
+
+      // Handle new atomic operations response format
+      if (dealResult.success === false) {
+        throw new Error(dealResult.error || 'Failed to create deal');
+      }
+
+      const deal = dealResult.data?.deal || dealResult;
       
       // Create an initial scenario
       await apiRequest('POST', `/api/deals/${deal.id}/scenarios`, {

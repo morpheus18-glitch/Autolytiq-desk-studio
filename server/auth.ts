@@ -290,12 +290,39 @@ export function requireRole(...roles: string[]) {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Authentication required" });
     }
-    
+
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({ message: "Insufficient permissions" });
     }
-    
+
     next();
+  };
+}
+
+// Middleware to require specific permission(s) - user must have at least one
+export function requirePermission(...permissionNames: string[]) {
+  return async (req: any, res: any, next: any) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+
+    try {
+      // Import here to avoid circular dependency
+      const { hasAnyPermission } = await import("./auth-helpers");
+      const hasAccess = await hasAnyPermission(req.user.id, permissionNames);
+
+      if (!hasAccess) {
+        return res.status(403).json({
+          message: "Insufficient permissions",
+          required: permissionNames
+        });
+      }
+
+      next();
+    } catch (error) {
+      console.error("Permission check error:", error);
+      return res.status(500).json({ message: "Error checking permissions" });
+    }
   };
 }
 

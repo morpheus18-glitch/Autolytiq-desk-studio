@@ -3,7 +3,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DollarSign } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { isValidCurrencyInput, formatCurrencyOnBlur, parseCurrency } from "@/lib/currency";
+import { parseCurrency } from '@/core/utils';
+import { isValidCurrencyInput, formatCurrencyOnBlur } from "@/lib/currency";
 
 interface CurrencyFieldProps {
   label?: string;

@@ -43,18 +43,26 @@ export function DealCreationDialog({ open, onOpenChange, vehicleId, customerId }
       if (!salesperson) {
         throw new Error('No users available');
       }
-      
+
       const response = await apiRequest('POST', '/api/deals', {
         salespersonId: salesperson.id,
         ...payload,
       });
-      return await response.json();
+      const result = await response.json();
+
+      // Handle new atomic operations response format
+      if (result.success === false) {
+        throw new Error(result.error || 'Failed to create deal');
+      }
+
+      // Return the deal from the atomic operations result
+      return result.data?.deal || result;
     },
     onSuccess: (deal) => {
       queryClient.invalidateQueries({ queryKey: ['/api/deals'] });
       queryClient.invalidateQueries({ queryKey: ['/api/deals/stats'] });
     },
-    onError: (error: any) => {
+    onError: (error: any) {
       toast({
         title: 'Failed to create deal',
         description: error.message || 'Please try again',

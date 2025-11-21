@@ -1,0 +1,229 @@
+{
+  "root": true,
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": 2020,
+    "sourceType": "module",
+    "ecmaFeatures": {
+      "jsx": true
+    },
+    "project": "./tsconfig.json"
+  },
+  "settings": {
+    "react": {
+      "version": "detect"
+    },
+    "import/resolver": {
+      "typescript": {
+        "project": "./tsconfig.json"
+      }
+    },
+    "boundaries/elements": [
+      {
+        "type": "client",
+        "pattern": "client/**/*",
+        "mode": "full"
+      },
+      {
+        "type": "server",
+        "pattern": "server/**/*",
+        "mode": "full"
+      },
+      {
+        "type": "shared",
+        "pattern": "shared/**/*",
+        "mode": "full"
+      },
+      {
+        "type": "module-public",
+        "pattern": "src/modules/*/index.ts",
+        "mode": "file"
+      },
+      {
+        "type": "module-internal",
+        "pattern": "src/modules/*/**/*",
+        "mode": "full",
+        "capture": ["moduleName"]
+      },
+      {
+        "type": "core",
+        "pattern": "src/core/**/*",
+        "mode": "full"
+      },
+      {
+        "type": "tests",
+        "pattern": "tests/**/*",
+        "mode": "full"
+      }
+    ]
+  },
+  "env": {
+    "browser": true,
+    "es2020": true,
+    "node": true
+  },
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:@typescript-eslint/recommended-requiring-type-checking",
+    "plugin:react/recommended",
+    "plugin:react-hooks/recommended",
+    "plugin:import/errors",
+    "plugin:import/warnings",
+    "plugin:import/typescript",
+    "plugin:boundaries/recommended"
+  ],
+  "plugins": [
+    "@typescript-eslint",
+    "react",
+    "react-hooks",
+    "import",
+    "boundaries"
+  ],
+  "rules": {
+    "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/explicit-function-return-type": [
+      "error",
+      {
+        "allowExpressions": true,
+        "allowTypedFunctionExpressions": true,
+        "allowHigherOrderFunctions": true
+      }
+    ],
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }
+    ],
+    "@typescript-eslint/strict-boolean-expressions": "error",
+    "@typescript-eslint/no-floating-promises": "error",
+    "@typescript-eslint/no-misused-promises": "error",
+    "@typescript-eslint/await-thenable": "error",
+    "@typescript-eslint/no-unnecessary-type-assertion": "error",
+    "@typescript-eslint/prefer-nullish-coalescing": "error",
+    "@typescript-eslint/prefer-optional-chain": "error",
+
+    "import/order": [
+      "error",
+      {
+        "groups": [
+          "builtin",
+          "external",
+          "internal",
+          ["parent", "sibling"],
+          "index"
+        ],
+        "pathGroups": [
+          {
+            "pattern": "@/**",
+            "group": "internal",
+            "position": "after"
+          },
+          {
+            "pattern": "@shared/**",
+            "group": "internal",
+            "position": "after"
+          }
+        ],
+        "newlines-between": "always",
+        "alphabetize": {
+          "order": "asc",
+          "caseInsensitive": true
+        }
+      }
+    ],
+    "import/no-cycle": "error",
+    "import/no-unresolved": "error",
+    "import/no-relative-parent-imports": "error",
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["src/modules/*/services/**", "src/modules/*/api/**", "src/modules/*/components/**", "src/modules/*/hooks/**", "src/modules/*/types/**", "src/modules/*/utils/**"],
+            "message": "Import from module's public API (src/modules/moduleName) instead of internal paths"
+          },
+          {
+            "group": ["**/modules/*/!(index).ts", "**/modules/*/!(index).tsx"],
+            "message": "Only import from module index.ts (public API)"
+          }
+        ]
+      }
+    ],
+
+    "boundaries/element-types": [
+      "error",
+      {
+        "default": "disallow",
+        "rules": [
+          {
+            "from": "client",
+            "allow": ["client", "shared", "module-public", "core"]
+          },
+          {
+            "from": "server",
+            "allow": ["server", "shared", "module-public", "core"]
+          },
+          {
+            "from": "shared",
+            "allow": ["shared"]
+          },
+          {
+            "from": "module-internal",
+            "allow": ["module-internal", "shared", "core"],
+            "message": "Modules can only import from their own internals, shared, or core. Import other modules via their public API."
+          },
+          {
+            "from": "module-public",
+            "allow": ["module-internal", "shared", "core"]
+          },
+          {
+            "from": "core",
+            "allow": ["core", "shared"]
+          },
+          {
+            "from": "tests",
+            "allow": ["client", "server", "shared", "tests", "module-public", "module-internal", "core"]
+          }
+        ]
+      }
+    ],
+    "boundaries/no-unknown": "error",
+    "boundaries/no-unknown-files": "error",
+
+    "react/prop-types": "off",
+    "react/react-in-jsx-scope": "off",
+    "react/display-name": "off",
+    "react-hooks/rules-of-hooks": "error",
+    "react-hooks/exhaustive-deps": "warn",
+
+    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "no-debugger": "error",
+    "no-alert": "error",
+    "no-var": "error",
+    "prefer-const": "error",
+    "prefer-arrow-callback": "error",
+    "prefer-template": "error",
+    "no-nested-ternary": "error",
+    "max-depth": ["error", 3],
+    "max-lines": ["error", 500],
+    "complexity": ["error", 10]
+  },
+  "overrides": [
+    {
+      "files": ["*.test.ts", "*.test.tsx", "*.spec.ts", "*.spec.tsx"],
+      "rules": {
+        "@typescript-eslint/no-explicit-any": "warn",
+        "max-lines": "off"
+      }
+    },
+    {
+      "files": ["server/**/*.ts"],
+      "rules": {
+        "no-console": "off"
+      }
+    }
+  ]
+}

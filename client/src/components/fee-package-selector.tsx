@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Package, Check, Loader2 } from 'lucide-react';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
-import { formatCurrency } from '@/lib/currency';
+import { formatCurrency } from '@/core/utils';
 import type { FeePackageTemplate } from '@shared/schema';
 
 interface FeePackageSelectorProps {

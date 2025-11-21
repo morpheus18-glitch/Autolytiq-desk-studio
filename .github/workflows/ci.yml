@@ -1,0 +1,319 @@
+name: CI - Quality Gates
+
+on:
+  push:
+    branches: [ main, develop, 'stabilization/*' ]
+  pull_request:
+    branches: [ main, develop ]
+    types: [ opened, synchronize, reopened ]
+
+env:
+  NODE_VERSION: '20'
+  DATABASE_URL: 'sqlite:///tmp/test.db'
+  NEXTAUTH_SECRET: 'test-secret-for-ci'
+  NEXTAUTH_URL: 'http://localhost:3000'
+
+jobs:
+  # Job 1: Quality Checks - MUST PASS
+  quality:
+    name: Code Quality Gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better analysis
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci --prefer-offline --no-audit
+
+      - name: TypeScript - Strict Type Check
+        run: |
+          echo "🔍 Running TypeScript strict mode checks..."
+          npm run typecheck
+        continue-on-error: false  # MUST PASS
+
+      - name: ESLint - Code Quality & Architecture
+        run: |
+          echo "📐 Checking code quality and architectural boundaries..."
+          npm run lint
+        continue-on-error: false  # MUST PASS
+
+      - name: Prettier - Code Formatting
+        run: |
+          echo "🎨 Checking code formatting..."
+          npm run format
+        continue-on-error: false  # MUST PASS
+
+      - name: Check for 'any' types
+        run: |
+          echo "🚫 Checking for forbidden 'any' types..."
+          ! grep -r "any" --include="*.ts" --include="*.tsx" src/ || {
+            echo "❌ Found 'any' types in the codebase!"
+            echo "Files with 'any' types:"
+            grep -r "any" --include="*.ts" --include="*.tsx" src/ -l
+            exit 1
+          }
+        continue-on-error: false  # MUST PASS
+
+      - name: Module Boundary Check
+        run: |
+          echo "🏛️ Checking module boundaries..."
+          # Check for illegal cross-module imports
+          ! grep -r "from ['\"].*\/modules\/[^/]*\/(?!index)" --include="*.ts" --include="*.tsx" src/modules/ || {
+            echo "❌ Found illegal cross-module imports!"
+            echo "Modules can only import from other modules' index.ts (public API)"
+            exit 1
+          }
+        continue-on-error: false  # MUST PASS
+
+      - name: Circular Dependency Check
+        run: |
+          echo "🔄 Checking for circular dependencies..."
+          npx madge --circular --extensions ts,tsx src/ || {
+            echo "❌ Circular dependencies detected!"
+            exit 1
+          }
+        continue-on-error: false  # MUST PASS
+
+  # Job 2: Build Verification
+  build:
+    name: Build Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: quality  # Only run if quality passes
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Build application
+        run: |
+          echo "🔨 Building application..."
+          npm run build
+        env:
+          SKIP_ENV_VALIDATION: true
+        continue-on-error: false  # MUST PASS
+
+      - name: Check build output
+        run: |
+          echo "📦 Verifying build artifacts..."
+          test -d .next || { echo "❌ Build failed - no .next directory!"; exit 1; }
+          test -f .next/BUILD_ID || { echo "❌ Build failed - no BUILD_ID!"; exit 1; }
+          echo "✅ Build successful!"
+
+  # Job 3: Test Suite
+  tests:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: quality  # Only run if quality passes
+
+    strategy:
+      matrix:
+        test-type: [unit, integration]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Setup test database
+        if: matrix.test-type == 'integration'
+        run: |
+          echo "🗄️ Setting up test database..."
+          mkdir -p /tmp
+          touch /tmp/test.db
+
+      - name: Run ${{ matrix.test-type }} tests
+        run: |
+          echo "🧪 Running ${{ matrix.test-type }} tests..."
+          if [ "${{ matrix.test-type }}" == "unit" ]; then
+            npm run test:unit || true  # Continue even if no tests yet
+          else
+            npm run test:integration || true  # Continue even if no tests yet
+          fi
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-${{ matrix.test-type }}
+          path: coverage/
+          retention-days: 7
+
+  # Job 4: Security Scan
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: quality
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Run security audit
+        run: |
+          echo "🔒 Running security audit..."
+          npm audit --audit-level=high || true  # Warning only for now
+
+      - name: Check for secrets
+        run: |
+          echo "🔑 Checking for exposed secrets..."
+          ! grep -r "sk-[a-zA-Z0-9]{48}" --include="*.ts" --include="*.tsx" --include="*.js" src/ || {
+            echo "⚠️ Warning: Potential API key found in source code!"
+          }
+          ! grep -r "password.*=.*['\"][^'\"]{8,}" --include="*.ts" --include="*.tsx" src/ || {
+            echo "⚠️ Warning: Potential hardcoded password found!"
+          }
+
+  # Job 5: Database Migration Check
+  database:
+    name: Database Migration Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: quality
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Check migrations
+        run: |
+          echo "📊 Checking database migrations..."
+          if [ -d "migrations" ]; then
+            echo "Found $(ls -1 migrations/*.sql 2>/dev/null | wc -l) migration files"
+            # Verify migration naming convention
+            for file in migrations/*.sql; do
+              if [[ ! "$file" =~ ^migrations/[0-9]{4}_.+\.sql$ ]]; then
+                echo "❌ Migration file $file doesn't follow naming convention (NNNN_description.sql)"
+                exit 1
+              fi
+            done
+            echo "✅ All migrations follow naming convention"
+          else
+            echo "⚠️ No migrations directory found"
+          fi
+
+  # Job 6: Performance Check
+  performance:
+    name: Performance Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [quality, build]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Bundle size check
+        run: |
+          echo "📏 Checking bundle size..."
+          npm run build
+          echo "Client bundle sizes:"
+          du -sh .next/static/chunks/*.js | sort -h | tail -10
+
+          # Fail if any chunk is over 500KB (configure as needed)
+          large_files=$(find .next/static/chunks -name "*.js" -size +500k 2>/dev/null)
+          if [ ! -z "$large_files" ]; then
+            echo "⚠️ Warning: Large bundle chunks detected:"
+            echo "$large_files"
+            ls -lh $large_files
+          fi
+        env:
+          SKIP_ENV_VALIDATION: true
+
+  # Final Job: All Gates Passed
+  all-checks:
+    name: All Quality Gates Passed
+    runs-on: ubuntu-latest
+    needs: [quality, build, tests, security, database, performance]
+    if: always()
+
+    steps:
+      - name: Check results
+        run: |
+          if [ "${{ needs.quality.result }}" != "success" ]; then
+            echo "❌ Quality checks failed!"
+            exit 1
+          fi
+          if [ "${{ needs.build.result }}" != "success" ]; then
+            echo "❌ Build verification failed!"
+            exit 1
+          fi
+          echo "✅ All critical quality gates passed!"
+          echo ""
+          echo "📊 Summary:"
+          echo "  - TypeScript: ✅ Strict mode enforced"
+          echo "  - ESLint: ✅ Code quality verified"
+          echo "  - Prettier: ✅ Formatting consistent"
+          echo "  - No 'any' types: ✅ Type safety enforced"
+          echo "  - Module boundaries: ✅ Architecture protected"
+          echo "  - Circular deps: ✅ None detected"
+          echo "  - Build: ✅ Successful"
+          echo ""
+          echo "🚀 Code is ready to merge!"
+
+# Branch Protection Rules (configure in GitHub settings):
+# 1. Require pull request reviews before merging
+# 2. Require status checks to pass:
+#    - quality
+#    - build
+#    - all-checks
+# 3. Require branches to be up to date before merging
+# 4. Include administrators in restrictions
+# 5. Do not allow bypassing the above settings

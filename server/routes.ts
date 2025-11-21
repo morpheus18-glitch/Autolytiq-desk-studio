@@ -1,62 +1,29 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import rateLimit from "express-rate-limit";
-import helmet from "helmet";
 import { insertCustomerSchema, insertVehicleSchema, insertDealSchema, insertDealScenarioSchema, insertTradeVehicleSchema, insertTaxJurisdictionSchema, insertQuickQuoteSchema, insertQuickQuoteContactSchema } from "@shared/schema";
 import { calculateFinancePayment, calculateLeasePayment, calculateSalesTax } from "./calculations";
 import { z } from "zod";
 import { aiService, type ChatMessage, type DealContext } from "./ai-service";
 import { setupAuth, requireAuth, requireRole } from "./auth";
 import { setupAuthRoutes } from "./auth-routes";
+import {
+  initializeSecurity,
+  authRateLimiter,
+  passwordResetRateLimiter,
+  userCreationRateLimiter,
+} from "./security";
 import taxRoutes from "./tax-routes";
 import localTaxRoutes from "./local-tax-routes";
 import taxEngineRoutes from "./tax-engine-routes";
 
-// Rate limiting middleware - 100 requests per minute per IP
-const limiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 100,
-  message: 'Too many requests from this IP, please try again later.',
-  standardHeaders: true,
-  legacyHeaders: false,
-  validate: { xForwardedForHeader: false },
-});
-
-// Auth rate limiting - stricter for login/register (10 attempts per minute)
-const authLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 10,
-  message: 'Too many authentication attempts, please try again later.',
-  standardHeaders: true,
-  legacyHeaders: false,
-  skipSuccessfulRequests: true,
-});
-
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Security headers with Helmet
-  app.use(helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"], // Required for Tailwind/inline styles
-        scriptSrc: ["'self'", "'unsafe-inline'"], // Required for Vite dev mode
-        imgSrc: ["'self'", "data:", "blob:"],
-        connectSrc: ["'self'"],
-        fontSrc: ["'self'", "data:"],
-        objectSrc: ["'none'"],
-        upgradeInsecureRequests: [],
-      },
-    },
-    hsts: {
-      maxAge: 31536000, // 1 year
-      includeSubDomains: true,
-      preload: true,
-    },
-    frameguard: { action: 'deny' }, // Prevent clickjacking
-    noSniff: true, // Prevent MIME sniffing
-    xssFilter: true, // Enable XSS filter
-  }));
+  // ============================================================================
+  // SECURITY INITIALIZATION
+  // ============================================================================
+  // Initialize all security middleware (helmet, rate limiting, sanitization)
+  // MUST be called BEFORE any route setup
+  initializeSecurity(app);
 
   // ============================================================================
   // MOUNT PUBLIC ROUTES BEFORE AUTH SETUP
@@ -73,11 +40,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
   // SETUP AUTHENTICATION & RATE LIMITING
   // ============================================================================
-  // Apply rate limiting BEFORE setupAuth (critical for security!)
-  // This MUST come before setupAuth because setupAuth defines /api/register and /api/login routes
-  app.use('/api/register', authLimiter);
-  app.use('/api/login', authLimiter);
-  app.use('/api', limiter);
+  // Apply STRICT rate limiting to auth endpoints BEFORE setupAuth
+  // This prevents brute force attacks and account enumeration
+  app.use('/api/register', authRateLimiter);
+  app.use('/api/login', authRateLimiter);
+  app.use('/api/auth/request-reset', passwordResetRateLimiter);
+  app.use('/api/auth/reset-password', passwordResetRateLimiter);
+  app.use('/api/admin/users', userCreationRateLimiter);
 
   // Setup authentication (session + passport middleware + auth routes)
   setupAuth(app);
@@ -1203,40 +1172,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Create customer (simplified - using temp data)
-      const customer = await storage.createCustomer({
-        firstName: 'Quick',
-        lastName: 'Quote Customer',
-      }, dealershipId);
+      // ATOMIC QUOTE CONVERSION
+      // Use atomic operations to ensure all-or-nothing conversion
+      const { createDeal } = await import('./database/atomic-operations');
 
-      // Create deal (vehicle is optional for blank desking)
-      const deal = await storage.createDeal({
+      const result = await createDeal({
+        dealershipId,
         salespersonId,
-        customerId: customer.id,
-        vehicleId: quote.vehicleId || null,
-      }, dealershipId);
-
-      // Create scenario with quote data
-      await storage.createScenario({
-        dealId: deal.id,
-        vehicleId: quote.vehicleId || null,
-        scenarioType: 'FINANCE_DEAL',
-        name: 'Quick Quote Conversion',
-        vehiclePrice: payload.vehiclePrice || 0,
-        downPayment: payload.downPayment || 0,
-        apr: payload.apr || 12.9,
-        term: payload.termMonths || 60,
-        tradeAllowance: payload.tradeValue || 0,
-        tradePayoff: payload.tradePayoff || 0,
+        vehicleId: quote.vehicleId || undefined,
+        customerData: {
+          firstName: 'Quick',
+          lastName: 'Quote Customer',
+          email: quote.customerEmail || undefined,
+          phone: quote.customerPhone || undefined,
+        },
+        scenarioData: {
+          name: 'Quick Quote Conversion',
+          scenarioType: 'FINANCE_DEAL',
+          vehiclePrice: String(payload.vehiclePrice || 0),
+          downPayment: String(payload.downPayment || 0),
+          apr: String(payload.apr || 12.9),
+          term: payload.termMonths || 60,
+          tradeAllowance: String(payload.tradeValue || 0),
+          tradePayoff: String(payload.tradePayoff || 0),
+        },
       });
 
-      // Update quote status
-      await storage.updateQuickQuote(quoteId, { 
+      // Update quote status (outside transaction - not critical)
+      await storage.updateQuickQuote(quoteId, {
         status: 'converted',
-        dealId: deal.id
+        dealId: result.deal.id
       });
 
-      res.json({ success: true, dealId: deal.id });
+      res.json({
+        success: true,
+        dealId: result.deal.id,
+        data: result
+      });
     } catch (error: any) {
       res.status(400).json({ error: error.message || 'Failed to convert quote' });
     }
@@ -1307,29 +1279,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/deals', requireAuth, async (req, res) => {
     try {
       const data = insertDealSchema.parse(req.body);
-      
+
       // SECURITY: Extract dealershipId from authenticated user for multi-tenant isolation
       const dealershipId = (req.user as any)?.dealershipId;
       if (!dealershipId) {
         return res.status(403).json({ error: 'User must belong to a dealership to create deals' });
       }
-      
-      // Override any dealershipId in payload with authenticated user's dealership
-      const deal = await storage.createDeal(data, dealershipId);
-      
-      // Create audit log
-      await storage.createAuditLog({
-        dealId: deal.id,
-        userId: data.salespersonId,
-        action: 'create',
-        entityType: 'deal',
-        entityId: deal.id,
-        metadata: { dealNumber: deal.dealNumber || 'pending' },
-      });
-      
-      res.status(201).json(deal);
+
+      // ATOMIC DEAL CREATION
+      // Uses atomic operations to ensure all-or-nothing creation
+      // No more orphaned customers, vehicles, or scenarios
+      const { createDeal, ValidationError, ResourceNotFoundError, VehicleNotAvailableError, MultiTenantViolationError } = await import('./database/atomic-operations');
+
+      try {
+        const result = await createDeal({
+          dealershipId,
+          salespersonId: data.salespersonId,
+          customerId: data.customerId || undefined,
+          vehicleId: data.vehicleId || undefined,
+          tradeVehicleId: data.tradeVehicleId || undefined,
+          initialState: data.dealState || 'DRAFT',
+        });
+
+        // Return comprehensive result
+        res.status(201).json({
+          success: true,
+          data: {
+            deal: result.deal,
+            scenario: result.scenario,
+            customer: result.customer,
+            vehicle: result.vehicle,
+          },
+        });
+      } catch (error: any) {
+        // Handle specific error types with appropriate status codes
+        if (error instanceof ValidationError) {
+          return res.status(400).json({ success: false, error: error.message });
+        }
+        if (error instanceof ResourceNotFoundError) {
+          return res.status(404).json({ success: false, error: error.message });
+        }
+        if (error instanceof VehicleNotAvailableError) {
+          return res.status(409).json({ success: false, error: error.message });
+        }
+        if (error instanceof MultiTenantViolationError) {
+          return res.status(403).json({ success: false, error: error.message });
+        }
+
+        // Generic error
+        console.error('[ERROR] Deal creation failed:', error);
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to create deal. Please try again.'
+        });
+      }
     } catch (error: any) {
-      res.status(400).json({ error: error.message || 'Failed to create deal' });
+      // Schema validation error
+      if (error.name === 'ZodError') {
+        return res.status(400).json({
+          success: false,
+          error: 'Validation failed',
+          details: error.errors
+        });
+      }
+
+      console.error('[ERROR] Unexpected error in deal creation:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to create deal'
+      });
     }
   });
   

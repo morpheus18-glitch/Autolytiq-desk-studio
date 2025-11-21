@@ -1,16 +1,30 @@
-// Referenced from javascript_database blueprint integration
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import ws from "ws";
-import * as schema from "@shared/schema";
+/**
+ * DATABASE CONFIGURATION
+ *
+ * DEPRECATED: This file is kept for backward compatibility.
+ * New code should import from './database/db-service.ts' instead.
+ *
+ * Migration guide:
+ * - Replace: import { db, pool } from './db'
+ * - With: import { db, pool } from './database/db-service'
+ *
+ * The new database service provides:
+ * - Connection pooling with health checks
+ * - Transaction management with automatic retry
+ * - Query monitoring and performance tracking
+ * - Graceful shutdown handling
+ */
 
-neonConfig.webSocketConstructor = ws;
+import { db as dbService, pool as poolService } from './database/db-service';
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
+// Re-export for backward compatibility
+export const db = dbService;
+export const pool = poolService;
+
+// Log deprecation warning in development
+if (process.env.NODE_ENV === 'development') {
+  console.warn(
+    '[DEPRECATION WARNING] Importing from server/db.ts is deprecated. ' +
+    'Please import from server/database/db-service.ts instead.'
   );
 }
-
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle({ client: pool, schema });

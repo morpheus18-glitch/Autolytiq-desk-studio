@@ -1813,3 +1813,117 @@ export const insertEmailFolderSchema = createInsertSchema(emailFolders).omit({
 });
 export type InsertEmailFolder = z.infer<typeof insertEmailFolderSchema>;
 export type EmailFolder = typeof emailFolders.$inferSelect;
+
+// ===== TAX AUDIT LOG TABLE =====
+// Complete audit trail for all tax calculations
+// CRITICAL: Financial/legal requirement - must record every calculation
+export const taxAuditLog = pgTable("tax_audit_log", {
+  id: uuid("id").primaryKey().defaultRandom(),
+
+  // Calculation identification
+  calculationId: uuid("calculation_id").notNull().unique(), // UUID for this specific calculation
+  dealId: uuid("deal_id").references(() => deals.id, { onDelete: "set null" }),
+  dealershipId: uuid("dealership_id").notNull().references(() => dealershipSettings.id),
+
+  // Audit trail
+  calculatedBy: uuid("calculated_by").notNull().references(() => users.id),
+  calculatedAt: timestamp("calculated_at").notNull().defaultNow(),
+
+  // Calculation type
+  calculationType: text("calculation_type").notNull(), // SALES_TAX, COMPLETE_DEAL, REGISTRATION, TITLE
+
+  // Complete snapshot of inputs (JSONB for full auditability)
+  inputs: jsonb("inputs").notNull(), // All input parameters
+
+  // Complete snapshot of outputs (JSONB for full auditability)
+  outputs: jsonb("outputs").notNull(), // All calculated values
+
+  // Rules applied
+  rulesApplied: jsonb("rules_applied").notNull(), // State rules, jurisdiction, rates
+
+  // System metadata
+  engineVersion: text("engine_version").notNull(), // Tax engine version
+  stateRulesVersion: integer("state_rules_version").notNull(), // State rules version
+
+  // Validation results
+  validationPassed: boolean("validation_passed").notNull().default(true),
+  validationErrors: jsonb("validation_errors").default('[]'),
+
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  dealIdx: index("tax_audit_log_deal_idx").on(table.dealId),
+  dealershipIdx: index("tax_audit_log_dealership_idx").on(table.dealershipId),
+  calculatedByIdx: index("tax_audit_log_user_idx").on(table.calculatedBy),
+  calculatedAtIdx: index("tax_audit_log_date_idx").on(table.calculatedAt),
+  typeIdx: index("tax_audit_log_type_idx").on(table.calculationType),
+}));
+
+export const insertTaxAuditLogSchema = createInsertSchema(taxAuditLog).omit({
+  id: true,
+  createdAt: true
+});
+export type InsertTaxAuditLog = z.infer<typeof insertTaxAuditLogSchema>;
+export type TaxAuditLog = typeof taxAuditLog.$inferSelect;
+
+// ===== STATE TAX RULES TABLE =====
+// Centralized state-specific tax rules
+// Replaces hard-coded rules with database-driven configuration
+export const stateTaxRules = pgTable("state_tax_rules", {
+  id: uuid("id").primaryKey().defaultRandom(),
+
+  // State identification
+  stateCode: text("state_code").notNull().unique(), // Two-letter state code (e.g., "CA", "TX")
+  stateName: text("state_name").notNull(), // Full state name
+
+  // Version control
+  version: integer("version").notNull().default(1),
+  effectiveDate: timestamp("effective_date").notNull(),
+  endDate: timestamp("end_date"), // null = currently active
+
+  // Trade-in credit rules
+  allowsTradeInCredit: boolean("allows_trade_in_credit").notNull().default(true),
+  tradeInCreditCap: decimal("trade_in_credit_cap", { precision: 10, scale: 2 }), // null = no cap
+  tradeInCreditPercent: decimal("trade_in_credit_percent", { precision: 5, scale: 4 }), // null = full credit
+
+  // Doc fee rules
+  docFeeMax: decimal("doc_fee_max", { precision: 10, scale: 2 }), // null = no cap
+  docFeeCapped: boolean("doc_fee_capped").notNull().default(false),
+  docFeeTaxable: boolean("doc_fee_taxable").notNull().default(false),
+
+  // Registration and title
+  registrationBased: text("registration_based").notNull().default("flat"), // vehicleValue, vehicleWeight, flat, custom
+  titleFee: decimal("title_fee", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  titleFeeTaxable: boolean("title_fee_taxable").notNull().default(false),
+
+  // Fee taxability
+  serviceContractsTaxable: boolean("service_contracts_taxable").notNull().default(false),
+  gapTaxable: boolean("gap_taxable").notNull().default(false),
+  accessoriesTaxable: boolean("accessories_taxable").notNull().default(true),
+
+  // Rebate treatment
+  manufacturerRebateTaxable: boolean("manufacturer_rebate_taxable").notNull().default(false),
+  dealerRebateTaxable: boolean("dealer_rebate_taxable").notNull().default(true),
+
+  // Special schemes
+  specialScheme: text("special_scheme"), // TAVT, HUT, PRIVILEGE_TAX, STANDARD
+  specialSchemeConfig: jsonb("special_scheme_config").default('{}'), // State-specific configuration
+
+  // Metadata
+  notes: text("notes"),
+  source: text("source"), // Legal source/reference
+  lastVerified: timestamp("last_verified"),
+
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  stateCodeIdx: index("state_tax_rules_state_code_idx").on(table.stateCode),
+  effectiveDateIdx: index("state_tax_rules_effective_date_idx").on(table.effectiveDate),
+}));
+
+export const insertStateTaxRulesSchema = createInsertSchema(stateTaxRules).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+export type InsertStateTaxRules = z.infer<typeof insertStateTaxRulesSchema>;
+export type StateTaxRules = typeof stateTaxRules.$inferSelect;
