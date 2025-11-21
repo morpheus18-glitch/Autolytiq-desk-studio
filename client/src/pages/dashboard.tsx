@@ -3,8 +3,21 @@ import { useLocation } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PageLayout } from '@/components/page-layout';
+import { PageHeader } from '@/components/core/page-header';
+import { PageContent } from '@/components/core/page-content';
+import { LoadingState } from '@/components/core/loading-state';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import {
+  premiumCardClasses,
+  gridLayouts,
+  cardSpacing,
+  statusColors,
+  financialColors,
+  metricIconContainerClasses,
+  getMetricIconClasses,
+} from '@/lib/design-tokens';
+import { cn } from '@/lib/utils';
 import {
   TrendingUp,
   TrendingDown,
@@ -84,51 +97,39 @@ export default function Dashboard() {
   
   return (
     <PageLayout className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      {/* Hero Header */}
-      <div className="sticky top-0 z-40 backdrop-blur-lg bg-background/90 border-b shadow-sm">
-        <div className="container mx-auto px-4 md:px-6 py-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-primary via-primary/90 to-primary/70 shadow-lg shadow-primary/25">
-                <LayoutDashboard className="w-6 h-6 text-primary-foreground" />
-              </div>
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-                  Dashboard  
-                </h1>
-                <p className="text-sm text-muted-foreground font-medium mt-0.5">
-                  Your dealership at a glance
-                </p>
-              </div>
-            </div>
-            <div className="hidden md:flex items-center gap-3">
-              <Button 
-                size="lg"
-                onClick={handleStartDeal}
-                disabled={createDealMutation.isPending}
-                data-testid="button-start-deal"
-                className="gap-2 shadow-lg shadow-primary/20"
-              >
-                <Zap className="w-4 h-4" />
-                {createDealMutation.isPending ? 'Creating...' : 'Start Deal'}
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Dashboard Content */}
-      <div className="container mx-auto px-4 md:px-6 py-8">
-        {/* LEADER METRIC - Revenue Hero */}
-        <Card className="mb-6 border-l-4 border-l-emerald-500 shadow-lg bg-gradient-to-r from-emerald-50 to-white dark:from-emerald-950/20 dark:to-card rounded-lg">
-          <CardContent className="p-6">
+      <PageHeader
+        title="Dashboard"
+        subtitle="Your dealership at a glance"
+        icon={<LayoutDashboard />}
+        actions={
+          <Button
+            size="lg"
+            onClick={handleStartDeal}
+            disabled={createDealMutation.isPending}
+            data-testid="button-start-deal"
+            className="gap-2 shadow-lg shadow-primary/20"
+          >
+            <Zap className="w-4 h-4" />
+            {createDealMutation.isPending ? 'Creating...' : 'Start Deal'}
+          </Button>
+        }
+      />
+
+      <PageContent>
+        {statsLoading && <LoadingState message="Loading dashboard metrics..." />}
+
+        {!statsLoading && (
+          <>
+            {/* LEADER METRIC - Revenue Hero */}
+            <Card className={cn("mb-6 border-l-4 border-l-emerald-500 shadow-lg bg-gradient-to-r from-emerald-50 to-white dark:from-emerald-950/20 dark:to-card rounded-lg")}>
+              <CardContent className={cardSpacing.standard}>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider mb-1">
                   Total Gross
                 </p>
                 <div className="text-4xl md:text-5xl font-black tabular-nums text-emerald-900 dark:text-emerald-100" data-testid="metric-total-revenue-hero">
-                  ${statsLoading ? '-' : (stats?.totalRevenue || 0).toLocaleString()}
+                  ${(stats?.totalRevenue || 0).toLocaleString()}
                 </div>
                 <div className="flex items-center gap-2 mt-2">
                   <span className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-600">
@@ -145,176 +146,178 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* PRIMARY METRICS - Command Center Style */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {/* Total Deals - Blue */}
-          <Card className="border-l-4 border-l-blue-500 shadow-md rounded-lg">
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between mb-2">
-                <FileText className="w-5 h-5 text-blue-600" />
-                <span className="text-xs font-bold text-blue-600 bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 rounded">
-                  DEALS
-                </span>
-              </div>
-              <div className="text-3xl font-black tabular-nums" data-testid="metric-total-deals">
-                {statsLoading ? '-' : stats?.total || 0}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1 font-medium">
-                Total all time
-              </p>
-            </CardContent>
-          </Card>
+            {/* PRIMARY METRICS - Command Center Style */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              {/* Total Deals - Blue */}
+              <Card className="border-l-4 border-l-blue-500 shadow-md rounded-lg">
+                <CardContent className={cardSpacing.compact}>
+                  <div className="flex items-start justify-between mb-2">
+                    <FileText className="w-5 h-5 text-blue-600" />
+                    <span className="text-xs font-bold text-blue-600 bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 rounded">
+                      DEALS
+                    </span>
+                  </div>
+                  <div className="text-3xl font-black tabular-nums" data-testid="metric-total-deals">
+                    {stats?.total || 0}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 font-medium">
+                    Total all time
+                  </p>
+                </CardContent>
+              </Card>
 
-          {/* In Progress - Orange/Amber */}
-          <Card className="border-l-4 border-l-amber-500 shadow-md rounded-lg">
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between mb-2">
-                <Clock className="w-5 h-5 text-amber-600" />
-                <span className="text-xs font-bold text-amber-600 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded">
-                  ACTIVE
-                </span>
-              </div>
-              <div className="text-3xl font-black tabular-nums" data-testid="metric-in-progress">
-                {statsLoading ? '-' : stats?.inProgress || 0}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1 font-medium">
-                In progress
-              </p>
-            </CardContent>
-          </Card>
+              {/* In Progress - Orange/Amber */}
+              <Card className="border-l-4 border-l-amber-500 shadow-md rounded-lg">
+                <CardContent className={cardSpacing.compact}>
+                  <div className="flex items-start justify-between mb-2">
+                    <Clock className="w-5 h-5 text-amber-600" />
+                    <span className="text-xs font-bold text-amber-600 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded">
+                      ACTIVE
+                    </span>
+                  </div>
+                  <div className="text-3xl font-black tabular-nums" data-testid="metric-in-progress">
+                    {stats?.inProgress || 0}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 font-medium">
+                    In progress
+                  </p>
+                </CardContent>
+              </Card>
 
-          {/* Approved - Green */}
-          <Card className="border-l-4 border-l-green-500 shadow-md rounded-lg">
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between mb-2">
-                <CheckCircle className="w-5 h-5 text-green-600" />
-                <span className="text-xs font-bold text-green-600 bg-green-100 dark:bg-green-900/30 px-2 py-0.5 rounded">
-                  WON
-                </span>
-              </div>
-              <div className="text-3xl font-black tabular-nums" data-testid="metric-approved">
-                {statsLoading ? '-' : stats?.approved || 0}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1 font-medium">
-                Approved deals
-              </p>
-            </CardContent>
-          </Card>
+              {/* Approved - Green */}
+              <Card className="border-l-4 border-l-green-500 shadow-md rounded-lg">
+                <CardContent className={cardSpacing.compact}>
+                  <div className="flex items-start justify-between mb-2">
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                    <span className="text-xs font-bold text-green-600 bg-green-100 dark:bg-green-900/30 px-2 py-0.5 rounded">
+                      WON
+                    </span>
+                  </div>
+                  <div className="text-3xl font-black tabular-nums" data-testid="metric-approved">
+                    {stats?.approved || 0}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 font-medium">
+                    Approved deals
+                  </p>
+                </CardContent>
+              </Card>
 
-          {/* Conversion Rate - Purple */}
-          <Card className="border-l-4 border-l-purple-500 shadow-md rounded-lg">
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between mb-2">
-                <Target className="w-5 h-5 text-purple-600" />
-                <span className="inline-flex items-center gap-0.5 text-xs font-bold text-green-600">
-                  <ArrowUpRight className="w-3 h-3" />
-                  5%
-                </span>
-              </div>
-              <div className="text-3xl font-black tabular-nums" data-testid="metric-conversion-rate">
-                {statsLoading ? '-' : `${Math.round((stats?.conversionRate || 0) * 100)}%`}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1 font-medium">
-                Conversion rate
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+              {/* Conversion Rate - Purple */}
+              <Card className="border-l-4 border-l-purple-500 shadow-md rounded-lg">
+                <CardContent className={cardSpacing.compact}>
+                  <div className="flex items-start justify-between mb-2">
+                    <Target className="w-5 h-5 text-purple-600" />
+                    <span className="inline-flex items-center gap-0.5 text-xs font-bold text-green-600">
+                      <ArrowUpRight className="w-3 h-3" />
+                      5%
+                    </span>
+                  </div>
+                  <div className="text-3xl font-black tabular-nums" data-testid="metric-conversion-rate">
+                    {`${Math.round((stats?.conversionRate || 0) * 100)}%`}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 font-medium">
+                    Conversion rate
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
         
-        {/* Secondary Metrics - Tighter layout */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          {/* Avg Deal Value */}
-          <Card className="border-l-4 border-l-neutral-400 shadow-md rounded-lg">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1">
-                    Avg Deal Value
-                  </p>
-                  <div className="text-2xl font-black tabular-nums" data-testid="metric-avg-deal-value">
-                    ${statsLoading ? '-' : Math.round(stats?.avgDealValue || 0).toLocaleString()}
+            {/* Secondary Metrics - Tighter layout */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+              {/* Avg Deal Value */}
+              <Card className="border-l-4 border-l-neutral-400 shadow-md rounded-lg">
+                <CardContent className={cardSpacing.compact}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1">
+                        Avg Deal Value
+                      </p>
+                      <div className="text-2xl font-black tabular-nums" data-testid="metric-avg-deal-value">
+                        ${Math.round(stats?.avgDealValue || 0).toLocaleString()}
+                      </div>
+                    </div>
+                    <DollarSign className="w-6 h-6 text-neutral-400" />
                   </div>
-                </div>
-                <DollarSign className="w-6 h-6 text-neutral-400" />
-              </div>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
 
-          {/* Draft Deals - Needs Attention */}
-          <Card className="border-l-4 border-l-red-500 shadow-md rounded-lg">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold text-red-600 uppercase tracking-wide mb-1">
-                    Needs Attention
-                  </p>
-                  <div className="text-2xl font-black tabular-nums" data-testid="metric-draft">
-                    {statsLoading ? '-' : stats?.draft || 0}
+              {/* Draft Deals - Needs Attention */}
+              <Card className="border-l-4 border-l-red-500 shadow-md rounded-lg">
+                <CardContent className={cardSpacing.compact}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-red-600 uppercase tracking-wide mb-1">
+                        Needs Attention
+                      </p>
+                      <div className="text-2xl font-black tabular-nums" data-testid="metric-draft">
+                        {stats?.draft || 0}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Draft deals waiting
+                      </p>
+                    </div>
+                    <FileText className="w-6 h-6 text-red-500" />
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Draft deals waiting
-                  </p>
-                </div>
-                <FileText className="w-6 h-6 text-red-500" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                </CardContent>
+              </Card>
+            </div>
         
-        {/* Quick Actions */}
-        <div>
-          <h2 className="text-lg font-bold mb-4 text-foreground">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            <Card className="border-none shadow-md hover-elevate active-elevate-2 cursor-pointer transition-all group bg-gradient-to-br from-card to-card/80" onClick={() => setLocation('/deals')}>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-3 text-base group-hover:text-primary transition-colors">
-                  <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                    <FileText className="w-5 h-5 text-primary" />
-                  </div>
-                  View All Deals
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Browse and manage all deals in your pipeline
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card className="border-none shadow-md hover-elevate active-elevate-2 cursor-pointer transition-all group bg-gradient-to-br from-card to-card/80" onClick={() => setLocation('/inventory')}>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-3 text-base group-hover:text-primary transition-colors">
-                  <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                    <Car className="w-5 h-5 text-primary" />
-                  </div>
-                  Inventory
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  View and manage vehicle inventory
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card className="border-none shadow-md hover-elevate active-elevate-2 cursor-pointer transition-all group bg-gradient-to-br from-card to-card/80" onClick={() => setLocation('/customers')}>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-3 text-base group-hover:text-primary transition-colors">
-                  <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                    <Users className="w-5 h-5 text-primary" />
-                  </div>
-                  Customers
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Manage customer relationships and history
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
+            {/* Quick Actions */}
+            <div>
+              <h2 className="text-lg font-bold mb-4 text-foreground">Quick Actions</h2>
+              <div className={gridLayouts.threeCol}>
+                <Card className={cn(premiumCardClasses, "cursor-pointer group")} onClick={() => setLocation('/deals')}>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-3 text-base group-hover:text-primary transition-colors">
+                      <div className={cn(metricIconContainerClasses, "bg-primary/10 group-hover:bg-primary/20 transition-colors")}>
+                        <FileText className="w-5 h-5 text-primary" />
+                      </div>
+                      View All Deals
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      Browse and manage all deals in your pipeline
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className={cn(premiumCardClasses, "cursor-pointer group")} onClick={() => setLocation('/inventory')}>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-3 text-base group-hover:text-primary transition-colors">
+                      <div className={cn(metricIconContainerClasses, "bg-primary/10 group-hover:bg-primary/20 transition-colors")}>
+                        <Car className="w-5 h-5 text-primary" />
+                      </div>
+                      Inventory
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      View and manage vehicle inventory
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className={cn(premiumCardClasses, "cursor-pointer group")} onClick={() => setLocation('/customers')}>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-3 text-base group-hover:text-primary transition-colors">
+                      <div className={cn(metricIconContainerClasses, "bg-primary/10 group-hover:bg-primary/20 transition-colors")}>
+                        <Users className="w-5 h-5 text-primary" />
+                      </div>
+                      Customers
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      Manage customer relationships and history
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </>
+        )}
+      </PageContent>
     </PageLayout>
   );
 }

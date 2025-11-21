@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CurrencyField } from '@/components/ui/currency-field';
-import { formatCurrency } from '@/core/utils';
+import { formatCurrency } from '@/lib/currency';
 import { Plus, Trash2, TrendingUp, Package } from 'lucide-react';
 import { useScenarioForm } from '@/contexts/scenario-form-context';
 import { EmptyState } from '@/components/ui/empty-state';

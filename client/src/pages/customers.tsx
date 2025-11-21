@@ -10,8 +10,20 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PageLayout } from "@/components/page-layout";
+import { PageHeader } from "@/components/core/page-header";
+import { PageContent } from "@/components/core/page-content";
+import { LoadingState } from "@/components/core/loading-state";
+import { ErrorState } from "@/components/core/error-state";
 import { CustomerDetailSheet } from "@/components/customer-detail-sheet";
 import { CustomerFormSheet } from "@/components/customer-form-sheet";
+import {
+  premiumCardClasses,
+  gridLayouts,
+  cardSpacing,
+  emptyStateClasses,
+  emptyStateIconClasses,
+  emptyStateTextClasses,
+} from "@/lib/design-tokens";
 import {
   Search,
   User,
@@ -33,12 +45,12 @@ function CustomerCard({ customer, onViewDetails }: {
   const initials = `${customer.firstName.charAt(0)}${customer.lastName.charAt(0)}`.toUpperCase();
   
   return (
-    <Card 
-      className="group overflow-hidden backdrop-blur-md bg-card/40 border-card-border hover-elevate transition-all duration-200 cursor-pointer h-full"
+    <Card
+      className={cn(premiumCardClasses, "group overflow-hidden cursor-pointer h-full")}
       data-testid={`card-customer-${customer.id}`}
       onClick={onViewDetails}
     >
-      <div className="bg-gradient-to-br from-primary/10 to-primary/5 p-6">
+      <div className={cn("bg-gradient-to-br from-primary/10 to-primary/5", cardSpacing.standard)}>
         <div className="flex items-center gap-3">
           <div className="w-14 h-14 rounded-full bg-primary/20 backdrop-blur-sm flex items-center justify-center border-2 border-primary/30 overflow-hidden">
             {customer.photoUrl ? (
@@ -60,7 +72,7 @@ function CustomerCard({ customer, onViewDetails }: {
         </div>
       </div>
 
-      <CardContent className="p-4 space-y-3">
+      <CardContent className={cn(cardSpacing.compact, "space-y-3")}>
         {/* Contact Info */}
         <div className="space-y-2">
           {customer.email && (
@@ -101,7 +113,7 @@ function CustomerCard({ customer, onViewDetails }: {
 function CustomerCardSkeleton() {
   return (
     <Card className="overflow-hidden">
-      <div className="bg-gradient-to-br from-primary/10 to-primary/5 p-6">
+      <div className={cn("bg-gradient-to-br from-primary/10 to-primary/5", cardSpacing.standard)}>
         <div className="flex items-center gap-3">
           <Skeleton className="w-14 h-14 rounded-full" />
           <div className="flex-1 space-y-2">
@@ -110,7 +122,7 @@ function CustomerCardSkeleton() {
           </div>
         </div>
       </div>
-      <CardContent className="p-4 space-y-3">
+      <CardContent className={cn(cardSpacing.compact, "space-y-3")}>
         <div className="space-y-2">
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-4 w-3/4" />
@@ -174,95 +186,79 @@ export default function Customers() {
   };
 
   return (
-    <PageLayout className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="sticky top-0 z-40 backdrop-blur-md bg-background/80 border-b">
-        <div className="container mx-auto px-3 md:px-4 py-4">
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl md:text-3xl font-semibold">Customer Management</h1>
-                <p className="text-sm text-muted-foreground mt-1">
-                  View and manage all your customers
-                </p>
-              </div>
-              <Button className="gap-2" onClick={handleAddCustomer} data-testid="button-add-customer">
-                <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Add Customer</span>
-                <span className="sm:hidden">Add</span>
-              </Button>
-            </div>
-            
-            {/* Search Bar */}
-            <div className="relative max-w-md w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search customers..."
-                className="pl-9"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                data-testid="input-search"
-              />
-            </div>
+    <PageLayout className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <PageHeader
+        title="Customer Management"
+        subtitle="View and manage all your customers"
+        icon={<FileUser />}
+        actions={
+          <Button className="gap-2" onClick={handleAddCustomer} data-testid="button-add-customer">
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">Add Customer</span>
+            <span className="sm:hidden">Add</span>
+          </Button>
+        }
+      />
+
+      {/* Search Bar Section */}
+      <div className="border-b bg-background/80 backdrop-blur-sm">
+        <div className="container mx-auto px-4 md:px-6 py-4">
+          <div className="relative max-w-md w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search customers..."
+              className="pl-9"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              data-testid="input-search"
+            />
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="container mx-auto px-3 md:px-4 py-6">
-        <div className="flex-1 min-w-0 overflow-hidden">
-          {error ? (
-            <Card className="p-12">
-              <div className="flex flex-col items-center justify-center text-center space-y-4">
-                <AlertCircle className="w-12 h-12 text-destructive" />
-                <h3 className="text-lg font-semibold">Failed to load customers</h3>
-                <p className="text-sm text-muted-foreground">
-                  There was an error loading the customer list. Please try again.
-                </p>
-                <Button onClick={() => refetch()} data-testid="button-retry">
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Try Again
-                </Button>
-              </div>
-            </Card>
-          ) : isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <CustomerCardSkeleton key={i} />
-              ))}
+      <PageContent>
+        {error && (
+          <ErrorState
+            title="Failed to load customers"
+            message="There was an error loading the customer list. Please try again."
+            onRetry={() => refetch()}
+          />
+        )}
+
+        {isLoading && <LoadingState message="Loading customers..." />}
+
+        {!error && !isLoading && filteredCustomers.length === 0 && (
+          <div className={emptyStateClasses}>
+            <div className={emptyStateIconClasses}>
+              <FileUser className="w-8 h-8 text-muted-foreground" />
             </div>
-          ) : filteredCustomers.length === 0 ? (
-            <Card className="p-12">
-              <div className="flex flex-col items-center justify-center text-center space-y-4">
-                <FileUser className="w-12 h-12 text-muted-foreground" />
-                <h3 className="text-lg font-semibold">No customers found</h3>
-                <p className="text-sm text-muted-foreground max-w-md">
-                  {searchQuery
-                    ? "No customers match your search criteria. Try adjusting your search."
-                    : "No customers in the system yet. Add your first customer to get started."}
-                </p>
-                {!searchQuery && (
-                  <Button onClick={handleAddCustomer} data-testid="button-add-first-customer">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add First Customer
-                  </Button>
-                )}
-              </div>
-            </Card>
-          ) : (
-            /* Unified vertical grid layout - mobile and desktop */
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filteredCustomers.map((customer) => (
-                <CustomerCard
-                  key={customer.id}
-                  customer={customer}
-                  onViewDetails={() => handleViewDetails(customer)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+            <h3 className={emptyStateTextClasses.title}>No customers found</h3>
+            <p className={emptyStateTextClasses.description}>
+              {searchQuery
+                ? "No customers match your search criteria. Try adjusting your search."
+                : "No customers in the system yet. Add your first customer to get started."}
+            </p>
+            {!searchQuery && (
+              <Button onClick={handleAddCustomer} data-testid="button-add-first-customer" className="mt-4">
+                <Plus className="w-4 h-4 mr-2" />
+                Add First Customer
+              </Button>
+            )}
+          </div>
+        )}
+
+        {!error && !isLoading && filteredCustomers.length > 0 && (
+          <div className={gridLayouts.fourCol}>
+            {filteredCustomers.map((customer) => (
+              <CustomerCard
+                key={customer.id}
+                customer={customer}
+                onViewDetails={() => handleViewDetails(customer)}
+              />
+            ))}
+          </div>
+        )}
+      </PageContent>
 
       {/* Customer Detail Sheet */}
       <CustomerDetailSheet

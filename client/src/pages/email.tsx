@@ -26,6 +26,8 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { PageLayout } from '@/components/page-layout';
+import { PageHeader } from '@/components/core/page-header';
+import { PageContent } from '@/components/core/page-content';
 import { EmailListEnhanced } from '@/components/email/email-list-enhanced';
 import { EmailDetail } from '@/components/email/email-detail';
 import { EmailComposeDialog } from '@/components/email/email-compose-dialog';
@@ -33,6 +35,7 @@ import { useUnreadCounts, type EmailMessage } from '@/hooks/use-email';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { primaryButtonClasses } from '@/lib/design-tokens';
 
 const FOLDERS = [
   { id: 'inbox', label: 'Inbox', icon: Inbox },
@@ -199,60 +202,46 @@ export default function EmailPage() {
 
   return (
     <PageLayout className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      {/* Hero Header */}
-      <div className="sticky top-0 z-40 backdrop-blur-lg bg-background/90 border-b shadow-sm">
-        <div className="container mx-auto px-4 md:px-6 py-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              {/* Mobile Menu Button */}
-              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-                <SheetTrigger asChild className="md:hidden">
-                  <Button size="icon" variant="ghost">
-                    <Menu className="h-5 w-5" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="p-0 w-[280px]">
-                  <FolderSidebar />
-                </SheetContent>
-              </Sheet>
+      <PageHeader
+        title="Email"
+        subtitle="Secure communications center"
+        icon={<Mail />}
+        actions={
+          <>
+            {/* Mobile Menu Button */}
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild className="md:hidden mr-2">
+                <Button size="icon" variant="ghost">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="p-0 w-[280px]">
+                <FolderSidebar />
+              </SheetContent>
+            </Sheet>
 
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-primary via-primary/90 to-primary/70 shadow-lg shadow-primary/25">
-                <Mail className="w-6 h-6 text-primary-foreground" />
-              </div>
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-                  Email
-                </h1>
-                <p className="text-sm text-muted-foreground font-medium mt-0.5">
-                  Secure communications center
-                </p>
-              </div>
-            </div>
-            <div className="hidden md:flex items-center gap-3">
-              <Button
-                variant="outline"
-                onClick={() => syncMutation.mutate()}
-                disabled={syncMutation.isPending}
-                className="gap-2"
-              >
-                <RefreshCw className={cn("h-4 w-4", syncMutation.isPending && "animate-spin")} />
-                {syncMutation.isPending ? 'Syncing...' : 'Sync'}
-              </Button>
-              <Button
-                size="lg"
-                onClick={() => setComposeOpen(true)}
-                className="gap-2 shadow-lg shadow-primary/20"
-              >
-                <Plus className="w-4 h-4" />
-                Compose
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
+            <Button
+              variant="outline"
+              onClick={() => syncMutation.mutate()}
+              disabled={syncMutation.isPending}
+              className="gap-2"
+            >
+              <RefreshCw className={cn("h-4 w-4", syncMutation.isPending && "animate-spin")} />
+              {syncMutation.isPending ? 'Syncing...' : 'Sync'}
+            </Button>
+            <Button
+              size="lg"
+              onClick={() => setComposeOpen(true)}
+              className={cn("gap-2", primaryButtonClasses)}
+            >
+              <Plus className="w-4 h-4" />
+              Compose
+            </Button>
+          </>
+        }
+      />
 
-      {/* Main Content Area */}
-      <div className="container mx-auto px-4 md:px-6 py-6">
+      <PageContent withPadding={false}>
         <div className="flex h-[calc(100vh-12rem)] overflow-hidden rounded-xl border shadow-sm backdrop-blur-md bg-card/40">
           {/* Sidebar - Desktop only */}
           <div className="hidden md:block w-64 border-r border-border/50 flex-shrink-0">
