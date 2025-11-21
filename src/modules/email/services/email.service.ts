@@ -9,14 +9,14 @@
  */
 
 import { eq, and, desc, sql, inArray, or } from 'drizzle-orm';
-import { db } from '../../../server/db';
+import { db } from '../../../../server/database/db-service';
 import {
   emailMessages,
   emailAttachments,
   type EmailMessage as DBEmailMessage,
   type InsertEmailMessage,
   type InsertEmailAttachment,
-} from '../../../shared/schema';
+} from '../../../../shared/schema';
 import {
   EmailMessage,
   EmailMessageSchema,

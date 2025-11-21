@@ -207,9 +207,9 @@ export function EmailList({
                       {email.subject || '(no subject)'}
                     </div>
 
-                    {email.textBody && (
+                    {email.bodyText && (
                       <div className="text-sm text-muted-foreground truncate">
-                        {email.textBody.substring(0, 100)}
+                        {email.bodyText.substring(0, 100)}
                       </div>
                     )}
 

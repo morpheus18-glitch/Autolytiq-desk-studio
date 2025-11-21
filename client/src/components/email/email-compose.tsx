@@ -101,8 +101,8 @@ export function EmailCompose({
         cc: ccAddresses.length > 0 ? ccAddresses : undefined,
         bcc: bccAddresses.length > 0 ? bccAddresses : undefined,
         subject,
-        textBody: body,
-        htmlBody: `<p>${body.replace(/\n/g, "<br>")}</p>`,
+        bodyText: body,
+        bodyHtml: `<p>${body.replace(/\n/g, "<br>")}</p>`,
         customerId: linkedCustomerId,
         dealId: linkedDealId,
       });
@@ -139,8 +139,8 @@ export function EmailCompose({
         draftId,
         to: toAddresses.length > 0 ? toAddresses : undefined,
         subject: subject || undefined,
-        textBody: body || undefined,
-        htmlBody: body ? `<p>${body.replace(/\n/g, "<br>")}</p>` : undefined,
+        bodyText: body || undefined,
+        bodyHtml: body ? `<p>${body.replace(/\n/g, "<br>")}</p>` : undefined,
         customerId: linkedCustomerId,
         dealId: linkedDealId,
       });

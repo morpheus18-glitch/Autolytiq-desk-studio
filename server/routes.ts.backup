@@ -99,17 +99,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/customers', requireAuth, customerModuleRoutes);
   // app.use('/api/webhooks/email', emailWebhookRoutes);
 
-  // ============================================================================
-  // VEHICLE & INVENTORY MODULE (NEW MODULAR SYSTEM)
-  // ============================================================================
-  // Import vehicle module with CRUD, VIN decoder, inventory management, stock numbers
-  const { createVehicleRouter } = await import('../src/modules/vehicle/api/vehicle.routes');
-
-  // Mount vehicle routes (all require authentication via router middleware)
-  // NOTE: Legacy vehicle routes exist below - this new module takes precedence
-  app.use('/api/vehicles', requireAuth, createVehicleRouter());
-
-
   // ===== USERS =====
   app.get('/api/users', requireAuth, async (req, res) => {
     try {

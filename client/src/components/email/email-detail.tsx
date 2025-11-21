@@ -114,7 +114,7 @@ export function EmailDetail({ emailId, onClose }: EmailDetailProps) {
       ? format(new Date(email.sentAt || email.createdAt), 'PPpp')
       : 'Unknown date';
     const from = email.fromName || email.fromAddress || 'Unknown sender';
-    const body = email.textBody || email.htmlBody?.replace(/<[^>]*>/g, '') || '';
+    const body = email.bodyText || email.bodyHtml?.replace(/<[^>]*>/g, '') || '';
 
     return `On ${dateStr}, ${from} wrote:\n\n${body}`;
   };
@@ -356,12 +356,12 @@ export function EmailDetail({ emailId, onClose }: EmailDetailProps) {
         {/* Email Body */}
         <ScrollArea className="flex-1 bg-background/30">
           <div className="p-6">
-            {email.htmlBody ? (
+            {email.bodyHtml ? (
               <Card className="p-6 backdrop-blur-sm bg-card/30 border-border/30">
                 <div
                   className="prose prose-sm max-w-none dark:prose-invert"
                   dangerouslySetInnerHTML={{
-                    __html: DOMPurify.sanitize(email.htmlBody, {
+                    __html: DOMPurify.sanitize(email.bodyHtml, {
                       ALLOWED_TAGS: ['p', 'br', 'b', 'i', 'u', 'strong', 'em', 'a', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'pre', 'code', 'span', 'div', 'table', 'tr', 'td', 'th', 'thead', 'tbody', 'img'],
                       ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'style', 'target', 'rel'],
                       ALLOW_DATA_ATTR: false,
@@ -369,10 +369,10 @@ export function EmailDetail({ emailId, onClose }: EmailDetailProps) {
                   }}
                 />
               </Card>
-            ) : email.textBody ? (
+            ) : email.bodyText ? (
               <Card className="p-6 backdrop-blur-sm bg-card/30 border-border/30">
                 <pre className="whitespace-pre-wrap font-sans text-sm text-foreground/90">
-                  {email.textBody}
+                  {email.bodyText}
                 </pre>
               </Card>
             ) : (

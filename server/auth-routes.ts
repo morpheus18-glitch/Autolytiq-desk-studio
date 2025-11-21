@@ -9,9 +9,11 @@ import {
   generateMfaSecret,
   generateQrCodeUrl,
   verifyTotp
-} from "@/core/utils";
+} from "../src/core/utils";
 import { logSecurityEvent } from "./auth-helpers";
-import { sendEmail, generatePasswordResetEmail, generateWelcomeEmail } from "./email-config";
+// MIGRATION: Using compatibility shim for email functions
+// TODO: Migrate to use new email module directly
+import { sendEmail, generatePasswordResetEmail, generateWelcomeEmail } from "./email-compat";
 import { z } from "zod";
 import QRCode from "qrcode";
 

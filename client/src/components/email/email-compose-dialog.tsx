@@ -102,7 +102,7 @@ export function EmailComposeDialog({
 
         // Set subject and body from draft
         setSubject(draft.subject || '');
-        setBody(draft.htmlBody || draft.textBody || '');
+        setBody(draft.bodyHtml || draft.bodyText || '');
       } else {
         // Use default values if not a draft
         if (defaultTo) {
@@ -210,8 +210,8 @@ export function EmailComposeDialog({
       cc: ccRecipients.length > 0 ? ccRecipients : undefined,
       bcc: bccRecipients.length > 0 ? bccRecipients : undefined,
       subject,
-      textBody: body.replace(/<[^>]*>/g, ''), // Strip HTML for text version
-      htmlBody: body, // Body is already HTML from rich text editor
+      bodyText: body.replace(/<[^>]*>/g, ''), // Strip HTML for text version
+      bodyHtml: body, // Body is already HTML from rich text editor
       customerId,
       dealId,
     });
@@ -228,8 +228,8 @@ export function EmailComposeDialog({
       cc: ccRecipients.length > 0 ? ccRecipients : undefined,
       bcc: bccRecipients.length > 0 ? bccRecipients : undefined,
       subject,
-      textBody: body.replace(/<[^>]*>/g, ''), // Strip HTML for text version
-      htmlBody: body, // Body is already HTML from rich text editor
+      bodyText: body.replace(/<[^>]*>/g, ''), // Strip HTML for text version
+      bodyHtml: body, // Body is already HTML from rich text editor
       customerId,
       dealId,
     });
@@ -269,8 +269,8 @@ export function EmailComposeDialog({
         cc: ccRecipients.length > 0 ? ccRecipients : undefined,
         bcc: bccRecipients.length > 0 ? bccRecipients : undefined,
         subject,
-        textBody: body.replace(/<[^>]*>/g, ''), // Strip HTML for text version
-        htmlBody: body, // Body is already HTML from rich text editor
+        bodyText: body.replace(/<[^>]*>/g, ''), // Strip HTML for text version
+        bodyHtml: body, // Body is already HTML from rich text editor
         customerId,
         dealId,
       });

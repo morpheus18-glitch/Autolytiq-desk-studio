@@ -333,16 +333,16 @@ export function EmailMessageView({
 
           {/* Body */}
           <div className="prose prose-sm dark:prose-invert max-w-none">
-            {email.htmlBody ? (
+            {email.bodyHtml ? (
               <div dangerouslySetInnerHTML={{
-                __html: DOMPurify.sanitize(email.htmlBody, {
+                __html: DOMPurify.sanitize(email.bodyHtml, {
                   ALLOWED_TAGS: ['p', 'br', 'b', 'i', 'u', 'strong', 'em', 'a', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'pre', 'code', 'span', 'div', 'table', 'tr', 'td', 'th', 'thead', 'tbody', 'img'],
                   ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'style', 'target', 'rel'],
                   ALLOW_DATA_ATTR: false,
                 })
               }} />
             ) : (
-              <p className="whitespace-pre-wrap">{email.textBody}</p>
+              <p className="whitespace-pre-wrap">{email.bodyText}</p>
             )}
           </div>
         </div>

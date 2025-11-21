@@ -6,7 +6,7 @@
  */
 
 import { eq, and, lt, sql } from 'drizzle-orm';
-import { db } from '../../../server/db';
+import { db } from '../../../../server/database/db-service';
 import {
   SendEmailRequest,
   QueuedEmail,

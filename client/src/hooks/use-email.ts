@@ -21,8 +21,8 @@ export interface SendEmailRequest {
   cc?: EmailRecipient[];
   bcc?: EmailRecipient[];
   subject: string;
-  htmlBody?: string;
-  textBody?: string;
+  bodyHtml?: string;  // Changed from htmlBody to match new API
+  bodyText?: string;  // Changed from textBody to match new API
   replyTo?: string;
   customerId?: string;
   dealId?: string;
@@ -45,8 +45,8 @@ export interface EmailMessage {
   ccAddresses: EmailRecipient[] | null;
   bccAddresses: EmailRecipient[] | null;
   subject: string;
-  htmlBody: string | null;
-  textBody: string | null;
+  bodyHtml: string | null;  // Changed from htmlBody to match new API
+  bodyText: string | null;  // Changed from textBody to match new API
   isRead: boolean;
   isStarred: boolean;
   isDraft: boolean;

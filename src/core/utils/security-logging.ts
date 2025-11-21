@@ -7,7 +7,7 @@
 
 import type { Request } from 'express';
 import type { InsertSecurityAuditLog } from '@shared/schema';
-import { storage } from '@/server/storage';
+import { storage } from '../../../server/storage';
 
 /**
  * Log security event to database audit trail
