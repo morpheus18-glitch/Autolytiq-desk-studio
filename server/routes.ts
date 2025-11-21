@@ -109,6 +109,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // NOTE: Legacy vehicle routes exist below - this new module takes precedence
   app.use('/api/vehicles', requireAuth, createVehicleRouter());
 
+  // ============================================================================
+  // GOOGLE MAPS INTEGRATION (Address Validation & Autocomplete)
+  // ============================================================================
+  // Server-side proxy for Google Maps API to protect API key
+  const googleMapsRoutes = (await import('./google-maps-routes')).default;
+  app.use('/api/google-maps', requireAuth, googleMapsRoutes);
+
+  // ============================================================================
+  // SCENARIO AUDIT TRAIL (Deal Calculation History & Compliance)
+  // ============================================================================
+  // Complete audit trail for scenario changes - enables playback, rollback, and compliance
+  const scenarioAuditRoutes = (await import('./scenario-audit-routes')).default;
+  app.use('/api/audit', requireAuth, scenarioAuditRoutes);
+
 
   // ===== USERS =====
   app.get('/api/users', requireAuth, async (req, res) => {

@@ -900,13 +900,45 @@ export const dealScenarios = pgTable("deal_scenarios", {
   dealIdx: index("deal_scenarios_deal_idx").on(table.dealId),
 }));
 
-export const insertDealScenarioSchema = createInsertSchema(dealScenarios).omit({ 
-  id: true, 
-  createdAt: true, 
-  updatedAt: true 
+export const insertDealScenarioSchema = createInsertSchema(dealScenarios).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
 });
 export type InsertDealScenario = z.infer<typeof insertDealScenarioSchema>;
 export type DealScenario = typeof dealScenarios.$inferSelect;
+
+// ===== SCENARIO CHANGE LOG TABLE (Granular Audit Trail for Deal Calculations) =====
+export const scenarioChangeLog = pgTable("scenario_change_log", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  scenarioId: uuid("scenario_id").notNull().references(() => dealScenarios.id, { onDelete: "cascade" }),
+  dealId: uuid("deal_id").notNull().references(() => deals.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id),
+
+  // What changed
+  fieldName: text("field_name").notNull(), // e.g., "vehiclePrice", "apr", "term"
+  oldValue: text("old_value"), // Previous value (null for initial creation)
+  newValue: text("new_value").notNull(), // New value
+  changeType: text("change_type").notNull(), // 'create', 'update', 'delete', 'recalculation'
+
+  // Calculation snapshot (for recalculations)
+  calculationSnapshot: jsonb("calculation_snapshot"), // Full calculation breakdown at time of change
+  // {monthlyPayment, amountFinanced, totalTax, totalCost, etc.}
+
+  // Context
+  metadata: jsonb("metadata"), // Additional context (IP address, session ID, etc.)
+  timestamp: timestamp("timestamp", { precision: 6 }).notNull().defaultNow(),
+}, (table) => ({
+  scenarioIdx: index("scenario_change_log_scenario_idx").on(table.scenarioId),
+  dealIdx: index("scenario_change_log_deal_idx").on(table.dealId),
+  userIdx: index("scenario_change_log_user_idx").on(table.userId),
+  timestampIdx: index("scenario_change_log_timestamp_idx").on(table.timestamp),
+  fieldNameIdx: index("scenario_change_log_field_idx").on(table.fieldName),
+}));
+
+export const insertScenarioChangeLogSchema = createInsertSchema(scenarioChangeLog).omit({ id: true, timestamp: true });
+export type InsertScenarioChangeLog = z.infer<typeof insertScenarioChangeLogSchema>;
+export type ScenarioChangeLog = typeof scenarioChangeLog.$inferSelect;
 
 // ===== AUDIT LOG TABLE =====
 export const auditLog = pgTable("audit_log", {
