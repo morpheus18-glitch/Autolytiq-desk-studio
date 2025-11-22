@@ -48,6 +48,63 @@ export interface AddressComponent {
 }
 
 /**
+ * Google Maps API Response Types
+ */
+interface GoogleAddressComponent {
+  long_name: string;
+  short_name: string;
+  types: string[];
+}
+
+interface GoogleGeometry {
+  location: {
+    lat: number;
+    lng: number;
+  };
+  location_type?: string;
+  viewport?: {
+    northeast: { lat: number; lng: number };
+    southwest: { lat: number; lng: number };
+  };
+}
+
+interface GooglePlaceResult {
+  address_components: GoogleAddressComponent[];
+  formatted_address: string;
+  geometry: GoogleGeometry;
+  place_id: string;
+  types?: string[];
+}
+
+interface GooglePlacePrediction {
+  description: string;
+  place_id: string;
+  structured_formatting: {
+    main_text: string;
+    secondary_text: string;
+  };
+  types: string[];
+}
+
+interface GoogleAutocompleteResponse {
+  predictions: GooglePlacePrediction[];
+  status: string;
+  error_message?: string;
+}
+
+interface GooglePlaceDetailsResponse {
+  result: GooglePlaceResult;
+  status: string;
+  error_message?: string;
+}
+
+interface GoogleGeocodeResponse {
+  results: GooglePlaceResult[];
+  status: string;
+  error_message?: string;
+}
+
+/**
  * Address suggestion for autocomplete
  */
 export interface AddressSuggestion {
@@ -128,7 +185,7 @@ export class GoogleMapsService {
         throw new Error(`Google Maps API error: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const data: GoogleAutocompleteResponse = await response.json();
 
       if (data.status === 'ZERO_RESULTS') {
         return [];
@@ -140,7 +197,7 @@ export class GoogleMapsService {
         );
       }
 
-      return data.predictions.map((prediction: any) => ({
+      return data.predictions.map((prediction) => ({
         description: prediction.description,
         placeId: prediction.place_id,
         mainText: prediction.structured_formatting?.main_text || prediction.description,
@@ -174,7 +231,7 @@ export class GoogleMapsService {
         throw new Error(`Google Maps API error: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const data: GooglePlaceDetailsResponse = await response.json();
 
       if (data.status !== 'OK') {
         throw new Error(
@@ -213,7 +270,7 @@ export class GoogleMapsService {
         throw new Error(`Google Maps API error: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const data: GoogleGeocodeResponse = await response.json();
 
       if (data.status === 'ZERO_RESULTS') {
         return {
@@ -261,7 +318,7 @@ export class GoogleMapsService {
         throw new Error(`Google Maps API error: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const data: GoogleGeocodeResponse = await response.json();
 
       if (data.status === 'ZERO_RESULTS') {
         throw new Error('Address not found');
@@ -287,14 +344,14 @@ export class GoogleMapsService {
   /**
    * Parse Google Place result into ValidatedAddress
    */
-  private parseGooglePlace(place: any): ValidatedAddress {
+  private parseGooglePlace(place: GooglePlaceResult): ValidatedAddress {
     const components = place.address_components || [];
     const messages: string[] = [];
 
     // Extract address components
     const getComponent = (types: string[], format: 'long' | 'short' = 'long'): string => {
-      const component = components.find((c: any) =>
-        types.some((type: string) => c.types.includes(type))
+      const component = components.find((c) =>
+        types.some((type) => c.types.includes(type))
       );
       return component ? (format === 'long' ? component.long_name : component.short_name) : '';
     };
@@ -342,7 +399,7 @@ export class GoogleMapsService {
       latitude,
       longitude,
       placeId: place.place_id,
-      addressComponents: components.map((c: any) => ({
+      addressComponents: components.map((c) => ({
         longName: c.long_name,
         shortName: c.short_name,
         types: c.types,

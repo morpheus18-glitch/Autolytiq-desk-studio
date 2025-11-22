@@ -10,8 +10,7 @@
  */
 
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { queryClient } from '@/lib/queryClient';
-import { apiRequest, getQueryFn } from '@/lib/queryClient';
+import { queryClient, apiRequest, getQueryFn } from '../../../client/src/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
 // ============================================================================
@@ -204,12 +203,29 @@ export function useAuth() {
 // ============================================================================
 
 /**
+ * User preferences interface
+ */
+export interface UserPreferences {
+  theme?: 'light' | 'dark' | 'system';
+  notifications?: {
+    email?: boolean;
+    push?: boolean;
+    sms?: boolean;
+  };
+  dashboard?: {
+    defaultView?: string;
+    widgets?: string[];
+  };
+  [key: string]: unknown; // Allow additional custom preferences
+}
+
+/**
  * Hook for managing user preferences
  */
 export function useUserPreferences() {
   const { toast } = useToast();
 
-  const { data: preferences, isLoading } = useQuery<any>({
+  const { data: preferences, isLoading } = useQuery<UserPreferences>({
     queryKey: ['/api/auth/preferences'],
     queryFn: getQueryFn({ on401: 'returnNull' }),
   });

@@ -3,7 +3,7 @@
  * Atomic stock number generation with database sequences
  */
 
-import { db } from '../../../../server/database/db-service';
+import { db } from '../../../core/database/index';
 import { sql } from 'drizzle-orm';
 import { StorageService } from '../../../core/database/storage.service';
 import { DuplicateStockNumberError } from '../types/vehicle.types';

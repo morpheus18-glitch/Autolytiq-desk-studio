@@ -8,7 +8,7 @@
  */
 
 import { Router } from 'express';
-import { db } from '../../../server/database/db-service.js';
+import { db } from '../database/index';
 
 /**
  * Create system router

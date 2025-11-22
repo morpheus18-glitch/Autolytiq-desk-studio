@@ -62,7 +62,7 @@ export function DealCreationDialog({ open, onOpenChange, vehicleId, customerId }
       queryClient.invalidateQueries({ queryKey: ['/api/deals'] });
       queryClient.invalidateQueries({ queryKey: ['/api/deals/stats'] });
     },
-    onError: (error: any) {
+    onError: (error: Error) {
       toast({
         title: 'Failed to create deal',
         description: error.message || 'Please try again',

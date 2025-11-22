@@ -16,7 +16,7 @@
  */
 
 import { eq, and } from 'drizzle-orm';
-import { db } from '../../../server/database/db-service.js';
+import { db } from '../database/index';
 import {
   rooftopConfigurations,
   RooftopConfiguration,

@@ -33,7 +33,7 @@ export function CustomerList({ onCustomerClick, filters = {} }: CustomerListProp
   const query: Partial<CustomerListQuery> = {
     ...filters,
     search,
-    status: status as any,
+    status: status as 'lead' | 'prospect' | 'qualified' | 'active' | 'sold' | 'lost' | 'inactive' | 'archived' | undefined,
     page,
     limit: 20,
   };

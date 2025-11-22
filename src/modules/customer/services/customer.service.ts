@@ -10,7 +10,7 @@
  * - Customer timeline aggregation
  */
 
-import { db } from '../../../../server/database/db-service';
+import { db } from '../../../core/database/index';
 import { customers, deals, emailMessages, customerNotes } from '@shared/schema';
 import { eq, and, or, desc, sql } from 'drizzle-orm';
 import type {

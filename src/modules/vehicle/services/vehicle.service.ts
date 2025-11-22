@@ -3,7 +3,7 @@
  * Core vehicle CRUD operations with multi-tenant isolation
  */
 
-import { db } from '../../../../server/database/db-service';
+import { db } from '../../../core/database/index';
 import { sql, and, eq, isNull } from 'drizzle-orm';
 import { StorageService } from '../../../core/database/storage.service';
 import { VINDecoderService } from './vin-decoder.service';

@@ -165,7 +165,19 @@ export interface DealCalculation {
   netTradeIn: number;
 
   // Taxes
-  taxCalculation: any; // Reference to tax module
+  taxCalculation: {
+    taxableAmount: number;
+    totalTax: number;
+    totalRate: number;
+    jurisdiction: string;
+    breakdown: Array<{
+      type: 'state' | 'county' | 'city' | 'local' | 'district';
+      name: string;
+      rate: number;
+      amount: number;
+    }>;
+    appliedRules: string[];
+  };
   totalTax: number;
 
   // Fees

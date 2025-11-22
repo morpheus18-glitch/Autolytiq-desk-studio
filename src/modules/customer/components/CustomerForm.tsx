@@ -168,7 +168,7 @@ export function CustomerForm({
             <Select
               value={watch('preferredContactMethod')}
               onValueChange={(value) =>
-                setValue('preferredContactMethod', value as any)
+                setValue('preferredContactMethod', value as 'email' | 'phone' | 'sms' | 'any')
               }
             >
               <SelectTrigger>
@@ -291,7 +291,7 @@ export function CustomerForm({
             <Label htmlFor="status">Status</Label>
             <Select
               value={watch('status')}
-              onValueChange={(value) => setValue('status', value as any)}
+              onValueChange={(value) => setValue('status', value as 'lead' | 'prospect' | 'qualified' | 'active' | 'sold' | 'lost' | 'inactive')}
             >
               <SelectTrigger>
                 <SelectValue />

@@ -18,7 +18,7 @@
 
 import { Router, Request, Response } from 'express';
 import { Webhook } from 'svix';
-import { db } from '../../../../server/database/db-service';
+import { db } from '../../../core/database/index';
 import { emailMessages, dealershipSettings } from '../../../../shared/schema';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';

@@ -121,7 +121,7 @@ export default function NewDeal() {
       toast({ title: 'Deal created successfully!' });
       setLocation(`/deals/${deal.id}`);
     },
-    onError: (error: any) {
+    onError: (error: Error) {
       toast({
         title: 'Failed to create deal',
         description: error.message || 'Please try again',

@@ -77,7 +77,7 @@ import {
 // DATABASE
 // ============================================================================
 
-import { db } from '../../../../server/database/db-service.js';
+import { db } from '../../../core/database/index';
 import { customers } from '../../../../shared/schema.js';
 import { eq } from 'drizzle-orm';
 

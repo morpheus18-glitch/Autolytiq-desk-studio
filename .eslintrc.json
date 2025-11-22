@@ -181,7 +181,7 @@
           },
           {
             "from": "core",
-            "allow": ["core", "shared"]
+            "allow": ["core", "shared", "server"]
           },
           {
             "from": "tests",

@@ -3,7 +3,7 @@
  * Vehicle inventory management, status tracking, and history
  */
 
-import { db } from '../../../../server/database/db-service';
+import { db } from '../../../core/database/index';
 import { sql, and, eq, isNull, desc, asc, inArray } from 'drizzle-orm';
 import { StorageService } from '../../../core/database/storage.service';
 import {

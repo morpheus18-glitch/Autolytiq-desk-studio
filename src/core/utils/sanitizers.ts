@@ -58,29 +58,32 @@ export function sanitizeSearchQuery(query: string): string {
 }
 
 /**
+ * Recursively sanitize an object by removing null bytes from all strings
+ */
+function sanitizeObject<T>(obj: T): T {
+  if (typeof obj === 'string') {
+    return obj.replace(/\0/g, '') as T;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(sanitizeObject) as T;
+  }
+  if (obj && typeof obj === 'object') {
+    const sanitized: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj)) {
+      sanitized[key] = sanitizeObject(value);
+    }
+    return sanitized as T;
+  }
+  return obj;
+}
+
+/**
  * Express middleware to sanitize request inputs (removes null bytes)
  * @param req Express request
  * @param res Express response
  * @param next Next middleware
  */
 export function sanitizeRequest(req: Request, res: Response, next: NextFunction): void {
-  // Remove null bytes from all string inputs
-  const sanitizeObject = (obj: any): any => {
-    if (typeof obj === 'string') {
-      return obj.replace(/\0/g, '');
-    }
-    if (Array.isArray(obj)) {
-      return obj.map(sanitizeObject);
-    }
-    if (obj && typeof obj === 'object') {
-      const sanitized: any = {};
-      for (const [key, value] of Object.entries(obj)) {
-        sanitized[key] = sanitizeObject(value);
-      }
-      return sanitized;
-    }
-    return obj;
-  };
 
   if (req.body) {
     req.body = sanitizeObject(req.body);

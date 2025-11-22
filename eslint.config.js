@@ -205,16 +205,16 @@ export default [
             },
             {
               from: 'module-internal',
-              allow: ['module-internal', 'shared', 'core'],
-              message: 'Modules can only import from their own internals, shared, or core. Import other modules via their public API.',
+              allow: ['module-internal', 'shared', 'core', 'server', 'client'],
+              message: 'Modules can only import from their own internals, shared, core, server, or client. Import other modules via their public API.',
             },
             {
               from: 'module-public',
-              allow: ['module-internal', 'shared', 'core'],
+              allow: ['module-internal', 'shared', 'core', 'server', 'client'],
             },
             {
               from: 'core',
-              allow: ['core', 'shared'],
+              allow: ['core', 'shared', 'server'],
             },
             {
               from: 'tests',

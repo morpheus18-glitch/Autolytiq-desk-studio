@@ -15,10 +15,37 @@
 
 import { StorageService } from '../database/storage.service';
 import type { IStorage } from '../database/storage.interface';
-import type { AuthStorage } from '@/modules/auth';
-import type { DealStorage } from '@/modules/deal';
-import type { TaxStorage } from '@/modules/tax';
 import type { InsertUser, User, DealershipSettings, InsertDeal, Deal, InsertTradeVehicle, TradeVehicle, InsertTaxJurisdiction, TaxJurisdiction } from '@shared/schema';
+
+/**
+ * TEMPORARY ADAPTER INTERFACES
+ * These mirror the module interfaces during migration
+ * DO NOT use these in new code - use module public APIs instead
+ */
+interface AuthStorage {
+  getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  getUser(id: string): Promise<User | undefined>;
+  getUserByResetToken(hashedToken: string): Promise<User | undefined>;
+  createUser(data: InsertUser, dealershipId: string): Promise<User>;
+  updateUser(id: string, data: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<User>;
+  getDealershipSettings(): Promise<DealershipSettings | undefined>;
+}
+
+interface DealStorage {
+  createDeal(data: InsertDeal): Promise<Deal>;
+  updateDeal(id: string, data: Partial<InsertDeal>): Promise<Deal>;
+  getDeal(id: string): Promise<Deal | undefined>;
+  listDeals(query: { page?: number; pageSize?: number; search?: string; status?: string; dealershipId: string }): Promise<{ deals: Deal[]; total: number }>;
+  deleteDeal(id: string): Promise<void>;
+  getNextDealNumber(dealershipId: string): Promise<string>;
+}
+
+interface TaxStorage {
+  getTaxJurisdiction(zipCode: string): Promise<TaxJurisdiction | undefined>;
+  saveTaxJurisdiction(data: InsertTaxJurisdiction): Promise<TaxJurisdiction>;
+  listTaxJurisdictions(state?: string): Promise<TaxJurisdiction[]>;
+}
 
 /**
  * Create storage adapter with backward compatibility
