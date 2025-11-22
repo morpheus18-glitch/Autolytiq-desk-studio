@@ -58,15 +58,7 @@ const allowedExceptions = [
  * Check if a file should be excluded from import validation
  */
 function isExcludedFile(filePath) {
-  const excluded = [
-    'node_modules',
-    'dist',
-    'build',
-    '.next',
-    'coverage',
-    '.git',
-    'migrations',
-  ];
+  const excluded = ['node_modules', 'dist', 'build', '.next', 'coverage', '.git', 'migrations'];
   return excluded.some((pattern) => filePath.includes(pattern));
 }
 
@@ -75,9 +67,7 @@ function isExcludedFile(filePath) {
  */
 function isAllowedException(filePath, importLine) {
   return allowedExceptions.some(
-    (exception) =>
-      exception.filePattern.test(filePath) &&
-      exception.importPattern.test(importLine)
+    (exception) => exception.filePattern.test(filePath) && exception.importPattern.test(importLine),
   );
 }
 
@@ -158,30 +148,55 @@ function walkDir(dir, fileList = []) {
 }
 
 /**
+ * Parse command line arguments
+ */
+function parseArgs() {
+  const args = process.argv.slice(2);
+  const filesIndex = args.indexOf('--files');
+
+  if (filesIndex !== -1 && args[filesIndex + 1]) {
+    // Files passed as argument (newline-separated string from bash)
+    const filesArg = args[filesIndex + 1];
+    return filesArg.split('\n').filter((f) => f.trim().length > 0);
+  }
+
+  return null;
+}
+
+/**
  * Main validation
  */
 function main() {
   console.log('🔍 Scanning for invalid import patterns...\n');
 
-  const directories = [
-    join(rootDir, 'src'),
-    join(rootDir, 'client/src'),
-    join(rootDir, 'server'),
-    join(rootDir, 'shared'),
-  ].filter((dir) => {
-    try {
-      return statSync(dir).isDirectory();
-    } catch {
-      return false;
-    }
-  });
-
+  const specificFiles = parseArgs();
   let allFiles = [];
-  directories.forEach((dir) => {
-    allFiles = allFiles.concat(walkDir(dir));
-  });
 
-  console.log(`📁 Checking ${allFiles.length} TypeScript files...\n`);
+  if (specificFiles) {
+    // Check only specific files (pre-commit hook mode)
+    console.log(`📁 Checking ${specificFiles.length} specified file(s)...\n`);
+    allFiles = specificFiles.map((f) => join(rootDir, f));
+  } else {
+    // Check all files (full scan mode)
+    const directories = [
+      join(rootDir, 'src'),
+      join(rootDir, 'client/src'),
+      join(rootDir, 'server'),
+      join(rootDir, 'shared'),
+    ].filter((dir) => {
+      try {
+        return statSync(dir).isDirectory();
+      } catch {
+        return false;
+      }
+    });
+
+    directories.forEach((dir) => {
+      allFiles = allFiles.concat(walkDir(dir));
+    });
+
+    console.log(`📁 Checking ${allFiles.length} TypeScript files...\n`);
+  }
 
   const allErrors = allFiles.flatMap(checkFile);
 

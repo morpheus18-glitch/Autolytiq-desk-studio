@@ -21,17 +21,17 @@ const boundaryRules = {
     cannotImportFrom: ['src/modules', 'server', 'client'],
     description: 'Core can only import from core and shared',
   },
-  'server': {
+  server: {
     canImportFrom: ['server', 'shared', 'src/modules/*/index.ts'],
     cannotImportFrom: ['client', 'src/modules/*/!(index)'],
     description: 'Server can import from server, shared, and module public APIs',
   },
-  'client': {
+  client: {
     canImportFrom: ['client', 'shared', 'src/modules/*/index.ts'],
     cannotImportFrom: ['server', 'src/modules/*/!(index)'],
     description: 'Client can import from client, shared, and module public APIs',
   },
-  'shared': {
+  shared: {
     canImportFrom: ['shared'],
     cannotImportFrom: ['server', 'client', 'src/modules', 'src/core'],
     description: 'Shared can only import from shared (must be pure)',
@@ -105,7 +105,12 @@ function resolveImportPath(fromFile, importPath) {
   }
 
   // Handle absolute imports
-  if (importPath.startsWith('src/') || importPath.startsWith('server/') || importPath.startsWith('client/') || importPath.startsWith('shared/')) {
+  if (
+    importPath.startsWith('src/') ||
+    importPath.startsWith('server/') ||
+    importPath.startsWith('client/') ||
+    importPath.startsWith('shared/')
+  ) {
     return importPath;
   }
 
@@ -257,24 +262,49 @@ function walkDir(dir, fileList = []) {
 }
 
 /**
+ * Parse command line arguments
+ */
+function parseArgs() {
+  const args = process.argv.slice(2);
+  const filesIndex = args.indexOf('--files');
+
+  if (filesIndex !== -1 && args[filesIndex + 1]) {
+    // Files passed as argument (newline-separated string from bash)
+    const filesArg = args[filesIndex + 1];
+    return filesArg.split('\n').filter((f) => f.trim().length > 0);
+  }
+
+  return null;
+}
+
+/**
  * Main validation
  */
 function main() {
   console.log('🏗️  Validating module boundaries...\n');
 
-  const directories = [
-    join(rootDir, 'src'),
-    join(rootDir, 'server'),
-    join(rootDir, 'client'),
-    join(rootDir, 'shared'),
-  ].filter((dir) => existsSync(dir));
-
+  const specificFiles = parseArgs();
   let allFiles = [];
-  directories.forEach((dir) => {
-    allFiles = allFiles.concat(walkDir(dir));
-  });
 
-  console.log(`📁 Checking ${allFiles.length} files...\n`);
+  if (specificFiles) {
+    // Check only specific files (pre-commit hook mode)
+    console.log(`📁 Checking ${specificFiles.length} specified file(s)...\n`);
+    allFiles = specificFiles;
+  } else {
+    // Check all files (full scan mode)
+    const directories = [
+      join(rootDir, 'src'),
+      join(rootDir, 'server'),
+      join(rootDir, 'client'),
+      join(rootDir, 'shared'),
+    ].filter((dir) => existsSync(dir));
+
+    directories.forEach((dir) => {
+      allFiles = allFiles.concat(walkDir(dir));
+    });
+
+    console.log(`📁 Checking ${allFiles.length} files...\n`);
+  }
 
   const allViolations = allFiles.flatMap(checkFile);
 
