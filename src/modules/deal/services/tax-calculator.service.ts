@@ -15,7 +15,7 @@
  */
 
 import Decimal from 'decimal.js';
-import { STATE_TAX_DATA } from '../../../shared/tax-data.js';
+import { STATE_TAX_DATA } from '../../../../shared/tax-data.js';
 
 // Configure Decimal.js for financial precision
 Decimal.set({ precision: 20, rounding: Decimal.ROUND_HALF_UP });
