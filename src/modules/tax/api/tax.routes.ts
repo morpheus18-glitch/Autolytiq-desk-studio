@@ -56,29 +56,29 @@ import {
   type TaxContext,
   type RooftopConfig,
   type DealPartyInfo,
-} from '../../../shared/autoTaxEngine';
+} from '../../../../shared/autoTaxEngine/index.js';
 import type {
   TaxProfile,
   TaxQuoteInput,
   CustomerAddress,
-} from '../../../shared/types/tax-engine';
+} from '../../../../shared/types/tax-engine.js';
 
 // ============================================================================
 // SERVER IMPORTS (for backward compatibility)
 // ============================================================================
 
-import { getLocalTaxRate as legacyGetLocalTaxRate } from '../../../server/local-tax-service';
+import { getLocalTaxRate as legacyGetLocalTaxRate } from '../../../../server/local-tax-service.js';
 import {
   calculateTaxProfile as legacyCalculateTaxProfile,
   recalculateDealTaxes as legacyRecalculateDealTaxes,
-} from '../../../server/services/tax-engine-service';
+} from '../../../../server/services/tax-engine-service.js';
 
 // ============================================================================
 // DATABASE
 // ============================================================================
 
-import { db } from '../../../server/db';
-import { customers } from '../../../shared/schema';
+import { db } from '../../../../server/database/db-service.js';
+import { customers } from '../../../../shared/schema.js';
 import { eq } from 'drizzle-orm';
 
 // ============================================================================

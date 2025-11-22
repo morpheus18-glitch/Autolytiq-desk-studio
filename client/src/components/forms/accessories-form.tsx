@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CurrencyField } from '@/components/ui/currency-field';
-import { formatCurrency } from '@/core/utils';
+import { formatCurrency } from '@/lib/pricing-utils';
 import { Plus, Trash2, Package } from 'lucide-react';
 import { useScenarioForm } from '@/contexts/scenario-form-context';
 

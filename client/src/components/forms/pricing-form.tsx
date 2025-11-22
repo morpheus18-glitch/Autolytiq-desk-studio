@@ -1,6 +1,6 @@
 import { useScenarioForm } from '@/contexts/scenario-form-context';
 import { CurrencyField } from '@/components/ui/currency-field';
-import { formatCurrency } from '@/core/utils';
+import { formatCurrency } from '@/lib/pricing-utils';
 import { parseScenarioNumber } from '@/lib/currency';
 
 export function PricingForm() {

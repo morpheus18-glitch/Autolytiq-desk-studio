@@ -45,7 +45,7 @@ import {
 // ============================================================================
 
 import { storage } from '../server/storage';
-import { db } from '../server/db';
+import { db } from '../server/database/db-service.js';
 
 // ============================================================================
 // SETUP FUNCTION

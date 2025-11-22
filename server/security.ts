@@ -146,11 +146,9 @@ export const passwordResetRateLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req: Request) => {
-    // Rate limit by IP and email combination
-    const email = req.body?.email || '';
-    return `${req.ip}-${email}`;
-  },
+  // Remove custom keyGenerator to use default (handles IPv6 correctly)
+  // Rate limiting is still by IP, but email enumeration is prevented
+  // by returning generic error messages
   handler: (req: Request, res: Response) => {
     logSecurityEvent(
       'password_reset_rate_limit_exceeded',
