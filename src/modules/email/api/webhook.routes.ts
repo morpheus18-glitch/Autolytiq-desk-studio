@@ -26,6 +26,17 @@ import { nanoid } from 'nanoid';
 const router = Router();
 
 // ============================================================================
+// REQUEST EXTENSIONS
+// ============================================================================
+
+/**
+ * Extended Express Request with raw body for webhook signature verification
+ */
+interface RequestWithRawBody extends Request {
+  rawBody?: Buffer;
+}
+
+// ============================================================================
 // TYPES
 // ============================================================================
 
@@ -58,6 +69,12 @@ interface WebhookEvent {
   subject?: string;
   html?: string;
   text?: string;
+}
+
+interface EmailStatusUpdate {
+  resendStatus: string;
+  folder?: string;
+  updatedAt?: Date;
 }
 
 // ============================================================================
@@ -112,7 +129,7 @@ function parseEmailAddresses(
  * POST /api/webhooks/email/resend
  * Receive webhook events from Resend for real-time email syncing
  */
-router.post('/resend', async (req: Request, res: Response) => {
+router.post('/resend', async (req: RequestWithRawBody, res: Response) => {
   try {
     // ========================================================================
     // STEP 1: Verify webhook signature (or skip in development)
@@ -140,8 +157,8 @@ router.post('/resend', async (req: Request, res: Response) => {
       verifiedEvent = req.body;
     } else {
       // Get raw body for signature verification
-      const payload = (req as any).rawBody
-        ? (req as any).rawBody.toString()
+      const payload = req.rawBody
+        ? req.rawBody.toString()
         : JSON.stringify(req.body);
 
       // Verify the webhook signature
@@ -363,7 +380,7 @@ router.post('/resend', async (req: Request, res: Response) => {
     const email = emails[0];
 
     // Update email status based on event type
-    const updates: any = {
+    const updates: EmailStatusUpdate = {
       resendStatus: eventType ? eventType.replace('email.', '') : 'unknown',
     };
 

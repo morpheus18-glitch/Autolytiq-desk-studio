@@ -18,6 +18,7 @@ import type { IStorage } from '../database/storage.interface';
 import type { AuthStorage } from '@/modules/auth';
 import type { DealStorage } from '@/modules/deal';
 import type { TaxStorage } from '@/modules/tax';
+import type { InsertUser, User, DealershipSettings, InsertDeal, Deal, InsertTradeVehicle, TradeVehicle, InsertTaxJurisdiction, TaxJurisdiction } from '@shared/schema';
 
 /**
  * Create storage adapter with backward compatibility
@@ -78,17 +79,17 @@ export function createAuthStorageAdapter(storage: IStorage): AuthStorage {
       return await storage.getUserByResetToken(hashedToken);
     },
 
-    async createUser(data: any, dealershipId: string) {
+    async createUser(data: InsertUser, dealershipId: string) {
       return await storage.createUser(data, dealershipId);
     },
 
-    async updateUser(id: string, data: any) {
+    async updateUser(id: string, data: Partial<Omit<User, 'id' | 'createdAt'>>) {
       // Note: This needs tenant validation - auth module should pass tenantId
       console.warn('[AuthStorageAdapter] updateUser called without tenantId - update auth module');
       throw new Error('updateUser requires tenantId parameter - auth module needs update');
     },
 
-    async getDealershipSettings() {
+    async getDealershipSettings(): Promise<DealershipSettings | undefined> {
       // Note: This needs tenantId parameter
       console.warn('[AuthStorageAdapter] getDealershipSettings called without tenantId');
       throw new Error('getDealershipSettings requires tenantId parameter');
@@ -102,22 +103,22 @@ export function createAuthStorageAdapter(storage: IStorage): AuthStorage {
  */
 export function createDealStorageAdapter(storage: IStorage): DealStorage {
   return {
-    async createDeal(data: any) {
+    async createDeal(data: InsertDeal): Promise<Deal> {
       // Note: This needs tenantId parameter
       throw new Error('createDeal requires tenantId parameter - deal module needs update');
     },
 
-    async updateDeal(id: string, data: any) {
+    async updateDeal(id: string, data: Partial<InsertDeal>): Promise<Deal> {
       // Note: This needs tenantId parameter
       throw new Error('updateDeal requires tenantId parameter - deal module needs update');
     },
 
-    async getDeal(id: string) {
+    async getDeal(id: string): Promise<Deal | undefined> {
       // Note: This needs tenantId parameter
       throw new Error('getDeal requires tenantId parameter - deal module needs update');
     },
 
-    async listDeals(query: any) {
+    async listDeals(query: { page?: number; pageSize?: number; search?: string; status?: string; dealershipId: string }) {
       // The query should include dealershipId
       if (!query.dealershipId) {
         throw new Error('listDeals requires dealershipId in query');
@@ -131,12 +132,12 @@ export function createDealStorageAdapter(storage: IStorage): DealStorage {
       });
     },
 
-    async deleteDeal(id: string) {
+    async deleteDeal(id: string): Promise<void> {
       // Note: Deals are not deleted, they are marked as cancelled
       throw new Error('deleteDeal not supported - use updateDealState instead');
     },
 
-    async getNextDealNumber(dealershipId: string) {
+    async getNextDealNumber(dealershipId: string): Promise<string> {
       return await storage.generateDealNumber(dealershipId);
     },
   };
@@ -159,7 +160,7 @@ export function createTaxStorageAdapter(storage: IStorage): TaxStorage {
       return await storage.getTaxJurisdiction(zipData.state, zipData.county, zipData.city);
     },
 
-    async saveTaxJurisdiction(data: any) {
+    async saveTaxJurisdiction(data: InsertTaxJurisdiction): Promise<TaxJurisdiction> {
       return await storage.createTaxJurisdiction(data);
     },
 

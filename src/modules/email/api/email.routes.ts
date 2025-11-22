@@ -19,6 +19,35 @@ import {
 const router = Router();
 
 // ============================================================================
+// UPDATE INTERFACES
+// ============================================================================
+
+/**
+ * Email rule update fields
+ */
+interface EmailRuleUpdate {
+  name?: string;
+  description?: string;
+  priority?: number;
+  isActive?: boolean;
+  conditions?: unknown;
+  actions?: unknown;
+  updatedAt?: Date;
+}
+
+/**
+ * Email label update fields
+ */
+interface EmailLabelUpdate {
+  name?: string;
+  color?: string;
+  icon?: string;
+  showInSidebar?: boolean;
+  sortOrder?: number;
+  updatedAt?: Date;
+}
+
+// ============================================================================
 // MIDDLEWARE
 // ============================================================================
 
@@ -855,7 +884,7 @@ router.patch('/rules/:id', requireAuth, async (req: Request, res: Response) => {
   try {
     const { tenantId, userId } = getSessionContext(req);
 
-    const updates: any = {};
+    const updates: EmailRuleUpdate = {};
     if (req.body.name !== undefined) updates.name = req.body.name;
     if (req.body.description !== undefined) updates.description = req.body.description;
     if (req.body.priority !== undefined) updates.priority = req.body.priority;
@@ -1013,7 +1042,7 @@ router.patch('/labels/:id', requireAuth, async (req: Request, res: Response) => 
   try {
     const { tenantId, userId } = getSessionContext(req);
 
-    const updates: any = {};
+    const updates: EmailLabelUpdate = {};
     if (req.body.name !== undefined) updates.name = req.body.name;
     if (req.body.color !== undefined) updates.color = req.body.color;
     if (req.body.icon !== undefined) updates.icon = req.body.icon;
