@@ -549,6 +549,148 @@ export interface IStorage {
   generateStockNumber(tenantId: string): Promise<string>;
 
   // ==========================================
+  // ADVANCED DEAL QUERY METHODS
+  // ==========================================
+
+  /**
+   * List deals with advanced filtering and pagination (TENANT-FILTERED)
+   * @param options Filter and pagination options
+   * @param tenantId Dealership ID for multi-tenant filtering
+   */
+  listDeals(
+    options: {
+      limit?: number;
+      offset?: number;
+      status?: 'DRAFT' | 'IN_PROGRESS' | 'APPROVED' | 'CANCELLED';
+      customerId?: string;
+      vehicleId?: string;
+      salesPersonId?: string;
+      startDate?: Date;
+      endDate?: Date;
+      sortBy?: 'created_at' | 'updated_at' | 'deal_number';
+      sortOrder?: 'asc' | 'desc';
+    },
+    tenantId: string
+  ): Promise<{ deals: Deal[]; total: number }>;
+
+  /**
+   * Get deals by customer (TENANT-FILTERED)
+   * @param customerId Customer UUID
+   * @param tenantId Dealership ID for multi-tenant filtering
+   */
+  getDealsByCustomer(customerId: string, tenantId: string): Promise<Deal[]>;
+
+  /**
+   * Get deals by vehicle (TENANT-FILTERED)
+   * @param vehicleId Vehicle UUID
+   * @param tenantId Dealership ID for multi-tenant filtering
+   */
+  getDealsByVehicle(vehicleId: string, tenantId: string): Promise<Deal[]>;
+
+  /**
+   * Get deals by salesperson (TENANT-FILTERED)
+   * @param salesPersonId Salesperson UUID
+   * @param tenantId Dealership ID for multi-tenant filtering
+   * @param options Optional date range filter
+   */
+  getDealsBySalesPerson(
+    salesPersonId: string,
+    tenantId: string,
+    options?: { startDate?: Date; endDate?: Date }
+  ): Promise<Deal[]>;
+
+  /**
+   * Get deals by status (TENANT-FILTERED)
+   * @param status Deal status
+   * @param tenantId Dealership ID for multi-tenant filtering
+   */
+  getDealsByStatus(status: string, tenantId: string): Promise<Deal[]>;
+
+  /**
+   * Update deal status (TENANT-VALIDATED)
+   * @param id Deal UUID
+   * @param status New status
+   * @param tenantId Dealership ID for validation
+   */
+  updateDealStatus(
+    id: string,
+    status: 'DRAFT' | 'IN_PROGRESS' | 'APPROVED' | 'CANCELLED',
+    tenantId: string
+  ): Promise<Deal>;
+
+  /**
+   * Delete deal (soft delete via status change) (TENANT-VALIDATED)
+   * @param id Deal UUID
+   * @param tenantId Dealership ID for validation
+   */
+  deleteDeal(id: string, tenantId: string): Promise<void>;
+
+  // ==========================================
+  // DEAL ANALYTICS METHODS
+  // ==========================================
+
+  /**
+   * Get deal statistics with optional date range (TENANT-FILTERED)
+   * @param tenantId Dealership ID for multi-tenant filtering
+   * @param period Optional date range filter
+   */
+  getDealStats(
+    tenantId: string,
+    period?: { startDate: Date; endDate: Date }
+  ): Promise<{
+    total: number;
+    pending: number;
+    approved: number;
+    completed: number;
+    cancelled: number;
+    totalRevenue: number;
+    avgDealSize: number;
+  }>;
+
+  /**
+   * Get salesperson performance metrics (TENANT-FILTERED)
+   * @param salesPersonId Salesperson UUID
+   * @param tenantId Dealership ID for multi-tenant filtering
+   * @param period Optional date range filter
+   */
+  getSalesPersonPerformance(
+    salesPersonId: string,
+    tenantId: string,
+    period?: { startDate: Date; endDate: Date }
+  ): Promise<{
+    dealCount: number;
+    totalSales: number;
+    avgDealSize: number;
+    conversionRate: number;
+  }>;
+
+  // ==========================================
+  // TRADE-IN METHODS (ENHANCED)
+  // ==========================================
+
+  /**
+   * Get trade-ins by deal (TENANT-FILTERED via deal)
+   * @param dealId Deal UUID
+   * @param tenantId Dealership ID for validation
+   */
+  getTradeInsByDeal(dealId: string, tenantId: string): Promise<TradeVehicle[]>;
+
+  /**
+   * Create trade-in vehicle (TENANT-VALIDATED via dealId)
+   * @param data Trade vehicle data
+   * @param tenantId Dealership ID for validation
+   */
+  createTradeIn(data: InsertTradeVehicle, tenantId: string): Promise<TradeVehicle>;
+
+  /**
+   * Update trade-in vehicle (TENANT-VALIDATED)
+   * @param id Trade vehicle UUID
+   * @param data Update data
+   * @param tenantId Dealership ID for validation
+   */
+  updateTradeIn(id: string, data: Partial<InsertTradeVehicle>, tenantId: string): Promise<TradeVehicle>;
+
+  // ==========================================
   // DEAL SCENARIO MANAGEMENT
   // ==========================================
 
@@ -584,6 +726,20 @@ export interface IStorage {
    * @param tenantId Dealership ID for validation
    */
   deleteScenario(id: string, tenantId: string): Promise<void>;
+
+  /**
+   * Get all scenarios for a deal (TENANT-FILTERED via deal)
+   * @param dealId Deal UUID
+   * @param tenantId Dealership ID for validation
+   */
+  getDealScenarios(dealId: string, tenantId: string): Promise<DealScenario[]>;
+
+  /**
+   * Create deal scenario (TENANT-VALIDATED via dealId)
+   * @param data Scenario data with dealId
+   * @param tenantId Dealership ID for validation
+   */
+  createDealScenario(data: InsertDealScenario, tenantId: string): Promise<DealScenario>;
 
   // ==========================================
   // QUICK QUOTE MANAGEMENT

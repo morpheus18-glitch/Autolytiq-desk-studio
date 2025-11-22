@@ -24,7 +24,7 @@ import {
   deleteRooftop,
   validateRooftopConfig,
   getRecommendedRooftop,
-} from "./rooftop-service";
+} from "../src/core/services/rooftop.service";
 
 const router = Router();
 

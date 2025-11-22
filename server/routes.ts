@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { insertCustomerSchema, insertVehicleSchema, insertDealSchema, insertDealScenarioSchema, insertTradeVehicleSchema, insertTaxJurisdictionSchema, insertQuickQuoteSchema, insertQuickQuoteContactSchema } from "@shared/schema";
 import { calculateFinancePayment, calculateLeasePayment, calculateSalesTax } from "./calculations";
 import { z } from "zod";
-import { aiService, type ChatMessage, type DealContext } from "./ai-service";
+import { aiService, type ChatMessage, type DealContext } from "../src/core/services/ai.service";
 import { setupAuth, requireAuth, requireRole } from "./auth";
 import { setupAuthRoutes } from "./auth-routes";
 import {
@@ -28,6 +28,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
   // MOUNT PUBLIC ROUTES BEFORE AUTH SETUP
   // ============================================================================
+  // SYSTEM ROUTES (health, status, ping) - PUBLIC
+  const { createSystemRouter } = await import('../src/core/api/system.routes');
+  app.use('/api/system', createSystemRouter());
+
   // TEMPORARY: Setup admin route (no auth required)
   const setupAdminRoute = (await import('./setup-admin-route')).default;
   app.use(setupAdminRoute);
@@ -126,11 +130,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   ));
 
   // ============================================================================
+  // REPORTING MODULE (NEW MODULAR SYSTEM)
+  // ============================================================================
+  // Import reporting module with analytics, dashboards, KPIs, team performance
+  const { createReportingRouter } = await import('../src/modules/reporting');
+
+  // Mount reporting routes (all require authentication via router middleware)
+  // Consolidates 5 legacy analytics endpoints into 20 comprehensive endpoints
+  app.use('/api/analytics', createReportingRouter(storage, requireAuth, requireRole));
+
+  // ============================================================================
   // GOOGLE MAPS INTEGRATION (Address Validation & Autocomplete)
   // ============================================================================
   // Server-side proxy for Google Maps API to protect API key
-  const googleMapsRoutes = (await import('./google-maps-routes')).default;
-  app.use('/api/google-maps', requireAuth, googleMapsRoutes);
+  const { createGoogleMapsRouter } = await import('../src/core/api/google-maps.routes');
+  app.use('/api/google-maps', requireAuth, createGoogleMapsRouter());
 
   // ============================================================================
   // SCENARIO AUDIT TRAIL (Deal Calculation History & Compliance)

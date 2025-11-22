@@ -1890,6 +1890,461 @@ export class StorageService implements IStorage {
   }
 
   // ==========================================
+  // ADVANCED DEAL QUERY METHODS
+  // ==========================================
+
+  /**
+   * List deals with advanced filtering and pagination (TENANT-FILTERED)
+   * @param options Filter and pagination options
+   * @param tenantId Dealership ID for multi-tenant filtering
+   */
+  async listDeals(
+    options: {
+      limit?: number;
+      offset?: number;
+      status?: 'DRAFT' | 'IN_PROGRESS' | 'APPROVED' | 'CANCELLED';
+      customerId?: string;
+      vehicleId?: string;
+      salesPersonId?: string;
+      startDate?: Date;
+      endDate?: Date;
+      sortBy?: 'created_at' | 'updated_at' | 'deal_number';
+      sortOrder?: 'asc' | 'desc';
+    },
+    tenantId: string
+  ): Promise<{ deals: Deal[]; total: number }> {
+    const startTime = Date.now();
+    try {
+      const {
+        limit = 50,
+        offset = 0,
+        status,
+        customerId,
+        vehicleId,
+        salesPersonId,
+        startDate,
+        endDate,
+        sortBy = 'created_at',
+        sortOrder = 'desc',
+      } = options;
+
+      // Build WHERE conditions
+      const conditions: ReturnType<typeof eq>[] = [eq(deals.dealershipId, tenantId)];
+
+      if (status) {
+        conditions.push(eq(deals.dealState, status));
+      }
+      if (customerId) {
+        conditions.push(eq(deals.customerId, customerId));
+      }
+      if (vehicleId) {
+        conditions.push(eq(deals.vehicleId, vehicleId));
+      }
+      if (salesPersonId) {
+        conditions.push(eq(deals.salespersonId, salesPersonId));
+      }
+      if (startDate) {
+        conditions.push(gte(deals.createdAt, startDate));
+      }
+      if (endDate) {
+        conditions.push(lte(deals.createdAt, endDate));
+      }
+
+      const whereClause = and(...conditions);
+
+      // Get total count
+      const [totalResult] = await this.dbService.db
+        .select({ count: sql<number>`count(*)` })
+        .from(deals)
+        .where(whereClause);
+
+      const total = Number(totalResult.count);
+
+      // Determine sort field
+      const sortField =
+        sortBy === 'updated_at' ? deals.updatedAt :
+        sortBy === 'deal_number' ? deals.dealNumber :
+        deals.createdAt;
+
+      const orderFn = sortOrder === 'asc' ? asc : desc;
+
+      // Get deals
+      const results = await this.dbService.db
+        .select()
+        .from(deals)
+        .where(whereClause)
+        .orderBy(orderFn(sortField))
+        .limit(limit)
+        .offset(offset);
+
+      this.logQuery('listDeals', startTime, tenantId);
+      return { deals: results, total };
+    } catch (error) {
+      console.error('[StorageService] listDeals error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get deals by customer (TENANT-FILTERED)
+   * @param customerId Customer UUID
+   * @param tenantId Dealership ID for multi-tenant filtering
+   */
+  async getDealsByCustomer(customerId: string, tenantId: string): Promise<Deal[]> {
+    const startTime = Date.now();
+    try {
+      const results = await this.dbService.db
+        .select()
+        .from(deals)
+        .where(and(eq(deals.customerId, customerId), eq(deals.dealershipId, tenantId)))
+        .orderBy(desc(deals.createdAt));
+
+      this.logQuery('getDealsByCustomer', startTime, tenantId);
+      return results;
+    } catch (error) {
+      console.error('[StorageService] getDealsByCustomer error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get deals by vehicle (TENANT-FILTERED)
+   * @param vehicleId Vehicle UUID
+   * @param tenantId Dealership ID for multi-tenant filtering
+   */
+  async getDealsByVehicle(vehicleId: string, tenantId: string): Promise<Deal[]> {
+    const startTime = Date.now();
+    try {
+      const results = await this.dbService.db
+        .select()
+        .from(deals)
+        .where(and(eq(deals.vehicleId, vehicleId), eq(deals.dealershipId, tenantId)))
+        .orderBy(desc(deals.createdAt));
+
+      this.logQuery('getDealsByVehicle', startTime, tenantId);
+      return results;
+    } catch (error) {
+      console.error('[StorageService] getDealsByVehicle error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get deals by salesperson (TENANT-FILTERED)
+   * @param salesPersonId Salesperson UUID
+   * @param tenantId Dealership ID for multi-tenant filtering
+   * @param options Optional date range filter
+   */
+  async getDealsBySalesPerson(
+    salesPersonId: string,
+    tenantId: string,
+    options?: { startDate?: Date; endDate?: Date }
+  ): Promise<Deal[]> {
+    const startTime = Date.now();
+    try {
+      const conditions: ReturnType<typeof eq>[] = [
+        eq(deals.salespersonId, salesPersonId),
+        eq(deals.dealershipId, tenantId),
+      ];
+
+      if (options?.startDate) {
+        conditions.push(gte(deals.createdAt, options.startDate));
+      }
+      if (options?.endDate) {
+        conditions.push(lte(deals.createdAt, options.endDate));
+      }
+
+      const results = await this.dbService.db
+        .select()
+        .from(deals)
+        .where(and(...conditions))
+        .orderBy(desc(deals.createdAt));
+
+      this.logQuery('getDealsBySalesPerson', startTime, tenantId);
+      return results;
+    } catch (error) {
+      console.error('[StorageService] getDealsBySalesPerson error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get deals by status (TENANT-FILTERED)
+   * @param status Deal status
+   * @param tenantId Dealership ID for multi-tenant filtering
+   */
+  async getDealsByStatus(status: string, tenantId: string): Promise<Deal[]> {
+    const startTime = Date.now();
+    try {
+      const results = await this.dbService.db
+        .select()
+        .from(deals)
+        .where(and(eq(deals.dealState, status), eq(deals.dealershipId, tenantId)))
+        .orderBy(desc(deals.createdAt));
+
+      this.logQuery('getDealsByStatus', startTime, tenantId);
+      return results;
+    } catch (error) {
+      console.error('[StorageService] getDealsByStatus error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update deal status (TENANT-VALIDATED)
+   * @param id Deal UUID
+   * @param status New status
+   * @param tenantId Dealership ID for validation
+   */
+  async updateDealStatus(
+    id: string,
+    status: 'DRAFT' | 'IN_PROGRESS' | 'APPROVED' | 'CANCELLED',
+    tenantId: string
+  ): Promise<Deal> {
+    const startTime = Date.now();
+    try {
+      // Validate tenant ownership
+      const existing = await this.getDeal(id, tenantId);
+      if (!existing) {
+        throw new Error(`[StorageService] Deal not found or access denied: ${id}`);
+      }
+
+      const [deal] = await this.dbService.db
+        .update(deals)
+        .set({ dealState: status, updatedAt: new Date() })
+        .where(and(eq(deals.id, id), eq(deals.dealershipId, tenantId)))
+        .returning();
+
+      this.logQuery('updateDealStatus', startTime, tenantId);
+      return deal;
+    } catch (error) {
+      console.error('[StorageService] updateDealStatus error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete deal (soft delete via status change) (TENANT-VALIDATED)
+   * @param id Deal UUID
+   * @param tenantId Dealership ID for validation
+   */
+  async deleteDeal(id: string, tenantId: string): Promise<void> {
+    const startTime = Date.now();
+    try {
+      // Validate tenant ownership
+      const existing = await this.getDeal(id, tenantId);
+      if (!existing) {
+        throw new Error(`[StorageService] Deal not found or access denied: ${id}`);
+      }
+
+      // Soft delete by setting status to CANCELLED
+      await this.dbService.db
+        .update(deals)
+        .set({ dealState: 'CANCELLED', updatedAt: new Date() })
+        .where(and(eq(deals.id, id), eq(deals.dealershipId, tenantId)));
+
+      this.logQuery('deleteDeal', startTime, tenantId);
+    } catch (error) {
+      console.error('[StorageService] deleteDeal error:', error);
+      throw error;
+    }
+  }
+
+  // ==========================================
+  // DEAL ANALYTICS METHODS
+  // ==========================================
+
+  /**
+   * Get deal statistics with optional date range (TENANT-FILTERED)
+   * @param tenantId Dealership ID for multi-tenant filtering
+   * @param period Optional date range filter
+   */
+  async getDealStats(
+    tenantId: string,
+    period?: { startDate: Date; endDate: Date }
+  ): Promise<{
+    total: number;
+    pending: number;
+    approved: number;
+    completed: number;
+    cancelled: number;
+    totalRevenue: number;
+    avgDealSize: number;
+  }> {
+    const startTime = Date.now();
+    try {
+      const conditions: ReturnType<typeof eq>[] = [eq(deals.dealershipId, tenantId)];
+
+      if (period?.startDate) {
+        conditions.push(gte(deals.createdAt, period.startDate));
+      }
+      if (period?.endDate) {
+        conditions.push(lte(deals.createdAt, period.endDate));
+      }
+
+      const whereClause = and(...conditions);
+
+      const result = await this.dbService.db
+        .select({
+          total: sql<number>`count(*)::int`,
+          pending: sql<number>`sum(case when ${deals.dealState} IN ('DRAFT', 'IN_PROGRESS') then 1 else 0 end)::int`,
+          approved: sql<number>`sum(case when ${deals.dealState} = 'APPROVED' then 1 else 0 end)::int`,
+          completed: sql<number>`sum(case when ${deals.dealState} = 'APPROVED' then 1 else 0 end)::int`,
+          cancelled: sql<number>`sum(case when ${deals.dealState} = 'CANCELLED' then 1 else 0 end)::int`,
+          totalRevenue: sql<number>`
+            coalesce(sum(
+              case when ${deals.dealState} = 'APPROVED' and ${dealScenarios.vehiclePrice} is not null
+              then ${dealScenarios.vehiclePrice}::numeric
+              else 0 end
+            ), 0)::numeric
+          `,
+        })
+        .from(deals)
+        .leftJoin(dealScenarios, eq(deals.activeScenarioId, dealScenarios.id))
+        .where(whereClause);
+
+      const stats = result[0] || {
+        total: 0,
+        pending: 0,
+        approved: 0,
+        completed: 0,
+        cancelled: 0,
+        totalRevenue: 0,
+      };
+
+      const totalRevenue = Number(stats.totalRevenue) || 0;
+      const approved = Number(stats.approved) || 0;
+      const avgDealSize = approved > 0 ? totalRevenue / approved : 0;
+
+      this.logQuery('getDealStats', startTime, tenantId);
+      return {
+        total: Number(stats.total) || 0,
+        pending: Number(stats.pending) || 0,
+        approved,
+        completed: Number(stats.completed) || 0,
+        cancelled: Number(stats.cancelled) || 0,
+        totalRevenue: Math.round(totalRevenue),
+        avgDealSize: Math.round(avgDealSize),
+      };
+    } catch (error) {
+      console.error('[StorageService] getDealStats error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get salesperson performance metrics (TENANT-FILTERED)
+   * @param salesPersonId Salesperson UUID
+   * @param tenantId Dealership ID for multi-tenant filtering
+   * @param period Optional date range filter
+   */
+  async getSalesPersonPerformance(
+    salesPersonId: string,
+    tenantId: string,
+    period?: { startDate: Date; endDate: Date }
+  ): Promise<{
+    dealCount: number;
+    totalSales: number;
+    avgDealSize: number;
+    conversionRate: number;
+  }> {
+    const startTime = Date.now();
+    try {
+      const conditions: ReturnType<typeof eq>[] = [
+        eq(deals.salespersonId, salesPersonId),
+        eq(deals.dealershipId, tenantId),
+      ];
+
+      if (period?.startDate) {
+        conditions.push(gte(deals.createdAt, period.startDate));
+      }
+      if (period?.endDate) {
+        conditions.push(lte(deals.createdAt, period.endDate));
+      }
+
+      const whereClause = and(...conditions);
+
+      const result = await this.dbService.db
+        .select({
+          totalDeals: sql<number>`count(*)::int`,
+          approvedDeals: sql<number>`sum(case when ${deals.dealState} = 'APPROVED' then 1 else 0 end)::int`,
+          totalSales: sql<number>`
+            coalesce(sum(
+              case when ${deals.dealState} = 'APPROVED' and ${dealScenarios.vehiclePrice} is not null
+              then ${dealScenarios.vehiclePrice}::numeric
+              else 0 end
+            ), 0)::numeric
+          `,
+        })
+        .from(deals)
+        .leftJoin(dealScenarios, eq(deals.activeScenarioId, dealScenarios.id))
+        .where(whereClause);
+
+      const stats = result[0] || {
+        totalDeals: 0,
+        approvedDeals: 0,
+        totalSales: 0,
+      };
+
+      const totalDeals = Number(stats.totalDeals) || 0;
+      const approvedDeals = Number(stats.approvedDeals) || 0;
+      const totalSales = Number(stats.totalSales) || 0;
+      const avgDealSize = approvedDeals > 0 ? totalSales / approvedDeals : 0;
+      const conversionRate = totalDeals > 0 ? approvedDeals / totalDeals : 0;
+
+      this.logQuery('getSalesPersonPerformance', startTime, tenantId);
+      return {
+        dealCount: approvedDeals,
+        totalSales: Math.round(totalSales),
+        avgDealSize: Math.round(avgDealSize),
+        conversionRate,
+      };
+    } catch (error) {
+      console.error('[StorageService] getSalesPersonPerformance error:', error);
+      throw error;
+    }
+  }
+
+  // ==========================================
+  // TRADE-IN METHODS (ENHANCED)
+  // ==========================================
+
+  /**
+   * Get trade-ins by deal (TENANT-FILTERED via deal)
+   * Alias for getTradeVehiclesByDeal for consistency
+   * @param dealId Deal UUID
+   * @param tenantId Dealership ID for validation
+   */
+  async getTradeInsByDeal(dealId: string, tenantId: string): Promise<TradeVehicle[]> {
+    return this.getTradeVehiclesByDeal(dealId, tenantId);
+  }
+
+  /**
+   * Create trade-in vehicle (TENANT-VALIDATED via dealId)
+   * Alias for createTradeVehicle for consistency
+   * @param data Trade vehicle data
+   * @param tenantId Dealership ID for validation
+   */
+  async createTradeIn(data: InsertTradeVehicle, tenantId: string): Promise<TradeVehicle> {
+    return this.createTradeVehicle(data, tenantId);
+  }
+
+  /**
+   * Update trade-in vehicle (TENANT-VALIDATED)
+   * Alias for updateTradeVehicle for consistency
+   * @param id Trade vehicle UUID
+   * @param data Update data
+   * @param tenantId Dealership ID for validation
+   */
+  async updateTradeIn(
+    id: string,
+    data: Partial<InsertTradeVehicle>,
+    tenantId: string
+  ): Promise<TradeVehicle> {
+    return this.updateTradeVehicle(id, data, tenantId);
+  }
+
+  // ==========================================
   // DEAL SCENARIO MANAGEMENT
   // ==========================================
 
@@ -1999,6 +2454,44 @@ export class StorageService implements IStorage {
       console.error('[StorageService] deleteScenario error:', error);
       throw error;
     }
+  }
+
+  /**
+   * Get all scenarios for a deal (TENANT-FILTERED via deal)
+   * @param dealId Deal UUID
+   * @param tenantId Dealership ID for validation
+   */
+  async getDealScenarios(dealId: string, tenantId: string): Promise<DealScenario[]> {
+    const startTime = Date.now();
+    try {
+      // Validate deal belongs to tenant
+      const deal = await this.getDeal(dealId, tenantId);
+      if (!deal) {
+        throw new Error('[StorageService] Deal not found or access denied');
+      }
+
+      const scenarios = await this.dbService.db
+        .select()
+        .from(dealScenarios)
+        .where(eq(dealScenarios.dealId, dealId))
+        .orderBy(desc(dealScenarios.createdAt));
+
+      this.logQuery('getDealScenarios', startTime, tenantId);
+      return scenarios;
+    } catch (error) {
+      console.error('[StorageService] getDealScenarios error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create deal scenario (TENANT-VALIDATED via dealId)
+   * Alias for createScenario for consistency
+   * @param data Scenario data with dealId
+   * @param tenantId Dealership ID for validation
+   */
+  async createDealScenario(data: InsertDealScenario, tenantId: string): Promise<DealScenario> {
+    return this.createScenario(data, tenantId);
   }
 
   // ==========================================
