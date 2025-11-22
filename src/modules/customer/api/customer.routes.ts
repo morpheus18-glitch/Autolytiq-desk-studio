@@ -353,6 +353,78 @@ router.post(
   })
 );
 
+/**
+ * GET /api/customers/:id/history
+ * Get customer history (deals, notes, creation events)
+ * Legacy compatibility endpoint
+ */
+router.get(
+  '/:id/history',
+  asyncHandler(async (req: Request, res: Response) => {
+    const dealershipId = getDealershipId(req);
+    const customerId = req.params.id;
+
+    // Get history
+    const history = await customerService.getCustomerHistory(customerId, dealershipId);
+
+    res.json(history);
+  })
+);
+
+/**
+ * GET /api/customers/:id/notes
+ * Get customer notes
+ */
+router.get(
+  '/:id/notes',
+  asyncHandler(async (req: Request, res: Response) => {
+    const dealershipId = getDealershipId(req);
+    const customerId = req.params.id;
+
+    // Get notes
+    const notes = await customerService.getCustomerNotes(customerId, dealershipId);
+
+    res.json(notes);
+  })
+);
+
+/**
+ * POST /api/customers/:id/notes
+ * Create customer note
+ */
+router.post(
+  '/:id/notes',
+  asyncHandler(async (req: Request, res: Response) => {
+    const dealershipId = getDealershipId(req);
+    const userId = getUserId(req);
+    const customerId = req.params.id;
+
+    if (!userId) {
+      return res.status(403).json({
+        error: 'User ID is required to create notes',
+        code: 'USER_REQUIRED',
+      });
+    }
+
+    const { content, noteType, isImportant, dealId } = req.body;
+
+    // Create note
+    const note = await customerService.createCustomerNote(
+      customerId,
+      dealershipId,
+      userId,
+      {
+        content,
+        noteType,
+        isImportant,
+        dealId,
+      }
+    );
+
+    res.status(201).json(note);
+  })
+);
+
 // ============================================================================
 // EXPORT
 // ============================================================================

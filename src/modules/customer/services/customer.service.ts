@@ -11,8 +11,9 @@
  */
 
 import { db } from '../../../../server/database/db-service';
-import { customers, deals, emailMessages } from '@shared/schema';
+import { customers, deals, emailMessages, customerNotes } from '@shared/schema';
 import { eq, and, or, like, isNull, desc, asc, sql, inArray } from 'drizzle-orm';
+import type { CustomerNote, InsertCustomerNote } from '@shared/schema';
 import type {
   Customer,
   CreateCustomerRequest,
@@ -572,6 +573,161 @@ export class CustomerService {
       .from(emailMessages)
       .where(eq(emailMessages.customerId, customerId))
       .orderBy(desc(emailMessages.createdAt));
+  }
+
+  // ========================================================================
+  // CUSTOMER NOTES
+  // ========================================================================
+
+  /**
+   * Get customer notes
+   * Returns all notes for a customer with multi-tenant isolation
+   */
+  async getCustomerNotes(customerId: string, dealershipId: string): Promise<CustomerNote[]> {
+    // Verify customer exists and belongs to dealership
+    await this.getCustomer(customerId, dealershipId);
+
+    const notes = await db
+      .select()
+      .from(customerNotes)
+      .where(
+        and(
+          eq(customerNotes.customerId, customerId),
+          eq(customerNotes.dealershipId, dealershipId)
+        )
+      )
+      .orderBy(desc(customerNotes.createdAt));
+
+    return notes;
+  }
+
+  /**
+   * Create customer note
+   * Creates a new note with multi-tenant enforcement
+   */
+  async createCustomerNote(
+    customerId: string,
+    dealershipId: string,
+    userId: string,
+    data: {
+      content: string;
+      noteType?: string;
+      isImportant?: boolean;
+      dealId?: string | null;
+    }
+  ): Promise<CustomerNote> {
+    // Verify customer exists and belongs to dealership
+    await this.getCustomer(customerId, dealershipId);
+
+    if (!data.content || !data.content.trim()) {
+      throw new CustomerValidationError('Note content is required', [
+        { field: 'content', message: 'Content cannot be empty' },
+      ]);
+    }
+
+    const [note] = await db
+      .insert(customerNotes)
+      .values({
+        customerId,
+        userId,
+        dealershipId,
+        content: data.content.trim(),
+        noteType: data.noteType || 'general',
+        isImportant: data.isImportant ?? false,
+        dealId: data.dealId || null,
+      })
+      .returning();
+
+    return note;
+  }
+
+  /**
+   * Get customer history
+   * Returns combined timeline of deals, notes, and customer creation
+   * Compatible with old storage.getCustomerHistory format
+   */
+  async getCustomerHistory(
+    customerId: string,
+    dealershipId: string
+  ): Promise<Array<{
+    type: string;
+    timestamp: Date;
+    data: Record<string, unknown>;
+  }>> {
+    // Verify customer exists and belongs to dealership
+    const customer = await this.getCustomer(customerId, dealershipId);
+
+    const history: Array<{
+      type: string;
+      timestamp: Date;
+      data: Record<string, unknown>;
+    }> = [];
+
+    // Get customer deals
+    const customerDeals = await db
+      .select()
+      .from(deals)
+      .where(
+        and(
+          eq(deals.customerId, customerId),
+          eq(deals.dealershipId, dealershipId)
+        )
+      )
+      .orderBy(desc(deals.createdAt));
+
+    for (const deal of customerDeals) {
+      history.push({
+        type: 'deal',
+        timestamp: deal.createdAt,
+        data: {
+          id: deal.id,
+          dealNumber: deal.dealNumber,
+          dealState: deal.dealState,
+          status: deal.status,
+          createdAt: deal.createdAt,
+          updatedAt: deal.updatedAt,
+        },
+      });
+    }
+
+    // Get customer notes
+    const notes = await db
+      .select()
+      .from(customerNotes)
+      .where(
+        and(
+          eq(customerNotes.customerId, customerId),
+          eq(customerNotes.dealershipId, dealershipId)
+        )
+      )
+      .orderBy(desc(customerNotes.createdAt));
+
+    for (const note of notes) {
+      history.push({
+        type: 'note',
+        timestamp: note.createdAt,
+        data: {
+          id: note.id,
+          content: note.content,
+          noteType: note.noteType,
+          isImportant: note.isImportant,
+        },
+      });
+    }
+
+    // Add customer creation event
+    history.push({
+      type: 'customer_created',
+      timestamp: new Date(customer.createdAt),
+      data: {
+        name: `${customer.firstName} ${customer.lastName}`,
+      },
+    });
+
+    // Sort by timestamp descending
+    history.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+
+    return history;
   }
 
   // ========================================================================
