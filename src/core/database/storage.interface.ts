@@ -214,6 +214,59 @@ export interface IStorage {
     }
   ): Promise<CustomerNote>;
 
+  /**
+   * List customers with pagination and filters (TENANT-FILTERED)
+   * @param options Pagination and filter options
+   * @param tenantId Dealership ID for multi-tenant filtering
+   */
+  listCustomers(
+    options: {
+      page?: number;
+      pageSize?: number;
+      search?: string;
+      status?: string;
+    },
+    tenantId: string
+  ): Promise<{ customers: Customer[]; total: number; pages: number }>;
+
+  /**
+   * Get deals for a customer (TENANT-FILTERED)
+   * @param customerId Customer UUID
+   * @param tenantId Dealership ID for multi-tenant filtering
+   */
+  getCustomerDeals(customerId: string, tenantId: string): Promise<Deal[]>;
+
+  /**
+   * Find duplicate customers (TENANT-FILTERED)
+   * Searches for customers matching name, email, phone, or driver's license
+   * @param searchCriteria Search criteria
+   * @param tenantId Dealership ID for multi-tenant filtering
+   */
+  findDuplicateCustomers(
+    searchCriteria: {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      phone?: string;
+      driversLicenseNumber?: string;
+    },
+    tenantId: string
+  ): Promise<Customer[]>;
+
+  /**
+   * Delete customer (soft delete by setting status to 'archived') (TENANT-VALIDATED)
+   * @param id Customer UUID
+   * @param tenantId Dealership ID for validation
+   */
+  deleteCustomer(id: string, tenantId: string): Promise<void>;
+
+  /**
+   * Get customer emails (TENANT-FILTERED)
+   * @param customerId Customer UUID
+   * @param tenantId Dealership ID for multi-tenant filtering
+   */
+  getCustomerEmails(customerId: string, tenantId: string): Promise<any[]>;
+
   // ==========================================
   // VEHICLE MANAGEMENT
   // ==========================================
@@ -238,6 +291,21 @@ export interface IStorage {
    * @param tenantId Dealership ID for multi-tenant filtering
    */
   getVehicleByStockNumber(stockNumber: string, tenantId: string): Promise<Vehicle | undefined>;
+
+  /**
+   * Get vehicle by VIN (TENANT-FILTERED)
+   * @param vin VIN number
+   * @param tenantId Dealership ID for multi-tenant filtering
+   */
+  getVehicleByVIN(vin: string, tenantId: string): Promise<Vehicle | undefined>;
+
+  /**
+   * Check if VIN exists for dealership (TENANT-FILTERED)
+   * @param vin VIN number
+   * @param tenantId Dealership ID for multi-tenant filtering
+   * @returns True if VIN exists, false otherwise
+   */
+  checkVINExists(vin: string, tenantId: string): Promise<boolean>;
 
   /**
    * Search vehicles (TENANT-FILTERED)

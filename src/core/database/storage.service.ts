@@ -868,6 +868,263 @@ export class StorageService implements IStorage {
     }
   }
 
+  /**
+   * Get vehicle by VIN (TENANT-FILTERED)
+   * @param vin VIN number
+   * @param tenantId Dealership ID for multi-tenant filtering
+   */
+  async getVehicleByVIN(vin: string, tenantId: string): Promise<Vehicle | undefined> {
+    const startTime = Date.now();
+    try {
+      const result = await this.dbService.db.query.vehicles.findFirst({
+        where: and(eq(vehicles.vin, vin.toUpperCase()), eq(vehicles.dealershipId, tenantId)),
+      });
+
+      this.logQuery('getVehicleByVIN', startTime, tenantId);
+      return result;
+    } catch (error) {
+      console.error('[StorageService] getVehicleByVIN error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if VIN exists for dealership (TENANT-FILTERED)
+   * @param vin VIN number
+   * @param tenantId Dealership ID for multi-tenant filtering
+   * @returns True if VIN exists, false otherwise
+   */
+  async checkVINExists(vin: string, tenantId: string): Promise<boolean> {
+    const startTime = Date.now();
+    try {
+      const result = await this.dbService.db.query.vehicles.findFirst({
+        where: and(eq(vehicles.vin, vin.toUpperCase()), eq(vehicles.dealershipId, tenantId)),
+        columns: { id: true },
+      });
+
+      this.logQuery('checkVINExists', startTime, tenantId);
+      return result !== undefined;
+    } catch (error) {
+      console.error('[StorageService] checkVINExists error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * List customers with pagination and filters (TENANT-FILTERED)
+   * @param options Pagination and filter options
+   * @param tenantId Dealership ID for multi-tenant filtering
+   */
+  async listCustomers(
+    options: {
+      page?: number;
+      pageSize?: number;
+      search?: string;
+      status?: string;
+    },
+    tenantId: string
+  ): Promise<{ customers: Customer[]; total: number; pages: number }> {
+    const startTime = Date.now();
+    try {
+      const page = options.page || 1;
+      const pageSize = options.pageSize || 20;
+      const offset = (page - 1) * pageSize;
+
+      // Build WHERE conditions
+      const conditions: any[] = [eq(customers.dealershipId, tenantId)];
+
+      if (options.status) {
+        conditions.push(eq(customers.status, options.status));
+      }
+
+      if (options.search && options.search.trim()) {
+        const searchTerm = `%${options.search.trim()}%`;
+        conditions.push(
+          or(
+            like(customers.firstName, searchTerm),
+            like(customers.lastName, searchTerm),
+            like(customers.email, searchTerm),
+            like(customers.phone, searchTerm),
+            like(customers.customerNumber, searchTerm)
+          )
+        );
+      }
+
+      const whereClause = and(...conditions);
+
+      // Get total count
+      const [countResult] = await this.dbService.db
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(customers)
+        .where(whereClause);
+
+      const total = Number(countResult.count);
+      const pages = Math.ceil(total / pageSize);
+
+      // Get customers
+      const customerList = await this.dbService.db
+        .select()
+        .from(customers)
+        .where(whereClause)
+        .orderBy(desc(customers.createdAt))
+        .limit(pageSize)
+        .offset(offset);
+
+      this.logQuery('listCustomers', startTime, tenantId);
+      return { customers: customerList, total, pages };
+    } catch (error) {
+      console.error('[StorageService] listCustomers error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get deals for a customer (TENANT-FILTERED)
+   * @param customerId Customer UUID
+   * @param tenantId Dealership ID for multi-tenant filtering
+   */
+  async getCustomerDeals(customerId: string, tenantId: string): Promise<Deal[]> {
+    const startTime = Date.now();
+    try {
+      // Validate customer belongs to tenant
+      const customer = await this.getCustomer(customerId, tenantId);
+      if (!customer) {
+        throw new Error('[StorageService] Customer not found or access denied');
+      }
+
+      const result = await this.dbService.db
+        .select()
+        .from(deals)
+        .where(and(eq(deals.customerId, customerId), eq(deals.dealershipId, tenantId)))
+        .orderBy(desc(deals.createdAt));
+
+      this.logQuery('getCustomerDeals', startTime, tenantId);
+      return result;
+    } catch (error) {
+      console.error('[StorageService] getCustomerDeals error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Find duplicate customers (TENANT-FILTERED)
+   * Searches for customers matching name, email, phone, or driver's license
+   * @param searchCriteria Search criteria
+   * @param tenantId Dealership ID for multi-tenant filtering
+   */
+  async findDuplicateCustomers(
+    searchCriteria: {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      phone?: string;
+      driversLicenseNumber?: string;
+    },
+    tenantId: string
+  ): Promise<Customer[]> {
+    const startTime = Date.now();
+    try {
+      const conditions: any[] = [eq(customers.dealershipId, tenantId)];
+      const duplicateConditions: any[] = [];
+
+      // Exact name match
+      if (searchCriteria.firstName && searchCriteria.lastName) {
+        duplicateConditions.push(
+          and(
+            sql`LOWER(${customers.firstName}) = LOWER(${searchCriteria.firstName})`,
+            sql`LOWER(${customers.lastName}) = LOWER(${searchCriteria.lastName})`
+          )
+        );
+      }
+
+      // Phone match
+      if (searchCriteria.phone) {
+        duplicateConditions.push(eq(customers.phone, searchCriteria.phone));
+      }
+
+      // Email match
+      if (searchCriteria.email) {
+        duplicateConditions.push(sql`LOWER(${customers.email}) = LOWER(${searchCriteria.email})`);
+      }
+
+      // Driver's license match
+      if (searchCriteria.driversLicenseNumber) {
+        duplicateConditions.push(
+          sql`UPPER(${customers.driversLicenseNumber}) = UPPER(${searchCriteria.driversLicenseNumber})`
+        );
+      }
+
+      if (duplicateConditions.length === 0) {
+        return [];
+      }
+
+      conditions.push(or(...duplicateConditions));
+
+      const result = await this.dbService.db
+        .select()
+        .from(customers)
+        .where(and(...conditions))
+        .limit(10);
+
+      this.logQuery('findDuplicateCustomers', startTime, tenantId);
+      return result;
+    } catch (error) {
+      console.error('[StorageService] findDuplicateCustomers error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete customer (soft delete by setting status to 'archived') (TENANT-VALIDATED)
+   * @param id Customer UUID
+   * @param tenantId Dealership ID for validation
+   */
+  async deleteCustomer(id: string, tenantId: string): Promise<void> {
+    const startTime = Date.now();
+    try {
+      // Validate tenant ownership
+      const existing = await this.getCustomer(id, tenantId);
+      if (!existing) {
+        throw new Error(`[StorageService] Customer not found or access denied: ${id}`);
+      }
+
+      await this.dbService.db
+        .update(customers)
+        .set({ status: 'archived', updatedAt: new Date() })
+        .where(and(eq(customers.id, id), eq(customers.dealershipId, tenantId)));
+
+      this.logQuery('deleteCustomer', startTime, tenantId);
+    } catch (error) {
+      console.error('[StorageService] deleteCustomer error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get customer emails (TENANT-FILTERED)
+   * Note: This requires email_messages table to be properly set up
+   * @param customerId Customer UUID
+   * @param tenantId Dealership ID for multi-tenant filtering
+   */
+  async getCustomerEmails(customerId: string, tenantId: string): Promise<any[]> {
+    const startTime = Date.now();
+    try {
+      // Validate customer belongs to tenant
+      const customer = await this.getCustomer(customerId, tenantId);
+      if (!customer) {
+        throw new Error('[StorageService] Customer not found or access denied');
+      }
+
+      // TODO: Implement when email_messages table is properly integrated
+      // For now, return empty array
+      this.logQuery('getCustomerEmails', startTime, tenantId);
+      return [];
+    } catch (error) {
+      console.error('[StorageService] getCustomerEmails error:', error);
+      throw error;
+    }
+  }
+
   // ==========================================
   // TRADE VEHICLE MANAGEMENT
   // ==========================================

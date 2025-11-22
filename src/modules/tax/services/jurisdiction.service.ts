@@ -295,4 +295,145 @@ export class JurisdictionService {
       })
       .where(eq(taxJurisdictions.id, jurisdictionId));
   }
+
+  /**
+   * Get full jurisdiction information for a ZIP code
+   * Returns detailed breakdown of all tax jurisdictions that apply
+   */
+  async getTaxJurisdictionInfo(zipCode: string): Promise<{
+    zipCode: string;
+    stateCode: string;
+    countyFips: string | null;
+    countyName: string;
+    cityName: string | null;
+    applicableJurisdictions: Array<{
+      id: string;
+      type: string;
+      name: string;
+      rate: number;
+      effectiveDate: Date;
+      endDate: Date | null;
+    }>;
+  } | null> {
+    const cleanZip = zipCode.split('-')[0];
+    const now = new Date();
+
+    const results = await this.db
+      .select()
+      .from(taxJurisdictions)
+      .where(
+        and(
+          eq(taxJurisdictions.zipCode, cleanZip),
+          lte(taxJurisdictions.effectiveDate, now),
+          or(
+            isNull(taxJurisdictions.endDate),
+            gte(taxJurisdictions.endDate, now)
+          )
+        )
+      )
+      .limit(1);
+
+    if (results.length === 0) {
+      return null;
+    }
+
+    const row = results[0];
+    const applicableJurisdictions = [];
+
+    // Add state jurisdiction
+    if (row.stateTaxRate && parseFloat(row.stateTaxRate) > 0) {
+      applicableJurisdictions.push({
+        id: `${row.id}-state`,
+        type: 'STATE',
+        name: row.state,
+        rate: parseFloat(row.stateTaxRate),
+        effectiveDate: row.effectiveDate,
+        endDate: row.endDate,
+      });
+    }
+
+    // Add county jurisdiction
+    if (row.county && row.countyTaxRate && parseFloat(row.countyTaxRate) > 0) {
+      applicableJurisdictions.push({
+        id: `${row.id}-county`,
+        type: 'COUNTY',
+        name: row.county,
+        rate: parseFloat(row.countyTaxRate),
+        effectiveDate: row.effectiveDate,
+        endDate: row.endDate,
+      });
+    }
+
+    // Add city jurisdiction
+    if (row.city && row.cityTaxRate && parseFloat(row.cityTaxRate) > 0) {
+      applicableJurisdictions.push({
+        id: `${row.id}-city`,
+        type: 'CITY',
+        name: row.city,
+        rate: parseFloat(row.cityTaxRate),
+        effectiveDate: row.effectiveDate,
+        endDate: row.endDate,
+      });
+    }
+
+    // Add special district jurisdiction
+    if (
+      row.specialDistrict &&
+      row.specialDistrictTaxRate &&
+      parseFloat(row.specialDistrictTaxRate) > 0
+    ) {
+      applicableJurisdictions.push({
+        id: `${row.id}-district`,
+        type: 'SPECIAL_DISTRICT',
+        name: row.specialDistrict,
+        rate: parseFloat(row.specialDistrictTaxRate),
+        effectiveDate: row.effectiveDate,
+        endDate: row.endDate,
+      });
+    }
+
+    return {
+      zipCode: row.zipCode,
+      stateCode: row.state,
+      countyFips: null, // Not stored in current schema
+      countyName: row.county || '',
+      cityName: row.city,
+      applicableJurisdictions,
+    };
+  }
+
+  /**
+   * Get jurisdiction breakdown for a ZIP code
+   * Returns structured breakdown of county, city, and special district rates
+   */
+  async getJurisdictionBreakdown(zipCode: string): Promise<{
+    county: { name: string; rate: number } | null;
+    city: { name: string; rate: number } | null;
+    specialDistricts: { name: string; rate: number }[];
+    combinedLocalRate: number;
+  } | null> {
+    const info = await this.getTaxJurisdictionInfo(zipCode);
+    if (!info) return null;
+
+    const county = info.applicableJurisdictions.find((j) => j.type === 'COUNTY');
+    const city = info.applicableJurisdictions.find((j) => j.type === 'CITY');
+    const specialDistricts = info.applicableJurisdictions.filter(
+      (j) => j.type === 'SPECIAL_DISTRICT'
+    );
+
+    const combinedLocalRate =
+      (county?.rate || 0) +
+      (city?.rate || 0) +
+      specialDistricts.reduce((sum, d) => sum + d.rate, 0);
+
+    return {
+      county: county ? { name: county.name, rate: county.rate } : null,
+      city: city ? { name: city.name, rate: city.rate } : null,
+      specialDistricts: specialDistricts.map((d) => ({
+        name: d.name,
+        rate: d.rate,
+      })),
+      combinedLocalRate,
+    };
+  }
 }

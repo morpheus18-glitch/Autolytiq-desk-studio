@@ -34,9 +34,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // CRITICAL: Public webhooks MUST be mounted BEFORE setupAuth() to avoid
   // having session/passport middleware applied to them
-  // OLD EMAIL SYSTEM (temporarily disabled during migration)
-  // const { default: emailRoutes, publicRouter: emailPublicRoutes } = await import('./email-routes');
-  // app.use('/api/webhooks', emailPublicRoutes);
+  // NEW EMAIL MODULE - Webhook routes (PUBLIC, no auth)
+  const emailWebhookRoutes = (await import('../src/modules/email/api/webhook.routes')).default;
+  app.use('/api/webhooks/email', emailWebhookRoutes);
 
   // ============================================================================
   // SETUP AUTHENTICATION & RATE LIMITING
@@ -58,15 +58,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
   // PROTECTED ROUTES (ALL REQUIRE AUTHENTICATION)
   // ============================================================================
-  
-  // Setup tax calculation routes (AutoTaxEngine endpoints)
-  app.use('/api/tax', taxRoutes);
 
-  // Setup local tax rate lookup routes (ZIP code to local rates)
-  app.use('/api/tax', localTaxRoutes);
+  // Setup tax calculation routes (CONSOLIDATED MODULE)
+  // Migrated from separate tax-routes.ts, local-tax-routes.ts, tax-engine-routes.ts
+  const { taxRoutes: newTaxRoutes } = await import('../src/modules/tax');
+  app.use('/api/tax', newTaxRoutes);
 
-  // Setup centralized tax engine routes (customer-based tax calculation)
-  app.use('/api/tax', taxEngineRoutes);
+  // Legacy routes (DEPRECATED - kept for backward compatibility during migration)
+  // TODO: Remove these after frontend migration is complete
+  // app.use('/api/tax', taxRoutes);
+  // app.use('/api/tax', localTaxRoutes);
+  // app.use('/api/tax', taxEngineRoutes);
 
   // Setup address validation route (validates customer addresses for tax calculation)
   const { validateAddressHandler } = await import('./address-validation');
@@ -79,15 +81,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
   // EMAIL MODULE (NEW SYSTEM)
   // ============================================================================
-  // Import new bulletproof email module
+  // Import new email module API routes
   const newEmailRoutes = (await import('../src/modules/email/api/email.routes')).default;
 
   // Mount protected email routes (require authentication)
   app.use('/api/email', requireAuth, newEmailRoutes);
 
-  // OLD EMAIL SYSTEM (temporarily disabled during migration)
-  // app.use('/api/email', requireAuth, emailRoutes);
-  // const emailWebhookRoutes = (await import('./email-webhook-routes')).default;
+  // NOTE: Webhook routes mounted above (before auth setup) at /api/webhooks/email
 
   // ============================================================================
   // CUSTOMER MODULE (NEW MODULAR SYSTEM)
@@ -97,7 +97,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount customer routes (all require authentication via router middleware)
   app.use('/api/customers', requireAuth, customerModuleRoutes);
-  // app.use('/api/webhooks/email', emailWebhookRoutes);
 
   // ============================================================================
   // VEHICLE & INVENTORY MODULE (NEW MODULAR SYSTEM)
