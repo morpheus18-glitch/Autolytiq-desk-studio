@@ -275,7 +275,7 @@ export default function EmailPage() {
             />
           </div>
         </div>
-      </div>
+      </PageContent>
 
       {/* Compose Dialog */}
       <EmailComposeDialog

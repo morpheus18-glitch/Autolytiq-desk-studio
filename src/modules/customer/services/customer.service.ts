@@ -11,7 +11,7 @@
  */
 
 import { db } from '../../../../server/database/db-service';
-import { customers, deals, emails } from '@shared/schema';
+import { customers, deals, emailMessages } from '@shared/schema';
 import { eq, and, or, like, isNull, desc, asc, sql, inArray } from 'drizzle-orm';
 import type {
   Customer,
@@ -471,7 +471,7 @@ export class CustomerService {
 
     // TODO: Implement merge logic
     // 1. Update all deals to point to keepCustomerId
-    // 2. Update all emails to point to keepCustomerId
+    // 2. Update all email messages to point to keepCustomerId
     // 3. Merge notes, tags
     // 4. Archive merged customers
     // 5. Return updated customer
@@ -485,7 +485,7 @@ export class CustomerService {
   // ========================================================================
 
   /**
-   * Get customer timeline (deals, emails, interactions)
+   * Get customer timeline (deals, email messages, interactions)
    */
   async getCustomerTimeline(
     customerId: string,
@@ -518,12 +518,12 @@ export class CustomerService {
       });
     }
 
-    // Get customer emails
+    // Get customer email messages
     const customerEmails = await db
       .select()
-      .from(emails)
-      .where(eq(emails.customerId, customerId))
-      .orderBy(desc(emails.createdAt));
+      .from(emailMessages)
+      .where(eq(emailMessages.customerId, customerId))
+      .orderBy(desc(emailMessages.createdAt));
 
     for (const email of customerEmails) {
       events.push({
@@ -561,7 +561,7 @@ export class CustomerService {
   }
 
   /**
-   * Get customer emails
+   * Get customer email messages
    */
   async getCustomerEmails(customerId: string, dealershipId: string) {
     // Verify customer exists and belongs to dealership
@@ -569,9 +569,9 @@ export class CustomerService {
 
     return await db
       .select()
-      .from(emails)
-      .where(eq(emails.customerId, customerId))
-      .orderBy(desc(emails.createdAt));
+      .from(emailMessages)
+      .where(eq(emailMessages.customerId, customerId))
+      .orderBy(desc(emailMessages.createdAt));
   }
 
   // ========================================================================

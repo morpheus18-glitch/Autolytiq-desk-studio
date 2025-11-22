@@ -3,7 +3,7 @@
  * Vehicle inventory management, status tracking, and history
  */
 
-import { db } from '@server/database/db-service';
+import { db } from '../../../../server/database/db-service';
 import { sql, and, eq, isNull, desc, asc, inArray } from 'drizzle-orm';
 import {
   VehicleStatus,

@@ -5,7 +5,7 @@
  */
 
 import { Router } from 'express';
-import { GoogleMapsService, type Address } from '@/services/google-maps.service';
+import { GoogleMapsService, type Address } from '../src/services/google-maps.service';
 
 const router = Router();
 const googleMapsService = new GoogleMapsService();
