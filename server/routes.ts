@@ -110,6 +110,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/vehicles', requireAuth, createVehicleRouter());
 
   // ============================================================================
+  // DEAL MODULE (NEW MODULAR SYSTEM)
+  // ============================================================================
+  // Import comprehensive deal module with CRUD, scenarios, trades, audit, PDF, lenders
+  const { createDealRouter } = await import('../src/modules/deal/api/deal.routes');
+
+  // Mount deal routes (all require authentication via router middleware)
+  // NOTE: Legacy deal routes exist below - this new module provides the same API
+  app.use('/api/deals', createDealRouter(
+    storage,
+    requireAuth,
+    requireRole,
+    insertDealSchema,
+    insertTradeVehicleSchema,
+    insertDealScenarioSchema
+  ));
+
+  // ============================================================================
   // GOOGLE MAPS INTEGRATION (Address Validation & Autocomplete)
   // ============================================================================
   // Server-side proxy for Google Maps API to protect API key
@@ -1260,7 +1277,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // ===== DEALS =====
+  // ============================================================================
+  // ===== LEGACY DEAL ROUTES (DEPRECATED - USE /src/modules/deal INSTEAD) =====
+  // ============================================================================
+  // ⚠️ DEPRECATION NOTICE:
+  // These routes are maintained for backward compatibility only.
+  // The new modular deal routes mounted above at '/api/deals' take precedence.
+  //
+  // Migration Status: ALL routes have been migrated to /src/modules/deal/api/deal.routes.ts
+  //
+  // Routes migrated:
+  // - GET    /api/deals/stats          → Modular (line 139)
+  // - GET    /api/deals                → Modular (line 169)
+  // - GET    /api/deals/:id            → Modular (line 197)
+  // - POST   /api/deals                → Modular (line 229)
+  // - PATCH  /api/deals/:id            → Modular (line 310)
+  // - PATCH  /api/deals/:id/attach-customer  → Modular (line 349)
+  // - PATCH  /api/deals/:id/state      → Modular (line 378)
+  // - GET    /api/deals/:dealId/trades → Modular (line 419)
+  // - POST   /api/deals/:dealId/trades → Modular (line 454)
+  // - PATCH  /api/deals/:dealId/trades/:tradeId  → Modular (line 501)
+  // - DELETE /api/deals/:dealId/trades/:tradeId  → Modular (line 559)
+  // - POST   /api/deals/:dealId/scenarios        → Modular (line 609)
+  // - PATCH  /api/deals/:dealId/scenarios/:scenarioId  → Modular (line 653)
+  // - DELETE /api/deals/:dealId/scenarios/:scenarioId  → Modular (line 701)
+  // - POST   /api/deals/:dealId/scenarios/:scenarioId/apply-template  → Modular (line 736)
+  // - GET    /api/deals/:id/audit      → Modular (line 807)
+  // - POST   /api/deals/:id/pdf        → Modular (line 845)
+  // - GET    /api/deals/:id/lenders    → Modular (line 992)
+  //
+  // TODO: Remove these legacy routes after confirming all clients use modular routes
+  // ============================================================================
+
   app.get('/api/deals/stats', requireAuth, async (req, res) => {
     try {
       // SECURITY: Filter by authenticated user's dealership for multi-tenant isolation

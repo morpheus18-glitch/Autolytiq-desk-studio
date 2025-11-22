@@ -5,6 +5,7 @@
 
 import { db } from '../../../../server/database/db-service';
 import { sql } from 'drizzle-orm';
+import { StorageService } from '../../../core/database/storage.service';
 import { DuplicateStockNumberError } from '../types/vehicle.types';
 
 /**
@@ -12,6 +13,12 @@ import { DuplicateStockNumberError } from '../types/vehicle.types';
  * Provides atomic, unique stock number generation per dealership
  */
 export class StockNumberService {
+  private storageService: StorageService;
+
+  constructor(storageService?: StorageService) {
+    this.storageService = storageService || new StorageService();
+  }
+
   /**
    * Generate unique stock number for dealership
    * Uses database sequence to ensure atomicity across concurrent requests
@@ -25,34 +32,42 @@ export class StockNumberService {
    */
   async generateStockNumber(dealershipId: string, prefix?: string): Promise<string> {
     try {
-      // Use serializable transaction for maximum safety
-      const stockNumber = await db.transaction(
-        async (tx) => {
-          // Upsert sequence record and increment atomically
-          // This ensures no two vehicles get the same number even under high concurrency
-          const result = await tx.execute(sql`
-            INSERT INTO stock_number_sequences (dealership_id, last_number, updated_at)
-            VALUES (${dealershipId}, 1, NOW())
-            ON CONFLICT (dealership_id)
-            DO UPDATE SET
-              last_number = stock_number_sequences.last_number + 1,
-              updated_at = NOW()
-            RETURNING last_number
-          `);
+      // Use StorageService's atomic stock number generation
+      // Note: StorageService doesn't support custom prefix yet, falls back to legacy if prefix provided
+      if (prefix) {
+        // TODO: Migrate to StorageService.generateStockNumber with prefix support
+        console.warn('[StockNumberService] Custom prefix not yet supported in StorageService, using legacy implementation');
 
-          const sequence = Number(result.rows[0].last_number);
-          const year = new Date().getFullYear().toString().slice(-2); // Last 2 digits of year
+        // Use serializable transaction for maximum safety
+        const stockNumber = await db.transaction(
+          async (tx) => {
+            // Upsert sequence record and increment atomically
+            // This ensures no two vehicles get the same number even under high concurrency
+            const result = await tx.execute(sql`
+              INSERT INTO stock_number_sequences (dealership_id, last_number, updated_at)
+              VALUES (${dealershipId}, 1, NOW())
+              ON CONFLICT (dealership_id)
+              DO UPDATE SET
+                last_number = stock_number_sequences.last_number + 1,
+                updated_at = NOW()
+              RETURNING last_number
+            `);
 
-          // Format: PREFIX-YY-NNNNN or YY-NNNNN
-          const sequenceStr = sequence.toString().padStart(5, '0');
-          return prefix
-            ? `${prefix.toUpperCase()}-${year}-${sequenceStr}`
-            : `${year}-${sequenceStr}`;
-        },
-        { isolationLevel: 'serializable' }
-      );
+            const sequence = Number(result.rows[0].last_number);
+            const year = new Date().getFullYear().toString().slice(-2); // Last 2 digits of year
 
-      return stockNumber;
+            // Format: PREFIX-YY-NNNNN or YY-NNNNN
+            const sequenceStr = sequence.toString().padStart(5, '0');
+            return `${prefix.toUpperCase()}-${year}-${sequenceStr}`;
+          },
+          { isolationLevel: 'serializable' }
+        );
+
+        return stockNumber;
+      }
+
+      // Use StorageService for standard stock number generation
+      return await this.storageService.generateStockNumber(dealershipId);
     } catch (error) {
       console.error('[StockNumberService] Failed to generate stock number:', error);
       throw new Error(`Failed to generate stock number: ${error.message}`);

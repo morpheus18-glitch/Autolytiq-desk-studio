@@ -5,6 +5,7 @@
 
 import { db } from '../../../../server/database/db-service';
 import { sql, and, eq, isNull } from 'drizzle-orm';
+import { StorageService } from '../../../core/database/storage.service';
 import { VINDecoderService } from './vin-decoder.service';
 import { StockNumberService } from './stock-number.service';
 import { InventoryService } from './inventory.service';
@@ -30,11 +31,13 @@ import {
  * Provides complete vehicle management functionality
  */
 export class VehicleService {
+  private storageService: StorageService;
   private vinDecoder: VINDecoderService;
   private stockNumberService: StockNumberService;
   private inventoryService: InventoryService;
 
-  constructor() {
+  constructor(storageService?: StorageService) {
+    this.storageService = storageService || new StorageService();
     this.vinDecoder = new VINDecoderService();
     this.stockNumberService = new StockNumberService();
     this.inventoryService = new InventoryService();
@@ -200,18 +203,13 @@ export class VehicleService {
    */
   async getVehicle(vehicleId: string, dealershipId: string): Promise<Vehicle> {
     try {
-      const result = await db.execute(sql`
-        SELECT * FROM vehicles
-        WHERE id = ${vehicleId}
-          AND dealership_id = ${dealershipId}
-          AND deleted_at IS NULL
-      `);
+      const vehicle = await this.storageService.getVehicle(vehicleId, dealershipId);
 
-      if (result.rows.length === 0) {
+      if (!vehicle) {
         throw new VehicleNotFoundError(vehicleId);
       }
 
-      return this.mapRowToVehicle(result.rows[0]);
+      return this.mapDrizzleToVehicle(vehicle);
     } catch (error) {
       if (error instanceof VehicleNotFoundError) {
         throw error;
@@ -223,9 +221,11 @@ export class VehicleService {
 
   /**
    * Get vehicle by VIN
+   * TODO: Migrate to StorageService when getVehicleByVIN method is added
    */
   async getVehicleByVIN(vin: string, dealershipId: string): Promise<Vehicle | null> {
     try {
+      // TODO: Replace with storageService.getVehicleByVIN(vin, dealershipId) when available
       const result = await db.execute(sql`
         SELECT * FROM vehicles
         WHERE vin = ${vin.toUpperCase()}
@@ -249,18 +249,13 @@ export class VehicleService {
    */
   async getVehicleByStockNumber(stockNumber: string, dealershipId: string): Promise<Vehicle | null> {
     try {
-      const result = await db.execute(sql`
-        SELECT * FROM vehicles
-        WHERE stock_number = ${stockNumber.toUpperCase()}
-          AND dealership_id = ${dealershipId}
-          AND deleted_at IS NULL
-      `);
+      const vehicle = await this.storageService.getVehicleByStock(stockNumber, dealershipId);
 
-      if (result.rows.length === 0) {
+      if (!vehicle) {
         return null;
       }
 
-      return this.mapRowToVehicle(result.rows[0]);
+      return this.mapDrizzleToVehicle(vehicle);
     } catch (error) {
       console.error('[VehicleService] Failed to get vehicle by stock number:', error);
       throw new Error(`Failed to get vehicle by stock number: ${error.message}`);
@@ -686,7 +681,7 @@ export class VehicleService {
   }
 
   /**
-   * Map database row to Vehicle type
+   * Map database row to Vehicle type (legacy - for direct DB calls)
    */
   private mapRowToVehicle(row: Record<string, unknown>): Vehicle {
     return {
@@ -734,6 +729,58 @@ export class VehicleService {
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       deletedAt: row.deleted_at || undefined,
+    };
+  }
+
+  /**
+   * Map Drizzle vehicle type to Vehicle type (for StorageService results)
+   */
+  private mapDrizzleToVehicle(drizzleVehicle: any): Vehicle {
+    return {
+      id: drizzleVehicle.id,
+      dealershipId: drizzleVehicle.dealershipId,
+      vin: drizzleVehicle.vin,
+      stockNumber: drizzleVehicle.stockNumber,
+      year: Number(drizzleVehicle.year),
+      make: drizzleVehicle.make,
+      model: drizzleVehicle.model,
+      trim: drizzleVehicle.trim || undefined,
+      type: drizzleVehicle.type,
+      bodyStyle: drizzleVehicle.bodyStyle,
+      exteriorColor: drizzleVehicle.exteriorColor,
+      interiorColor: drizzleVehicle.interiorColor,
+      transmission: drizzleVehicle.transmission,
+      drivetrain: drizzleVehicle.drivetrain,
+      fuelType: drizzleVehicle.fuelType,
+      engine: drizzleVehicle.engine || undefined,
+      cylinders: drizzleVehicle.cylinders ? Number(drizzleVehicle.cylinders) : undefined,
+      displacement: drizzleVehicle.displacement || undefined,
+      mileage: Number(drizzleVehicle.mileage),
+      condition: drizzleVehicle.condition || undefined,
+      cost: Number(drizzleVehicle.cost || drizzleVehicle.price || 0),
+      msrp: drizzleVehicle.msrp ? Number(drizzleVehicle.msrp) : undefined,
+      askingPrice: Number(drizzleVehicle.askingPrice || drizzleVehicle.price || 0),
+      internetPrice: drizzleVehicle.internetPrice ? Number(drizzleVehicle.internetPrice) : undefined,
+      status: drizzleVehicle.status,
+      location: drizzleVehicle.location,
+      reservedUntil: drizzleVehicle.reservedUntil || undefined,
+      reservedForDealId: drizzleVehicle.reservedForDealId || undefined,
+      features: drizzleVehicle.features || [],
+      photos: drizzleVehicle.photos || [],
+      description: drizzleVehicle.description || undefined,
+      notes: drizzleVehicle.notes || undefined,
+      internalNotes: drizzleVehicle.internalNotes || undefined,
+      tags: drizzleVehicle.tags || [],
+      acquiredDate: drizzleVehicle.acquiredDate || undefined,
+      acquiredFrom: drizzleVehicle.acquiredFrom || undefined,
+      floorPlanProvider: drizzleVehicle.floorPlanProvider || undefined,
+      floorPlanDate: drizzleVehicle.floorPlanDate || undefined,
+      soldDate: drizzleVehicle.soldDate || undefined,
+      soldPrice: drizzleVehicle.soldPrice ? Number(drizzleVehicle.soldPrice) : undefined,
+      soldToDealId: drizzleVehicle.soldToDealId || undefined,
+      createdAt: drizzleVehicle.createdAt,
+      updatedAt: drizzleVehicle.updatedAt,
+      deletedAt: drizzleVehicle.deletedAt || undefined,
     };
   }
 }

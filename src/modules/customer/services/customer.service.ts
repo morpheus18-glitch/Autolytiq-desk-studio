@@ -13,7 +13,13 @@
 import { db } from '../../../../server/database/db-service';
 import { customers, deals, emailMessages, customerNotes } from '@shared/schema';
 import { eq, and, or, like, isNull, desc, asc, sql, inArray } from 'drizzle-orm';
-import type { CustomerNote, InsertCustomerNote } from '@shared/schema';
+import type {
+  CustomerNote,
+  InsertCustomerNote,
+  InsertCustomer,
+  Customer as DbCustomer
+} from '@shared/schema';
+import { StorageService } from '../../../core/database/storage.service';
 import type {
   Customer,
   CreateCustomerRequest,
@@ -36,6 +42,12 @@ import { validateCustomerData, normalizePhone, normalizeEmail } from '../utils/v
  * Customer Service Class
  */
 export class CustomerService {
+  private storageService: StorageService;
+
+  constructor() {
+    this.storageService = new StorageService();
+  }
+
   // ========================================================================
   // CREATE
   // ========================================================================
@@ -85,50 +97,45 @@ export class CustomerService {
       );
     }
 
-    // Create customer
-    const now = new Date().toISOString();
+    // Create customer using StorageService
+    const insertData: InsertCustomer = {
+      dealershipId,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      email: data.email ? normalizeEmail(data.email) : null,
+      phone: data.phone ? normalizePhone(data.phone) : null,
+      address: data.address?.street || null,
+      city: data.address?.city || null,
+      state: data.address?.state || null,
+      zipCode: data.address?.zipCode || null,
+      county: data.address?.county || null,
+      dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
+      driversLicenseNumber: data.driversLicense?.number || null,
+      driversLicenseState: data.driversLicense?.state || null,
+      ssnLast4: data.ssnLast4 || null,
+      employer: data.employer || null,
+      occupation: data.occupation || null,
+      monthlyIncome: data.monthlyIncome?.toString() || null,
+      creditScore: data.creditScore || null,
+      status: data.status,
+      preferredContactMethod: data.preferredContactMethod || 'email',
+      marketingOptIn: data.marketingOptIn ?? false,
+      notes: data.notes || null,
+      photoUrl: data.photoUrl || null,
+      currentVehicleYear: data.currentVehicle?.year || null,
+      currentVehicleMake: data.currentVehicle?.make || null,
+      currentVehicleModel: data.currentVehicle?.model || null,
+      currentVehicleTrim: data.currentVehicle?.trim || null,
+      currentVehicleVin: data.currentVehicle?.vin || null,
+      currentVehicleMileage: data.currentVehicle?.mileage || null,
+      currentVehicleColor: data.currentVehicle?.color || null,
+      tradeAllowance: data.tradeIn?.allowance?.toString() || null,
+      tradeACV: data.tradeIn?.actualCashValue?.toString() || null,
+      tradePayoff: data.tradeIn?.payoffAmount?.toString() || null,
+      tradePayoffTo: data.tradeIn?.payoffLender || null,
+    };
 
-    const [customer] = await db
-      .insert(customers)
-      .values({
-        dealershipId,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        email: data.email ? normalizeEmail(data.email) : null,
-        phone: data.phone ? normalizePhone(data.phone) : null,
-        address: data.address?.street || null,
-        city: data.address?.city || null,
-        state: data.address?.state || null,
-        zipCode: data.address?.zipCode || null,
-        county: data.address?.county || null,
-        dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
-        driversLicenseNumber: data.driversLicense?.number || null,
-        driversLicenseState: data.driversLicense?.state || null,
-        ssnLast4: data.ssnLast4 || null,
-        employer: data.employer || null,
-        occupation: data.occupation || null,
-        monthlyIncome: data.monthlyIncome?.toString() || null,
-        creditScore: data.creditScore || null,
-        status: data.status,
-        preferredContactMethod: data.preferredContactMethod || 'email',
-        marketingOptIn: data.marketingOptIn ?? false,
-        notes: data.notes || null,
-        photoUrl: data.photoUrl || null,
-        currentVehicleYear: data.currentVehicle?.year || null,
-        currentVehicleMake: data.currentVehicle?.make || null,
-        currentVehicleModel: data.currentVehicle?.model || null,
-        currentVehicleTrim: data.currentVehicle?.trim || null,
-        currentVehicleVin: data.currentVehicle?.vin || null,
-        currentVehicleMileage: data.currentVehicle?.mileage || null,
-        currentVehicleColor: data.currentVehicle?.color || null,
-        tradeAllowance: data.tradeIn?.allowance?.toString() || null,
-        tradeACV: data.tradeIn?.actualCashValue?.toString() || null,
-        tradePayoff: data.tradeIn?.payoffAmount?.toString() || null,
-        tradePayoffTo: data.tradeIn?.payoffLender || null,
-        createdAt: new Date(now),
-        updatedAt: new Date(now),
-      })
-      .returning();
+    const customer = await this.storageService.createCustomer(insertData, dealershipId);
 
     return this.mapToCustomer(customer);
   }
@@ -142,16 +149,7 @@ export class CustomerService {
    * Enforces multi-tenant isolation and soft delete filtering
    */
   async getCustomer(customerId: string, dealershipId: string): Promise<Customer> {
-    const [customer] = await db
-      .select()
-      .from(customers)
-      .where(
-        and(
-          eq(customers.id, customerId),
-          eq(customers.dealershipId, dealershipId) // CRITICAL: Multi-tenant isolation
-        )
-      )
-      .limit(1);
+    const customer = await this.storageService.getCustomer(customerId, dealershipId);
 
     if (!customer) {
       throw new CustomerNotFoundError(customerId);
@@ -162,6 +160,7 @@ export class CustomerService {
 
   /**
    * List customers with filters and pagination
+   * TODO: Migrate to StorageService - needs complex pagination/filtering support
    */
   async listCustomers(query: CustomerListQuery): Promise<PaginatedCustomers> {
     const {
@@ -290,9 +289,7 @@ export class CustomerService {
     }
 
     // Build update object
-    const updateData: Record<string, unknown> = {
-      updatedAt: new Date(),
-    };
+    const updateData: Partial<InsertCustomer> = {};
 
     if (data.firstName) updateData.firstName = data.firstName;
     if (data.lastName) updateData.lastName = data.lastName;
@@ -313,21 +310,12 @@ export class CustomerService {
       updateData.preferredContactMethod = data.preferredContactMethod;
     }
 
-    // Update customer
-    const [updated] = await db
-      .update(customers)
-      .set(updateData)
-      .where(
-        and(
-          eq(customers.id, customerId),
-          eq(customers.dealershipId, dealershipId) // CRITICAL: Multi-tenant isolation
-        )
-      )
-      .returning();
-
-    if (!updated) {
-      throw new CustomerNotFoundError(customerId);
-    }
+    // Update customer using StorageService
+    const updated = await this.storageService.updateCustomer(
+      customerId,
+      updateData,
+      dealershipId
+    );
 
     return this.mapToCustomer(updated);
   }
@@ -338,6 +326,7 @@ export class CustomerService {
 
   /**
    * Soft delete customer (preserves history)
+   * TODO: Migrate to StorageService - needs soft delete support
    */
   async deleteCustomer(customerId: string, dealershipId: string): Promise<void> {
     // Verify customer exists and belongs to dealership
@@ -372,24 +361,7 @@ export class CustomerService {
       return [];
     }
 
-    const searchTerm = `%${searchQuery.trim().toLowerCase()}%`;
-
-    const results = await db
-      .select()
-      .from(customers)
-      .where(
-        and(
-          eq(customers.dealershipId, dealershipId),
-          or(
-            sql`LOWER(${customers.firstName}) LIKE ${searchTerm}`,
-            sql`LOWER(${customers.lastName}) LIKE ${searchTerm}`,
-            sql`LOWER(${customers.email}) LIKE ${searchTerm}`,
-            sql`${customers.phone} LIKE ${searchTerm}`,
-            sql`${customers.customerNumber} LIKE ${searchTerm}`
-          )!
-        )
-      )
-      .limit(50); // Limit search results
+    const results = await this.storageService.searchCustomers(searchQuery, dealershipId);
 
     return results.map((c) => this.mapToCustomer(c));
   }
@@ -401,6 +373,7 @@ export class CustomerService {
   /**
    * Find potential duplicate customers
    * Checks: name match, phone match, email match, driver's license match
+   * TODO: Migrate to StorageService - needs complex duplicate detection logic
    */
   async findDuplicates(search: DuplicateSearch): Promise<Customer[]> {
     const { dealershipId, firstName, lastName, email, phone, driversLicenseNumber } =
@@ -457,6 +430,7 @@ export class CustomerService {
   /**
    * Merge duplicate customers (advanced feature)
    * Keeps one customer, merges data from others, updates all references
+   * TODO: Migrate to StorageService - needs complex merge logic
    */
   async mergeDuplicates(
     keepCustomerId: string,
@@ -487,6 +461,7 @@ export class CustomerService {
 
   /**
    * Get customer timeline (deals, email messages, interactions)
+   * TODO: Consider consolidating with StorageService.getCustomerHistory
    */
   async getCustomerTimeline(
     customerId: string,
@@ -549,6 +524,7 @@ export class CustomerService {
 
   /**
    * Get customer deals
+   * TODO: Migrate to StorageService - simple query
    */
   async getCustomerDeals(customerId: string, dealershipId: string) {
     // Verify customer exists and belongs to dealership
@@ -563,6 +539,7 @@ export class CustomerService {
 
   /**
    * Get customer email messages
+   * TODO: Migrate to StorageService - simple query
    */
   async getCustomerEmails(customerId: string, dealershipId: string) {
     // Verify customer exists and belongs to dealership
@@ -587,18 +564,7 @@ export class CustomerService {
     // Verify customer exists and belongs to dealership
     await this.getCustomer(customerId, dealershipId);
 
-    const notes = await db
-      .select()
-      .from(customerNotes)
-      .where(
-        and(
-          eq(customerNotes.customerId, customerId),
-          eq(customerNotes.dealershipId, dealershipId)
-        )
-      )
-      .orderBy(desc(customerNotes.createdAt));
-
-    return notes;
+    return await this.storageService.getCustomerNotes(customerId, dealershipId);
   }
 
   /**
@@ -625,20 +591,15 @@ export class CustomerService {
       ]);
     }
 
-    const [note] = await db
-      .insert(customerNotes)
-      .values({
-        customerId,
-        userId,
-        dealershipId,
-        content: data.content.trim(),
-        noteType: data.noteType || 'general',
-        isImportant: data.isImportant ?? false,
-        dealId: data.dealId || null,
-      })
-      .returning();
-
-    return note;
+    return await this.storageService.createCustomerNote({
+      customerId,
+      userId,
+      dealershipId,
+      content: data.content.trim(),
+      noteType: data.noteType || 'general',
+      isImportant: data.isImportant ?? false,
+      dealId: data.dealId || null,
+    });
   }
 
   /**
@@ -655,79 +616,9 @@ export class CustomerService {
     data: Record<string, unknown>;
   }>> {
     // Verify customer exists and belongs to dealership
-    const customer = await this.getCustomer(customerId, dealershipId);
+    await this.getCustomer(customerId, dealershipId);
 
-    const history: Array<{
-      type: string;
-      timestamp: Date;
-      data: Record<string, unknown>;
-    }> = [];
-
-    // Get customer deals
-    const customerDeals = await db
-      .select()
-      .from(deals)
-      .where(
-        and(
-          eq(deals.customerId, customerId),
-          eq(deals.dealershipId, dealershipId)
-        )
-      )
-      .orderBy(desc(deals.createdAt));
-
-    for (const deal of customerDeals) {
-      history.push({
-        type: 'deal',
-        timestamp: deal.createdAt,
-        data: {
-          id: deal.id,
-          dealNumber: deal.dealNumber,
-          dealState: deal.dealState,
-          status: deal.status,
-          createdAt: deal.createdAt,
-          updatedAt: deal.updatedAt,
-        },
-      });
-    }
-
-    // Get customer notes
-    const notes = await db
-      .select()
-      .from(customerNotes)
-      .where(
-        and(
-          eq(customerNotes.customerId, customerId),
-          eq(customerNotes.dealershipId, dealershipId)
-        )
-      )
-      .orderBy(desc(customerNotes.createdAt));
-
-    for (const note of notes) {
-      history.push({
-        type: 'note',
-        timestamp: note.createdAt,
-        data: {
-          id: note.id,
-          content: note.content,
-          noteType: note.noteType,
-          isImportant: note.isImportant,
-        },
-      });
-    }
-
-    // Add customer creation event
-    history.push({
-      type: 'customer_created',
-      timestamp: new Date(customer.createdAt),
-      data: {
-        name: `${customer.firstName} ${customer.lastName}`,
-      },
-    });
-
-    // Sort by timestamp descending
-    history.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-
-    return history;
+    return await this.storageService.getCustomerHistory(customerId, dealershipId);
   }
 
   // ========================================================================
@@ -759,7 +650,7 @@ export class CustomerService {
   /**
    * Map database customer to domain Customer type
    */
-  private mapToCustomer(dbCustomer: Record<string, unknown>): Customer {
+  private mapToCustomer(dbCustomer: DbCustomer): Customer {
     return {
       id: dbCustomer.id,
       dealershipId: dbCustomer.dealershipId,

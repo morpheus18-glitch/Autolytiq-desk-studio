@@ -5,6 +5,7 @@
 
 import { db } from '../../../../server/database/db-service';
 import { sql, and, eq, isNull, desc, asc, inArray } from 'drizzle-orm';
+import { StorageService } from '../../../core/database/storage.service';
 import {
   VehicleStatus,
   VehicleNotFoundError,
@@ -23,8 +24,16 @@ import {
  * Handles vehicle inventory tracking, status management, and reporting
  */
 export class InventoryService {
+  private storageService: StorageService;
+
+  constructor(storageService?: StorageService) {
+    this.storageService = storageService || new StorageService();
+  }
+
   /**
    * Get paginated vehicle inventory with filters
+   * TODO: Migrate to StorageService when full filter support is available
+   * Current StorageService.getInventory supports basic filters but not all advanced filters
    */
   async getInventory(filters: InventoryFilters): Promise<PaginatedVehicles> {
     try {
@@ -229,6 +238,7 @@ export class InventoryService {
 
   /**
    * Update vehicle status with history tracking
+   * TODO: Migrate history tracking to StorageService when history methods are available
    */
   async updateVehicleStatus(
     vehicleId: string,
@@ -238,6 +248,8 @@ export class InventoryService {
     notes?: string
   ): Promise<Vehicle> {
     try {
+      // StorageService doesn't yet support history tracking, so we use transactions for now
+      // TODO: Replace with storageService.updateVehicleStatus when it supports history tracking
       return await db.transaction(async (tx) => {
         // Get current vehicle
         const currentResult = await tx.execute(sql`
