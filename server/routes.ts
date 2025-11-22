@@ -528,6 +528,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================================================
+  // LEGACY VEHICLE ROUTES (DEPRECATED - MIGRATED TO VEHICLE MODULE)
+  // ============================================================================
+  // These routes are preserved for rollback capability but should not be used.
+  // All vehicle operations now handled by: /src/modules/vehicle/api/vehicle.routes.ts
+  //
+  // MIGRATION COMPLETE:
+  // - GET  /api/vehicles/search      → GET  /api/vehicles?search=query
+  // - GET  /api/vehicles/stock/:id   → GET  /api/vehicles/stock/:stockNumber
+  // - GET  /api/vehicles/:id         → GET  /api/vehicles/:id
+  // - POST /api/vehicles             → POST /api/vehicles
+  //
+  // ============================================================================
+
+  /*
   // ===== VEHICLES =====
   app.get('/api/vehicles/search', requireAuth, async (req, res) => {
     try {
@@ -536,7 +551,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!dealershipId) {
         return res.status(403).json({ error: 'User must belong to a dealership' });
       }
-      
+
       const query = String(req.query.q || '');
       const vehicles = await storage.searchVehicles(query, dealershipId);
       res.json(vehicles);
@@ -544,7 +559,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: 'Failed to search vehicles' });
     }
   });
-  
+
   app.get('/api/vehicles/stock/:stockNumber', requireAuth, async (req, res) => {
     try {
       // SECURITY: Filter by authenticated user's dealership for multi-tenant isolation
@@ -552,7 +567,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!dealershipId) {
         return res.status(403).json({ error: 'User must belong to a dealership' });
       }
-      
+
       const vehicle = await storage.getVehicleByStock(req.params.stockNumber, dealershipId);
       if (!vehicle) {
         return res.status(404).json({ error: 'Vehicle not found' });
@@ -562,7 +577,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: 'Failed to get vehicle' });
     }
   });
-  
+
   app.get('/api/vehicles/:id', requireAuth, async (req, res) => {
     try {
       // SECURITY: Verify vehicle belongs to authenticated user's dealership
@@ -570,23 +585,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!dealershipId) {
         return res.status(403).json({ error: 'User must belong to a dealership' });
       }
-      
+
       const vehicle = await storage.getVehicle(req.params.id);
       if (!vehicle) {
         return res.status(404).json({ error: 'Vehicle not found' });
       }
-      
+
       // Verify vehicle belongs to same dealership as authenticated user
       if (vehicle.dealershipId !== dealershipId) {
         return res.status(404).json({ error: 'Vehicle not found' });
       }
-      
+
       res.json(vehicle);
     } catch (error) {
       res.status(500).json({ error: 'Failed to get vehicle' });
     }
   });
-  
+
   app.post('/api/vehicles', requireAuth, async (req, res) => {
     try {
       // SECURITY: Inject dealershipId from authenticated user for multi-tenant isolation
@@ -594,7 +609,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!dealershipId) {
         return res.status(403).json({ error: 'User must belong to a dealership' });
       }
-      
+
       const data = insertVehicleSchema.parse(req.body);
       const vehicle = await storage.createVehicle(data, dealershipId);
       res.status(201).json(vehicle);
@@ -602,7 +617,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(400).json({ error: error.message || 'Failed to create vehicle' });
     }
   });
-  
+  */
+
+  // ============================================================================
+  // LEGACY VIN DECODER ROUTE (DEPRECATED - MIGRATED TO VEHICLE MODULE)
+  // ============================================================================
+  // This route is preserved for rollback capability but should not be used.
+  // VIN decoding now handled by: /src/modules/vehicle/api/vehicle.routes.ts
+  //
+  // MIGRATION COMPLETE:
+  // - POST /api/vin/decode → POST /api/vehicles/decode-vin
+  //
+  // ============================================================================
+
+  /*
   // ===== VIN DECODER =====
   // POST /api/vin/decode - Decode VIN using NHTSA API
   app.post('/api/vin/decode', async (req, res) => {
@@ -766,7 +794,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(400).json({ error: error.message || 'Failed to decode VIN' });
     }
   });
-  
+  */
+
   // ===== INVENTORY MANAGEMENT =====
   // GET /api/inventory - list vehicles with pagination and filters
   app.get('/api/inventory', async (req, res) => {

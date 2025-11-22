@@ -221,23 +221,17 @@ export class VehicleService {
 
   /**
    * Get vehicle by VIN
-   * TODO: Migrate to StorageService when getVehicleByVIN method is added
+   * Delegates to StorageService for tenant-filtered VIN lookup
    */
   async getVehicleByVIN(vin: string, dealershipId: string): Promise<Vehicle | null> {
     try {
-      // TODO: Replace with storageService.getVehicleByVIN(vin, dealershipId) when available
-      const result = await db.execute(sql`
-        SELECT * FROM vehicles
-        WHERE vin = ${vin.toUpperCase()}
-          AND dealership_id = ${dealershipId}
-          AND deleted_at IS NULL
-      `);
+      const vehicle = await this.storageService.getVehicleByVIN(vin, dealershipId);
 
-      if (result.rows.length === 0) {
+      if (!vehicle) {
         return null;
       }
 
-      return this.mapRowToVehicle(result.rows[0]);
+      return this.mapDrizzleToVehicle(vehicle);
     } catch (error) {
       console.error('[VehicleService] Failed to get vehicle by VIN:', error);
       throw new Error(`Failed to get vehicle by VIN: ${error.message}`);
@@ -603,19 +597,11 @@ export class VehicleService {
 
   /**
    * Check if VIN exists for dealership
+   * Delegates to StorageService for tenant-filtered VIN check
    */
   async checkVINExists(dealershipId: string, vin: string): Promise<boolean> {
     try {
-      const result = await db.execute(sql`
-        SELECT COUNT(*) as count
-        FROM vehicles
-        WHERE dealership_id = ${dealershipId}
-          AND vin = ${vin.toUpperCase()}
-          AND deleted_at IS NULL
-      `);
-
-      const count = Number(result.rows[0].count);
-      return count > 0;
+      return await this.storageService.checkVINExists(vin, dealershipId);
     } catch (error) {
       console.error('[VehicleService] Failed to check VIN existence:', error);
       throw new Error(`Failed to check VIN existence: ${error.message}`);

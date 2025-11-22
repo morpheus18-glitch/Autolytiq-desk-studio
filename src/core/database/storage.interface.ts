@@ -330,12 +330,62 @@ export interface IStorage {
   updateVehicle(id: string, vehicle: Partial<InsertVehicle>, tenantId: string): Promise<Vehicle>;
 
   /**
+   * List vehicles with pagination and filters (TENANT-FILTERED)
+   * @param options Pagination and filter options
+   * @param tenantId Dealership ID for multi-tenant filtering
+   */
+  listVehicles(
+    options: {
+      limit?: number;
+      offset?: number;
+      search?: string;
+      status?: 'available' | 'sold' | 'pending' | 'service';
+      condition?: 'new' | 'used' | 'certified';
+      minPrice?: number;
+      maxPrice?: number;
+      make?: string;
+      model?: string;
+      year?: number;
+    },
+    tenantId: string
+  ): Promise<{ vehicles: Vehicle[]; total: number }>;
+
+  /**
+   * Get vehicles by status (TENANT-FILTERED)
+   * @param status Vehicle status
+   * @param tenantId Dealership ID for multi-tenant filtering
+   */
+  getVehiclesByStatus(status: string, tenantId: string): Promise<Vehicle[]>;
+
+  /**
    * Update vehicle status (TENANT-VALIDATED)
    * @param stockNumber Stock number
    * @param status New status
    * @param tenantId Dealership ID for validation
    */
   updateVehicleStatus(stockNumber: string, status: string, tenantId: string): Promise<Vehicle>;
+
+  /**
+   * Delete vehicle (soft delete - sets status to 'deleted') (TENANT-VALIDATED)
+   * @param id Vehicle UUID
+   * @param tenantId Dealership ID for validation
+   */
+  deleteVehicle(id: string, tenantId: string): Promise<void>;
+
+  /**
+   * Get inventory statistics (TENANT-FILTERED)
+   * @param tenantId Dealership ID for multi-tenant filtering
+   */
+  getInventoryStats(
+    tenantId: string
+  ): Promise<{
+    total: number;
+    available: number;
+    sold: number;
+    pending: number;
+    totalValue: number;
+    avgPrice: number;
+  }>;
 
   /**
    * Get inventory with filters (TENANT-FILTERED)

@@ -911,6 +911,218 @@ export class StorageService implements IStorage {
   }
 
   /**
+   * List vehicles with pagination and filters (TENANT-FILTERED)
+   * @param options Pagination and filter options
+   * @param tenantId Dealership ID for multi-tenant filtering
+   */
+  async listVehicles(
+    options: {
+      limit?: number;
+      offset?: number;
+      search?: string;
+      status?: 'available' | 'sold' | 'pending' | 'service';
+      condition?: 'new' | 'used' | 'certified';
+      minPrice?: number;
+      maxPrice?: number;
+      make?: string;
+      model?: string;
+      year?: number;
+    },
+    tenantId: string
+  ): Promise<{ vehicles: Vehicle[]; total: number }> {
+    const startTime = Date.now();
+    try {
+      const limit = options.limit || 20;
+      const offset = options.offset || 0;
+
+      // Build WHERE conditions
+      const conditions: any[] = [eq(vehicles.dealershipId, tenantId)];
+
+      if (options.status) {
+        conditions.push(eq(vehicles.status, options.status));
+      }
+
+      if (options.condition) {
+        conditions.push(eq(vehicles.condition, options.condition));
+      }
+
+      if (options.make) {
+        conditions.push(like(vehicles.make, `%${options.make}%`));
+      }
+
+      if (options.model) {
+        conditions.push(like(vehicles.model, `%${options.model}%`));
+      }
+
+      if (options.year) {
+        conditions.push(eq(vehicles.year, options.year));
+      }
+
+      if (options.minPrice !== undefined) {
+        conditions.push(gte(vehicles.price, String(options.minPrice)));
+      }
+
+      if (options.maxPrice !== undefined) {
+        conditions.push(lte(vehicles.price, String(options.maxPrice)));
+      }
+
+      // Full-text search across multiple fields
+      if (options.search && options.search.trim()) {
+        const searchTerm = `%${options.search.trim()}%`;
+        conditions.push(
+          or(
+            like(vehicles.make, searchTerm),
+            like(vehicles.model, searchTerm),
+            like(vehicles.vin, searchTerm),
+            like(vehicles.stockNumber, searchTerm)
+          )
+        );
+      }
+
+      const whereClause = and(...conditions);
+
+      // Get total count
+      const [countResult] = await this.dbService.db
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(vehicles)
+        .where(whereClause);
+
+      const total = Number(countResult.count);
+
+      // Get vehicles
+      const vehicleList = await this.dbService.db
+        .select()
+        .from(vehicles)
+        .where(whereClause)
+        .orderBy(desc(vehicles.createdAt))
+        .limit(limit)
+        .offset(offset);
+
+      this.logQuery('listVehicles', startTime, tenantId);
+      return { vehicles: vehicleList, total };
+    } catch (error) {
+      console.error('[StorageService] listVehicles error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get vehicles by status (TENANT-FILTERED)
+   * @param status Vehicle status
+   * @param tenantId Dealership ID for multi-tenant filtering
+   */
+  async getVehiclesByStatus(status: string, tenantId: string): Promise<Vehicle[]> {
+    const startTime = Date.now();
+    try {
+      const result = await this.dbService.db
+        .select()
+        .from(vehicles)
+        .where(and(eq(vehicles.status, status), eq(vehicles.dealershipId, tenantId)))
+        .orderBy(desc(vehicles.createdAt));
+
+      this.logQuery('getVehiclesByStatus', startTime, tenantId);
+      return result;
+    } catch (error) {
+      console.error('[StorageService] getVehiclesByStatus error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete vehicle (soft delete - sets status to 'deleted') (TENANT-VALIDATED)
+   * @param id Vehicle UUID
+   * @param tenantId Dealership ID for validation
+   */
+  async deleteVehicle(id: string, tenantId: string): Promise<void> {
+    const startTime = Date.now();
+    try {
+      // Validate tenant ownership
+      const existing = await this.getVehicle(id, tenantId);
+      if (!existing) {
+        throw new Error(`[StorageService] Vehicle not found or access denied: ${id}`);
+      }
+
+      // Soft delete by setting status to 'deleted'
+      await this.dbService.db
+        .update(vehicles)
+        .set({ status: 'deleted', updatedAt: new Date() })
+        .where(and(eq(vehicles.id, id), eq(vehicles.dealershipId, tenantId)));
+
+      this.logQuery('deleteVehicle', startTime, tenantId);
+    } catch (error) {
+      console.error('[StorageService] deleteVehicle error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get inventory statistics (TENANT-FILTERED)
+   * @param tenantId Dealership ID for multi-tenant filtering
+   */
+  async getInventoryStats(
+    tenantId: string
+  ): Promise<{
+    total: number;
+    available: number;
+    sold: number;
+    pending: number;
+    totalValue: number;
+    avgPrice: number;
+  }> {
+    const startTime = Date.now();
+    try {
+      // Get status counts and pricing stats
+      const statsQuery = await this.dbService.db
+        .select({
+          status: vehicles.status,
+          count: sql<number>`COUNT(*)::int`,
+          totalValue: sql<number>`COALESCE(SUM(CAST(${vehicles.price} AS DECIMAL)), 0)`,
+        })
+        .from(vehicles)
+        .where(and(eq(vehicles.dealershipId, tenantId), sql`${vehicles.status} != 'deleted'`))
+        .groupBy(vehicles.status);
+
+      // Calculate totals
+      let total = 0;
+      let available = 0;
+      let sold = 0;
+      let pending = 0;
+      let totalValue = 0;
+
+      statsQuery.forEach((stat) => {
+        const count = Number(stat.count);
+        const value = Number(stat.totalValue);
+
+        total += count;
+        totalValue += value;
+
+        if (stat.status === 'available') available = count;
+        else if (stat.status === 'sold') sold = count;
+        else if (stat.status === 'pending') pending = count;
+      });
+
+      const avgPrice = total > 0 ? totalValue / total : 0;
+
+      this.logQuery('getInventoryStats', startTime, tenantId);
+      return {
+        total,
+        available,
+        sold,
+        pending,
+        totalValue,
+        avgPrice,
+      };
+    } catch (error) {
+      console.error('[StorageService] getInventoryStats error:', error);
+      throw error;
+    }
+  }
+
+  // ==========================================
+  // CUSTOMER MANAGEMENT
+  // ==========================================
+
+  /**
    * List customers with pagination and filters (TENANT-FILTERED)
    * @param options Pagination and filter options
    * @param tenantId Dealership ID for multi-tenant filtering

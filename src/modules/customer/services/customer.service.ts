@@ -12,7 +12,7 @@
 
 import { db } from '../../../../server/database/db-service';
 import { customers, deals, emailMessages, customerNotes } from '@shared/schema';
-import { eq, and, or, like, isNull, desc, asc, sql, inArray } from 'drizzle-orm';
+import { eq, and, or, desc, sql } from 'drizzle-orm';
 import type {
   CustomerNote,
   InsertCustomerNote,
@@ -160,7 +160,7 @@ export class CustomerService {
 
   /**
    * List customers with filters and pagination
-   * TODO: Migrate to StorageService - needs complex pagination/filtering support
+   * Uses StorageService for basic listing, handles advanced filters locally
    */
   async listCustomers(query: CustomerListQuery): Promise<PaginatedCustomers> {
     const {
@@ -182,7 +182,42 @@ export class CustomerService {
       includeDeleted = false,
     } = query;
 
-    // Build WHERE conditions
+    // If only basic filters are used, delegate to StorageService
+    const hasAdvancedFilters =
+      source ||
+      assignedSalespersonId ||
+      tags ||
+      createdFrom ||
+      createdTo ||
+      lastContactFrom ||
+      lastContactTo ||
+      needsFollowUp ||
+      includeDeleted ||
+      sortBy !== 'createdAt';
+
+    if (!hasAdvancedFilters) {
+      // Use StorageService for simple queries
+      const result = await this.storageService.listCustomers(
+        {
+          page,
+          pageSize: limit,
+          search,
+          status,
+        },
+        dealershipId
+      );
+
+      return {
+        customers: result.customers.map((c) => this.mapToCustomer(c)),
+        total: result.total,
+        page,
+        limit,
+        totalPages: result.pages,
+        hasMore: page < result.pages,
+      };
+    }
+
+    // Fall back to direct DB queries for advanced filters
     const conditions = [eq(customers.dealershipId, dealershipId)];
 
     // Status filter
@@ -326,26 +361,10 @@ export class CustomerService {
 
   /**
    * Soft delete customer (preserves history)
-   * TODO: Migrate to StorageService - needs soft delete support
+   * Delegates to StorageService for tenant-validated soft delete
    */
   async deleteCustomer(customerId: string, dealershipId: string): Promise<void> {
-    // Verify customer exists and belongs to dealership
-    await this.getCustomer(customerId, dealershipId);
-
-    // Note: Soft delete would require adding deletedAt column to schema
-    // For now, just update status to 'archived'
-    await db
-      .update(customers)
-      .set({
-        status: 'archived',
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(customers.id, customerId),
-          eq(customers.dealershipId, dealershipId)
-        )
-      );
+    await this.storageService.deleteCustomer(customerId, dealershipId);
   }
 
   // ========================================================================
@@ -373,56 +392,31 @@ export class CustomerService {
   /**
    * Find potential duplicate customers
    * Checks: name match, phone match, email match, driver's license match
-   * TODO: Migrate to StorageService - needs complex duplicate detection logic
+   * Delegates to StorageService for tenant-filtered duplicate detection
    */
   async findDuplicates(search: DuplicateSearch): Promise<Customer[]> {
     const { dealershipId, firstName, lastName, email, phone, driversLicenseNumber } =
       search;
 
-    const conditions = [eq(customers.dealershipId, dealershipId)];
+    // Normalize phone and email before searching
+    const searchCriteria: {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      phone?: string;
+      driversLicenseNumber?: string;
+    } = {};
 
-    const duplicateConditions = [];
+    if (firstName) searchCriteria.firstName = firstName;
+    if (lastName) searchCriteria.lastName = lastName;
+    if (email) searchCriteria.email = normalizeEmail(email);
+    if (phone) searchCriteria.phone = normalizePhone(phone);
+    if (driversLicenseNumber) searchCriteria.driversLicenseNumber = driversLicenseNumber;
 
-    // Exact name match
-    if (firstName && lastName) {
-      duplicateConditions.push(
-        and(
-          sql`LOWER(${customers.firstName}) = LOWER(${firstName})`,
-          sql`LOWER(${customers.lastName}) = LOWER(${lastName})`
-        )!
-      );
-    }
-
-    // Phone match
-    if (phone) {
-      const normalizedPhone = normalizePhone(phone);
-      duplicateConditions.push(eq(customers.phone, normalizedPhone));
-    }
-
-    // Email match
-    if (email) {
-      const normalizedEmail = normalizeEmail(email);
-      duplicateConditions.push(sql`LOWER(${customers.email}) = LOWER(${normalizedEmail})`);
-    }
-
-    // Driver's license match
-    if (driversLicenseNumber) {
-      duplicateConditions.push(
-        sql`UPPER(${customers.driversLicenseNumber}) = UPPER(${driversLicenseNumber})`
-      );
-    }
-
-    if (duplicateConditions.length === 0) {
-      return [];
-    }
-
-    conditions.push(or(...duplicateConditions)!);
-
-    const duplicates = await db
-      .select()
-      .from(customers)
-      .where(and(...conditions))
-      .limit(10);
+    const duplicates = await this.storageService.findDuplicateCustomers(
+      searchCriteria,
+      dealershipId
+    );
 
     return duplicates.map((c) => this.mapToCustomer(c));
   }
@@ -524,32 +518,18 @@ export class CustomerService {
 
   /**
    * Get customer deals
-   * TODO: Migrate to StorageService - simple query
+   * Delegates to StorageService for tenant-filtered deal retrieval
    */
   async getCustomerDeals(customerId: string, dealershipId: string) {
-    // Verify customer exists and belongs to dealership
-    await this.getCustomer(customerId, dealershipId);
-
-    return await db
-      .select()
-      .from(deals)
-      .where(eq(deals.customerId, customerId))
-      .orderBy(desc(deals.createdAt));
+    return await this.storageService.getCustomerDeals(customerId, dealershipId);
   }
 
   /**
    * Get customer email messages
-   * TODO: Migrate to StorageService - simple query
+   * Delegates to StorageService for tenant-filtered email retrieval
    */
   async getCustomerEmails(customerId: string, dealershipId: string) {
-    // Verify customer exists and belongs to dealership
-    await this.getCustomer(customerId, dealershipId);
-
-    return await db
-      .select()
-      .from(emailMessages)
-      .where(eq(emailMessages.customerId, customerId))
-      .orderBy(desc(emailMessages.createdAt));
+    return await this.storageService.getCustomerEmails(customerId, dealershipId);
   }
 
   // ========================================================================
