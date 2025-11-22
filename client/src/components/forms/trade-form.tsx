@@ -1,8 +1,8 @@
 import { Badge } from '@/components/ui/badge';
 import { useScenarioForm } from '@/contexts/scenario-form-context';
 import { CurrencyField } from '@/components/ui/currency-field';
-import { formatCurrency, parseScenarioNumber } from '@/lib/pricing-utils';
-import { getValueColorClass } from '@/lib/pricing-utils';
+import { formatCurrency, getValueColorClass } from '@/lib/pricing-utils';
+import { parseScenarioNumber } from '@/lib/currency';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
