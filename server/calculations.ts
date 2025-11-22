@@ -19,7 +19,7 @@
  */
 
 import Decimal from 'decimal.js';
-import { STATE_TAX_DATA } from '../shared/tax-data';
+import { STATE_TAX_DATA } from '../shared/tax-data.js';
 import { FinanceCalculatorService } from '../src/modules/deal/services/finance-calculator.service';
 import { LeaseCalculatorService } from '../src/modules/deal/services/lease-calculator.service';
 import { TaxCalculatorService } from '../src/modules/deal/services/tax-calculator.service';

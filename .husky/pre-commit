@@ -1,21 +1,10 @@
 #!/bin/sh
+. "$(dirname -- "$0")/_/husky.sh"
 
-echo "Pre-commit hook running..."
-echo "Running lint-staged to check code quality..."
+# Run the comprehensive Code Quality Fortress validation
+bash scripts/pre-commit-check.sh
 
-npx lint-staged
-
-if [ $? -ne 0 ]; then
-  echo "Pre-commit hook failed. Please fix the errors and try again."
-  exit 1
+# If that passes, run lint-staged for auto-formatting
+if [ $? -eq 0 ]; then
+  npx lint-staged
 fi
-
-echo "Running type check..."
-npm run check
-
-if [ $? -ne 0 ]; then
-  echo "TypeScript type check failed. Please fix the type errors and try again."
-  exit 1
-fi
-
-echo "Pre-commit checks passed!"

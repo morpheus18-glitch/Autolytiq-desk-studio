@@ -40,11 +40,10 @@
     }
   },
   "include": [
-    "client/src/**/*",
-    "server/**/*",
-    "shared/**/*",
-    "tests/**/*",
-    "modules/**/*"
+    "src/modules/**/*",
+    "src/core/**/*",
+    "shared/models/**/*",
+    "server/database/**/*"
   ],
   "exclude": [
     "node_modules",
