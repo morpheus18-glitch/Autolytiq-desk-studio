@@ -8,7 +8,19 @@ import type { Customer, Appointment } from '@shared/schema';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { appointmentStatusColors } from '@/lib/design-tokens';
+import {
+  appointmentStatusColors,
+  containerPadding,
+  layoutSpacing,
+  gridLayouts,
+  premiumCardClasses,
+  formSpacing,
+  stickyHeaderClasses,
+  pageTitleClasses,
+  pageSubtitleClasses,
+  heroIconContainerClasses,
+  primaryButtonClasses,
+} from '@/lib/design-tokens';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -236,19 +248,19 @@ export default function Showroom() {
   return (
     <PageLayout className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       {/* Header */}
-      <div className="sticky top-0 z-40 backdrop-blur-lg bg-background/90 border-b shadow-sm">
-        <div className="container mx-auto px-4 md:px-6 py-4">
+      <div className={stickyHeaderClasses}>
+        <div className={cn(containerPadding, layoutSpacing.content)}>
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-primary via-primary/90 to-primary/70 shadow-lg shadow-primary/25">
+                <div className={cn(heroIconContainerClasses, "bg-gradient-to-br from-primary via-primary/90 to-primary/70 shadow-lg shadow-primary/25")}>
                   <Store className="w-6 h-6 text-primary-foreground" />
                 </div>
                 <div>
-                  <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                  <h1 className={pageTitleClasses}>
                     Showroom Manager
                   </h1>
-                  <p className="text-sm text-muted-foreground font-medium mt-0.5">
+                  <p className={pageSubtitleClasses}>
                     Manage your customer pipeline from prospect to sold
                   </p>
                 </div>
@@ -336,6 +348,7 @@ export default function Showroom() {
             <Button
               onClick={() => setLocation('/customers')}
               data-testid="button-add-customer"
+              className={primaryButtonClasses}
             >
               <Plus className="h-4 w-4 mr-2" />
               Add Customer
@@ -347,10 +360,10 @@ export default function Showroom() {
       </div>
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 md:px-6 py-6 space-y-6">
+      <div className={cn(containerPadding, layoutSpacing.section, "space-y-6")}>
         {/* Kanban Board */}
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className={cn("grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4")}>
             {[1, 2, 3, 4, 5].map(i => (
               <Skeleton key={i} className="h-[600px]" />
             ))}
@@ -382,7 +395,7 @@ export default function Showroom() {
         )}
 
         {/* Appointments Board */}
-        <Card className="mt-6">
+        <Card className={cn(premiumCardClasses, "mt-6")}>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg font-medium flex items-center gap-2">
@@ -405,8 +418,8 @@ export default function Showroom() {
                   <DialogHeader>
                     <DialogTitle>Schedule New Appointment</DialogTitle>
                   </DialogHeader>
-                  <div className="space-y-4 pt-4">
-                    <div className="space-y-2">
+                  <div className={cn(formSpacing.fields, "pt-4")}>
+                    <div className={formSpacing.fieldGroup}>
                       <Label>Title</Label>
                       <Input
                         placeholder="e.g., Test Drive - 2024 Camry"
@@ -414,8 +427,8 @@ export default function Showroom() {
                         onChange={(e) => setNewAppointment({ ...newAppointment, title: e.target.value })}
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
+                    <div className={gridLayouts.twoCol}>
+                      <div className={formSpacing.fieldGroup}>
                         <Label>Date & Time</Label>
                         <Input
                           type="datetime-local"
@@ -423,7 +436,7 @@ export default function Showroom() {
                           onChange={(e) => setNewAppointment({ ...newAppointment, scheduledAt: e.target.value })}
                         />
                       </div>
-                      <div className="space-y-2">
+                      <div className={formSpacing.fieldGroup}>
                         <Label>Duration</Label>
                         <Select
                           value={String(newAppointment.duration)}
@@ -443,8 +456,8 @@ export default function Showroom() {
                         </Select>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
+                    <div className={gridLayouts.twoCol}>
+                      <div className={formSpacing.fieldGroup}>
                         <Label>Type</Label>
                         <Select
                           value={newAppointment.appointmentType}
@@ -463,7 +476,7 @@ export default function Showroom() {
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="space-y-2">
+                      <div className={formSpacing.fieldGroup}>
                         <Label>Location</Label>
                         <Select
                           value={newAppointment.location}
@@ -481,7 +494,7 @@ export default function Showroom() {
                         </Select>
                       </div>
                     </div>
-                    <div className="space-y-2">
+                    <div className={formSpacing.fieldGroup}>
                       <Label>Notes</Label>
                       <Textarea
                         placeholder="Additional notes..."
@@ -521,7 +534,7 @@ export default function Showroom() {
                 </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              <div className={cn("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3")}>
                 {appointments.map((apt) => (
                   <div
                     key={apt.id}

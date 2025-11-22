@@ -19,11 +19,19 @@ import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { PageLayout } from '@/components/page-layout';
+import { PageHero } from '@/components/page-hero';
 import { MetricCard } from '@/components/analytics/metric-card';
 import { ChartCard } from '@/components/analytics/chart-card';
 import { FilterBar, type PeriodType } from '@/components/analytics/filter-bar';
 import { SalesLeaderboard } from '@/components/analytics/sales-leaderboard';
 import { SectionErrorBoundary } from '@/components/error-boundary';
+import { cn } from '@/lib/utils';
+import {
+  containerPadding,
+  layoutSpacing,
+  gridLayouts,
+  stickyHeaderClasses,
+} from '@/lib/design-tokens';
 
 // Color palette for charts - using CSS variables for theme support
 const CHART_COLORS = {
@@ -207,9 +215,9 @@ export default function Analytics() {
   return (
     <PageLayout className="h-screen flex flex-col bg-background">
       {/* Header with Navigation */}
-      <header className="sticky top-0 z-50 border-b bg-card/50 backdrop-blur-sm">
+      <header className={stickyHeaderClasses}>
         <div className="max-w-[1600px] mx-auto">
-          <div className="px-4 md:px-6 lg:px-8 py-4">
+          <div className={cn(containerPadding, layoutSpacing.content)}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <nav className="flex items-center gap-2">
@@ -243,7 +251,7 @@ export default function Analytics() {
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-[1600px] mx-auto">
           {/* Filter Bar */}
-          <div className="px-4 md:px-6 lg:px-8 py-4 border-b bg-card/30">
+          <div className={cn(containerPadding, layoutSpacing.content, "border-b bg-card/30")}>
             <FilterBar
             period={period}
             onPeriodChange={setPeriod}
@@ -264,10 +272,10 @@ export default function Analytics() {
           </div>
 
           {/* Main Content Area */}
-          <div className="px-4 md:px-6 lg:px-8 py-6 space-y-6">
+          <div className={cn(containerPadding, layoutSpacing.section, "space-y-6")}>
             {/* KPI Cards */}
             <SectionErrorBoundary sectionName="KPI Metrics">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className={gridLayouts.fourCol}>
                 <MetricCard
                   title="Total Revenue"
                   value={kpis?.totalRevenue || 0}
@@ -331,7 +339,7 @@ export default function Analytics() {
 
               {/* Revenue Tab */}
               <TabsContent value="revenue" className="space-y-4">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className={gridLayouts.twoCol}>
                   {/* Revenue Trend Chart */}
                   <ChartCard
                     title="Revenue Trend"
@@ -409,7 +417,7 @@ export default function Analytics() {
                 </div>
 
                 {/* Secondary Metrics */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className={gridLayouts.fourCol}>
                   <MetricCard
                     title="Total Profit"
                     value={kpis?.totalProfit || 0}
@@ -445,7 +453,7 @@ export default function Analytics() {
 
               {/* Deals Tab */}
               <TabsContent value="deals" className="space-y-4">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className={gridLayouts.twoCol}>
                   {/* Deal Pipeline Funnel */}
                   <ChartCard
                     title="Sales Pipeline"
@@ -539,7 +547,7 @@ export default function Analytics() {
                 </div>
 
                 {/* Deal Metrics */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className={gridLayouts.fourCol}>
                   <MetricCard
                     title="Lease Rate"
                     value={kpis?.leaseRate || 0}
@@ -574,7 +582,7 @@ export default function Analytics() {
 
               {/* Inventory Tab */}
               <TabsContent value="inventory" className="space-y-4">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className={gridLayouts.twoCol}>
                   {/* Inventory Age Distribution */}
                   <ChartCard
                     title="Inventory Age"
@@ -628,7 +636,7 @@ export default function Analytics() {
                 </div>
 
                 {/* Hot and Cold Inventory */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className={gridLayouts.twoCol}>
                   <ChartCard
                     title="Hot Inventory"
                     description="Fast-moving vehicles"
@@ -687,7 +695,7 @@ export default function Analytics() {
                 </div>
 
                 {/* Inventory Metrics */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className={gridLayouts.fourCol}>
                   <MetricCard
                     title="Total Units"
                     value={inventoryMetrics?.totalUnits || 0}
@@ -722,7 +730,7 @@ export default function Analytics() {
 
               {/* Team Tab */}
               <TabsContent value="team" className="space-y-4">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className={gridLayouts.threeCol}>
                   {/* Sales Leaderboard */}
                   <div className="lg:col-span-2">
                     <ChartCard
@@ -766,7 +774,7 @@ export default function Analytics() {
                 </div>
 
                 {/* Team KPIs */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className={gridLayouts.fourCol}>
                   <MetricCard
                     title="Avg Response Time"
                     value={`${teamPerformance?.teamAvgResponseTime || 0}m`}

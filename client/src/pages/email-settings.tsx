@@ -21,6 +21,14 @@ import { PageLayout } from '@/components/page-layout';
 import { PageHero } from '@/components/page-hero';
 import { Settings, Save, ArrowLeft } from 'lucide-react';
 import { useLocation } from 'wouter';
+import { cn } from '@/lib/utils';
+import {
+  containerPadding,
+  layoutSpacing,
+  premiumCardClasses,
+  formSpacing,
+  primaryButtonClasses,
+} from '@/lib/design-tokens';
 
 type EmailSettings = {
   signature: string;
@@ -118,17 +126,17 @@ export default function EmailSettingsPage() {
         }
       />
 
-      <div className="container mx-auto px-4 md:px-6 py-8 max-w-4xl space-y-6">
+      <div className={cn(containerPadding, layoutSpacing.page, "max-w-4xl space-y-6")}>
         {/* Signature */}
-        <Card>
+        <Card className={premiumCardClasses}>
           <CardHeader>
             <CardTitle>Email Signature</CardTitle>
             <CardDescription>
               Add a signature that appears at the bottom of your emails
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
+          <CardContent className={formSpacing.fields}>
+            <div className={formSpacing.fieldGroup}>
               <Label htmlFor="signature">Signature</Label>
               <Textarea
                 id="signature"
@@ -145,15 +153,15 @@ export default function EmailSettingsPage() {
         </Card>
 
         {/* Display Settings */}
-        <Card>
+        <Card className={premiumCardClasses}>
           <CardHeader>
             <CardTitle>Display Settings</CardTitle>
             <CardDescription>
               Customize how emails are displayed
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
+          <CardContent className={formSpacing.section}>
+            <div className={formSpacing.fieldGroup}>
               <Label htmlFor="density">Density</Label>
               <Select
                 value={settings.displayDensity}
@@ -195,14 +203,14 @@ export default function EmailSettingsPage() {
         </Card>
 
         {/* Notifications */}
-        <Card>
+        <Card className={premiumCardClasses}>
           <CardHeader>
             <CardTitle>Notifications</CardTitle>
             <CardDescription>
               Manage email notifications
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className={formSpacing.section}>
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label>Desktop Notifications</Label>
@@ -221,14 +229,14 @@ export default function EmailSettingsPage() {
         </Card>
 
         {/* Auto-Reply */}
-        <Card>
+        <Card className={premiumCardClasses}>
           <CardHeader>
             <CardTitle>Auto-Reply / Vacation Responder</CardTitle>
             <CardDescription>
               Automatically reply to incoming emails
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className={formSpacing.fields}>
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label>Enable Auto-Reply</Label>
@@ -245,7 +253,7 @@ export default function EmailSettingsPage() {
             </div>
 
             {settings.autoReplyEnabled && (
-              <div className="space-y-2">
+              <div className={formSpacing.fieldGroup}>
                 <Label htmlFor="auto-reply">Auto-Reply Message</Label>
                 <Textarea
                   id="auto-reply"
@@ -262,7 +270,7 @@ export default function EmailSettingsPage() {
         </Card>
 
         {/* Privacy */}
-        <Card>
+        <Card className={premiumCardClasses}>
           <CardHeader>
             <CardTitle>Privacy</CardTitle>
             <CardDescription>
@@ -298,6 +306,7 @@ export default function EmailSettingsPage() {
           <Button
             onClick={handleSave}
             disabled={saveSettingsMutation.isPending}
+            className={primaryButtonClasses}
           >
             {saveSettingsMutation.isPending ? (
               <>Saving...</>

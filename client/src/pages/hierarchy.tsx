@@ -7,6 +7,17 @@ import { PageLayout } from '@/components/page-layout';
 import { OrgChart } from '@/components/hierarchy/org-chart';
 import { TeamPerformanceDashboard } from '@/components/hierarchy/team-performance-dashboard';
 import { PerformanceOptimization } from '@/components/hierarchy/performance-optimization';
+import { cn } from '@/lib/utils';
+import {
+  containerPadding,
+  layoutSpacing,
+  gridLayouts,
+  premiumCardClasses,
+  stickyHeaderClasses,
+  pageTitleClasses,
+  pageSubtitleClasses,
+  heroIconContainerClasses,
+} from '@/lib/design-tokens';
 
 export default function HierarchyPage() {
   const [selectedUser, setSelectedUser] = useState<HierarchyUser | undefined>();
@@ -21,18 +32,18 @@ export default function HierarchyPage() {
   return (
     <PageLayout className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       {/* Header */}
-      <div className="sticky top-0 z-40 backdrop-blur-lg bg-background/90 border-b shadow-sm">
-        <div className="container mx-auto px-4 md:px-6 py-5">
+      <div className={stickyHeaderClasses}>
+        <div className={cn(containerPadding, layoutSpacing.header)}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-primary via-primary/90 to-primary/70 shadow-lg shadow-primary/25">
+              <div className={cn(heroIconContainerClasses, "bg-gradient-to-br from-primary via-primary/90 to-primary/70 shadow-lg shadow-primary/25")}>
                 <Building2 className="w-6 h-6 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                <h1 className={pageTitleClasses}>
                   Organization Hierarchy
                 </h1>
-                <p className="text-sm text-muted-foreground font-medium mt-0.5">
+                <p className={pageSubtitleClasses}>
                   Manage your team structure, view performance metrics, and optimize team efficiency
                 </p>
               </div>
@@ -41,11 +52,11 @@ export default function HierarchyPage() {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 md:px-6 py-6 space-y-6">
+      <div className={cn(containerPadding, layoutSpacing.section, "space-y-6")}>
 
       {/* Selected User Info */}
       {selectedUser && (
-        <Card className="border-primary">
+        <Card className={cn(premiumCardClasses, "border-primary")}>
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between">
               <div>
@@ -63,7 +74,7 @@ export default function HierarchyPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-3 gap-4 text-sm">
+            <div className={cn(gridLayouts.threeCol, "text-sm")}>
               <div>
                 <div className="text-muted-foreground mb-1">Deals Closed</div>
                 <div className="text-2xl font-bold">{selectedUser.metrics.dealsClosed || 0}</div>
@@ -122,9 +133,9 @@ export default function HierarchyPage() {
       </Tabs>
 
       {/* Quick Stats Footer */}
-      <Card className="bg-muted/50">
+      <Card className={cn(premiumCardClasses, "bg-muted/50")}>
         <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
+          <div className={cn(gridLayouts.fourCol, "text-center")}>
             <div>
               <Users className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
               <div className="text-2xl font-bold">--</div>
