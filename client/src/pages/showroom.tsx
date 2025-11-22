@@ -160,7 +160,8 @@ export default function Showroom() {
 
   // Filter customers by search and date
   const filteredCustomers = useMemo(() => {
-    let result = customers;
+    // Defensive check: ensure customers is always an array
+    let result = customers || [];
 
     // Filter by date if not showing all customers
     if (!showAllCustomers) {
