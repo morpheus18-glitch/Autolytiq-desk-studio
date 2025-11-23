@@ -42,8 +42,8 @@ export { createUserManagementRouter } from './api/user-management.routes';
 // CLIENT-SIDE EXPORTS
 // ============================================================================
 
-// Hooks
-export { useAuth, useUserPreferences } from './hooks/useAuth';
+// NOTE: Client hooks (useAuth, useUserPreferences) are located in client/src/hooks/
+// They should NOT be imported from this server module.
 
 // ============================================================================
 // SHARED EXPORTS
