@@ -145,10 +145,13 @@ export {
   TaxLineItemSchema,
 } from '../models/tax.model';
 
-// ===== COMMON API TYPES =====
+// ===== API RESPONSE & UTILITY TYPES =====
+// Comprehensive type definitions for API responses and common patterns
+export * from './api-responses';
+export * from './utility-types';
 
 /**
- * Standard API response wrapper
+ * Standard API response wrapper (LEGACY - use ApiSuccessResponse/ApiErrorResponse from api-responses.ts)
  */
 export interface ApiResponse<T> {
   success: boolean;

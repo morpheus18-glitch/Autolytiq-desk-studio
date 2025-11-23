@@ -41,11 +41,10 @@ import {
 } from '@/core/adapters/storage.adapter';
 
 // ============================================================================
-// EXISTING CODE IMPORTS (to be gradually replaced)
+// CORE DATABASE IMPORTS
 // ============================================================================
 
-import { storage } from '../server/storage';
-import { db } from './core/database/index';
+import { db, getStorageService } from './core/database/index';
 
 // ============================================================================
 // SETUP FUNCTION
@@ -77,9 +76,11 @@ export function setupModularArchitecture(app: Express) {
   // -------------------------------------------------------------------------
   // Use the new auth module's session configuration
 
+  const storage = getStorageService();
+
   const sessionMiddleware = createSessionMiddleware({
     secret: process.env.SESSION_SECRET!,
-    store: storage.sessionStore, // Existing session store
+    store: storage.sessionStore, // Session store from storage service
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

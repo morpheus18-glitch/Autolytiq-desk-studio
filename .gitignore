@@ -12,3 +12,11 @@ file-history/
 
 # Database backups
 backup-*.sql
+
+# Documentation - only allow specific files at root
+/*.md
+!README.md
+!SECURITY.md
+!LICENSE.md
+!CONTRIBUTING.md
+!CHANGELOG.md

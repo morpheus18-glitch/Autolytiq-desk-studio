@@ -7,13 +7,14 @@
  * @module CoreAPI
  */
 
-import { Router } from 'express';
+import { Router, type RequestHandler } from 'express';
 import { GoogleMapsService, type Address } from '../services/google-maps.service';
 
 /**
  * Create Google Maps router
+ * @param requireAuth - Optional authentication middleware
  */
-export function createGoogleMapsRouter(requireAuth?: any) {
+export function createGoogleMapsRouter(requireAuth?: RequestHandler) {
   const router = Router();
   const googleMapsService = new GoogleMapsService();
 
@@ -42,9 +43,10 @@ export function createGoogleMapsRouter(requireAuth?: any) {
       });
 
       return res.json({ suggestions });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[Google Maps] Autocomplete error:', error);
-      return res.status(500).json({ error: error.message || 'Failed to fetch suggestions' });
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch suggestions';
+      return res.status(500).json({ error: errorMessage });
     }
   });
 
@@ -70,9 +72,10 @@ export function createGoogleMapsRouter(requireAuth?: any) {
       const validated = await googleMapsService.getPlaceDetails(placeId);
 
       return res.json(validated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[Google Maps] Place details error:', error);
-      return res.status(500).json({ error: error.message || 'Failed to get place details' });
+      const errorMessage = error instanceof Error ? error.message : 'Failed to get place details';
+      return res.status(500).json({ error: errorMessage });
     }
   });
 
@@ -102,9 +105,10 @@ export function createGoogleMapsRouter(requireAuth?: any) {
       const validated = await googleMapsService.validateAddress(address);
 
       return res.json(validated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[Google Maps] Validation error:', error);
-      return res.status(500).json({ error: error.message || 'Failed to validate address' });
+      const errorMessage = error instanceof Error ? error.message : 'Failed to validate address';
+      return res.status(500).json({ error: errorMessage });
     }
   });
 
@@ -134,9 +138,10 @@ export function createGoogleMapsRouter(requireAuth?: any) {
       const coordinates = await googleMapsService.geocodeAddress(address);
 
       return res.json(coordinates);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[Google Maps] Geocoding error:', error);
-      return res.status(500).json({ error: error.message || 'Failed to geocode address' });
+      const errorMessage = error instanceof Error ? error.message : 'Failed to geocode address';
+      return res.status(500).json({ error: errorMessage });
     }
   });
 

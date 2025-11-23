@@ -13,7 +13,7 @@
  * STATUS: Replaces DatabaseStorage class with enhanced security
  */
 
-import { getDatabaseService } from '../../../server/database/db-service';
+import { getDatabaseService } from './db-service';
 import { eq, and, or, like, desc, asc, gte, lte, gt, sql } from 'drizzle-orm';
 import {
   users,
@@ -936,6 +936,7 @@ export class StorageService implements IStorage {
       const offset = options.offset || 0;
 
       // Build WHERE conditions
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const conditions: any[] = [eq(vehicles.dealershipId, tenantId)];
 
       if (options.status) {

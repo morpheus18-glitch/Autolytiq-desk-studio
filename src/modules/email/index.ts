@@ -10,8 +10,8 @@
  */
 
 import { emailService } from './services/email.service';
-import { resendService } from './services/resend.service';
 import { emailQueueService } from './services/queue.service';
+import { resendService } from './services/resend.service';
 import { templateService } from './services/template.service';
 
 // Export all types

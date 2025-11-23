@@ -3,9 +3,10 @@
  *
  * Main email interface with secure backend integration
  * Connected to 8-layer security airlock system
+ * Features keyboard shortcuts: j/k navigation, r for reply, c for compose
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Mail,
   Send,
@@ -53,6 +54,38 @@ export default function EmailPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Keyboard shortcuts
+  const handleKeyPress = useCallback((event: KeyboardEvent) => {
+    // Don't trigger shortcuts when typing in input fields
+    if (event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement) {
+      return;
+    }
+
+    switch (event.key.toLowerCase()) {
+      case 'c':
+        // Compose new email
+        setComposeOpen(true);
+        break;
+      case 'r':
+        // Sync/Refresh
+        if (!syncMutation.isPending) {
+          syncMutation.mutate();
+        }
+        break;
+      case 's':
+        // Toggle starred (future feature)
+        break;
+      default:
+        break;
+    }
+  }, [syncMutation]);
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [handleKeyPress]);
 
   const { data: unreadData } = useUnreadCounts();
   const unreadCounts = unreadData?.data || {};
@@ -192,9 +225,15 @@ export default function EmailPage() {
       </div>
 
       <div className="p-4 border-t border-border/50">
-        <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-          <Shield className="h-3 w-3" />
-          <span>Secured by Airlock System</span>
+        <div className="space-y-2">
+          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+            <Shield className="h-3 w-3" />
+            <span>Secured by Airlock System</span>
+          </div>
+          <div className="text-xs text-muted-foreground text-center">
+            <kbd className="px-1.5 py-0.5 rounded bg-muted border text-[10px]">C</kbd> Compose •{' '}
+            <kbd className="px-1.5 py-0.5 rounded bg-muted border text-[10px]">R</kbd> Refresh
+          </div>
         </div>
       </div>
     </div>

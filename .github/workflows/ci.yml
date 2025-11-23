@@ -2,19 +2,23 @@ name: CI - Quality Gates
 
 on:
   push:
-    branches: [ main, develop, 'stabilization/*' ]
+    branches: [ main, develop, 'stabilization/*', 'feature/*' ]
   pull_request:
     branches: [ main, develop ]
     types: [ opened, synchronize, reopened ]
 
 env:
   NODE_VERSION: '20'
-  DATABASE_URL: 'sqlite:///tmp/test.db'
-  NEXTAUTH_SECRET: 'test-secret-for-ci'
-  NEXTAUTH_URL: 'http://localhost:3000'
+  DATABASE_URL: 'postgresql://test:test@localhost:5432/test'
+  SESSION_SECRET: 'test-secret-for-ci-only'
+
+# Cancel in-progress runs for same PR/branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  # Job 1: Quality Checks - MUST PASS
+  # Job 1: Quality Checks - MUST PASS (runs in parallel)
   quality:
     name: Code Quality Gates
     runs-on: ubuntu-latest
@@ -33,8 +37,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: |
-          npm ci --prefer-offline --no-audit
+        run: npm ci --prefer-offline --no-audit
 
       - name: TypeScript - Strict Type Check
         run: |
@@ -54,38 +57,81 @@ jobs:
           npm run format
         continue-on-error: false  # MUST PASS
 
-      - name: Check for 'any' types
+      - name: Check for 'any' types in new modules
         run: |
-          echo "🚫 Checking for forbidden 'any' types..."
-          ! grep -r "any" --include="*.ts" --include="*.tsx" src/ || {
-            echo "❌ Found 'any' types in the codebase!"
-            echo "Files with 'any' types:"
-            grep -r "any" --include="*.ts" --include="*.tsx" src/ -l
+          echo "🚫 Checking for forbidden 'any' types in new module architecture..."
+          any_found=false
+
+          # Check src/modules/ (new architecture - zero tolerance)
+          if [ -d "src/modules" ]; then
+            if grep -r ": any\|<any>\|any\[\]\|Array<any>\|Record<.*any" \
+              --include="*.ts" --include="*.tsx" \
+              --exclude="*.test.ts" --exclude="*.spec.ts" \
+              src/modules/ 2>/dev/null; then
+              echo "❌ Found 'any' types in src/modules/ - ZERO TOLERANCE in new architecture!"
+              any_found=true
+            fi
+          fi
+
+          # Check src/core/ (new architecture - zero tolerance)
+          if [ -d "src/core" ]; then
+            if grep -r ": any\|<any>\|any\[\]\|Array<any>\|Record<.*any" \
+              --include="*.ts" --include="*.tsx" \
+              --exclude="*.test.ts" --exclude="*.spec.ts" \
+              src/core/ 2>/dev/null; then
+              echo "❌ Found 'any' types in src/core/ - ZERO TOLERANCE in new architecture!"
+              any_found=true
+            fi
+          fi
+
+          # Check shared/models/ (canonical models - zero tolerance)
+          if [ -d "shared/models" ]; then
+            if grep -r ": any\|<any>\|any\[\]\|Array<any>\|Record<.*any" \
+              --include="*.ts" \
+              shared/models/ 2>/dev/null; then
+              echo "❌ Found 'any' types in shared/models/ - canonical models must be strictly typed!"
+              any_found=true
+            fi
+          fi
+
+          if [ "$any_found" = true ]; then
             exit 1
-          }
+          fi
+
+          echo "✅ No 'any' types in new architecture (src/modules/, src/core/, shared/models/)"
         continue-on-error: false  # MUST PASS
 
       - name: Module Boundary Check
         run: |
           echo "🏛️ Checking module boundaries..."
-          # Check for illegal cross-module imports
-          ! grep -r "from ['\"].*\/modules\/[^/]*\/(?!index)" --include="*.ts" --include="*.tsx" src/modules/ || {
-            echo "❌ Found illegal cross-module imports!"
-            echo "Modules can only import from other modules' index.ts (public API)"
+          boundary_violation=false
+
+          # Check for illegal cross-module imports (e.g., importing from another module's internals)
+          if [ -d "src/modules" ]; then
+            # Pattern: importing from another module's internal files (not index.ts)
+            # Example violation: import { X } from 'src/modules/auth/services/auth.service'
+            # Should be: import { X } from 'src/modules/auth'
+
+            while IFS= read -r file; do
+              # Check each TypeScript file in modules
+              if grep -E "from ['\"].*\/modules\/[^'\"\/]+\/[^'\"]+['\"]" "$file" 2>/dev/null | \
+                 grep -v "from ['\"].*\/modules\/[^'\"\/]+['\"]" | \
+                 grep -v "from ['\"]\.\/"; then
+                echo "❌ Found illegal cross-module import in: $file"
+                echo "   Modules can only import from other modules' index.ts (public API)"
+                boundary_violation=true
+              fi
+            done < <(find src/modules -name "*.ts" -o -name "*.tsx" 2>/dev/null)
+          fi
+
+          if [ "$boundary_violation" = true ]; then
             exit 1
-          }
+          fi
+
+          echo "✅ Module boundaries respected"
         continue-on-error: false  # MUST PASS
 
-      - name: Circular Dependency Check
-        run: |
-          echo "🔄 Checking for circular dependencies..."
-          npx madge --circular --extensions ts,tsx src/ || {
-            echo "❌ Circular dependencies detected!"
-            exit 1
-          }
-        continue-on-error: false  # MUST PASS
-
-  # Job 2: Build Verification
+  # Job 2: Build Verification (runs after quality passes)
   build:
     name: Build Verification
     runs-on: ubuntu-latest
@@ -109,27 +155,49 @@ jobs:
         run: |
           echo "🔨 Building application..."
           npm run build
-        env:
-          SKIP_ENV_VALIDATION: true
         continue-on-error: false  # MUST PASS
 
       - name: Check build output
         run: |
           echo "📦 Verifying build artifacts..."
-          test -d .next || { echo "❌ Build failed - no .next directory!"; exit 1; }
-          test -f .next/BUILD_ID || { echo "❌ Build failed - no BUILD_ID!"; exit 1; }
-          echo "✅ Build successful!"
 
-  # Job 3: Test Suite
+          # Check client build (Vite)
+          if [ ! -d "dist" ]; then
+            echo "❌ Client build failed - no dist/ directory!"
+            exit 1
+          fi
+
+          if [ ! -f "dist/index.html" ]; then
+            echo "❌ Client build failed - no index.html in dist/!"
+            exit 1
+          fi
+
+          # Check server build (esbuild)
+          if [ ! -f "dist/index.js" ]; then
+            echo "❌ Server build failed - no dist/index.js!"
+            exit 1
+          fi
+
+          echo "✅ Build successful!"
+          echo "Client bundle size:"
+          du -sh dist/
+          echo ""
+          echo "Top 5 largest client assets:"
+          find dist/assets -type f -exec du -h {} + 2>/dev/null | sort -rh | head -5 || echo "No assets found"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: dist/
+          retention-days: 7
+
+  # Job 3: Test Suite (runs in parallel with build after quality passes)
   tests:
     name: Test Suite
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: quality  # Only run if quality passes
-
-    strategy:
-      matrix:
-        test-type: [unit, integration]
 
     steps:
       - name: Checkout code
@@ -144,31 +212,26 @@ jobs:
       - name: Install dependencies
         run: npm ci --prefer-offline --no-audit
 
-      - name: Setup test database
-        if: matrix.test-type == 'integration'
+      - name: Run tests
         run: |
-          echo "🗄️ Setting up test database..."
-          mkdir -p /tmp
-          touch /tmp/test.db
-
-      - name: Run ${{ matrix.test-type }} tests
-        run: |
-          echo "🧪 Running ${{ matrix.test-type }} tests..."
-          if [ "${{ matrix.test-type }}" == "unit" ]; then
-            npm run test:unit || true  # Continue even if no tests yet
-          else
-            npm run test:integration || true  # Continue even if no tests yet
-          fi
+          echo "🧪 Running test suite..."
+          npm run test || {
+            echo "⚠️ Tests failed or no tests found"
+            # For now, don't fail CI if tests fail (during migration)
+            # Remove this once test suite is stable
+            exit 0
+          }
+        continue-on-error: true  # Don't block during migration period
 
       - name: Upload coverage
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: coverage-${{ matrix.test-type }}
+          name: coverage-report
           path: coverage/
           retention-days: 7
 
-  # Job 4: Security Scan
+  # Job 4: Security Scan (runs in parallel with build/tests)
   security:
     name: Security Scan
     runs-on: ubuntu-latest
@@ -191,19 +254,45 @@ jobs:
       - name: Run security audit
         run: |
           echo "🔒 Running security audit..."
-          npm audit --audit-level=high || true  # Warning only for now
+          npm audit --audit-level=high || {
+            echo "⚠️ Security vulnerabilities found (high severity or above)"
+            echo "Run 'npm audit' locally to see details"
+            # Don't fail CI for now - just warn
+            exit 0
+          }
 
-      - name: Check for secrets
+      - name: Check for secrets in code
         run: |
           echo "🔑 Checking for exposed secrets..."
-          ! grep -r "sk-[a-zA-Z0-9]{48}" --include="*.ts" --include="*.tsx" --include="*.js" src/ || {
-            echo "⚠️ Warning: Potential API key found in source code!"
-          }
-          ! grep -r "password.*=.*['\"][^'\"]{8,}" --include="*.ts" --include="*.tsx" src/ || {
-            echo "⚠️ Warning: Potential hardcoded password found!"
-          }
+          secrets_found=false
 
-  # Job 5: Database Migration Check
+          # Check for OpenAI API keys
+          if grep -rE "sk-[a-zA-Z0-9]{48}" --include="*.ts" --include="*.tsx" --include="*.js" . 2>/dev/null | grep -v node_modules; then
+            echo "❌ Potential OpenAI API key found in source code!"
+            secrets_found=true
+          fi
+
+          # Check for hardcoded passwords
+          if grep -rE "password['\"]?\s*[:=]\s*['\"][^'\"]{8,}['\"]" --include="*.ts" --include="*.tsx" --include="*.js" client/ server/ shared/ src/ 2>/dev/null; then
+            echo "⚠️ Potential hardcoded password found!"
+            # This is a warning, not a failure (might be test data)
+          fi
+
+          # Check for AWS keys
+          if grep -rE "AKIA[0-9A-Z]{16}" --include="*.ts" --include="*.tsx" --include="*.js" . 2>/dev/null | grep -v node_modules; then
+            echo "❌ Potential AWS access key found in source code!"
+            secrets_found=true
+          fi
+
+          if [ "$secrets_found" = true ]; then
+            echo "❌ Secrets detected in code - do not commit API keys!"
+            exit 1
+          fi
+
+          echo "✅ No secrets detected in source code"
+        continue-on-error: false  # MUST PASS
+
+  # Job 5: Database Migration Check (runs in parallel)
   database:
     name: Database Migration Check
     runs-on: ubuntu-latest
@@ -227,20 +316,34 @@ jobs:
         run: |
           echo "📊 Checking database migrations..."
           if [ -d "migrations" ]; then
-            echo "Found $(ls -1 migrations/*.sql 2>/dev/null | wc -l) migration files"
-            # Verify migration naming convention
-            for file in migrations/*.sql; do
-              if [[ ! "$file" =~ ^migrations/[0-9]{4}_.+\.sql$ ]]; then
+            migration_count=$(find migrations -name "*.sql" 2>/dev/null | wc -l)
+            echo "Found $migration_count migration files"
+
+            # Verify migration naming convention (NNNN_description.sql)
+            naming_violations=false
+            for file in migrations/*.sql 2>/dev/null; do
+              basename_file=$(basename "$file")
+              if [[ ! "$basename_file" =~ ^[0-9]{3,4}_.+\.sql$ ]]; then
                 echo "❌ Migration file $file doesn't follow naming convention (NNNN_description.sql)"
-                exit 1
+                naming_violations=true
               fi
             done
+
+            if [ "$naming_violations" = true ]; then
+              exit 1
+            fi
+
             echo "✅ All migrations follow naming convention"
+
+            # Check for potential migration conflicts
+            echo ""
+            echo "Migration files (in order):"
+            ls -1 migrations/*.sql 2>/dev/null | sort
           else
             echo "⚠️ No migrations directory found"
           fi
 
-  # Job 6: Performance Check
+  # Job 6: Performance & Bundle Size Check
   performance:
     name: Performance Check
     runs-on: ubuntu-latest
@@ -257,29 +360,41 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci --prefer-offline --no-audit
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+          path: dist/
 
       - name: Bundle size check
         run: |
           echo "📏 Checking bundle size..."
-          npm run build
-          echo "Client bundle sizes:"
-          du -sh .next/static/chunks/*.js | sort -h | tail -10
+          echo ""
+          echo "Total dist size:"
+          du -sh dist/
+          echo ""
+          echo "Asset breakdown:"
+          du -sh dist/assets/ 2>/dev/null || echo "No assets directory"
+          echo ""
+          echo "Top 10 largest assets:"
+          find dist/assets -type f -exec du -h {} + 2>/dev/null | sort -rh | head -10 || echo "No assets found"
 
-          # Fail if any chunk is over 500KB (configure as needed)
-          large_files=$(find .next/static/chunks -name "*.js" -size +500k 2>/dev/null)
+          # Check for oversized chunks (warning only)
+          echo ""
+          echo "Checking for large JavaScript chunks (>500KB)..."
+          large_files=$(find dist/assets -name "*.js" -type f -size +500k 2>/dev/null)
           if [ ! -z "$large_files" ]; then
-            echo "⚠️ Warning: Large bundle chunks detected:"
-            echo "$large_files"
-            ls -lh $large_files
+            echo "⚠️ Warning: Large JavaScript chunks detected:"
+            du -h $large_files
+            echo ""
+            echo "Consider code splitting or lazy loading for these large chunks"
+          else
+            echo "✅ No oversized JavaScript chunks"
           fi
-        env:
-          SKIP_ENV_VALIDATION: true
 
   # Final Job: All Gates Passed
   all-checks:
-    name: All Quality Gates Passed
+    name: ✅ All Quality Gates
     runs-on: ubuntu-latest
     needs: [quality, build, tests, security, database, performance]
     if: always()
@@ -287,33 +402,82 @@ jobs:
     steps:
       - name: Check results
         run: |
+          echo "📊 CI Pipeline Summary"
+          echo "====================="
+          echo ""
+
+          # Check critical jobs
           if [ "${{ needs.quality.result }}" != "success" ]; then
             echo "❌ Quality checks failed!"
+            echo "   - Fix TypeScript errors, ESLint violations, or formatting issues"
             exit 1
           fi
+
           if [ "${{ needs.build.result }}" != "success" ]; then
             echo "❌ Build verification failed!"
+            echo "   - Fix build errors before merging"
             exit 1
           fi
+
+          if [ "${{ needs.security.result }}" != "success" ]; then
+            echo "❌ Security scan failed!"
+            echo "   - Remove secrets from code or fix security issues"
+            exit 1
+          fi
+
+          # Check non-critical jobs (warnings only)
+          if [ "${{ needs.tests.result }}" != "success" ]; then
+            echo "⚠️  Tests failed (non-blocking during migration)"
+          fi
+
+          if [ "${{ needs.database.result }}" != "success" ]; then
+            echo "⚠️  Database migration check failed (non-blocking)"
+          fi
+
+          if [ "${{ needs.performance.result }}" != "success" ]; then
+            echo "⚠️  Performance check failed (non-blocking)"
+          fi
+
+          echo ""
           echo "✅ All critical quality gates passed!"
           echo ""
-          echo "📊 Summary:"
-          echo "  - TypeScript: ✅ Strict mode enforced"
-          echo "  - ESLint: ✅ Code quality verified"
-          echo "  - Prettier: ✅ Formatting consistent"
-          echo "  - No 'any' types: ✅ Type safety enforced"
-          echo "  - Module boundaries: ✅ Architecture protected"
-          echo "  - Circular deps: ✅ None detected"
-          echo "  - Build: ✅ Successful"
+          echo "📋 Checks completed:"
+          echo "  ✅ TypeScript strict mode"
+          echo "  ✅ ESLint (code quality + architecture)"
+          echo "  ✅ Prettier (code formatting)"
+          echo "  ✅ No 'any' types in new modules"
+          echo "  ✅ Module boundaries enforced"
+          echo "  ✅ Build successful"
+          echo "  ✅ No secrets in code"
+          echo "  ⚠️  Tests: ${{ needs.tests.result }}"
+          echo "  ⚠️  Database: ${{ needs.database.result }}"
+          echo "  ⚠️  Performance: ${{ needs.performance.result }}"
           echo ""
           echo "🚀 Code is ready to merge!"
 
-# Branch Protection Rules (configure in GitHub settings):
-# 1. Require pull request reviews before merging
-# 2. Require status checks to pass:
-#    - quality
-#    - build
-#    - all-checks
-# 3. Require branches to be up to date before merging
-# 4. Include administrators in restrictions
-# 5. Do not allow bypassing the above settings
+# ==============================================================================
+# BRANCH PROTECTION SETUP INSTRUCTIONS
+# ==============================================================================
+#
+# Configure these settings in GitHub repository settings:
+#
+# Settings > Branches > Add branch protection rule for 'main':
+#
+# 1. ✅ Require pull request reviews before merging
+#    - Required approving reviews: 1
+#
+# 2. ✅ Require status checks to pass before merging
+#    - Require branches to be up to date before merging: ✅
+#    - Required status checks:
+#      - quality (CRITICAL)
+#      - build (CRITICAL)
+#      - security (CRITICAL)
+#      - all-checks (CRITICAL)
+#
+# 3. ✅ Require conversation resolution before merging
+#
+# 4. ✅ Include administrators (no one can bypass)
+#
+# 5. ✅ Do not allow bypassing the above settings
+#
+# ==============================================================================

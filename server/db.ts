@@ -2,11 +2,11 @@
  * DATABASE CONFIGURATION
  *
  * DEPRECATED: This file is kept for backward compatibility.
- * New code should import from './database/db-service.ts' instead.
+ * New code should import from '@/core/database' instead.
  *
  * Migration guide:
  * - Replace: import { db, pool } from './db'
- * - With: import { db, pool } from './database/db-service'
+ * - With: import { db, pool } from '@/core/database'
  *
  * The new database service provides:
  * - Connection pooling with health checks
@@ -15,7 +15,7 @@
  * - Graceful shutdown handling
  */
 
-import { db as dbService, pool as poolService } from './database/db-service';
+import { db as dbService, pool as poolService } from '../src/core/database/db-service';
 
 // Re-export for backward compatibility
 export const db = dbService;
@@ -25,6 +25,6 @@ export const pool = poolService;
 if (process.env.NODE_ENV === 'development') {
   console.warn(
     '[DEPRECATION WARNING] Importing from server/db.ts is deprecated. ' +
-    'Please import from server/database/db-service.ts instead.'
+    'Please import from @/core/database instead.'
   );
 }

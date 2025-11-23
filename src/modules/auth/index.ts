@@ -36,6 +36,8 @@ export {
   type SessionConfig,
 } from './api/auth.routes';
 
+export { createUserManagementRouter } from './api/user-management.routes';
+
 // ============================================================================
 // CLIENT-SIDE EXPORTS
 // ============================================================================

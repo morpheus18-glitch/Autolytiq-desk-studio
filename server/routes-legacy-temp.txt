@@ -1,0 +1,14 @@
+# Legacy routes file extraction plan
+
+Lines to extract from routes.ts.backup:
+
+1. Quick Quotes: lines 1171-1321 (150 lines)
+2. Fee Templates: lines 1569-1591 (23 lines)  
+3. Lenders: lines 3190-3471 (282 lines)
+4. AI Chat: lines 3472-3597 (126 lines)
+5. ML Optimization: lines 3598-3743 (146 lines)
+6. Intelligence: lines 3744-4016 (273 lines)
+7. Hierarchy: lines 4017-4373 (357 lines)
+8. Credit: lines 2239-2487 (249 lines)
+
+Total: ~1,606 lines of complex business logic

@@ -1,6 +1,12 @@
 #!/bin/sh
 . "$(dirname -- "$0")/_/husky.sh"
 
+# Check for documentation files at root
+bash scripts/check-root-docs.sh
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+
 # Run the comprehensive Code Quality Fortress validation
 bash scripts/pre-commit-check.sh
 

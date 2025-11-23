@@ -387,3 +387,277 @@ export class InvalidDealStateError extends DealError {
     super(message, 'INVALID_STATE', 400);
   }
 }
+
+// ============================================================================
+// API ROUTE TYPES (for deal.routes.ts)
+// ============================================================================
+
+import type {
+  Deal as SchemaDeal,
+  InsertDeal,
+  DealScenario,
+  TradeVehicle,
+  Customer,
+  Vehicle,
+  User
+} from '@shared/schema';
+
+/**
+ * Query parameters for listing deals
+ */
+export interface GetDealsParams {
+  page: number;
+  pageSize: number;
+  search?: string;
+  status?: string;
+  dealershipId: string;
+}
+
+/**
+ * Paginated response for deal list
+ */
+export interface GetDealsResponse {
+  deals: DealWithRelations[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/**
+ * Deal with all related entities loaded
+ */
+export interface DealWithRelations extends SchemaDeal {
+  customer?: Customer | null;
+  vehicle?: Vehicle | null;
+  tradeVehicle?: TradeVehicle | null;
+  scenarios?: DealScenario[];
+  salesperson?: {
+    id: string;
+    fullName: string;
+    email: string;
+  };
+  salesManager?: {
+    id: string;
+    fullName: string;
+    email: string;
+  } | null;
+  financeManager?: {
+    id: string;
+    fullName: string;
+    email: string;
+  } | null;
+}
+
+/**
+ * Deal statistics aggregated by status
+ */
+export interface DealStats {
+  totalDeals: number;
+  activeDealCount: number;
+  draftDealCount: number;
+  approvedDealCount: number;
+  cancelledDealCount: number;
+  totalRevenue: string; // Decimal as string
+  averageDealValue: string; // Decimal as string
+  dealsByStatus: Record<string, number>;
+  recentDeals: DealWithRelations[];
+}
+
+/**
+ * Trade vehicle creation data with proper types
+ */
+export interface TradeVehicleCreateData {
+  dealId: string;
+  year: number;
+  make: string;
+  model: string;
+  mileage: number;
+  vin?: string;
+  allowance: string; // Decimal as string
+  payoff: string; // Decimal as string
+  payoffTo?: string;
+}
+
+/**
+ * Trade vehicle update data (all fields optional)
+ */
+export interface TradeVehicleUpdateData {
+  year?: number;
+  make?: string;
+  model?: string;
+  mileage?: number;
+  vin?: string;
+  allowance?: string; // Decimal as string
+  payoff?: string; // Decimal as string
+  payoffTo?: string;
+}
+
+/**
+ * Scenario with related data
+ */
+export interface ScenarioWithRelations extends DealScenario {
+  vehicle?: Vehicle | null;
+  tradeVehicle?: TradeVehicle | null;
+}
+
+/**
+ * Audit log entry
+ */
+export interface AuditLogEntry {
+  id: string;
+  dealId: string;
+  scenarioId?: string | null;
+  userId: string;
+  action: string; // 'create', 'update', 'delete', 'state_change', 'apply_template'
+  entityType: string; // 'deal', 'scenario', 'trade_vehicle', etc.
+  entityId: string;
+  fieldName?: string | null;
+  oldValue?: string | null;
+  newValue?: string | null;
+  metadata?: Record<string, unknown> | null;
+  createdAt: Date;
+  user?: {
+    id: string;
+    fullName: string;
+    email: string;
+  };
+}
+
+/**
+ * Audit log creation data
+ */
+export interface CreateAuditLogData {
+  dealId: string;
+  scenarioId?: string;
+  userId: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  fieldName?: string;
+  oldValue?: string;
+  newValue?: string;
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Fee package template
+ */
+export interface FeePackageTemplate {
+  id: string;
+  name: string;
+  description?: string | null;
+  dealerFees: Array<{
+    name: string;
+    amount: number;
+    capitalized: boolean;
+    taxable: boolean;
+  }>;
+  accessories: Array<{
+    name: string;
+    amount: number;
+    capitalized: boolean;
+    taxable: boolean;
+  }>;
+  aftermarketProducts: Array<{
+    category: string;
+    name: string;
+    price: number;
+    capitalized: boolean;
+    taxable: boolean;
+  }>;
+}
+
+/**
+ * Lender rate request
+ */
+export interface LenderRateRequest {
+  id: string;
+  dealId: string;
+  lenderId: string;
+  requestedAt: Date;
+  respondedAt?: Date | null;
+  status: 'pending' | 'approved' | 'declined' | 'expired';
+  apr?: string | null; // Decimal as string
+  term?: number | null;
+  maxLoanAmount?: string | null; // Decimal as string
+  conditions?: string | null;
+  lender?: {
+    id: string;
+    name: string;
+    logo?: string | null;
+  };
+}
+
+/**
+ * Selected lender for deal
+ */
+export interface SelectedLender {
+  dealId: string;
+  lenderId: string;
+  rateRequestId: string;
+  selectedAt: Date;
+  apr: string; // Decimal as string
+  term: number;
+  loanAmount: string; // Decimal as string
+  lender: {
+    id: string;
+    name: string;
+    logo?: string | null;
+  };
+}
+
+/**
+ * Lender history response
+ */
+export interface DealLenderHistory {
+  rateRequests: LenderRateRequest[];
+  selectedLender: SelectedLender | null;
+  totalRequests: number;
+  lastRequestedAt: Date | null;
+}
+
+/**
+ * Deal creation result (from atomic operations)
+ */
+export interface DealCreationResult {
+  success: boolean;
+  data?: {
+    deal: SchemaDeal;
+    scenario: DealScenario;
+    customer?: Customer | null;
+    vehicle?: Vehicle | null;
+  };
+  error?: string;
+  details?: unknown;
+}
+
+/**
+ * Error types for atomic operations
+ */
+export class ValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ValidationError';
+  }
+}
+
+export class ResourceNotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ResourceNotFoundError';
+  }
+}
+
+export class VehicleNotAvailableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'VehicleNotAvailableError';
+  }
+}
+
+export class MultiTenantViolationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'MultiTenantViolationError';
+  }
+}

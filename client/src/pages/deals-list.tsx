@@ -16,7 +16,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageLayout } from '@/components/page-layout';
-import { PageHero } from '@/components/page-hero';
+import { PageHeader } from '@/components/core/page-header';
+import { PageContent } from '@/components/core/page-content';
+import { LoadingState } from '@/components/core/loading-state';
+import { ErrorState } from '@/components/core/error-state';
 
 // Use semantic colors from design tokens for dark mode support
 
@@ -242,7 +245,7 @@ export default function DealsList() {
     ...(statusFilter && statusFilter !== 'all' && { status: statusFilter }),
   });
   
-  const { data, isLoading } = useQuery<{
+  const { data, isLoading, error, refetch } = useQuery<{
     deals: DealWithRelations[];
     total: number;
     pages: number;
@@ -332,12 +335,12 @@ export default function DealsList() {
   
   return (
     <PageLayout className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <PageHero
-        icon={FileText}
+      <PageHeader
         title="Desk HQ"
-        description="Your universal deal command center"
+        subtitle="Your universal deal command center"
+        icon={<FileText />}
         actions={
-          <Button 
+          <Button
             size="lg"
             onClick={handleStartBlankDeal}
             disabled={usersLoading || createDealMutation.isPending}
@@ -381,15 +384,22 @@ export default function DealsList() {
       </div>
       
       {/* Deals Grid */}
-      <div className="container mx-auto px-3 md:px-4 py-6">
-        <div className="flex-1 min-w-0 overflow-hidden">
-          {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <DealCardSkeleton key={i} />
-              ))}
-            </div>
-          ) : deals.length === 0 ? (
+      <PageContent>
+        {isLoading && (
+          <LoadingState message="Loading deals..." />
+        )}
+
+        {error && (
+          <ErrorState
+            title="Failed to load deals"
+            message="Unable to fetch the deal list. Please try again."
+            onRetry={() => refetch()}
+          />
+        )}
+
+        {!isLoading && !error && (
+          <div className="flex-1 min-w-0 overflow-hidden">
+            {deals.length === 0 ? (
             <Card className="p-12">
               <EmptyState
                 icon={searchQuery || statusFilter !== 'all' ? Filter : FileText}
@@ -450,8 +460,9 @@ export default function DealsList() {
               )}
             </>
           )}
-        </div>
-      </div>
+          </div>
+        )}
+      </PageContent>
       
       {/* Vehicle Picker Dialog */}
       <Dialog open={showVehiclePicker} onOpenChange={setShowVehiclePicker}>

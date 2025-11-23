@@ -33,6 +33,7 @@ describe('Email Module', () => {
     });
 
     it('should reject invalid email addresses', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const invalidRequest: any = {
         to: [{ email: 'invalid-email', name: 'Test User' }],
         subject: 'Test Email',
@@ -45,6 +46,7 @@ describe('Email Module', () => {
     });
 
     it('should reject empty recipients', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const invalidRequest: any = {
         to: [],
         subject: 'Test Email',
@@ -57,6 +59,7 @@ describe('Email Module', () => {
     });
 
     it('should reject missing subject', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const invalidRequest: any = {
         to: [{ email: 'test@example.com' }],
         bodyText: 'This is a test email',

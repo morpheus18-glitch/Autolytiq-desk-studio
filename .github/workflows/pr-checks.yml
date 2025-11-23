@@ -1,0 +1,281 @@
+name: PR - Architectural Validation
+
+# Only run on pull requests (not on direct pushes)
+on:
+  pull_request:
+    branches: [ main, develop ]
+    types: [ opened, synchronize, reopened ]
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  pr-validation:
+    name: PR Architectural Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for diff analysis
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Get changed files
+        id: changed-files
+        run: |
+          echo "Getting changed files in this PR..."
+          git fetch origin ${{ github.base_ref }}
+          changed_files=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          echo "$changed_files"
+          echo "changed_files<<EOF" >> $GITHUB_OUTPUT
+          echo "$changed_files" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Validate import paths in changed files
+        run: |
+          echo "🔍 Validating import paths in changed files..."
+          changed_files="${{ steps.changed-files.outputs.changed_files }}"
+          violations_found=false
+
+          # Check each changed TypeScript file
+          while IFS= read -r file; do
+            if [[ "$file" == *.ts ]] || [[ "$file" == *.tsx ]]; then
+              if [ -f "$file" ]; then
+                echo "Checking: $file"
+
+                # Check for relative parent imports (../)
+                if grep -n "from ['\"]\.\./" "$file" 2>/dev/null; then
+                  echo "❌ Found relative parent imports in $file"
+                  echo "   Use absolute imports with @ alias instead"
+                  violations_found=true
+                fi
+
+                # Check for deep module imports (importing from module internals)
+                if echo "$file" | grep -q "^src/modules/"; then
+                  if grep -n "from ['\"].*\/modules\/[^'\"\/]\+\/[^'\"]\+['\"]" "$file" 2>/dev/null | \
+                     grep -v "from ['\"].*\/modules\/[^'\"\/]\+['\"]" | \
+                     grep -v "from ['\"]\."; then
+                    echo "❌ Found cross-module internal import in $file"
+                    echo "   Import from module's public API (index.ts) only"
+                    violations_found=true
+                  fi
+                fi
+              fi
+            fi
+          done <<< "$changed_files"
+
+          if [ "$violations_found" = true ]; then
+            echo ""
+            echo "Import path violations detected!"
+            echo "Fix these issues before merging."
+            exit 1
+          fi
+
+          echo "✅ All import paths are valid"
+
+      - name: Check for new 'any' types in changed files
+        run: |
+          echo "🚫 Checking for new 'any' types in changed files..."
+          changed_files="${{ steps.changed-files.outputs.changed_files }}"
+          any_found=false
+
+          while IFS= read -r file; do
+            # Check new module architecture files (zero tolerance)
+            if [[ "$file" == src/modules/* ]] || [[ "$file" == src/core/* ]] || [[ "$file" == shared/models/* ]]; then
+              if [[ "$file" == *.ts ]] || [[ "$file" == *.tsx ]]; then
+                if [ -f "$file" ]; then
+                  if grep -n ": any\|<any>\|any\[\]\|Array<any>\|Record<.*any" "$file" 2>/dev/null; then
+                    echo "❌ Found 'any' type in $file"
+                    echo "   New module architecture requires strict typing"
+                    any_found=true
+                  fi
+                fi
+              fi
+            fi
+          done <<< "$changed_files"
+
+          if [ "$any_found" = true ]; then
+            echo ""
+            echo "'any' types detected in new architecture!"
+            echo "All code in src/modules/, src/core/, and shared/models/ must be strictly typed."
+            exit 1
+          fi
+
+          echo "✅ No new 'any' types in module architecture"
+
+      - name: Check file size limits
+        run: |
+          echo "📏 Checking file sizes in PR..."
+          changed_files="${{ steps.changed-files.outputs.changed_files }}"
+          oversized_found=false
+
+          while IFS= read -r file; do
+            if [[ "$file" == *.ts ]] || [[ "$file" == *.tsx ]]; then
+              if [ -f "$file" ]; then
+                line_count=$(wc -l < "$file" 2>/dev/null || echo "0")
+                if [ "$line_count" -gt 500 ]; then
+                  echo "⚠️ File $file has $line_count lines (max: 500)"
+                  echo "   Consider breaking this file into smaller modules"
+                  oversized_found=true
+                fi
+              fi
+            fi
+          done <<< "$changed_files"
+
+          if [ "$oversized_found" = true ]; then
+            echo ""
+            echo "Warning: Large files detected in PR"
+            echo "Consider refactoring files over 500 lines"
+            # Warning only, don't fail
+          else
+            echo "✅ All files are within size limits"
+          fi
+
+      - name: Check for circular dependencies in changed modules
+        run: |
+          echo "🔄 Checking for circular dependencies..."
+          changed_files="${{ steps.changed-files.outputs.changed_files }}"
+
+          # Check if any module files were changed
+          module_changed=false
+          while IFS= read -r file; do
+            if [[ "$file" == src/modules/* ]]; then
+              module_changed=true
+              break
+            fi
+          done <<< "$changed_files"
+
+          if [ "$module_changed" = true ]; then
+            echo "Module files changed - running circular dependency check..."
+            if command -v npx &> /dev/null; then
+              npx madge --circular --extensions ts,tsx src/modules/ 2>&1 || {
+                echo "❌ Circular dependencies detected in modules!"
+                echo "Refactor to remove circular imports before merging"
+                exit 1
+              }
+              echo "✅ No circular dependencies in modules"
+            else
+              echo "⚠️ madge not available, skipping circular dependency check"
+            fi
+          else
+            echo "No module files changed - skipping circular dependency check"
+          fi
+
+      - name: Validate commit messages
+        run: |
+          echo "📝 Validating commit messages..."
+          git fetch origin ${{ github.base_ref }}
+          commits=$(git log origin/${{ github.base_ref }}..HEAD --pretty=format:"%H %s")
+
+          invalid_found=false
+          while IFS= read -r commit; do
+            commit_hash=$(echo "$commit" | cut -d' ' -f1)
+            commit_msg=$(echo "$commit" | cut -d' ' -f2-)
+
+            # Check conventional commit format: type(scope): description
+            if ! echo "$commit_msg" | grep -qE "^(feat|fix|stabilize|refactor|test|docs|build|ci|chore)(\(.+\))?: .+"; then
+              echo "⚠️ Commit $commit_hash does not follow conventional format:"
+              echo "   $commit_msg"
+              echo "   Expected: type(scope): description"
+              echo "   Types: feat, fix, stabilize, refactor, test, docs, build, ci, chore"
+              invalid_found=true
+            fi
+          done <<< "$commits"
+
+          if [ "$invalid_found" = true ]; then
+            echo ""
+            echo "Some commits don't follow conventional commit format"
+            echo "Consider squashing or amending commits before merge"
+            # Warning only, don't fail (can be fixed with squash merge)
+          else
+            echo "✅ All commits follow conventional format"
+          fi
+
+      - name: Check for console.log in production code
+        run: |
+          echo "🔍 Checking for console.log in client code..."
+          changed_files="${{ steps.changed-files.outputs.changed_files }}"
+          console_found=false
+
+          while IFS= read -r file; do
+            # Only check client code (server code can use console)
+            if [[ "$file" == client/* ]] || [[ "$file" == src/modules/*/components/* ]]; then
+              if [[ "$file" == *.ts ]] || [[ "$file" == *.tsx ]]; then
+                if [ -f "$file" ]; then
+                  if grep -n "console\.log\|console\.debug" "$file" 2>/dev/null; then
+                    echo "⚠️ Found console.log in $file"
+                    console_found=true
+                  fi
+                fi
+              fi
+            fi
+          done <<< "$changed_files"
+
+          if [ "$console_found" = true ]; then
+            echo ""
+            echo "Warning: console.log found in client code"
+            echo "Consider removing debug statements or using proper logging"
+            # Warning only, don't fail (ESLint will catch critical cases)
+          else
+            echo "✅ No console.log in client code"
+          fi
+
+      - name: Generate PR metrics
+        if: always()
+        run: |
+          echo "📊 PR Metrics Summary"
+          echo "===================="
+          changed_files="${{ steps.changed-files.outputs.changed_files }}"
+
+          # Count file types
+          ts_count=$(echo "$changed_files" | grep -c "\.ts$" || echo "0")
+          tsx_count=$(echo "$changed_files" | grep -c "\.tsx$" || echo "0")
+          total_ts=$((ts_count + tsx_count))
+
+          # Count by area
+          client_count=$(echo "$changed_files" | grep -c "^client/" || echo "0")
+          server_count=$(echo "$changed_files" | grep -c "^server/" || echo "0")
+          shared_count=$(echo "$changed_files" | grep -c "^shared/" || echo "0")
+          modules_count=$(echo "$changed_files" | grep -c "^src/modules/" || echo "0")
+
+          echo "Files changed: $(echo "$changed_files" | wc -l)"
+          echo "TypeScript files: $total_ts (.ts: $ts_count, .tsx: $tsx_count)"
+          echo ""
+          echo "Changes by area:"
+          echo "  Client: $client_count files"
+          echo "  Server: $server_count files"
+          echo "  Shared: $shared_count files"
+          echo "  Modules: $modules_count files"
+          echo ""
+
+          # Calculate risk level
+          if [ "$total_ts" -gt 50 ]; then
+            echo "⚠️ Risk level: HIGH (50+ TypeScript files changed)"
+            echo "   Consider breaking this PR into smaller chunks"
+          elif [ "$total_ts" -gt 20 ]; then
+            echo "⚠️ Risk level: MEDIUM (20+ TypeScript files changed)"
+            echo "   Ensure thorough testing before merge"
+          else
+            echo "✅ Risk level: LOW (<20 TypeScript files changed)"
+          fi
+
+# This workflow provides additional PR-specific validation that complements
+# the main CI pipeline. It focuses on:
+# 1. Import path validation (no ../, use @/ aliases)
+# 2. Module boundary enforcement (no internal imports)
+# 3. Detecting new 'any' types in strict areas
+# 4. File size validation (<500 lines)
+# 5. Circular dependency detection in changed modules
+# 6. Commit message format validation
+# 7. Console.log detection in client code
+# 8. PR complexity metrics

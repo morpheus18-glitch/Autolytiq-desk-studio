@@ -1,4 +1,5 @@
 // Referenced from javascript_database blueprint integration
+// TEST: Pre-commit hook validation
 import { sql } from "drizzle-orm";
 import { pgTable, text, varchar, timestamp, decimal, integer, uuid, boolean, jsonb, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";

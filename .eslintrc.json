@@ -40,6 +40,18 @@
         "mode": "file"
       },
       {
+        "type": "module-routes",
+        "pattern": "src/modules/*/api/*.routes.ts",
+        "mode": "full",
+        "capture": ["moduleName"]
+      },
+      {
+        "type": "module-hooks",
+        "pattern": "src/modules/*/hooks/**/*",
+        "mode": "full",
+        "capture": ["moduleName"]
+      },
+      {
         "type": "module-internal",
         "pattern": "src/modules/*/**/*",
         "mode": "full",
@@ -171,6 +183,16 @@
             "allow": ["shared"]
           },
           {
+            "from": "module-routes",
+            "allow": ["module-internal", "module-routes", "shared", "core", "server"],
+            "message": "Module routes can import from server layer, module internals, shared, and core."
+          },
+          {
+            "from": "module-hooks",
+            "allow": ["module-internal", "module-hooks", "shared", "core", "client"],
+            "message": "Module hooks (React) can import from client layer, module internals, shared, and core."
+          },
+          {
             "from": "module-internal",
             "allow": ["module-internal", "shared", "core"],
             "message": "Modules can only import from their own internals, shared, or core. Import other modules via their public API."
@@ -181,7 +203,7 @@
           },
           {
             "from": "core",
-            "allow": ["core", "shared", "server"]
+            "allow": ["core", "shared"]
           },
           {
             "from": "tests",

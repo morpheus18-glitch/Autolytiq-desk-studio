@@ -7,7 +7,7 @@
 
 import type { Request } from 'express';
 import type { InsertSecurityAuditLog } from '@shared/schema';
-import { storage } from '../../../server/storage';
+import { getStorageService } from '../database';
 
 /**
  * Log security event to database audit trail
@@ -46,6 +46,7 @@ export async function logSecurityEvent(
   };
 
   try {
+    const storage = getStorageService();
     await storage.createSecurityAuditLog(auditEntry);
   } catch (error) {
     // CRITICAL: Never fail the request if audit logging fails

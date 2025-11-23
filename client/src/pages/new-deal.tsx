@@ -13,7 +13,8 @@ import { apiRequest } from '@/lib/queryClient';
 import { Search, Plus, ArrowLeft, FileText } from 'lucide-react';
 import { StockNumberQuickAdd } from '@/components/stock-number-quick-add';
 import { PageLayout } from '@/components/page-layout';
-import { PageHero } from '@/components/page-hero';
+import { PageHeader } from '@/components/core/page-header';
+import { PageContent } from '@/components/core/page-content';
 import {
   Form,
   FormControl,
@@ -215,19 +216,24 @@ export default function NewDeal() {
   
   return (
     <PageLayout className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <PageHero
-        icon={FileText}
+      <PageHeader
         title="Create New Deal"
-        description="Set up a new deal with customer and vehicle information"
-        backButton={{
-          label: "Back to Deals",
-          onClick: () => setLocation('/deals'),
-          testId: "button-back"
-        }}
+        subtitle="Set up a new deal with customer and vehicle information"
+        icon={<FileText />}
+        actions={
+          <Button
+            variant="outline"
+            onClick={() => setLocation('/deals')}
+            data-testid="button-back"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Deals
+          </Button>
+        }
       />
 
       {/* Main Content */}
-      <div className={cn(containerPadding, layoutSpacing.page)}>
+      <PageContent>
         <div className="max-w-4xl mx-auto space-y-6">
           {/* Quick Start Option */}
           <Card className={cn(premiumCardClasses, statusColors.info, "p-6")}>
@@ -409,7 +415,7 @@ export default function NewDeal() {
             </Form>
           </Card>
         </div>
-      </div>
+      </PageContent>
     </PageLayout>
   );
 }

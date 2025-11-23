@@ -34,41 +34,63 @@ interface AuthenticatedRequest extends Request {
   };
 }
 
+// Import types from deal.types.ts
+import type {
+  DealWithRelations,
+  GetDealsParams,
+  GetDealsResponse,
+  DealStats,
+  TradeVehicleCreateData,
+  TradeVehicleUpdateData,
+  CreateAuditLogData,
+  AuditLogEntry,
+  FeePackageTemplate,
+  LenderRateRequest,
+  SelectedLender,
+} from '../types/deal.types';
+import {
+  ValidationError,
+  ResourceNotFoundError,
+  VehicleNotAvailableError,
+  MultiTenantViolationError,
+} from '../types/deal.types';
+import type { Deal, InsertDeal, DealScenario, TradeVehicle } from '@shared/schema';
+
 /**
  * Storage interface - will be injected from server/storage.ts during migration
  * This allows gradual migration without breaking existing code
  */
 interface DealStorage {
   // Deal operations
-  getDeal(id: string): Promise<any>;
-  getDeals(params: any): Promise<any>;
-  getDealsStats(dealershipId: string): Promise<any>;
-  createDeal(data: any): Promise<any>;
-  updateDeal(id: string, data: any): Promise<any>;
-  updateDealState(id: string, state: string): Promise<any>;
-  attachCustomerToDeal(dealId: string, customerId: string): Promise<any>;
+  getDeal(id: string): Promise<DealWithRelations | null>;
+  getDeals(params: GetDealsParams): Promise<GetDealsResponse>;
+  getDealsStats(dealershipId: string): Promise<DealStats>;
+  createDeal(data: InsertDeal): Promise<Deal>;
+  updateDeal(id: string, data: Partial<InsertDeal>): Promise<Deal>;
+  updateDealState(id: string, state: string): Promise<Deal>;
+  attachCustomerToDeal(dealId: string, customerId: string): Promise<Deal>;
 
   // Trade vehicle operations
-  getTradeVehiclesByDeal(dealId: string): Promise<any[]>;
-  getTradeVehicle(id: string): Promise<any>;
-  createTradeVehicle(data: any): Promise<any>;
-  updateTradeVehicle(id: string, data: any): Promise<any>;
+  getTradeVehiclesByDeal(dealId: string): Promise<TradeVehicle[]>;
+  getTradeVehicle(id: string): Promise<TradeVehicle | null>;
+  createTradeVehicle(data: TradeVehicleCreateData): Promise<TradeVehicle>;
+  updateTradeVehicle(id: string, data: TradeVehicleUpdateData): Promise<TradeVehicle>;
   deleteTradeVehicle(id: string): Promise<void>;
 
   // Scenario operations
-  createScenario(data: any): Promise<any>;
-  getScenario(id: string): Promise<any>;
-  updateScenario(id: string, data: any): Promise<any>;
+  createScenario(data: Partial<DealScenario>): Promise<DealScenario>;
+  getScenario(id: string): Promise<DealScenario | null>;
+  updateScenario(id: string, data: Partial<DealScenario>): Promise<DealScenario>;
   deleteScenario(id: string): Promise<void>;
-  getFeePackageTemplate(id: string): Promise<any>;
+  getFeePackageTemplate(id: string): Promise<FeePackageTemplate | null>;
 
   // Audit operations
-  createAuditLog(data: any): Promise<void>;
-  getDealAuditLogs(dealId: string): Promise<any[]>;
+  createAuditLog(data: CreateAuditLogData): Promise<void>;
+  getDealAuditLogs(dealId: string): Promise<AuditLogEntry[]>;
 
   // Lender operations
-  getRateRequestsByDeal(dealId: string): Promise<any[]>;
-  getSelectedLenderForDeal(dealId: string): Promise<any>;
+  getRateRequestsByDeal(dealId: string): Promise<LenderRateRequest[]>;
+  getSelectedLenderForDeal(dealId: string): Promise<SelectedLender | null>;
 }
 
 // ============================================================================
@@ -260,7 +282,7 @@ export function createDealRouter(
             vehicle: result.vehicle,
           },
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Handle specific error types with appropriate status codes
         if (error instanceof ValidationError) {
           return res.status(400).json({ success: false, error: error.message });
@@ -281,20 +303,21 @@ export function createDealRouter(
           error: 'Failed to create deal. Please try again.'
         });
       }
-    } catch (error: any) {
-      // Schema validation error
-      if (error.name === 'ZodError') {
+    } catch (error: unknown) {
+      // Schema validation error (Zod error)
+      if (error && typeof error === 'object' && 'name' in error && error.name === 'ZodError') {
         return res.status(400).json({
           success: false,
           error: 'Validation failed',
-          details: error.errors
+          details: 'errors' in error ? error.errors : []
         });
       }
 
       console.error('[POST /api/deals] Unexpected error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create deal';
       res.status(500).json({
         success: false,
-        error: error.message || 'Failed to create deal'
+        error: errorMessage
       });
     }
   });
@@ -319,6 +342,10 @@ export function createDealRouter(
       // Create audit log for each changed field
       const changes = Object.keys(req.body);
       for (const field of changes) {
+        // Safe dynamic property access with type narrowing
+        const oldValue = field in oldDeal ? String(oldDeal[field as keyof typeof oldDeal] ?? '') : '';
+        const newValue = field in deal ? String(deal[field as keyof typeof deal] ?? '') : '';
+
         await storage.createAuditLog({
           dealId: deal.id,
           userId: oldDeal.salespersonId,
@@ -326,15 +353,16 @@ export function createDealRouter(
           entityType: 'deal',
           entityId: deal.id,
           fieldName: field,
-          oldValue: String((oldDeal as any)[field] || ''),
-          newValue: String((deal as any)[field] || ''),
+          oldValue,
+          newValue,
         });
       }
 
       res.json(deal);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[PATCH /api/deals/:id] Error:', error);
-      res.status(400).json({ error: error.message || 'Failed to update deal' });
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update deal';
+      res.status(400).json({ error: errorMessage });
     }
   });
 
@@ -353,16 +381,17 @@ export function createDealRouter(
 
       const deal = await storage.attachCustomerToDeal(id, customerId);
       res.json(deal);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[PATCH /api/deals/:id/attach-customer] Error:', error);
 
       // Return appropriate status codes based on error
-      if (error.message?.includes('same dealership')) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to attach customer to deal';
+      if (errorMessage.includes('same dealership')) {
         res.status(403).json({ error: 'Forbidden' });
-      } else if (error.message?.includes('not found')) {
+      } else if (errorMessage.includes('not found')) {
         res.status(404).json({ error: 'Not found' });
       } else {
-        res.status(400).json({ error: error.message || 'Failed to attach customer to deal' });
+        res.status(400).json({ error: errorMessage });
       }
     }
   });
@@ -398,9 +427,10 @@ export function createDealRouter(
       });
 
       res.json(deal);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[PATCH /api/deals/:id/state] Error:', error);
-      res.status(400).json({ error: error.message || 'Failed to update deal state' });
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update deal state';
+      res.status(400).json({ error: errorMessage });
     }
   });
 
@@ -437,9 +467,10 @@ export function createDealRouter(
 
       const trades = await storage.getTradeVehiclesByDeal(dealId);
       res.json(trades);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[GET /api/deals/:dealId/trades] Error:', error);
-      res.status(500).json({ error: error.message || 'Failed to get trade vehicles' });
+      const errorMessage = error instanceof Error ? error.message : 'Failed to get trade vehicles';
+      res.status(500).json({ error: errorMessage });
     }
   });
 
@@ -483,9 +514,10 @@ export function createDealRouter(
       });
 
       res.status(201).json(tradeVehicle);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[POST /api/deals/:dealId/trades] Error:', error);
-      res.status(400).json({ error: error.message || 'Failed to create trade vehicle' });
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create trade vehicle';
+      res.status(400).json({ error: errorMessage });
     }
   });
 
@@ -518,33 +550,39 @@ export function createDealRouter(
 
       const input = tradeVehicleUpdateSchema.parse(req.body);
 
-      const data: any = { ...input };
+      const data: TradeVehicleUpdateData = { ...input };
       if (input.allowance !== undefined) data.allowance = String(input.allowance);
       if (input.payoff !== undefined) data.payoff = String(input.payoff);
 
       const tradeVehicle = await storage.updateTradeVehicle(tradeId, data);
 
       // Create audit log for significant changes
-      const significantFields = ['allowance', 'payoff', 'year', 'make', 'model', 'mileage'];
+      const significantFields = ['allowance', 'payoff', 'year', 'make', 'model', 'mileage'] as const;
       for (const field of significantFields) {
-        if (req.body[field] !== undefined && String((oldTrade as any)[field]) !== String((tradeVehicle as any)[field])) {
-          await storage.createAuditLog({
-            dealId,
-            userId: deal.salespersonId,
-            action: 'update',
-            entityType: 'trade_vehicle',
-            entityId: tradeVehicle.id,
-            fieldName: field,
-            oldValue: String((oldTrade as any)[field] || ''),
-            newValue: String((tradeVehicle as any)[field] || ''),
-          });
+        if (req.body[field] !== undefined) {
+          const oldValue = field in oldTrade ? String(oldTrade[field as keyof typeof oldTrade] ?? '') : '';
+          const newValue = field in tradeVehicle ? String(tradeVehicle[field as keyof typeof tradeVehicle] ?? '') : '';
+
+          if (oldValue !== newValue) {
+            await storage.createAuditLog({
+              dealId,
+              userId: deal.salespersonId,
+              action: 'update',
+              entityType: 'trade_vehicle',
+              entityId: tradeVehicle.id,
+              fieldName: field,
+              oldValue,
+              newValue,
+            });
+          }
         }
       }
 
       res.json(tradeVehicle);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[PATCH /api/deals/:dealId/trades/:tradeId] Error:', error);
-      res.status(400).json({ error: error.message || 'Failed to update trade vehicle' });
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update trade vehicle';
+      res.status(400).json({ error: errorMessage });
     }
   });
 
@@ -588,9 +626,10 @@ export function createDealRouter(
       });
 
       res.status(204).send();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[DELETE /api/deals/:dealId/trades/:tradeId] Error:', error);
-      res.status(400).json({ error: error.message || 'Failed to delete trade vehicle' });
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete trade vehicle';
+      res.status(400).json({ error: errorMessage });
     }
   });
 
@@ -634,10 +673,11 @@ export function createDealRouter(
       }
 
       res.status(201).json(scenario);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[POST /api/deals/:dealId/scenarios] Error:', error);
       console.error('[POST /api/deals/:dealId/scenarios] Request body was:', req.body);
-      res.status(400).json({ error: error.message || 'Failed to create scenario' });
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create scenario';
+      res.status(400).json({ error: errorMessage });
     }
   });
 
@@ -666,27 +706,33 @@ export function createDealRouter(
       const scenario = await storage.updateScenario(scenarioId, req.body);
 
       // Create audit log for significant changes
-      const significantFields = ['vehicleId', 'tradeVehicleId', 'vehiclePrice', 'apr', 'term', 'moneyFactor', 'residualValue', 'downPayment', 'tradeAllowance', 'tradePayoff'];
+      const significantFields = ['vehicleId', 'tradeVehicleId', 'vehiclePrice', 'apr', 'term', 'moneyFactor', 'residualValue', 'downPayment', 'tradeAllowance', 'tradePayoff'] as const;
       for (const field of significantFields) {
-        if (req.body[field] !== undefined && String((oldScenario as any)[field]) !== String((scenario as any)[field])) {
-          await storage.createAuditLog({
-            dealId,
-            scenarioId: scenario.id,
-            userId: deal.salespersonId,
-            action: 'update',
-            entityType: 'scenario',
-            entityId: scenario.id,
-            fieldName: field,
-            oldValue: String((oldScenario as any)[field] || ''),
-            newValue: String((scenario as any)[field] || ''),
-          });
+        if (req.body[field] !== undefined) {
+          const oldValue = field in oldScenario ? String(oldScenario[field as keyof typeof oldScenario] ?? '') : '';
+          const newValue = field in scenario ? String(scenario[field as keyof typeof scenario] ?? '') : '';
+
+          if (oldValue !== newValue) {
+            await storage.createAuditLog({
+              dealId,
+              scenarioId: scenario.id,
+              userId: deal.salespersonId,
+              action: 'update',
+              entityType: 'scenario',
+              entityId: scenario.id,
+              fieldName: field,
+              oldValue,
+              newValue,
+            });
+          }
         }
       }
 
       res.json(scenario);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[PATCH /api/deals/:dealId/scenarios/:scenarioId] Error:', error);
-      res.status(400).json({ error: error.message || 'Failed to update scenario' });
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update scenario';
+      res.status(400).json({ error: errorMessage });
     }
   });
 
@@ -718,9 +764,10 @@ export function createDealRouter(
       });
 
       res.status(204).send();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[DELETE /api/deals/:dealId/scenarios/:scenarioId] Error:', error);
-      res.status(400).json({ error: error.message || 'Failed to delete scenario' });
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete scenario';
+      res.status(400).json({ error: errorMessage });
     }
   });
 
@@ -786,9 +833,10 @@ export function createDealRouter(
       });
 
       res.json(updatedScenario);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[POST /api/deals/:dealId/scenarios/:scenarioId/apply-template] Error:', error);
-      res.status(400).json({ error: error.message || 'Failed to apply template' });
+      const errorMessage = error instanceof Error ? error.message : 'Failed to apply template';
+      res.status(400).json({ error: errorMessage });
     }
   });
 
@@ -873,7 +921,7 @@ export function createDealRouter(
       const page = await browser.newPage();
 
       // Build HTML content for the deal summary
-      const scenario = deal.scenarios?.find((s: any) => s.id === scenarioId) || deal.scenarios?.[0];
+      const scenario = deal.scenarios?.find((s) => s.id === scenarioId) || deal.scenarios?.[0];
       const htmlContent = `
 <!DOCTYPE html>
 <html>
@@ -1000,9 +1048,10 @@ export function createDealRouter(
         totalRequests: rateRequests.length,
         lastRequestedAt: rateRequests[0]?.requestedAt || null,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[GET /api/deals/:id/lenders] Error:', error);
-      res.status(500).json({ error: error.message || 'Failed to get deal lender history' });
+      const errorMessage = error instanceof Error ? error.message : 'Failed to get deal lender history';
+      res.status(500).json({ error: errorMessage });
     }
   });
 

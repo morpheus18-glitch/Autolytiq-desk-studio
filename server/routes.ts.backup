@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { insertCustomerSchema, insertVehicleSchema, insertDealSchema, insertDealScenarioSchema, insertTradeVehicleSchema, insertTaxJurisdictionSchema, insertQuickQuoteSchema, insertQuickQuoteContactSchema } from "@shared/schema";
 import { calculateFinancePayment, calculateLeasePayment, calculateSalesTax } from "./calculations";
 import { z } from "zod";
-import { aiService, type ChatMessage, type DealContext } from "./ai-service";
+import { aiService, type ChatMessage, type DealContext } from "../src/core/services/ai.service";
 import { setupAuth, requireAuth, requireRole } from "./auth";
 import { setupAuthRoutes } from "./auth-routes";
 import {
@@ -28,15 +28,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
   // MOUNT PUBLIC ROUTES BEFORE AUTH SETUP
   // ============================================================================
+  // SYSTEM ROUTES (health, status, ping) - PUBLIC
+  const { createSystemRouter } = await import('../src/core/api/system.routes');
+  app.use('/api/system', createSystemRouter());
+
   // TEMPORARY: Setup admin route (no auth required)
   const setupAdminRoute = (await import('./setup-admin-route')).default;
   app.use(setupAdminRoute);
 
   // CRITICAL: Public webhooks MUST be mounted BEFORE setupAuth() to avoid
   // having session/passport middleware applied to them
-  // OLD EMAIL SYSTEM (temporarily disabled during migration)
-  // const { default: emailRoutes, publicRouter: emailPublicRoutes } = await import('./email-routes');
-  // app.use('/api/webhooks', emailPublicRoutes);
+  // NEW EMAIL MODULE - Webhook routes (PUBLIC, no auth)
+  const emailWebhookRoutes = (await import('../src/modules/email/api/webhook.routes')).default;
+  app.use('/api/webhooks/email', emailWebhookRoutes);
 
   // ============================================================================
   // SETUP AUTHENTICATION & RATE LIMITING
@@ -58,15 +62,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
   // PROTECTED ROUTES (ALL REQUIRE AUTHENTICATION)
   // ============================================================================
-  
-  // Setup tax calculation routes (AutoTaxEngine endpoints)
-  app.use('/api/tax', taxRoutes);
 
-  // Setup local tax rate lookup routes (ZIP code to local rates)
-  app.use('/api/tax', localTaxRoutes);
+  // Setup tax calculation routes (CONSOLIDATED MODULE)
+  // Migrated from separate tax-routes.ts, local-tax-routes.ts, tax-engine-routes.ts
+  const { taxRoutes: newTaxRoutes } = await import('../src/modules/tax');
+  app.use('/api/tax', newTaxRoutes);
 
-  // Setup centralized tax engine routes (customer-based tax calculation)
-  app.use('/api/tax', taxEngineRoutes);
+  // Legacy routes (DEPRECATED - kept for backward compatibility during migration)
+  // TODO: Remove these after frontend migration is complete
+  // app.use('/api/tax', taxRoutes);
+  // app.use('/api/tax', localTaxRoutes);
+  // app.use('/api/tax', taxEngineRoutes);
 
   // Setup address validation route (validates customer addresses for tax calculation)
   const { validateAddressHandler } = await import('./address-validation');
@@ -79,15 +85,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
   // EMAIL MODULE (NEW SYSTEM)
   // ============================================================================
-  // Import new bulletproof email module
+  // Import new email module API routes
   const newEmailRoutes = (await import('../src/modules/email/api/email.routes')).default;
 
   // Mount protected email routes (require authentication)
   app.use('/api/email', requireAuth, newEmailRoutes);
 
-  // OLD EMAIL SYSTEM (temporarily disabled during migration)
-  // app.use('/api/email', requireAuth, emailRoutes);
-  // const emailWebhookRoutes = (await import('./email-webhook-routes')).default;
+  // NOTE: Webhook routes mounted above (before auth setup) at /api/webhooks/email
 
   // ============================================================================
   // CUSTOMER MODULE (NEW MODULAR SYSTEM)
@@ -97,7 +101,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount customer routes (all require authentication via router middleware)
   app.use('/api/customers', requireAuth, customerModuleRoutes);
-  // app.use('/api/webhooks/email', emailWebhookRoutes);
+
+  // ============================================================================
+  // VEHICLE & INVENTORY MODULE (NEW MODULAR SYSTEM)
+  // ============================================================================
+  // Import vehicle module with CRUD, VIN decoder, inventory management, stock numbers
+  const { createVehicleRouter } = await import('../src/modules/vehicle/api/vehicle.routes');
+
+  // Mount vehicle routes (all require authentication via router middleware)
+  // NOTE: Legacy vehicle routes exist below - this new module takes precedence
+  app.use('/api/vehicles', requireAuth, createVehicleRouter());
+
+  // ============================================================================
+  // DEAL MODULE (NEW MODULAR SYSTEM)
+  // ============================================================================
+  // Import comprehensive deal module with CRUD, scenarios, trades, audit, PDF, lenders
+  const { createDealRouter } = await import('../src/modules/deal/api/deal.routes');
+
+  // Mount deal routes (all require authentication via router middleware)
+  // NOTE: Legacy deal routes exist below - this new module provides the same API
+  app.use('/api/deals', createDealRouter(
+    storage,
+    requireAuth,
+    requireRole,
+    insertDealSchema,
+    insertTradeVehicleSchema,
+    insertDealScenarioSchema
+  ));
+
+  // ============================================================================
+  // REPORTING MODULE (NEW MODULAR SYSTEM)
+  // ============================================================================
+  // Import reporting module with analytics, dashboards, KPIs, team performance
+  const { createReportingRouter } = await import('../src/modules/reporting');
+
+  // Mount reporting routes (all require authentication via router middleware)
+  // Consolidates 5 legacy analytics endpoints into 20 comprehensive endpoints
+  app.use('/api/analytics', createReportingRouter(storage, requireAuth, requireRole));
+
+  // ============================================================================
+  // GOOGLE MAPS INTEGRATION (Address Validation & Autocomplete)
+  // ============================================================================
+  // Server-side proxy for Google Maps API to protect API key
+  const { createGoogleMapsRouter } = await import('../src/core/api/google-maps.routes');
+  app.use('/api/google-maps', requireAuth, createGoogleMapsRouter());
+
+  // ============================================================================
+  // SCENARIO AUDIT TRAIL (Deal Calculation History & Compliance)
+  // ============================================================================
+  // Complete audit trail for scenario changes - enables playback, rollback, and compliance
+  const scenarioAuditRoutes = (await import('./scenario-audit-routes')).default;
+  app.use('/api/audit', requireAuth, scenarioAuditRoutes);
+
 
   // ===== USERS =====
   app.get('/api/users', requireAuth, async (req, res) => {
@@ -487,6 +542,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================================================
+  // LEGACY VEHICLE ROUTES (DEPRECATED - MIGRATED TO VEHICLE MODULE)
+  // ============================================================================
+  // These routes are preserved for rollback capability but should not be used.
+  // All vehicle operations now handled by: /src/modules/vehicle/api/vehicle.routes.ts
+  //
+  // MIGRATION COMPLETE:
+  // - GET  /api/vehicles/search      → GET  /api/vehicles?search=query
+  // - GET  /api/vehicles/stock/:id   → GET  /api/vehicles/stock/:stockNumber
+  // - GET  /api/vehicles/:id         → GET  /api/vehicles/:id
+  // - POST /api/vehicles             → POST /api/vehicles
+  //
+  // ============================================================================
+
+  /*
   // ===== VEHICLES =====
   app.get('/api/vehicles/search', requireAuth, async (req, res) => {
     try {
@@ -495,7 +565,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!dealershipId) {
         return res.status(403).json({ error: 'User must belong to a dealership' });
       }
-      
+
       const query = String(req.query.q || '');
       const vehicles = await storage.searchVehicles(query, dealershipId);
       res.json(vehicles);
@@ -503,7 +573,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: 'Failed to search vehicles' });
     }
   });
-  
+
   app.get('/api/vehicles/stock/:stockNumber', requireAuth, async (req, res) => {
     try {
       // SECURITY: Filter by authenticated user's dealership for multi-tenant isolation
@@ -511,7 +581,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!dealershipId) {
         return res.status(403).json({ error: 'User must belong to a dealership' });
       }
-      
+
       const vehicle = await storage.getVehicleByStock(req.params.stockNumber, dealershipId);
       if (!vehicle) {
         return res.status(404).json({ error: 'Vehicle not found' });
@@ -521,7 +591,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: 'Failed to get vehicle' });
     }
   });
-  
+
   app.get('/api/vehicles/:id', requireAuth, async (req, res) => {
     try {
       // SECURITY: Verify vehicle belongs to authenticated user's dealership
@@ -529,23 +599,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!dealershipId) {
         return res.status(403).json({ error: 'User must belong to a dealership' });
       }
-      
+
       const vehicle = await storage.getVehicle(req.params.id);
       if (!vehicle) {
         return res.status(404).json({ error: 'Vehicle not found' });
       }
-      
+
       // Verify vehicle belongs to same dealership as authenticated user
       if (vehicle.dealershipId !== dealershipId) {
         return res.status(404).json({ error: 'Vehicle not found' });
       }
-      
+
       res.json(vehicle);
     } catch (error) {
       res.status(500).json({ error: 'Failed to get vehicle' });
     }
   });
-  
+
   app.post('/api/vehicles', requireAuth, async (req, res) => {
     try {
       // SECURITY: Inject dealershipId from authenticated user for multi-tenant isolation
@@ -553,7 +623,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!dealershipId) {
         return res.status(403).json({ error: 'User must belong to a dealership' });
       }
-      
+
       const data = insertVehicleSchema.parse(req.body);
       const vehicle = await storage.createVehicle(data, dealershipId);
       res.status(201).json(vehicle);
@@ -561,7 +631,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(400).json({ error: error.message || 'Failed to create vehicle' });
     }
   });
-  
+  */
+
+  // ============================================================================
+  // LEGACY VIN DECODER ROUTE (DEPRECATED - MIGRATED TO VEHICLE MODULE)
+  // ============================================================================
+  // This route is preserved for rollback capability but should not be used.
+  // VIN decoding now handled by: /src/modules/vehicle/api/vehicle.routes.ts
+  //
+  // MIGRATION COMPLETE:
+  // - POST /api/vin/decode → POST /api/vehicles/decode-vin
+  //
+  // ============================================================================
+
+  /*
   // ===== VIN DECODER =====
   // POST /api/vin/decode - Decode VIN using NHTSA API
   app.post('/api/vin/decode', async (req, res) => {
@@ -725,7 +808,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(400).json({ error: error.message || 'Failed to decode VIN' });
     }
   });
-  
+  */
+
   // ===== INVENTORY MANAGEMENT =====
   // GET /api/inventory - list vehicles with pagination and filters
   app.get('/api/inventory', async (req, res) => {
@@ -1235,7 +1319,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // ===== DEALS =====
+  // ============================================================================
+  // ===== LEGACY DEAL ROUTES (DEPRECATED - USE /src/modules/deal INSTEAD) =====
+  // ============================================================================
+  // ⚠️ DEPRECATION NOTICE:
+  // These routes are maintained for backward compatibility only.
+  // The new modular deal routes mounted above at '/api/deals' take precedence.
+  //
+  // Migration Status: ALL routes have been migrated to /src/modules/deal/api/deal.routes.ts
+  //
+  // Routes migrated:
+  // - GET    /api/deals/stats          → Modular (line 139)
+  // - GET    /api/deals                → Modular (line 169)
+  // - GET    /api/deals/:id            → Modular (line 197)
+  // - POST   /api/deals                → Modular (line 229)
+  // - PATCH  /api/deals/:id            → Modular (line 310)
+  // - PATCH  /api/deals/:id/attach-customer  → Modular (line 349)
+  // - PATCH  /api/deals/:id/state      → Modular (line 378)
+  // - GET    /api/deals/:dealId/trades → Modular (line 419)
+  // - POST   /api/deals/:dealId/trades → Modular (line 454)
+  // - PATCH  /api/deals/:dealId/trades/:tradeId  → Modular (line 501)
+  // - DELETE /api/deals/:dealId/trades/:tradeId  → Modular (line 559)
+  // - POST   /api/deals/:dealId/scenarios        → Modular (line 609)
+  // - PATCH  /api/deals/:dealId/scenarios/:scenarioId  → Modular (line 653)
+  // - DELETE /api/deals/:dealId/scenarios/:scenarioId  → Modular (line 701)
+  // - POST   /api/deals/:dealId/scenarios/:scenarioId/apply-template  → Modular (line 736)
+  // - GET    /api/deals/:id/audit      → Modular (line 807)
+  // - POST   /api/deals/:id/pdf        → Modular (line 845)
+  // - GET    /api/deals/:id/lenders    → Modular (line 992)
+  //
+  // TODO: Remove these legacy routes after confirming all clients use modular routes
+  // ============================================================================
+
   app.get('/api/deals/stats', requireAuth, async (req, res) => {
     try {
       // SECURITY: Filter by authenticated user's dealership for multi-tenant isolation

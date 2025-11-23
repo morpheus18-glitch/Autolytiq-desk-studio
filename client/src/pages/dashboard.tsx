@@ -6,6 +6,7 @@ import { PageLayout } from '@/components/page-layout';
 import { PageHeader } from '@/components/core/page-header';
 import { PageContent } from '@/components/core/page-content';
 import { LoadingState } from '@/components/core/loading-state';
+import { ErrorState } from '@/components/core/error-state';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -56,7 +57,7 @@ export default function Dashboard() {
   });
   
   // Get deal statistics
-  const { data: stats, isLoading: statsLoading } = useQuery<DealStats>({
+  const { data: stats, isLoading: statsLoading, error: statsError, refetch: refetchStats } = useQuery<DealStats>({
     queryKey: ['/api/deals/stats'],
   });
   
@@ -118,10 +119,18 @@ export default function Dashboard() {
       <PageContent>
         {statsLoading && <LoadingState message="Loading dashboard metrics..." />}
 
-        {!statsLoading && (
+        {statsError && (
+          <ErrorState
+            title="Failed to load dashboard"
+            message="Unable to fetch dashboard statistics. Please try again."
+            onRetry={() => refetchStats()}
+          />
+        )}
+
+        {!statsLoading && !statsError && (
           <>
             {/* LEADER METRIC - Revenue Hero */}
-            <Card className={cn("mb-6 border-l-4 border-l-emerald-500 shadow-lg bg-gradient-to-r from-emerald-50 to-white dark:from-emerald-950/20 dark:to-card rounded-lg")}>
+            <Card className={cn(premiumCardClasses, "mb-6 border-l-4 border-l-emerald-500 bg-gradient-to-r from-emerald-50 to-white dark:from-emerald-950/20 dark:to-card")}>
               <CardContent className={cardSpacing.standard}>
             <div className="flex items-center justify-between">
               <div>
@@ -149,7 +158,7 @@ export default function Dashboard() {
             {/* PRIMARY METRICS - Command Center Style */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               {/* Total Deals - Blue */}
-              <Card className="border-l-4 border-l-blue-500 shadow-md rounded-lg">
+              <Card className={cn(premiumCardClasses, "border-l-4 border-l-blue-500")}>
                 <CardContent className={cardSpacing.compact}>
                   <div className="flex items-start justify-between mb-2">
                     <FileText className="w-5 h-5 text-blue-600" />
@@ -167,7 +176,7 @@ export default function Dashboard() {
               </Card>
 
               {/* In Progress - Orange/Amber */}
-              <Card className="border-l-4 border-l-amber-500 shadow-md rounded-lg">
+              <Card className={cn(premiumCardClasses, "border-l-4 border-l-amber-500")}>
                 <CardContent className={cardSpacing.compact}>
                   <div className="flex items-start justify-between mb-2">
                     <Clock className="w-5 h-5 text-amber-600" />
@@ -185,7 +194,7 @@ export default function Dashboard() {
               </Card>
 
               {/* Approved - Green */}
-              <Card className="border-l-4 border-l-green-500 shadow-md rounded-lg">
+              <Card className={cn(premiumCardClasses, "border-l-4 border-l-green-500")}>
                 <CardContent className={cardSpacing.compact}>
                   <div className="flex items-start justify-between mb-2">
                     <CheckCircle className="w-5 h-5 text-green-600" />
@@ -203,7 +212,7 @@ export default function Dashboard() {
               </Card>
 
               {/* Conversion Rate - Purple */}
-              <Card className="border-l-4 border-l-purple-500 shadow-md rounded-lg">
+              <Card className={cn(premiumCardClasses, "border-l-4 border-l-purple-500")}>
                 <CardContent className={cardSpacing.compact}>
                   <div className="flex items-start justify-between mb-2">
                     <Target className="w-5 h-5 text-purple-600" />
@@ -225,7 +234,7 @@ export default function Dashboard() {
             {/* Secondary Metrics - Tighter layout */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
               {/* Avg Deal Value */}
-              <Card className="border-l-4 border-l-neutral-400 shadow-md rounded-lg">
+              <Card className={cn(premiumCardClasses, "border-l-4 border-l-neutral-400")}>
                 <CardContent className={cardSpacing.compact}>
                   <div className="flex items-center justify-between">
                     <div>
@@ -242,7 +251,7 @@ export default function Dashboard() {
               </Card>
 
               {/* Draft Deals - Needs Attention */}
-              <Card className="border-l-4 border-l-red-500 shadow-md rounded-lg">
+              <Card className={cn(premiumCardClasses, "border-l-4 border-l-red-500")}>
                 <CardContent className={cardSpacing.compact}>
                   <div className="flex items-center justify-between">
                     <div>
