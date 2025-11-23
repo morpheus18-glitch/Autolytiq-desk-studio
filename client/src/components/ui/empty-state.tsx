@@ -1,6 +1,12 @@
 import type { HTMLAttributes } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import {
+  emptyStateClasses,
+  emptyStateIconClasses,
+  emptyStateTextClasses
+} from '@/lib/design-tokens';
 
 interface EmptyStateProps extends HTMLAttributes<HTMLDivElement> {
   icon: LucideIcon;
@@ -35,26 +41,26 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <div
-      className={`flex flex-col items-center justify-center py-12 md:py-16 px-4 text-center ${className}`}
+      className={cn(emptyStateClasses, className)}
       data-testid={containerTestId}
       {...props}
     >
-      {/* Icon Container with Glassmorphism */}
-      <div className="w-20 h-20 md:w-24 md:h-24 rounded-full glass flex items-center justify-center mb-6">
+      {/* Icon Container */}
+      <div className={cn(emptyStateIconClasses, "glass")}>
         <Icon className="w-10 h-10 md:w-12 md:h-12 text-primary" strokeWidth={1.5} />
       </div>
 
       {/* Title */}
-      <h3 
-        className="text-step-1 font-semibold mb-2"
+      <h3
+        className={emptyStateTextClasses.title}
         data-testid={titleTestId || `${containerTestId}-title`}
       >
         {title}
       </h3>
 
       {/* Description */}
-      <p 
-        className="text-step--1 text-muted-foreground max-w-md mb-6"
+      <p
+        className={emptyStateTextClasses.description}
         data-testid={descriptionTestId || `${containerTestId}-description`}
       >
         {description}

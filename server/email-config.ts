@@ -3,7 +3,13 @@
 
 import { Resend } from 'resend';
 
-let connectionSettings: any;
+interface ConnectionSettings {
+  settings: {
+    api_key?: string;
+  };
+}
+
+let connectionSettings: ConnectionSettings | undefined;
 
 async function getCredentials() {
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
@@ -96,7 +102,15 @@ export async function sendEmail(options: {
     // Use the configured from email from Resend connection, or fall back to our default
     const finalFromEmail = fromEmail || emailConfig.from;
     
-    const emailPayload: any = {
+    interface EmailPayload {
+      from: string;
+      to: string | string[];
+      subject: string;
+      html?: string;
+      text?: string;
+    }
+
+    const emailPayload: EmailPayload = {
       from: `${emailConfig.fromName} <${finalFromEmail}>`,
       to: options.to,
       subject: options.subject,

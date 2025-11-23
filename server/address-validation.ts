@@ -72,8 +72,14 @@ async function validateWithGoogle(address: AddressInput): Promise<ValidatedAddre
     const components = result.address_components;
     
     // Extract normalized components
+    interface AddressComponent {
+      types: string[];
+      short_name: string;
+      long_name: string;
+    }
+
     const getComponent = (type: string, useShort = false) => {
-      const comp = components.find((c: any) => c.types.includes(type));
+      const comp = (components as AddressComponent[]).find((c) => c.types.includes(type));
       return comp ? (useShort ? comp.short_name : comp.long_name) : '';
     };
 
@@ -254,7 +260,8 @@ export async function validateAddressHandler(req: Request, res: Response) {
     const result = await validateAddress({ street, city, state, zipCode });
     
     return res.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Address Validation] Handler error:', error);
     return res.status(500).json({
       error: 'Address validation failed',

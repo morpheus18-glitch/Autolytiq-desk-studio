@@ -129,8 +129,9 @@ export function setupAuthRoutes(app: Express) {
         const { password: _, ...userWithoutPassword } = user;
         res.json(userWithoutPassword);
       });
-    } catch (error: any) {
-      res.status(400).json({ error: error.message || "2FA verification failed" });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(400).json({ error: errorMessage || "2FA verification failed" });
     }
   });
   
@@ -139,7 +140,8 @@ export function setupAuthRoutes(app: Express) {
     try {
       const user = req.user as Express.User;
       res.json(user.preferences || {});
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       res.status(500).json({ error: "Failed to get user preferences" });
     }
   });
@@ -163,8 +165,9 @@ export function setupAuthRoutes(app: Express) {
       );
       
       res.json(updatedUser.preferences);
-    } catch (error: any) {
-      res.status(400).json({ error: error.message || "Failed to update preferences" });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(400).json({ error: errorMessage || "Failed to update preferences" });
     }
   });
 
@@ -176,7 +179,8 @@ export function setupAuthRoutes(app: Express) {
         return res.status(404).json({ error: "Dealership settings not found" });
       }
       res.json(settings);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       res.status(500).json({ error: "Failed to get dealership settings" });
     }
   });
@@ -201,8 +205,9 @@ export function setupAuthRoutes(app: Express) {
       );
       
       res.json(updatedSettings);
-    } catch (error: any) {
-      res.status(400).json({ error: error.message || "Failed to update dealership settings" });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(400).json({ error: errorMessage || "Failed to update dealership settings" });
     }
   });
 
@@ -211,7 +216,8 @@ export function setupAuthRoutes(app: Express) {
     try {
       const permissions = await storage.getPermissions();
       res.json(permissions);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       res.status(500).json({ error: "Failed to get permissions" });
     }
   });
@@ -221,7 +227,8 @@ export function setupAuthRoutes(app: Express) {
       const user = req.user as Express.User;
       const permissions = await storage.getRolePermissions(user.role);
       res.json(permissions);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       res.status(500).json({ error: "Failed to get user permissions" });
     }
   });
@@ -306,11 +313,12 @@ export function setupAuthRoutes(app: Express) {
       const { password: _, ...userWithoutPassword } = newUser;
       
       res.status(201).json(userWithoutPassword);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       if (error.name === "ZodError") {
         return res.status(400).json({ error: "Validation failed", details: error.errors });
       }
-      res.status(500).json({ error: error.message || "Failed to create user" });
+      res.status(500).json({ error: errorMessage || "Failed to create user" });
     }
   });
 
@@ -346,7 +354,7 @@ export function setupAuthRoutes(app: Express) {
       }
       
       // Build update object based on permissions
-      const updates: any = {};
+      const updates: Partial<{ fullName: string; email: string; role: string; isActive: boolean }> = {};
       
       // Contact info (both admin and sales_manager can edit)
       if (fullName !== undefined) {
@@ -404,8 +412,9 @@ export function setupAuthRoutes(app: Express) {
       const { password: _, ...userWithoutPassword } = updatedUser;
       
       res.json(userWithoutPassword);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message || "Failed to update user" });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ error: errorMessage || "Failed to update user" });
     }
   });
 
@@ -418,7 +427,8 @@ export function setupAuthRoutes(app: Express) {
       
       const logs = await storage.getSecurityAuditLogs({ userId, eventType, limit });
       res.json(logs);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       res.status(500).json({ error: "Failed to get security audit logs" });
     }
   });
@@ -481,16 +491,17 @@ export function setupAuthRoutes(app: Express) {
       }
       
       res.json({ message: "If that email exists, a reset link has been sent" });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       await logSecurityEvent(
         "password_reset_requested",
         "authentication",
         req,
         undefined,
         false,
-        error.message
+        errorMessage
       );
-      res.status(400).json({ error: error.message || "Failed to request password reset" });
+      res.status(400).json({ error: errorMessage || "Failed to request password reset" });
     }
   });
 
@@ -540,7 +551,8 @@ export function setupAuthRoutes(app: Express) {
       );
       
       res.json({ message: "Password reset successful" });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       await logSecurityEvent(
         "password_reset_failed",
         "authentication",
@@ -549,7 +561,7 @@ export function setupAuthRoutes(app: Express) {
         false,
         error.message
       );
-      res.status(400).json({ error: error.message || "Failed to reset password" });
+      res.status(400).json({ error: errorMessage || "Failed to reset password" });
     }
   });
 
@@ -583,7 +595,8 @@ export function setupAuthRoutes(app: Express) {
         qrCode,
         message: "Scan the QR code with your authenticator app, then verify with a code",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       res.status(500).json({ error: "Failed to setup 2FA" });
     }
   });
@@ -622,8 +635,9 @@ export function setupAuthRoutes(app: Express) {
       );
       
       res.json({ message: "2FA enabled successfully" });
-    } catch (error: any) {
-      res.status(400).json({ error: error.message || "Failed to verify 2FA" });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(400).json({ error: errorMessage || "Failed to verify 2FA" });
     }
   });
 
@@ -665,8 +679,9 @@ export function setupAuthRoutes(app: Express) {
       );
       
       res.json({ message: "2FA disabled successfully" });
-    } catch (error: any) {
-      res.status(400).json({ error: error.message || "Failed to disable 2FA" });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(400).json({ error: errorMessage || "Failed to disable 2FA" });
     }
   });
 }

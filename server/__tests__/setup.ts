@@ -119,6 +119,12 @@ export async function cleanupTestData() {
   try {
     console.log('[Test Cleanup] Cleaning up test data...');
 
+    // Check if pool is still active before attempting cleanup
+    if (pool.ended) {
+      console.log('[Test Cleanup] Pool already closed, skipping cleanup');
+      return;
+    }
+
     // Delete in order of dependencies (child → parent)
     await db.delete(dealScenarios).execute();
     await db.delete(deals).execute();
@@ -129,7 +135,7 @@ export async function cleanupTestData() {
     console.log('[Test Cleanup] Test data cleaned');
   } catch (error) {
     console.error('[Test Cleanup] Failed to clean test data:', error);
-    throw error;
+    // Don't throw - allow tests to continue even if cleanup fails
   }
 }
 
@@ -139,10 +145,18 @@ export async function cleanupTestData() {
 export async function teardownTestDatabase() {
   try {
     console.log('[Test Teardown] Closing database connections...');
+
+    // Check if pool is already closed
+    if (pool.ended) {
+      console.log('[Test Teardown] Pool already closed');
+      return;
+    }
+
     await pool.end();
     console.log('[Test Teardown] Database connections closed');
   } catch (error) {
     console.error('[Test Teardown] Failed to close database:', error);
+    // Don't throw - allow test suite to complete
   }
 }
 

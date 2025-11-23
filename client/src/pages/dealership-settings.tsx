@@ -12,12 +12,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { PageLayout } from "@/components/page-layout";
-import { PageHero } from "@/components/page-hero";
+import { PageHeader } from "@/components/core/page-header";
+import { PageContent } from "@/components/core/page-content";
+import { LoadingState } from "@/components/core/loading-state";
+import { ErrorState } from "@/components/core/error-state";
 import { Badge } from "@/components/ui/badge";
 import {
-  containerPadding,
-  layoutSpacing,
   premiumCardClasses,
   gridLayouts,
   formSpacing,
@@ -121,11 +121,11 @@ export default function DealershipSettings() {
   if (!user) return null;
 
   return (
-    <PageLayout className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <PageHero
-        icon={Building2}
+    <div className="h-full flex flex-col">
+      <PageHeader
         title="Dealership Settings"
-        description="Configure dealership information and defaults"
+        subtitle="Configure dealership information and defaults"
+        icon={<Building2 />}
         actions={
           <Badge variant="outline" className="flex items-center gap-2 px-3 py-2">
             <Shield className="w-4 h-4 text-primary" />
@@ -134,12 +134,9 @@ export default function DealershipSettings() {
         }
       />
 
-      <div className={cn(containerPadding, layoutSpacing.section, "max-w-4xl", formSpacing.section)}>
-
+      <PageContent className="max-w-4xl">
         {isLoading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin" />
-          </div>
+          <LoadingState message="Loading settings..." />
         ) : (
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className={formSpacing.section}>
@@ -395,7 +392,7 @@ export default function DealershipSettings() {
             </form>
           </Form>
         )}
-      </div>
-    </PageLayout>
+      </PageContent>
+    </div>
   );
 }

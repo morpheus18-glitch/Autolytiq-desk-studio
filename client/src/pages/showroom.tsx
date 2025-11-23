@@ -32,7 +32,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { PageLayout } from '@/components/page-layout';
+import { PageHeader } from '@/components/core/page-header';
+import { PageContent } from '@/components/core/page-content';
 import { KanbanColumn } from '@/components/kanban-column';
 import { KanbanCustomerCard } from '@/components/kanban-customer-card';
 
@@ -247,28 +248,27 @@ export default function Showroom() {
   const activeCount = customersByStatus.active.length;
 
   return (
-    <PageLayout className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      {/* Header */}
-      <div className={stickyHeaderClasses}>
-        <div className={cn(containerPadding, layoutSpacing.content)}>
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className={cn(heroIconContainerClasses, "bg-gradient-to-br from-primary via-primary/90 to-primary/70 shadow-lg shadow-primary/25")}>
-                  <Store className="w-6 h-6 text-primary-foreground" />
-                </div>
-                <div>
-                  <h1 className={pageTitleClasses}>
-                    Showroom Manager
-                  </h1>
-                  <p className={pageSubtitleClasses}>
-                    Manage your customer pipeline from prospect to sold
-                  </p>
-                </div>
-              </div>
-            </div>
+    <div className="h-full flex flex-col">
+      <PageHeader
+        title="Showroom Manager"
+        subtitle="Manage your customer pipeline from prospect to sold"
+        icon={<Store />}
+        actions={
+          <Button
+            onClick={() => setLocation('/customers')}
+            data-testid="button-add-customer"
+            className={primaryButtonClasses}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Customer
+          </Button>
+        }
+      />
 
-            {/* Header Actions */}
+      <PageContent>
+        <div className="space-y-6">
+          <div className="flex flex-col gap-4">
+
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div className="flex items-center gap-3">
                 {/* Date Picker */}
@@ -346,23 +346,10 @@ export default function Showroom() {
             >
               <RefreshCw className="h-4 w-4" />
             </Button>
-            <Button
-              onClick={() => setLocation('/customers')}
-              data-testid="button-add-customer"
-              className={primaryButtonClasses}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Customer
-            </Button>
           </div>
           </div>
-        </div>
-      </div>
-      </div>
 
-      {/* Main Content */}
-      <div className={cn(containerPadding, layoutSpacing.section, "space-y-6")}>
-        {/* Kanban Board */}
+          {/* Kanban Board */}
         {isLoading ? (
           <div className={cn("grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4")}>
             {[1, 2, 3, 4, 5].map(i => (
@@ -636,6 +623,7 @@ export default function Showroom() {
           </CardContent>
         </Card>
       </div>
-    </PageLayout>
+      </PageContent>
+    </div>
   );
 }

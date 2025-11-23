@@ -123,10 +123,28 @@ router.post("/resend", async (req: Request, res: Response) => {
 // EVENT HANDLERS
 // ============================================================================
 
+interface EmailAddress {
+  email: string;
+  name?: string;
+}
+
+interface WebhookEmailData {
+  id?: string;
+  message_id?: string;
+  thread_id?: string;
+  to: EmailAddress | EmailAddress[] | string;
+  cc?: EmailAddress | EmailAddress[] | string;
+  bcc?: EmailAddress | EmailAddress[] | string;
+  from: EmailAddress | string;
+  subject?: string;
+  html?: string;
+  text?: string;
+}
+
 /**
  * Handle incoming email (email.received event)
  */
-async function handleEmailReceived(data: any) {
+async function handleEmailReceived(data: WebhookEmailData) {
   console.log('[EmailWebhook] Processing received email:', data.id);
 
   try {
@@ -135,17 +153,19 @@ async function handleEmailReceived(data: any) {
     const dealershipId = 'default'; // TODO: Map email address to dealership
 
     // Extract email addresses from to/cc/bcc fields
-    const toAddresses = Array.isArray(data.to)
-      ? data.to.map((addr: any) => ({ email: addr.email || addr, name: addr.name }))
-      : [{ email: data.to }];
+    const parseAddresses = (addrs: EmailAddress | EmailAddress[] | string): EmailAddress[] => {
+      if (Array.isArray(addrs)) {
+        return addrs.map(addr => typeof addr === 'string' ? { email: addr } : { email: addr.email || '', name: addr.name });
+      }
+      if (typeof addrs === 'string') {
+        return [{ email: addrs }];
+      }
+      return [{ email: addrs.email || '', name: addrs.name }];
+    };
 
-    const ccAddresses = data.cc
-      ? (Array.isArray(data.cc) ? data.cc : [data.cc]).map((addr: any) => ({ email: addr.email || addr, name: addr.name }))
-      : [];
-
-    const bccAddresses = data.bcc
-      ? (Array.isArray(data.bcc) ? data.bcc : [data.bcc]).map((addr: any) => ({ email: addr.email || addr, name: addr.name }))
-      : [];
+    const toAddresses = parseAddresses(data.to);
+    const ccAddresses = data.cc ? parseAddresses(data.cc) : [];
+    const bccAddresses = data.bcc ? parseAddresses(data.bcc) : [];
 
     // Save to database
     await db.insert(emailMessages).values({
@@ -178,10 +198,17 @@ async function handleEmailReceived(data: any) {
   }
 }
 
+interface WebhookStatusData {
+  id?: string;
+  message_id?: string;
+  email?: string;
+  timestamp?: string;
+}
+
 /**
  * Handle email delivered event
  */
-async function handleEmailDelivered(data: any) {
+async function handleEmailDelivered(data: WebhookStatusData) {
   console.log('[EmailWebhook] Email delivered:', data.id);
 
   try {
@@ -203,7 +230,7 @@ async function handleEmailDelivered(data: any) {
 /**
  * Handle email bounced event
  */
-async function handleEmailBounced(data: any) {
+async function handleEmailBounced(data: WebhookStatusData) {
   console.log('[EmailWebhook] Email bounced:', data.id);
 
   try {
@@ -225,7 +252,7 @@ async function handleEmailBounced(data: any) {
 /**
  * Handle spam complaint event
  */
-async function handleEmailComplained(data: any) {
+async function handleEmailComplained(data: WebhookStatusData) {
   console.log('[EmailWebhook] Spam complaint received:', data.id);
 
   try {

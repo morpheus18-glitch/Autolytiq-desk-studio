@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { PageHeader } from '@/components/core/page-header';
 import { EmailList } from '@/components/email/email-list';
 import { EmailDetail } from '@/components/email/email-detail';
 import { EmailComposeDialog } from '@/components/email/email-compose-dialog';
@@ -50,8 +51,21 @@ export default function EmailPage() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      {/* Sidebar - Folders */}
+    <div className="h-full flex flex-col">
+      <PageHeader
+        title="Email"
+        subtitle="Manage your email communications"
+        icon={<Mail />}
+        actions={
+          <Button onClick={() => setComposeOpen(true)} size="sm">
+            <Plus className="h-4 w-4 mr-2" />
+            Compose
+          </Button>
+        }
+      />
+
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar - Folders */}
       <div className="w-64 border-r flex flex-col">
         <div className="p-4">
           <Button
@@ -128,8 +142,9 @@ export default function EmailPage() {
         />
       </div>
 
-      {/* Compose Dialog */}
-      <EmailComposeDialog open={composeOpen} onOpenChange={setComposeOpen} />
+        {/* Compose Dialog */}
+        <EmailComposeDialog open={composeOpen} onOpenChange={setComposeOpen} />
+      </div>
     </div>
   );
 }

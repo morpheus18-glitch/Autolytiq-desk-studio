@@ -32,7 +32,8 @@ router.get('/autocomplete', async (req, res) => {
     });
 
     return res.json({ suggestions });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Google Maps] Autocomplete error:', error);
     return res.status(500).json({ error: error.message || 'Failed to fetch suggestions' });
   }
@@ -57,7 +58,8 @@ router.get('/place-details', async (req, res) => {
     const validated = await googleMapsService.getPlaceDetails(placeId);
 
     return res.json(validated);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Google Maps] Place details error:', error);
     return res.status(500).json({ error: error.message || 'Failed to get place details' });
   }
@@ -82,7 +84,8 @@ router.post('/validate-address', async (req, res) => {
     const validated = await googleMapsService.validateAddress(address);
 
     return res.json(validated);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Google Maps] Validation error:', error);
     return res.status(500).json({ error: error.message || 'Failed to validate address' });
   }
@@ -107,7 +110,8 @@ router.post('/geocode', async (req, res) => {
     const coordinates = await googleMapsService.geocodeAddress(address);
 
     return res.json(coordinates);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Google Maps] Geocoding error:', error);
     return res.status(500).json({ error: error.message || 'Failed to geocode address' });
   }

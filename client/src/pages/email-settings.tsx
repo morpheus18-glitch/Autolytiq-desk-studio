@@ -17,14 +17,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { PageLayout } from '@/components/page-layout';
-import { PageHero } from '@/components/page-hero';
+import { PageHeader } from '@/components/core/page-header';
+import { PageContent } from '@/components/core/page-content';
+import { LoadingState } from '@/components/core/loading-state';
 import { Settings, Save, ArrowLeft } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
 import {
-  containerPadding,
-  layoutSpacing,
   premiumCardClasses,
   formSpacing,
   primaryButtonClasses,
@@ -113,11 +112,11 @@ export default function EmailSettingsPage() {
   };
 
   return (
-    <PageLayout>
-      <PageHero
-        icon={Settings}
+    <div className="h-full flex flex-col">
+      <PageHeader
         title="Email Settings"
-        description="Customize your email experience"
+        subtitle="Customize your email experience"
+        icon={<Settings />}
         actions={
           <Button variant="ghost" onClick={() => setLocation('/email')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -126,7 +125,7 @@ export default function EmailSettingsPage() {
         }
       />
 
-      <div className={cn(containerPadding, layoutSpacing.page, "max-w-4xl space-y-6")}>
+      <PageContent className="max-w-4xl space-y-6">
         {/* Signature */}
         <Card className={premiumCardClasses}>
           <CardHeader>
@@ -318,7 +317,7 @@ export default function EmailSettingsPage() {
             )}
           </Button>
         </div>
-      </div>
-    </PageLayout>
+      </PageContent>
+    </div>
   );
 }

@@ -7,6 +7,8 @@ import { User, Mail, Phone, Calendar, ExternalLink } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import type { Customer } from '@shared/schema';
 import { useLocation } from 'wouter';
+import { cn } from '@/lib/utils';
+import { interactiveCardClasses, cardSpacing } from '@/lib/design-tokens';
 
 interface KanbanCustomerCardProps {
   customer: Customer;
@@ -33,11 +35,11 @@ export function KanbanCustomerCard({ customer }: KanbanCustomerCardProps) {
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <Card 
-        className="mb-3 cursor-move hover-elevate"
+      <Card
+        className={cn(interactiveCardClasses, "mb-3 cursor-move")}
         data-testid={`card-prospect-${customer.id}`}
       >
-        <CardContent className="p-4">
+        <CardContent className={cardSpacing.compact}>
           <div className="flex items-start gap-3">
             {/* Avatar */}
             <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">

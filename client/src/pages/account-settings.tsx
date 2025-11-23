@@ -10,11 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { PageLayout } from "@/components/page-layout";
-import { PageHero } from "@/components/page-hero";
+import { PageHeader } from "@/components/core/page-header";
+import { PageContent } from "@/components/core/page-content";
+import { LoadingState } from "@/components/core/loading-state";
+import { ErrorState } from "@/components/core/error-state";
 import {
-  containerPadding,
-  layoutSpacing,
   premiumCardClasses,
   gridLayouts,
   formSpacing,
@@ -139,14 +139,14 @@ export default function AccountSettings() {
   if (!user) return null;
 
   return (
-    <PageLayout className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <PageHero
-        icon={SettingsIcon}
+    <div className="h-full flex flex-col">
+      <PageHeader
         title="Account Settings"
-        description="Manage your profile and preferences"
+        subtitle="Manage your profile and preferences"
+        icon={<SettingsIcon />}
       />
 
-      <div className={cn(containerPadding, layoutSpacing.section, "max-w-4xl", formSpacing.section)}>
+      <PageContent className="max-w-4xl space-y-6">
 
         {/* User Info Card */}
         <Card className={premiumCardClasses}>
@@ -323,7 +323,7 @@ export default function AccountSettings() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
-    </PageLayout>
+      </PageContent>
+    </div>
   );
 }

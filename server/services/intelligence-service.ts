@@ -44,8 +44,8 @@ export interface CustomerAnalysis {
 
 export interface TeamInsights {
   teamStatus: TeamStatus;
-  customerSegments: any;
-  recentAnomalies: any[];
+  customerSegments: Record<string, unknown>;
+  recentAnomalies: Array<Record<string, unknown>>;
 }
 
 // ============================================================================

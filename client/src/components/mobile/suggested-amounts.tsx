@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { gridLayouts } from "@/lib/design-tokens";
 
 interface SuggestedAmountsProps {
   amounts: number[];
@@ -21,7 +22,7 @@ export function SuggestedAmounts({
   }
 }: SuggestedAmountsProps) {
   return (
-    <div className={cn("grid grid-cols-2 md:grid-cols-4 gap-3", className)}>
+    <div className={cn(gridLayouts.fourCol, "md:grid-cols-4", className)}>
       {amounts.map((amount) => {
         const isSelected = selectedAmount === amount;
         return (

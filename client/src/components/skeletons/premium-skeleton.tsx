@@ -1,25 +1,27 @@
 import type { HTMLAttributes } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { skeletonClasses } from '@/lib/design-tokens';
 
 interface PremiumSkeletonProps extends HTMLAttributes<HTMLDivElement> {
   glass?: boolean;
-  variant?: 'default' | 'card' | 'text';
+  variant?: 'default' | 'card' | 'text' | 'title' | 'button' | 'avatar';
 }
 
-export function PremiumSkeleton({ 
-  className, 
+export function PremiumSkeleton({
+  className,
   glass = false,
   variant = 'default',
-  ...props 
+  ...props
 }: PremiumSkeletonProps) {
+  const variantClass = variant === 'default' ? '' : skeletonClasses[variant];
+
   return (
     <Skeleton
       className={cn(
         'transition-smooth',
         glass && 'glass backdrop-blur-sm',
-        variant === 'card' && 'min-h-24',
-        variant === 'text' && 'h-4',
+        variantClass,
         className
       )}
       aria-busy="true"

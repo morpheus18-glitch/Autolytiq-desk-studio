@@ -72,37 +72,38 @@ export function AutoSaveIndicator() {
   return (
     <div data-testid="autosave-indicator" className="transition-all duration-300">
       {isSaving ? (
-        <Badge 
-          variant="secondary" 
-          className="gap-2 shadow-lg fade-in" 
+        <Badge
+          variant="secondary"
+          className={cn("gap-2 fade-in", "shadow-lg")}
           data-testid="badge-saving"
         >
           <Loader2 className="w-3 h-3 animate-spin" />
           Saving...
         </Badge>
       ) : saveError ? (
-        <Badge 
-          variant="destructive" 
-          className={cn("gap-2 shadow-lg", showErrorAnimation && "shake-error")}
+        <Badge
+          variant="destructive"
+          className={cn("gap-2", "shadow-lg", showErrorAnimation && "shake-error")}
           data-testid="badge-error"
         >
           <AlertCircle className="w-3 h-3" />
           {saveError}
         </Badge>
       ) : lastSavedDate && relativeTime ? (
-        <Badge 
-          variant="outline" 
+        <Badge
+          variant="outline"
           className={cn(
-            "gap-2 shadow-sm border-success/30 bg-success/5",
+            "gap-2 border-success/30 bg-success/5",
+            "shadow-sm",
             showSuccessAnimation && "fade-in"
           )}
           data-testid="badge-saved"
         >
-          <Check 
+          <Check
             className={cn(
               "w-3 h-3 text-success",
               showCheckmarkBounce && "checkmark-bounce"
-            )} 
+            )}
           />
           <span className="text-success font-medium">Saved</span>
           <span className="text-muted-foreground">{relativeTime}</span>

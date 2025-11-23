@@ -1,5 +1,13 @@
 import { cn } from '@/lib/utils';
 import type { LucideIcon } from 'lucide-react';
+import {
+  stickyHeaderClasses,
+  containerPadding,
+  layoutSpacing,
+  heroIconContainerClasses,
+  pageTitleClasses,
+  pageSubtitleClasses
+} from '@/lib/design-tokens';
 
 interface PageHeroProps {
   icon: LucideIcon;
@@ -11,18 +19,21 @@ interface PageHeroProps {
 
 export function PageHero({ icon: Icon, title, description, actions, className }: PageHeroProps) {
   return (
-    <div className={cn("sticky top-0 z-40 backdrop-blur-lg bg-background/90 border-b shadow-sm", className)}>
-      <div className="container mx-auto px-4 md:px-6 py-5">
+    <div className={cn(stickyHeaderClasses, className)}>
+      <div className={cn(containerPadding, layoutSpacing.header)}>
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-primary via-primary/90 to-primary/70 shadow-lg shadow-primary/25">
+            <div className={cn(
+              heroIconContainerClasses,
+              "bg-gradient-to-br from-primary via-primary/90 to-primary/70 shadow-lg shadow-primary/25"
+            )}>
               <Icon className="w-6 h-6 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+              <h1 className={pageTitleClasses}>
                 {title}
               </h1>
-              <p className="text-sm text-muted-foreground font-medium mt-0.5">
+              <p className={pageSubtitleClasses}>
                 {description}
               </p>
             </div>

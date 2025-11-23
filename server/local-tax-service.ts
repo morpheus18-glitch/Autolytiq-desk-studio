@@ -73,7 +73,7 @@ interface CacheEntry<T> {
 }
 
 class LocalTaxCache {
-  private cache: Map<string, CacheEntry<any>> = new Map();
+  private cache: Map<string, CacheEntry<unknown>> = new Map();
   private ttlMs: number;
 
   constructor(ttlMs: number = 24 * 60 * 60 * 1000) {

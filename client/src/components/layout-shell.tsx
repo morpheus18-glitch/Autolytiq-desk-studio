@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { AutoSaveIndicator } from './auto-save-indicator';
+import { standardCardClasses } from '@/lib/design-tokens';
 
 interface LayoutShellProps {
   children: ReactNode;
@@ -11,21 +12,21 @@ interface LayoutShellProps {
   className?: string;
 }
 
-export function LayoutShell({ 
-  children, 
-  header, 
-  summaryDesktop, 
+export function LayoutShell({
+  children,
+  header,
+  summaryDesktop,
   mobileSummary,
   mobileSummaryOffset = '3.5rem',
-  className 
+  className
 }: LayoutShellProps) {
   return (
-    <div 
+    <div
       className="h-screen flex flex-col bg-background overflow-x-hidden"
       style={{ '--mobile-summary-offset': mobileSummaryOffset } as React.CSSProperties}
     >
-      {/* Header - Sticky on all devices with Premium Shadow */}
-      <header className="sticky top-0 z-50 border-b bg-card shadow-sm">
+      {/* Header - Sticky on all devices */}
+      <header className={cn(standardCardClasses, "sticky top-0 z-50 border-b bg-card")}>
         <div className="max-w-[1600px] mx-auto px-4 md:px-6 lg:px-10 py-4">
           {header}
         </div>
@@ -45,8 +46,8 @@ export function LayoutShell({
             </div>
           </div>
 
-          {/* Payment Summary - Sticky on Desktop Only with Shadow */}
-          <aside className="hidden lg:block border-l bg-card shadow-sm">
+          {/* Payment Summary - Sticky on Desktop Only */}
+          <aside className={cn(standardCardClasses, "hidden lg:block border-l bg-card")}>
             <div className="sticky top-[73px] h-[calc(100vh-73px)] overflow-y-auto">
               <div className="p-6">
                 {summaryDesktop}
@@ -56,9 +57,12 @@ export function LayoutShell({
         </div>
       </main>
 
-      {/* Mobile Bottom Payment Sheet - Fixed with Shadow */}
+      {/* Mobile Bottom Payment Sheet - Fixed */}
       {mobileSummary && (
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t bg-card shadow-lg safe-area-inset-bottom">
+        <div className={cn(
+          standardCardClasses,
+          "lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t bg-card safe-area-inset-bottom"
+        )}>
           {mobileSummary}
         </div>
       )}

@@ -14,7 +14,7 @@
  */
 
 import { getDatabaseService } from './db-service';
-import { eq, and, or, like, desc, asc, gte, lte, gt, sql } from 'drizzle-orm';
+import { eq, and, or, like, desc, asc, gte, lte, gt, sql, type SQL } from 'drizzle-orm';
 import {
   users,
   customers,
@@ -936,8 +936,7 @@ export class StorageService implements IStorage {
       const offset = options.offset || 0;
 
       // Build WHERE conditions
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const conditions: any[] = [eq(vehicles.dealershipId, tenantId)];
+      const conditions: SQL[] = [eq(vehicles.dealershipId, tenantId)];
 
       if (options.status) {
         conditions.push(eq(vehicles.status, options.status));
@@ -1144,7 +1143,7 @@ export class StorageService implements IStorage {
       const offset = (page - 1) * pageSize;
 
       // Build WHERE conditions
-      const conditions: any[] = [eq(customers.dealershipId, tenantId)];
+      const conditions: SQL[] = [eq(customers.dealershipId, tenantId)];
 
       if (options.status) {
         conditions.push(eq(customers.status, options.status));
@@ -1237,8 +1236,8 @@ export class StorageService implements IStorage {
   ): Promise<Customer[]> {
     const startTime = Date.now();
     try {
-      const conditions: any[] = [eq(customers.dealershipId, tenantId)];
-      const duplicateConditions: any[] = [];
+      const conditions: SQL[] = [eq(customers.dealershipId, tenantId)];
+      const duplicateConditions: SQL[] = [];
 
       // Exact name match
       if (searchCriteria.firstName && searchCriteria.lastName) {

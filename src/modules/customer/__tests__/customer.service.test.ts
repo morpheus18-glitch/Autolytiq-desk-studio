@@ -25,7 +25,8 @@ describe('CustomerService', () => {
       };
 
       await expect(
-        service.createCustomer(invalidData as any, mockDealershipId, mockUserId)
+        // Type assertion intentional for testing invalid input
+        service.createCustomer(invalidData as never, mockDealershipId, mockUserId)
       ).rejects.toThrow();
     });
 
@@ -53,7 +54,8 @@ describe('CustomerService', () => {
       };
 
       await expect(
-        service.createCustomer(invalidData as any, mockDealershipId, mockUserId)
+        // Type assertion intentional for testing invalid input
+        service.createCustomer(invalidData as never, mockDealershipId, mockUserId)
       ).rejects.toThrow();
     });
   });
@@ -77,7 +79,8 @@ describe('CustomerService', () => {
 
       // Would throw validation error when email is invalid
       await expect(
-        service.updateCustomer(customerId, mockDealershipId, invalidUpdate as any)
+        // Type assertion intentional for testing invalid input
+        service.updateCustomer(customerId, mockDealershipId, invalidUpdate as never)
       ).rejects.toThrow();
     });
   });

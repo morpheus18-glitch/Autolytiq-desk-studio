@@ -1,7 +1,7 @@
 // Referenced from javascript_auth_all_persistance blueprint integration
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
-import { Express } from "express";
+import { Express, Request, Response, NextFunction } from "express";
 import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
@@ -21,7 +21,7 @@ declare global {
       mfaEnabled: boolean;
       mfaSecret: string | null;
       lastLogin: Date | null;
-      preferences: any;
+      preferences: Record<string, unknown>;
       resetToken: string | null;
       resetTokenExpires: Date | null;
       createdAt: Date;
@@ -99,8 +99,8 @@ export function setupAuth(app: Express) {
         if (!isValid) {
           // Increment failed attempts
           const newAttempts = (user.failedLoginAttempts || 0) + 1;
-          const updates: any = { 
-            failedLoginAttempts: newAttempts 
+          const updates: Partial<{ failedLoginAttempts: number; accountLockedUntil: Date }> = {
+            failedLoginAttempts: newAttempts
           };
 
           // Lock account if max attempts reached
@@ -200,7 +200,8 @@ export function setupAuth(app: Express) {
         requiresApproval: true,
         email: user.email,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error("Registration error:", error);
       res.status(500).json({ message: "Registration failed", error: error.message });
     }
@@ -217,7 +218,7 @@ export function setupAuth(app: Express) {
       });
     }
 
-    passport.authenticate("local", (err: any, user: User | false, info: any) => {
+    passport.authenticate("local", (err: Error | null, user: User | false, info: { message?: string }) => {
       if (err) {
         return next(err);
       }
@@ -274,7 +275,7 @@ export function setupAuth(app: Express) {
 }
 
 // Middleware to require authentication
-export function requireAuth(req: any, res: any, next: any) {
+export function requireAuth(req: Request, res: Response, next: NextFunction) {
   // SECURITY: Preview path bypass has been removed
   // If preview functionality is needed, implement proper preview tokens
 
@@ -286,7 +287,7 @@ export function requireAuth(req: any, res: any, next: any) {
 
 // Middleware to require specific role
 export function requireRole(...roles: string[]) {
-  return (req: any, res: any, next: any) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Authentication required" });
     }
@@ -301,7 +302,7 @@ export function requireRole(...roles: string[]) {
 
 // Middleware to require specific permission(s) - user must have at least one
 export function requirePermission(...permissionNames: string[]) {
-  return async (req: any, res: any, next: any) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Authentication required" });
     }

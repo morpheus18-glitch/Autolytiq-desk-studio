@@ -108,9 +108,10 @@ export function PaymentHero({
   };
 
   return (
-      <Card 
+      <Card
         className={cn(
-          "overflow-hidden border-2 border-primary/20 bg-gradient-to-br from-primary/5 via-background to-background shadow-xl transition-all duration-300",
+          "overflow-hidden border-2 border-primary/20 bg-gradient-to-br from-primary/5 via-background to-background transition-all duration-300",
+          "shadow-xl hover:shadow-2xl",
           isExpanded && "shadow-2xl",
           pulseAnimation && "animate-pulse-glow"
         )}

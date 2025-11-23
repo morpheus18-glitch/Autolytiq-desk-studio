@@ -21,6 +21,7 @@ import {
   dealNumberSequences,
   auditLog,
   emailMessages,
+  dealershipSettings,
   type Deal,
   type DealScenario,
   type Customer,
@@ -31,6 +32,7 @@ import {
   type InsertCustomer,
   type InsertUser,
   type InsertAuditLog,
+  type DealershipSettings,
 } from '@shared/schema';
 import { getDatabaseService } from './db-service';
 import { IsolationLevel } from './transaction-manager';
@@ -104,7 +106,7 @@ export class MultiTenantViolationError extends DealCreationError {
  */
 export interface RegisterUserResult {
   user: User;
-  dealership: any;
+  dealership: DealershipSettings;
 }
 
 /**
@@ -610,7 +612,7 @@ class AtomicOperationsService {
   async updateEmailStatus(
     emailId: string,
     status: string,
-    metadata?: any
+    metadata?: Record<string, unknown>
   ): Promise<void> {
     return this.dbService.transaction(async ({ client }) => {
       await client.query(
@@ -658,5 +660,5 @@ export const generateDealNumber = (dealershipId: string) =>
 export const generateStockNumber = (dealershipId: string) =>
   getAtomicOperations().generateStockNumber(dealershipId);
 
-export const updateEmailStatus = (emailId: string, status: string, metadata?: any) =>
+export const updateEmailStatus = (emailId: string, status: string, metadata?: Record<string, unknown>) =>
   getAtomicOperations().updateEmailStatus(emailId, status, metadata);

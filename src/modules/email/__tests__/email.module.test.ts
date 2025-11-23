@@ -33,40 +33,40 @@ describe('Email Module', () => {
     });
 
     it('should reject invalid email addresses', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const invalidRequest: any = {
+      const invalidRequest = {
         to: [{ email: 'invalid-email', name: 'Test User' }],
         subject: 'Test Email',
         bodyText: 'This is a test email',
       };
 
       await expect(
-        emailModule.sendEmail(TEST_TENANT_ID, TEST_USER_ID, invalidRequest)
+        // Type assertion here is intentional for testing invalid input
+        emailModule.sendEmail(TEST_TENANT_ID, TEST_USER_ID, invalidRequest as never)
       ).rejects.toThrow();
     });
 
     it('should reject empty recipients', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const invalidRequest: any = {
+      const invalidRequest = {
         to: [],
         subject: 'Test Email',
         bodyText: 'This is a test email',
       };
 
       await expect(
-        emailModule.sendEmail(TEST_TENANT_ID, TEST_USER_ID, invalidRequest)
+        // Type assertion here is intentional for testing invalid input
+        emailModule.sendEmail(TEST_TENANT_ID, TEST_USER_ID, invalidRequest as never)
       ).rejects.toThrow();
     });
 
     it('should reject missing subject', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const invalidRequest: any = {
+      const invalidRequest = {
         to: [{ email: 'test@example.com' }],
         bodyText: 'This is a test email',
       };
 
       await expect(
-        emailModule.sendEmail(TEST_TENANT_ID, TEST_USER_ID, invalidRequest)
+        // Type assertion here is intentional for testing invalid input
+        emailModule.sendEmail(TEST_TENANT_ID, TEST_USER_ID, invalidRequest as never)
       ).rejects.toThrow();
     });
   });
@@ -111,7 +111,7 @@ describe('Email Module', () => {
           to: [],
           subject: 'Test',
           bodyText: 'Test',
-        } as any);
+        } as never);
 
         fail('Should have thrown an error');
       } catch (error) {

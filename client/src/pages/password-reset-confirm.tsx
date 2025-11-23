@@ -74,8 +74,8 @@ export default function PasswordResetConfirm() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-background to-muted/20">
+      <Card className="w-full max-w-md shadow-xl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-xl md:text-2xl">
             <KeyRound className="w-5 h-5" />

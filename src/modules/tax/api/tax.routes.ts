@@ -160,11 +160,37 @@ interface TaxQuoteRequest {
   customerIsNewResident?: boolean;
 }
 
+interface TaxCalculationResult {
+  totalTax: number;
+  totalFee: number;
+  totalDue: number;
+  breakdown: Array<{
+    category: string;
+    description: string;
+    amount: number;
+    taxable: boolean;
+    rate?: number;
+  }>;
+}
+
+interface LocalTaxInformation {
+  zipCode: string;
+  state: string;
+  county?: string;
+  city?: string;
+  countyName?: string;
+  cityName?: string;
+  countyRate?: number;
+  cityRate?: number;
+  specialDistrictRate?: number;
+  totalRate: number;
+}
+
 interface TaxQuoteResponse {
   success: boolean;
   context: TaxContext;
-  result: any;
-  localTaxInfo?: any;
+  result: TaxCalculationResult;
+  localTaxInfo?: LocalTaxInformation;
   error?: string;
 }
 
@@ -602,11 +628,12 @@ router.post('/customers/quote', async (req: Request, res: Response) => {
       success: true,
       taxProfile,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[TaxRoutes] Tax Quote error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to calculate tax';
     res.status(500).json({
       success: false,
-      error: error.message || 'Failed to calculate tax',
+      error: errorMessage,
     });
   }
 });
@@ -639,11 +666,12 @@ router.get('/customers/:customerId/preview', async (req: Request, res: Response)
       method: taxProfile.method,
       rules: taxProfile.rules,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[TaxRoutes] Tax Preview error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to get tax preview';
     res.status(500).json({
       success: false,
-      error: error.message || 'Failed to get tax preview',
+      error: errorMessage,
     });
   }
 });
@@ -696,11 +724,12 @@ router.get(
             }
           : null,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[TaxRoutes] Validate Address error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to validate address';
       res.status(500).json({
         valid: false,
-        error: error.message || 'Failed to validate address',
+        error: errorMessage,
       });
     }
   }
@@ -732,11 +761,12 @@ router.post('/deals/:dealId/recalculate', async (req: Request, res: Response) =>
       scenarioId: result.scenarioId,
       message: 'Taxes recalculated successfully',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[TaxRoutes] Recalculate Taxes error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to recalculate taxes';
     res.status(500).json({
       success: false,
-      error: error.message || 'Failed to recalculate taxes',
+      error: errorMessage,
     });
   }
 });

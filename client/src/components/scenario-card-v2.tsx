@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { interactiveCardClasses, cardSpacing } from '@/lib/design-tokens';
 
 interface ScenarioCardV2Props {
   name: string;
@@ -28,10 +29,11 @@ export function ScenarioCardV2({
     <button
       onClick={onClick}
       className={cn(
-        "flex flex-col min-w-[140px] p-4 rounded-lg border-2 transition-all text-left",
+        "flex flex-col min-w-[140px] rounded-lg border-2 transition-all text-left",
+        cardSpacing.compact,
         isActive
           ? "border-blue-600 bg-blue-50 shadow-md"
-          : "border-neutral-200 bg-white hover:border-blue-300 hover:shadow-sm",
+          : cn(interactiveCardClasses, "border-neutral-200 bg-white hover:border-blue-300"),
         className
       )}
     >

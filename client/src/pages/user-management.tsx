@@ -122,13 +122,13 @@ export default function UserManagement() {
 
   if (!isAdmin) {
     return (
-      <PageLayout className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-        <PageHero
-          icon={UserCog}
+      <div className="h-full flex flex-col">
+        <PageHeader
           title="User Management"
-          description="Access Denied"
+          subtitle="Access Denied"
+          icon={<UserCog />}
         />
-        <div className="container mx-auto px-4 md:px-6 py-8">
+        <PageContent className="container mx-auto max-w-4xl">
           <Card className={premiumCardClasses}>
             <CardContent className="p-12 text-center">
               <Shield className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
@@ -138,17 +138,17 @@ export default function UserManagement() {
               </p>
             </CardContent>
           </Card>
-        </div>
-      </PageLayout>
+        </PageContent>
+      </div>
     );
   }
 
   return (
-    <PageLayout className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <PageHero
-        icon={UserCog}
+    <div className="h-full flex flex-col">
+      <PageHeader
         title="User Management"
-        description="Manage dealership users, roles, and permissions"
+        subtitle="Manage dealership users, roles, and permissions"
+        icon={<UserCog />}
         actions={
           <Button
             onClick={() => setShowCreateDialog(true)}
@@ -162,7 +162,7 @@ export default function UserManagement() {
         }
       />
 
-      <div className={cn(containerPadding, layoutSpacing.page)}>
+      <PageContent>
         {/* Users List */}
         {isLoading ? (
           <Card className={premiumCardClasses}>
@@ -236,7 +236,7 @@ export default function UserManagement() {
             ))}
           </div>
         )}
-      </div>
+      </PageContent>
 
       {/* User Detail Sheet */}
       <UserDetailSheet
@@ -356,6 +356,6 @@ export default function UserManagement() {
           </form>
         </DialogContent>
       </Dialog>
-    </PageLayout>
+    </div>
   );
 }

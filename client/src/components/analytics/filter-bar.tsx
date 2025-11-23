@@ -63,7 +63,8 @@ export function FilterBar({
 
   return (
     <div className={cn(
-      'flex flex-col md:flex-row gap-3 p-4 bg-card/50 backdrop-blur-sm rounded-lg border border-border/50',
+      'flex flex-col md:flex-row gap-3 bg-card/50 backdrop-blur-sm rounded-lg border border-border/50',
+      'p-4',
       className
     )}>
       <div className="flex flex-1 flex-col md:flex-row gap-3">

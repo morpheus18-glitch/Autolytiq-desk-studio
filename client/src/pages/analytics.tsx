@@ -18,8 +18,10 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { PageLayout } from '@/components/page-layout';
-import { PageHero } from '@/components/page-hero';
+import { PageHeader } from '@/components/core/page-header';
+import { PageContent } from '@/components/core/page-content';
+import { LoadingState } from '@/components/core/loading-state';
+import { ErrorState } from '@/components/core/error-state';
 import { MetricCard } from '@/components/analytics/metric-card';
 import { ChartCard } from '@/components/analytics/chart-card';
 import { FilterBar, type PeriodType } from '@/components/analytics/filter-bar';
@@ -27,10 +29,7 @@ import { SalesLeaderboard } from '@/components/analytics/sales-leaderboard';
 import { SectionErrorBoundary } from '@/components/error-boundary';
 import { cn } from '@/lib/utils';
 import {
-  containerPadding,
-  layoutSpacing,
   gridLayouts,
-  stickyHeaderClasses,
 } from '@/lib/design-tokens';
 
 // Color palette for charts - using CSS variables for theme support
@@ -213,46 +212,32 @@ export default function Analytics() {
   };
 
   return (
-    <PageLayout className="h-screen flex flex-col bg-background">
-      {/* Header with Navigation */}
-      <header className={stickyHeaderClasses}>
-        <div className="max-w-[1600px] mx-auto">
-          <div className={cn(containerPadding, layoutSpacing.content)}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <nav className="flex items-center gap-2">
-                  <Link href="/inventory">
-                    <Button variant="ghost" size="sm" className="gap-2">
-                      <Package className="h-4 w-4" />
-                      Inventory
-                    </Button>
-                  </Link>
-                  <Link href="/deals">
-                    <Button variant="ghost" size="sm" className="gap-2">
-                      <FileText className="h-4 w-4" />
-                      Deals
-                    </Button>
-                  </Link>
-                  <Button variant="default" size="sm" className="gap-2">
-                    <BarChart3 className="h-4 w-4" />
-                    Analytics
-                  </Button>
-                </nav>
-              </div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl md:text-2xl font-semibold">Analytics Dashboard</h1>
-              </div>
-            </div>
+    <div className="h-full flex flex-col">
+      <PageHeader
+        title="Analytics Dashboard"
+        subtitle="Track performance metrics and insights"
+        icon={<BarChart3 />}
+        actions={
+          <div className="flex items-center gap-2">
+            <Link href="/inventory">
+              <Button variant="ghost" size="sm" className="gap-2">
+                <Package className="h-4 w-4" />
+                Inventory
+              </Button>
+            </Link>
+            <Link href="/deals">
+              <Button variant="ghost" size="sm" className="gap-2">
+                <FileText className="h-4 w-4" />
+                Deals
+              </Button>
+            </Link>
           </div>
-        </div>
-      </header>
+        }
+      />
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-[1600px] mx-auto">
-          {/* Filter Bar */}
-          <div className={cn(containerPadding, layoutSpacing.content, "border-b bg-card/30")}>
-            <FilterBar
+      <PageContent className="max-w-[1600px] space-y-6">
+        <div className="border-b pb-6">
+          <FilterBar
             period={period}
             onPeriodChange={setPeriod}
             customDateRange={customDateRange}
@@ -269,10 +254,7 @@ export default function Analytics() {
               name: m.name,
             })) || []}
           />
-          </div>
-
-          {/* Main Content Area */}
-          <div className={cn(containerPadding, layoutSpacing.section, "space-y-6")}>
+        </div>
             {/* KPI Cards */}
             <SectionErrorBoundary sectionName="KPI Metrics">
               <div className={gridLayouts.fourCol}>
@@ -805,9 +787,7 @@ export default function Analytics() {
                 </div>
               </TabsContent>
             </Tabs>
-          </div>
-        </div>
-      </main>
-    </PageLayout>
+      </PageContent>
+    </div>
   );
 }

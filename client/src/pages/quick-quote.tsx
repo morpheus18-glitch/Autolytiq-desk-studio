@@ -12,8 +12,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { PageLayout } from '@/components/page-layout';
-import { PageHero } from '@/components/page-hero';
+import { PageHeader } from '@/components/core/page-header';
+import { PageContent } from '@/components/core/page-content';
 import { useToast } from '@/hooks/use-toast';
 import {
   DollarSign,
@@ -28,8 +28,6 @@ import {
 import type { User as UserType, Vehicle } from '@shared/schema';
 import Decimal from 'decimal.js';
 import {
-  containerPadding,
-  layoutSpacing,
   premiumCardClasses,
   statusColors,
   primaryButtonClasses,
@@ -199,20 +197,24 @@ export default function QuickQuote() {
   };
   
   return (
-    <PageLayout className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <PageHero
-        icon={Zap}
+    <div className="h-full flex flex-col">
+      <PageHeader
         title="Deal Studio"
-        description={vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model}` : "Quick Build • 30-second payment quotes"}
-        backButton={{
-          label: "Back to Dashboard",
-          onClick: () => setLocation('/'),
-          testId: "button-back-dashboard"
-        }}
+        subtitle={vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model}` : "Quick Build - 30-second payment quotes"}
+        icon={<Zap />}
+        actions={
+          <Button
+            variant="ghost"
+            onClick={() => setLocation('/')}
+            data-testid="button-back-dashboard"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Dashboard
+          </Button>
+        }
       />
 
-      {/* Main Content */}
-      <div className={cn(containerPadding, layoutSpacing.section, "max-w-4xl")}>
+      <PageContent className="container mx-auto max-w-4xl">
         <div className={gridLayouts.twoCol}>
           {/* Input Form */}
           <div className={formSpacing.section}>
@@ -449,7 +451,7 @@ export default function QuickQuote() {
             </Card>
           </div>
         </div>
-      </div>
-    </PageLayout>
+      </PageContent>
+    </div>
   );
 }

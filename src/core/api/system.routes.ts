@@ -7,13 +7,15 @@
  * @module CoreAPI
  */
 
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { db } from '../database/index';
+
+type AuthMiddleware = (req: Request, res: Response, next: NextFunction) => void | Promise<void>;
 
 /**
  * Create system router
  */
-export function createSystemRouter(requireAuth?: any) {
+export function createSystemRouter(requireAuth?: AuthMiddleware) {
   const router = Router();
 
   /**
@@ -56,7 +58,7 @@ export function createSystemRouter(requireAuth?: any) {
    * - Environment information
    * - System metrics
    */
-  router.get('/status', requireAuth || ((req: any, res: any, next: any) => next()), async (req, res) => {
+  router.get('/status', requireAuth || ((req: Request, res: Response, next: NextFunction) => next()), async (req, res) => {
     try {
       // Check database connectivity
       let dbStatus = 'unknown';
@@ -110,12 +112,13 @@ export function createSystemRouter(requireAuth?: any) {
           platform: process.platform,
         },
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to retrieve system status';
       console.error('[System] Status check error:', error);
       res.status(500).json({
         status: 'error',
         timestamp: new Date().toISOString(),
-        error: error.message || 'Failed to retrieve system status',
+        error: errorMessage,
       });
     }
   });

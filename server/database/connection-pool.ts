@@ -230,7 +230,7 @@ class ConnectionPoolManager {
    */
   async query<T = any>(
     queryText: string,
-    values?: any[]
+    values?: unknown[]
   ): Promise<{ rows: T[]; rowCount: number }> {
     if (this.isShuttingDown) {
       throw new Error('Database pool is shutting down');

@@ -247,7 +247,7 @@ export async function logSecurityEvent(
  */
 export function sanitizeRequest(req: Request, res: Response, next: NextFunction): void {
   // Remove null bytes from all string inputs
-  const sanitizeObject = (obj: any): any => {
+  const sanitizeObject = (obj: unknown): unknown => {
     if (typeof obj === 'string') {
       return obj.replace(/\0/g, '');
     }
@@ -255,7 +255,7 @@ export function sanitizeRequest(req: Request, res: Response, next: NextFunction)
       return obj.map(sanitizeObject);
     }
     if (obj && typeof obj === 'object') {
-      const sanitized: any = {};
+      const sanitized: Record<string, unknown> = {};
       for (const [key, value] of Object.entries(obj)) {
         sanitized[key] = sanitizeObject(value);
       }

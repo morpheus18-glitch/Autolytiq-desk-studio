@@ -29,11 +29,13 @@ import { aiService, type ChatMessage, type DealContext } from "../src/core/servi
 // TODO: Import other dependencies as needed for legacy routes
 // These will be removed in Phase 2 when routes are migrated to modules
 
+import { RequestHandler } from 'express';
+
 export async function registerLegacyRoutes(
   app: Express,
-  storage: any,
-  requireAuth: any,
-  requireRole: any
+  storage: unknown,
+  requireAuth: RequestHandler,
+  requireRole: (...roles: string[]) => RequestHandler
 ): Promise<void> {
 
   // ==========================================================================

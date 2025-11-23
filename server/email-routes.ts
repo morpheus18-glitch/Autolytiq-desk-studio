@@ -995,7 +995,15 @@ router.patch("/rules/:id", async (req: Request, res: Response) => {
     const { emailRules } = await import("@shared/schema");
     const { eq, and } = await import("drizzle-orm");
 
-    const updates: any = {};
+    const updates: Partial<{
+      name: string;
+      description: string;
+      priority: number;
+      isActive: boolean;
+      conditions: unknown;
+      actions: unknown;
+      updatedAt: Date;
+    }> = {};
     if (req.body.name !== undefined) updates.name = req.body.name;
     if (req.body.description !== undefined) updates.description = req.body.description;
     if (req.body.priority !== undefined) updates.priority = req.body.priority;
@@ -1152,7 +1160,14 @@ router.patch("/labels/:id", async (req: Request, res: Response) => {
     const { emailLabels } = await import("@shared/schema");
     const { eq, and } = await import("drizzle-orm");
 
-    const updates: any = {};
+    const updates: Partial<{
+      name: string;
+      color: string;
+      icon: string;
+      showInSidebar: boolean;
+      sortOrder: number;
+      updatedAt: Date;
+    }> = {};
     if (req.body.name !== undefined) updates.name = req.body.name;
     if (req.body.color !== undefined) updates.color = req.body.color;
     if (req.body.icon !== undefined) updates.icon = req.body.icon;
@@ -1307,7 +1322,7 @@ publicRouter.post("/resend", async (req: Request, res: Response) => {
     // STEP 1: Verify webhook signature (or skip in development)
     // ========================================================================
     const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
-    let verifiedEvent: any;
+    let verifiedEvent: unknown;
 
     // Extract Svix headers
     const svixId = req.headers['svix-id'] as string;
@@ -1389,7 +1404,7 @@ publicRouter.post("/resend", async (req: Request, res: Response) => {
 
       try {
         // Helper function to parse email addresses
-        const parseEmailAddress = (addr: any): { email: string; name: string | null } => {
+        const parseEmailAddress = (addr: unknown): { email: string; name: string | null } => {
           if (!addr) return { email: '', name: null };
           
           // If already structured object { email, name }
@@ -1412,9 +1427,9 @@ publicRouter.post("/resend", async (req: Request, res: Response) => {
 
         // Parse recipients
         const toParsed = Array.isArray(eventData.to)
-          ? eventData.to.map((addr: any) => parseEmailAddress(addr)).filter((addr: any) => addr.email)
+          ? eventData.to.map((addr: unknown) => parseEmailAddress(addr)).filter((addr) => addr.email)
           : eventData.to
-            ? [parseEmailAddress(eventData.to)].filter((addr: any) => addr.email)
+            ? [parseEmailAddress(eventData.to)].filter((addr) => addr.email)
             : [];
 
         if (toParsed.length === 0) {
@@ -1427,17 +1442,17 @@ publicRouter.post("/resend", async (req: Request, res: Response) => {
 
         // Parse CC addresses
         const ccParsed = Array.isArray(eventData.cc)
-          ? eventData.cc.map((addr: any) => parseEmailAddress(addr)).filter((addr: any) => addr.email)
+          ? eventData.cc.map((addr: unknown) => parseEmailAddress(addr)).filter((addr) => addr.email)
           : [];
 
         // Parse BCC addresses
         const bccParsed = Array.isArray(eventData.bcc)
-          ? eventData.bcc.map((addr: any) => parseEmailAddress(addr)).filter((addr: any) => addr.email)
+          ? eventData.bcc.map((addr: unknown) => parseEmailAddress(addr)).filter((addr) => addr.email)
           : [];
 
         // Determine dealership by matching recipient email to dealership email
         const { dealershipSettings } = await import("@shared/schema");
-        const recipientEmails = toParsed.map((r: any) => r.email.toLowerCase());
+        const recipientEmails = toParsed.map((r) => r.email.toLowerCase());
         
         const dealerships = await db
           .select({ 
@@ -1573,7 +1588,7 @@ publicRouter.post("/resend", async (req: Request, res: Response) => {
     const email = emails[0];
 
     // Update email status based on event type
-    let updates: any = {
+    let updates: Record<string, unknown> = {
       resendStatus: eventType.replace('email.', ''), // sent, delivered, bounced, etc.
     };
 

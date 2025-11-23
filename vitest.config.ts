@@ -1,5 +1,9 @@
 import { defineConfig } from "vitest/config";
 import path from "path";
+import dotenv from "dotenv";
+
+// Load .env file for test environment (ensures DATABASE_URL is correct)
+dotenv.config();
 
 export default defineConfig({
   test: {
@@ -7,6 +11,11 @@ export default defineConfig({
     environment: "node",
     testTimeout: 30000, // 30 seconds for integration tests
     hookTimeout: 30000,
+    env: {
+      // Ensure DATABASE_URL is loaded from .env, not shell environment
+      DATABASE_URL: process.env.DATABASE_URL || "",
+      NODE_ENV: "test",
+    },
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html", "lcov"],

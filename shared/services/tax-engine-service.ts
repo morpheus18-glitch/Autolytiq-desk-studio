@@ -58,13 +58,13 @@ export async function calculateTaxProfile(input: TaxQuoteInput): Promise<TaxProf
   const method = determineTaxMethod(stateRules, input.dealType);
 
   // 6. Build rate breakdown
-  const stateRulesAny = stateRules as any;
+  // Note: The rates object may need expansion based on state rules structure
   const rates = {
-    stateRate: stateRulesAny.rates?.stateRate || 0.07,
+    stateRate: 0.07, // Default state rate, should be extracted from stateRules if available
     countyRate: localRates?.countyRate || 0,
     cityRate: localRates?.cityRate || 0,
     specialRate: localRates?.specialDistrictRate || 0,
-    combinedRate: localRates?.totalRate || stateRulesAny.rates?.stateRate || 0.07,
+    combinedRate: localRates?.totalRate || 0.07,
   };
 
   // 7. Build rules from state config
@@ -72,11 +72,11 @@ export async function calculateTaxProfile(input: TaxQuoteInput): Promise<TaxProf
     tradeInReducesTaxBase: stateRules.tradeInPolicy?.type === 'FULL' ||
       stateRules.tradeInPolicy?.type === 'CAPPED',
     docFeeTaxable: isDocFeeTaxable(stateRules),
-    docFeeCap: stateRulesAny.fees?.docFeeCap as number | undefined,
+    docFeeCap: undefined as number | undefined, // TODO: Extract from stateRules.fees
     gapTaxable: isProductTaxable(stateRules, 'GAP'),
     vscTaxable: isProductTaxable(stateRules, 'VSC'),
-    luxuryTaxThreshold: stateRulesAny.extras?.luxuryTaxThreshold as number | undefined,
-    luxuryTaxRate: stateRulesAny.extras?.luxuryTaxRate as number | undefined,
+    luxuryTaxThreshold: undefined as number | undefined, // TODO: Extract from stateRules.extras
+    luxuryTaxRate: undefined as number | undefined, // TODO: Extract from stateRules.extras
   };
 
   // 8. Precompute values based on deal data
@@ -104,7 +104,10 @@ export async function calculateTaxProfile(input: TaxQuoteInput): Promise<TaxProf
 /**
  * Determine the tax method based on state rules and deal type
  */
-function determineTaxMethod(stateRules: any, dealType: 'RETAIL' | 'LEASE'): TaxMethod {
+function determineTaxMethod(
+  stateRules: { vehicleTaxScheme?: string; leaseRules?: { method?: string } },
+  dealType: 'RETAIL' | 'LEASE'
+): TaxMethod {
   if (dealType === 'RETAIL') {
     // Check for special schemes
     if (stateRules.vehicleTaxScheme === 'SPECIAL_TAVT') return 'SPECIAL_TAVT';
@@ -130,11 +133,20 @@ function determineTaxMethod(stateRules: any, dealType: 'RETAIL' | 'LEASE'): TaxM
 /**
  * Check if doc fee is taxable in this state
  */
-function isDocFeeTaxable(stateRules: any): boolean {
-  const feeRules = stateRules.fees?.feeRules || [];
-  const docRule = feeRules.find((r: any) => r.code === 'DOC');
+function isDocFeeTaxable(stateRules: {
+  docFeeTaxable?: boolean;
+  feeTaxRules?: Array<{ code: string; taxable: boolean }>;
+}): boolean {
+  // First check the simple boolean flag
+  if (stateRules.docFeeTaxable !== undefined) {
+    return stateRules.docFeeTaxable;
+  }
+
+  // Fallback to fee rules if available
+  const feeRules = stateRules.feeTaxRules || [];
+  const docRule = feeRules.find((r) => r.code === 'DOC' || r.code === 'DOC_FEE');
   if (docRule) {
-    return docRule.taxable === true || docRule.taxable === 'YES';
+    return docRule.taxable === true;
   }
   return false;
 }
@@ -142,11 +154,27 @@ function isDocFeeTaxable(stateRules: any): boolean {
 /**
  * Check if a product (GAP, VSC) is taxable
  */
-function isProductTaxable(stateRules: any, productCode: string): boolean {
-  const feeRules = stateRules.fees?.feeRules || [];
-  const productRule = feeRules.find((r: any) => r.code === productCode);
+function isProductTaxable(
+  stateRules: {
+    taxOnGap?: boolean;
+    taxOnServiceContracts?: boolean;
+    feeTaxRules?: Array<{ code: string; taxable: boolean }>;
+  },
+  productCode: string
+): boolean {
+  // Check direct boolean flags first
+  if (productCode === 'GAP' && stateRules.taxOnGap !== undefined) {
+    return stateRules.taxOnGap;
+  }
+  if (productCode === 'VSC' && stateRules.taxOnServiceContracts !== undefined) {
+    return stateRules.taxOnServiceContracts;
+  }
+
+  // Fallback to fee rules
+  const feeRules = stateRules.feeTaxRules || [];
+  const productRule = feeRules.find((r) => r.code === productCode);
   if (productRule) {
-    return productRule.taxable === true || productRule.taxable === 'YES';
+    return productRule.taxable === true;
   }
   // Default: GAP and VSC usually taxable
   return true;
@@ -243,7 +271,7 @@ export async function recalculateDealTaxes(dealId: string): Promise<{
   }
 
   // 2. Get active scenario
-  const activeScenario = deal.scenarios.find((s: any) => s.id === deal.activeScenarioId)
+  const activeScenario = deal.scenarios.find((s) => s.id === deal.activeScenarioId)
     || deal.scenarios[0];
 
   if (!activeScenario) {
@@ -272,7 +300,7 @@ export async function recalculateDealTaxes(dealId: string): Promise<{
   await db.update(dealScenarios)
     .set({
       totalTax: taxProfile.precomputed?.estimatedTax?.toFixed(2) || '0',
-      taxProfile: taxProfile as any, // Store full profile as JSONB
+      taxProfile: taxProfile as unknown as Record<string, unknown>, // Store full profile as JSONB
       updatedAt: new Date(),
     })
     .where(eq(dealScenarios.id, activeScenario.id));

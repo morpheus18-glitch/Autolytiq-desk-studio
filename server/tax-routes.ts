@@ -106,7 +106,7 @@ interface TaxQuoteResponse {
   success: boolean;
   context: TaxContext;
   result: TaxCalculationResult;
-  localTaxInfo?: any; // Local tax rate info if STATE_PLUS_LOCAL
+  localTaxInfo?: Record<string, unknown>; // Local tax rate info if STATE_PLUS_LOCAL
   error?: string;
 }
 

@@ -15,67 +15,47 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { PageLayout } from '@/components/page-layout';
-import { PageHero } from '@/components/page-hero';
+import { PageHeader } from '@/components/core/page-header';
+import { PageContent } from '@/components/core/page-content';
 import { CreditSimulator } from '@/components/credit-simulator';
 import { PreQualification } from '@/components/pre-qualification';
 import { CreditDashboard } from '@/components/credit-dashboard';
 import { cn } from '@/lib/utils';
 import {
-  containerPadding,
-  layoutSpacing,
   gridLayouts,
   premiumCardClasses,
   formSpacing,
-  stickyHeaderClasses,
-  pageTitleClasses,
-  pageSubtitleClasses,
-  heroIconContainerClasses,
   primaryButtonClasses,
 } from '@/lib/design-tokens';
 
 export default function CreditCenter() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  
-  return (
-    <PageLayout className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      {/* Header */}
-      <div className={stickyHeaderClasses}>
-        <div className={cn(containerPadding, layoutSpacing.header)}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className={cn(heroIconContainerClasses, "bg-gradient-to-br from-primary via-primary/90 to-primary/70 shadow-lg shadow-primary/25")}>
-                <CreditCard className="w-6 h-6 text-primary-foreground" />
-              </div>
-              <div>
-                <h1 className={pageTitleClasses}>
-                  Credit Center
-                </h1>
-                <p className={pageSubtitleClasses}>
-                  Understand, simulate, and improve your credit for better auto financing
-                </p>
-              </div>
-            </div>
-            <div className="hidden md:flex items-center gap-3">
-              <Button variant="outline" asChild data-testid="button-view-deals">
-                <Link href="/deals">
-                  <FileCheck className="w-4 h-4 mr-2" />
-                  View Deals
-                </Link>
-              </Button>
-              <Button asChild data-testid="button-new-deal" className={primaryButtonClasses}>
-                <Link href="/deals/new">
-                  <Sparkles className="w-4 h-4" />
-                  Start New Deal
-                </Link>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Quick Stats Cards */}
-      <div className={cn(containerPadding, layoutSpacing.section)}>
+  return (
+    <div className="h-full flex flex-col">
+      <PageHeader
+        title="Credit Center"
+        subtitle="Understand, simulate, and improve your credit for better auto financing"
+        icon={<CreditCard />}
+        actions={
+          <>
+            <Button variant="outline" asChild data-testid="button-view-deals">
+              <Link href="/deals">
+                <FileCheck className="w-4 h-4 mr-2" />
+                View Deals
+              </Link>
+            </Button>
+            <Button asChild data-testid="button-new-deal" className={primaryButtonClasses}>
+              <Link href="/deals/new">
+                <Sparkles className="w-4 h-4" />
+                Start New Deal
+              </Link>
+            </Button>
+          </>
+        }
+      />
+
+      <PageContent className="space-y-6">
         <div className={cn(gridLayouts.fourCol, "mb-6")}>
           <Card className={cn(premiumCardClasses, "p-4 bg-gradient-to-br from-green-500/10 to-green-500/5 border-green-500/20")}>
             <div className="flex items-center gap-3">
@@ -287,7 +267,7 @@ export default function CreditCenter() {
             </div>
           </div>
         </Card>
-      </div>
-    </PageLayout>
+      </PageContent>
+    </div>
   );
 }

@@ -99,7 +99,7 @@ export interface IStorage {
   getUserByResetToken(hashedToken: string): Promise<User | undefined>;
   createUser(user: InsertUser, dealershipId: string): Promise<User>;
   updateUser(id: string, data: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<User>;
-  sessionStore: any;
+  sessionStore: unknown;
 
   // Customers
   getCustomer(id: string): Promise<Customer | undefined>;
@@ -173,7 +173,7 @@ export interface IStorage {
   createQuickQuote(quote: InsertQuickQuote): Promise<QuickQuote>;
   getQuickQuote(id: string): Promise<QuickQuote | undefined>;
   updateQuickQuote(id: string, data: Partial<Pick<QuickQuote, 'status' | 'dealId'>>): Promise<QuickQuote>;
-  updateQuickQuotePayload(id: string, payload: any): Promise<QuickQuote>;
+  updateQuickQuotePayload(id: string, payload: Record<string, unknown>): Promise<QuickQuote>;
   createQuickQuoteContact(contact: InsertQuickQuoteContact): Promise<QuickQuoteContact>;
   updateQuickQuoteContactStatus(id: string, status: string, sentAt: Date): Promise<QuickQuoteContact>;
 
@@ -242,7 +242,7 @@ export interface IStorage {
   getRolePermissions(role: string): Promise<Permission[]>;
 
   // User Preferences
-  updateUserPreferences(id: string, preferences: any): Promise<User>;
+  updateUserPreferences(id: string, preferences: Record<string, unknown>): Promise<User>;
 }
 
 // ==========================================
@@ -252,7 +252,7 @@ export interface IStorage {
 
 class LegacyStorageAdapter implements IStorage {
   private service: StorageService;
-  public sessionStore: any;
+  public sessionStore: unknown;
 
   constructor() {
     this.service = new StorageService();
@@ -311,7 +311,7 @@ class LegacyStorageAdapter implements IStorage {
     return this.service.updateUser(id, data, existingUser.dealershipId);
   }
 
-  async updateUserPreferences(id: string, preferences: any): Promise<User> {
+  async updateUserPreferences(id: string, preferences: Record<string, unknown>): Promise<User> {
     const existingUser = await this.service.getUser(id);
     if (!existingUser) {
       throw new Error('User not found');
@@ -504,7 +504,7 @@ class LegacyStorageAdapter implements IStorage {
     return this.service.updateQuickQuote(id, data);
   }
 
-  async updateQuickQuotePayload(id: string, payload: any): Promise<QuickQuote> {
+  async updateQuickQuotePayload(id: string, payload: Record<string, unknown>): Promise<QuickQuote> {
     return this.service.updateQuickQuotePayload(id, payload);
   }
 

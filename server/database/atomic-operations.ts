@@ -104,7 +104,7 @@ export class MultiTenantViolationError extends DealCreationError {
  */
 export interface RegisterUserResult {
   user: User;
-  dealership: any;
+  dealership: Record<string, unknown>;
 }
 
 /**
@@ -610,7 +610,7 @@ class AtomicOperationsService {
   async updateEmailStatus(
     emailId: string,
     status: string,
-    metadata?: any
+    metadata?: Record<string, unknown>
   ): Promise<void> {
     return this.dbService.transaction(async ({ client }) => {
       await client.query(
@@ -658,5 +658,5 @@ export const generateDealNumber = (dealershipId: string) =>
 export const generateStockNumber = (dealershipId: string) =>
   getAtomicOperations().generateStockNumber(dealershipId);
 
-export const updateEmailStatus = (emailId: string, status: string, metadata?: any) =>
+export const updateEmailStatus = (emailId: string, status: string, metadata?: Record<string, unknown>) =>
   getAtomicOperations().updateEmailStatus(emailId, status, metadata);

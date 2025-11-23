@@ -721,7 +721,7 @@ export class VehicleService {
   /**
    * Map Drizzle vehicle type to Vehicle type (for StorageService results)
    */
-  private mapDrizzleToVehicle(drizzleVehicle: any): Vehicle {
+  private mapDrizzleToVehicle(drizzleVehicle: Record<string, unknown>): Vehicle {
     return {
       id: drizzleVehicle.id,
       dealershipId: drizzleVehicle.dealershipId,

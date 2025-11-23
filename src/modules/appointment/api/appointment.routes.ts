@@ -51,11 +51,68 @@ const appointmentQuerySchema = z.object({
 // TYPES
 // ============================================================================
 
+interface Appointment {
+  id: string;
+  dealershipId: string;
+  title: string;
+  description: string | null;
+  appointmentType: string;
+  scheduledAt: Date;
+  duration: number;
+  location: string;
+  customerId: string | null;
+  dealId: string | null;
+  vehicleId: string | null;
+  userId: string | null;
+  notes: string | null;
+  status: string;
+  reminderSent: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface AppointmentQueryOptions {
+  startDate?: Date;
+  endDate?: Date;
+  userId?: string;
+  customerId?: string;
+  appointmentType?: string;
+}
+
+interface AppointmentCreateData {
+  title: string;
+  description: string | null;
+  appointmentType: string;
+  scheduledAt: Date;
+  duration: number;
+  location: string;
+  customerId: string | null;
+  dealId: string | null;
+  vehicleId: string | null;
+  userId: string | null;
+  notes: string | null;
+  dealershipId: string;
+}
+
+interface AppointmentUpdateData {
+  title?: string;
+  description?: string;
+  appointmentType?: string;
+  scheduledAt?: Date;
+  duration?: number;
+  location?: string;
+  customerId?: string;
+  dealId?: string;
+  vehicleId?: string;
+  userId?: string;
+  notes?: string;
+}
+
 interface AppointmentStorage {
-  getAppointmentsByDate(date: Date, dealershipId: string): Promise<any[]>;
-  getAppointments(dealershipId: string, options?: any): Promise<any[]>;
-  createAppointment(data: any): Promise<any>;
-  updateAppointment(id: string, data: any): Promise<any>;
+  getAppointmentsByDate(date: Date, dealershipId: string): Promise<Appointment[]>;
+  getAppointments(dealershipId: string, options?: AppointmentQueryOptions): Promise<Appointment[]>;
+  createAppointment(data: AppointmentCreateData): Promise<Appointment>;
+  updateAppointment(id: string, data: AppointmentUpdateData): Promise<Appointment>;
   deleteAppointment(id: string): Promise<void>;
 }
 
@@ -122,7 +179,7 @@ export function createAppointmentRouter(storage: AppointmentStorage) {
         });
       }
 
-      const options: any = {};
+      const options: AppointmentQueryOptions = {};
       if (validation.data.startDate) {
         options.startDate = new Date(validation.data.startDate);
       }
@@ -214,7 +271,7 @@ export function createAppointmentRouter(storage: AppointmentStorage) {
         });
       }
 
-      const updates: any = {};
+      const updates: AppointmentUpdateData = {};
       if (validation.data.title !== undefined) updates.title = validation.data.title;
       if (validation.data.description !== undefined) updates.description = validation.data.description;
       if (validation.data.appointmentType !== undefined) updates.appointmentType = validation.data.appointmentType;

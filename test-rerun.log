@@ -1,0 +1,150 @@
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m src/modules/vehicle/__tests__/vehicle-integration.test.ts:[2m223:28[22m[39m
+    [90m221| [39m      [35mconst[39m result [33m=[39m vinDecoder[33m.[39m[34mvalidateVIN[39m([33mVALID_VIN_HONDA[39m)[33m;[39m
+    [90m222| [39m
+    [90m223| [39m      [34mexpect[39m(result[33m.[39mvalid)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m   | [39m                           [31m^[39m
+    [90m224| [39m      [34mexpect[39m(result[33m.[39mcheckDigitValid)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m225| [39m    })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[37/55]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/modules/vehicle/__tests__/vehicle-integration.test.ts[2m > [22mVehicle Module Integration Tests[2m > [22mVIN Decoder[2m > [22mshould calculate check digit correctly
+[31m[1mAssertionError[22m: expected '7' to be '3' // Object.is equality[39m
+
+Expected: [32m"3"[39m
+Received: [31m"7"[39m
+
+[36m [2m❯[22m src/modules/vehicle/__tests__/vehicle-integration.test.ts:[2m251:26[22m[39m
+    [90m249| [39m      const checkDigit = vinDecoder.calculateCheckDigit('1HGCM826_3A12…
+    [90m250| [39m
+    [90m251| [39m      [34mexpect[39m(checkDigit)[33m.[39m[34mtoBe[39m([32m'3'[39m)[33m;[39m
+    [90m   | [39m                         [31m^[39m
+    [90m252| [39m    })[33m;[39m
+    [90m253| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[38/55]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/modules/vehicle/__tests__/vehicle-integration.test.ts[2m > [22mVehicle Module Integration Tests[2m > [22mVIN Decoder[2m > [22mshould decode VIN via NHTSA API
+[31m[1mVehicleError[22m: Invalid VIN check digit (position 9)[39m
+[36m [2m❯[22m VINDecoderService.decodeVIN src/modules/vehicle/services/vin-decoder.service.ts:[2m175:13[22m[39m
+    [90m173| [39m    [35mconst[39m validation [33m=[39m [35mthis[39m[33m.[39m[34mvalidateVIN[39m(vin)[33m;[39m
+    [90m174| [39m    [35mif[39m ([33m![39mvalidation[33m.[39mvalid) {
+    [90m175| [39m      [35mthrow[39m [35mnew[39m [33mInvalidVINError[39m(validation[33m.[39merror [33m||[39m [32m'Invalid VIN'[39m)[33m;[39m
+    [90m   | [39m            [31m^[39m
+    [90m176| [39m    }
+    [90m177| [39m
+[90m [2m❯[22m src/modules/vehicle/__tests__/vehicle-integration.test.ts:[2m255:39[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22m[39m
+[31m[1mSerialized Error:[22m[39m [90m{ code: 'INVALID_VIN', statusCode: 400 }[39m
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[39/55]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/modules/vehicle/__tests__/vehicle-integration.test.ts[2m > [22mVehicle Module Integration Tests[2m > [22mVIN Decoder[2m > [22mshould extract manufacturer code from VIN
+[31m[1mVehicleError[22m: Invalid VIN check digit (position 9)[39m
+[36m [2m❯[22m VINDecoderService.getManufacturerCode src/modules/vehicle/services/vin-decoder.service.ts:[2m453:13[22m[39m
+    [90m451| [39m    [35mconst[39m validation [33m=[39m [35mthis[39m[33m.[39m[34mvalidateVIN[39m(vin)[33m;[39m
+    [90m452| [39m    [35mif[39m ([33m![39mvalidation[33m.[39mvalid) {
+    [90m453| [39m      [35mthrow[39m [35mnew[39m [33mInvalidVINError[39m(validation[33m.[39merror [33m||[39m [32m'Invalid VIN'[39m)[33m;[39m
+    [90m   | [39m            [31m^[39m
+    [90m454| [39m    }
+    [90m455| [39m    [35mreturn[39m vin[33m.[39m[34mtoUpperCase[39m()[33m.[39m[34msubstring[39m([34m0[39m[33m,[39m [34m3[39m)[33m;[39m
+[90m [2m❯[22m src/modules/vehicle/__tests__/vehicle-integration.test.ts:[2m265:30[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22m[39m
+[31m[1mSerialized Error:[22m[39m [90m{ code: 'INVALID_VIN', statusCode: 400 }[39m
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[40/55]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/modules/vehicle/__tests__/vehicle-integration.test.ts[2m > [22mVehicle Module Integration Tests[2m > [22mStock Number Service[2m > [22mshould generate sequential stock numbers
+[31m[1mError[22m: Failed to generate stock number: getaddrinfo ENOTFOUND dbaas-db-7003671-do-user-17045839-0.m.db.ondigitalocean.com[39m
+[36m [2m❯[22m StockNumberService.generateStockNumber src/modules/vehicle/services/stock-number.service.ts:[2m73:13[22m[39m
+    [90m 71| [39m    } [35mcatch[39m (error) {
+    [90m 72| [39m      console.error('[StockNumberService] Failed to generate stock num…
+    [90m 73| [39m      throw new Error(`Failed to generate stock number: ${error.messag…
+    [90m   | [39m            [31m^[39m
+    [90m 74| [39m    }
+    [90m 75| [39m  }
+[90m [2m❯[22m src/modules/vehicle/__tests__/vehicle-integration.test.ts:[2m273:22[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[41/55]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/modules/vehicle/__tests__/vehicle-integration.test.ts[2m > [22mVehicle Module Integration Tests[2m > [22mStock Number Service[2m > [22mshould generate stock numbers with prefix
+[31m[1mError[22m: Failed to generate stock number: getaddrinfo ENOTFOUND dbaas-db-7003671-do-user-17045839-0.m.db.ondigitalocean.com[39m
+[36m [2m❯[22m StockNumberService.generateStockNumber src/modules/vehicle/services/stock-number.service.ts:[2m73:13[22m[39m
+    [90m 71| [39m    } [35mcatch[39m (error) {
+    [90m 72| [39m      console.error('[StockNumberService] Failed to generate stock num…
+    [90m 73| [39m      throw new Error(`Failed to generate stock number: ${error.messag…
+    [90m   | [39m            [31m^[39m
+    [90m 74| [39m    }
+    [90m 75| [39m  }
+[90m [2m❯[22m src/modules/vehicle/__tests__/vehicle-integration.test.ts:[2m287:21[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[42/55]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/modules/vehicle/__tests__/vehicle-integration.test.ts[2m > [22mVehicle Module Integration Tests[2m > [22mStock Number Service[2m > [22mshould maintain separate sequences per dealership
+[31m[1mError[22m: Failed to generate stock number: getaddrinfo ENOTFOUND dbaas-db-7003671-do-user-17045839-0.m.db.ondigitalocean.com[39m
+[36m [2m❯[22m StockNumberService.generateStockNumber src/modules/vehicle/services/stock-number.service.ts:[2m73:13[22m[39m
+    [90m 71| [39m    } [35mcatch[39m (error) {
+    [90m 72| [39m      console.error('[StockNumberService] Failed to generate stock num…
+    [90m 73| [39m      throw new Error(`Failed to generate stock number: ${error.messag…
+    [90m   | [39m            [31m^[39m
+    [90m 74| [39m    }
+    [90m 75| [39m  }
+[90m [2m❯[22m src/modules/vehicle/__tests__/vehicle-integration.test.ts:[2m293:22[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[43/55]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/modules/vehicle/__tests__/vehicle-integration.test.ts[2m > [22mVehicle Module Integration Tests[2m > [22mInventory Service[2m > [22mshould get inventory with filters
+[41m[1m FAIL [22m[49m src/modules/vehicle/__tests__/vehicle-integration.test.ts[2m > [22mVehicle Module Integration Tests[2m > [22mInventory Service[2m > [22mshould filter by status
+[41m[1m FAIL [22m[49m src/modules/vehicle/__tests__/vehicle-integration.test.ts[2m > [22mVehicle Module Integration Tests[2m > [22mInventory Service[2m > [22mshould update vehicle status
+[41m[1m FAIL [22m[49m src/modules/vehicle/__tests__/vehicle-integration.test.ts[2m > [22mVehicle Module Integration Tests[2m > [22mInventory Service[2m > [22mshould reserve vehicle for deal
+[41m[1m FAIL [22m[49m src/modules/vehicle/__tests__/vehicle-integration.test.ts[2m > [22mVehicle Module Integration Tests[2m > [22mInventory Service[2m > [22mshould release vehicle reservation
+[41m[1m FAIL [22m[49m src/modules/vehicle/__tests__/vehicle-integration.test.ts[2m > [22mVehicle Module Integration Tests[2m > [22mInventory Service[2m > [22mshould get vehicle history
+[41m[1m FAIL [22m[49m src/modules/vehicle/__tests__/vehicle-integration.test.ts[2m > [22mVehicle Module Integration Tests[2m > [22mInventory Service[2m > [22mshould get inventory summary
+[41m[1m FAIL [22m[49m src/modules/vehicle/__tests__/vehicle-integration.test.ts[2m > [22mVehicle Module Integration Tests[2m > [22mInventory Service[2m > [22mshould get vehicle value metrics
+[31m[1mError[22m: Failed to create vehicle: getaddrinfo ENOTFOUND dbaas-db-7003671-do-user-17045839-0.m.db.ondigitalocean.com[39m
+[36m [2m❯[22m VehicleService.createVehicle src/modules/vehicle/services/vehicle.service.ts:[2m197:13[22m[39m
+    [90m195| [39m      }
+    [90m196| [39m      console.error('[VehicleService] Failed to create vehicle:', erro…
+    [90m197| [39m      [35mthrow[39m [35mnew[39m [33mError[39m([32m`Failed to create vehicle: [39m[36m${[39merror[33m.[39mmessage[36m}[39m[32m`[39m)[33m;[39m
+    [90m   | [39m            [31m^[39m
+    [90m198| [39m    }
+    [90m199| [39m  }
+[90m [2m❯[22m src/modules/vehicle/__tests__/vehicle-integration.test.ts:[2m314:23[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[44/55]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/modules/vehicle/__tests__/vehicle-integration.test.ts[2m > [22mVehicle Module Integration Tests[2m > [22mPerformance & Concurrency[2m > [22mshould handle concurrent stock number generation without duplicates
+[31m[1mError[22m: Failed to generate stock number: getaddrinfo ENOTFOUND dbaas-db-7003671-do-user-17045839-0.m.db.ondigitalocean.com[39m
+[36m [2m❯[22m StockNumberService.generateStockNumber src/modules/vehicle/services/stock-number.service.ts:[2m73:13[22m[39m
+    [90m 71| [39m    } [35mcatch[39m (error) {
+    [90m 72| [39m      console.error('[StockNumberService] Failed to generate stock num…
+    [90m 73| [39m      throw new Error(`Failed to generate stock number: ${error.messag…
+    [90m   | [39m            [31m^[39m
+    [90m 74| [39m    }
+    [90m 75| [39m  }
+[90m [2m❯[22m src/modules/vehicle/__tests__/vehicle-integration.test.ts:[2m448:28[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[45/55]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/modules/vehicle/__tests__/vehicle-integration.test.ts[2m > [22mVehicle Module Integration Tests[2m > [22mPerformance & Concurrency[2m > [22mshould handle concurrent vehicle creation
+[31m[1mError[22m: Failed to create vehicle: getaddrinfo ENOTFOUND dbaas-db-7003671-do-user-17045839-0.m.db.ondigitalocean.com[39m
+[36m [2m❯[22m VehicleService.createVehicle src/modules/vehicle/services/vehicle.service.ts:[2m197:13[22m[39m
+    [90m195| [39m      }
+    [90m196| [39m      console.error('[VehicleService] Failed to create vehicle:', erro…
+    [90m197| [39m      [35mthrow[39m [35mnew[39m [33mError[39m([32m`Failed to create vehicle: [39m[36m${[39merror[33m.[39mmessage[36m}[39m[32m`[39m)[33m;[39m
+    [90m   | [39m            [31m^[39m
+    [90m198| [39m    }
+    [90m199| [39m  }
+[90m [2m❯[22m src/modules/vehicle/__tests__/vehicle-integration.test.ts:[2m466:24[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[46/55]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m17 failed[39m[22m[2m | [22m[1m[32m2 passed[39m[22m[90m (19)[39m
+[2m      Tests [22m [1m[31m41 failed[39m[22m[2m | [22m[1m[32m153 passed[39m[22m[2m | [22m[33m214 skipped[39m[90m (408)[39m
+[2m   Start at [22m 12:12:44
+[2m   Duration [22m 29.76s[2m (transform 4.79s, setup 0ms, collect 16.91s, tests 3.93s, environment 9ms, prepare 603ms)[22m
+

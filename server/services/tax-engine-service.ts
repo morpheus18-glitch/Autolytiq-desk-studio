@@ -101,10 +101,20 @@ export async function calculateTaxProfile(input: TaxQuoteInput): Promise<TaxProf
   return taxProfile;
 }
 
+interface StateTaxRules {
+  vehicleTaxScheme?: string;
+  leaseRules?: {
+    method?: string;
+  };
+  fees?: {
+    feeRules?: Array<{ code: string; taxable?: boolean | string }>;
+  };
+}
+
 /**
  * Determine the tax method based on state rules and deal type
  */
-function determineTaxMethod(stateRules: any, dealType: 'RETAIL' | 'LEASE'): TaxMethod {
+function determineTaxMethod(stateRules: StateTaxRules, dealType: 'RETAIL' | 'LEASE'): TaxMethod {
   if (dealType === 'RETAIL') {
     // Check for special schemes
     if (stateRules.vehicleTaxScheme === 'SPECIAL_TAVT') return 'SPECIAL_TAVT';
@@ -130,9 +140,9 @@ function determineTaxMethod(stateRules: any, dealType: 'RETAIL' | 'LEASE'): TaxM
 /**
  * Check if doc fee is taxable in this state
  */
-function isDocFeeTaxable(stateRules: any): boolean {
+function isDocFeeTaxable(stateRules: StateTaxRules): boolean {
   const feeRules = stateRules.fees?.feeRules || [];
-  const docRule = feeRules.find((r: any) => r.code === 'DOC');
+  const docRule = feeRules.find((r) => r.code === 'DOC');
   if (docRule) {
     return docRule.taxable === true || docRule.taxable === 'YES';
   }
@@ -142,9 +152,9 @@ function isDocFeeTaxable(stateRules: any): boolean {
 /**
  * Check if a product (GAP, VSC) is taxable
  */
-function isProductTaxable(stateRules: any, productCode: string): boolean {
+function isProductTaxable(stateRules: StateTaxRules, productCode: string): boolean {
   const feeRules = stateRules.fees?.feeRules || [];
-  const productRule = feeRules.find((r: any) => r.code === productCode);
+  const productRule = feeRules.find((r) => r.code === productCode);
   if (productRule) {
     return productRule.taxable === true || productRule.taxable === 'YES';
   }
@@ -243,7 +253,7 @@ export async function recalculateDealTaxes(dealId: string): Promise<{
   }
 
   // 2. Get active scenario
-  const activeScenario = deal.scenarios.find((s: any) => s.id === deal.activeScenarioId)
+  const activeScenario = deal.scenarios.find((s) => s.id === deal.activeScenarioId)
     || deal.scenarios[0];
 
   if (!activeScenario) {

@@ -488,7 +488,7 @@ const baseInsertVehicleSchema = createInsertSchema(vehicles).omit({
 });
 
 // Helper to convert empty strings and whitespace to null while preserving coercion
-const emptyStringToNull = (val: any) => {
+const emptyStringToNull = (val: unknown): unknown => {
   if (val === "" || val === undefined || (typeof val === "string" && val.trim() === "")) {
     return null;
   }

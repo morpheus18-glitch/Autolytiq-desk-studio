@@ -72,7 +72,8 @@ router.get('/scenarios/:scenarioId/history', async (req, res) => {
         hasMore: total > parseInt(offset as string) + changes.length,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Scenario Audit] History error:', error);
     return res.status(500).json({ error: 'Failed to retrieve change history' });
   }
@@ -133,7 +134,8 @@ router.get('/scenarios/:scenarioId/playback', async (req, res) => {
       state: reconstructed,
       changesApplied: changes.length,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Scenario Audit] Playback error:', error);
     return res.status(500).json({ error: 'Failed to reconstruct scenario state' });
   }
@@ -181,7 +183,8 @@ router.get('/scenarios/:scenarioId/field/:fieldName', async (req, res) => {
       changes,
       totalChanges: changes.length,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Scenario Audit] Field history error:', error);
     return res.status(500).json({ error: 'Failed to retrieve field history' });
   }
@@ -241,7 +244,8 @@ router.get('/deals/:dealId/scenarios', async (req, res) => {
       changes,
       totalChanges: changes.length,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Scenario Audit] Deal audit error:', error);
     return res.status(500).json({ error: 'Failed to retrieve deal audit trail' });
   }
@@ -288,7 +292,8 @@ router.get('/scenarios/:scenarioId/calculation-snapshots', async (req, res) => {
       snapshots,
       totalSnapshots: snapshots.length,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Scenario Audit] Calculation snapshots error:', error);
     return res.status(500).json({ error: 'Failed to retrieve calculation snapshots' });
   }

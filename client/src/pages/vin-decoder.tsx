@@ -6,15 +6,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import type { DecodedVehicle } from '@/lib/vin-decoder';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Car, Package, DollarSign, Info } from 'lucide-react';
-import { PageLayout } from '@/components/page-layout';
+import { PageHeader } from '@/components/core/page-header';
+import { PageContent } from '@/components/core/page-content';
 import { cn } from '@/lib/utils';
 import {
-  containerPadding,
-  layoutSpacing,
   gridLayouts,
   premiumCardClasses,
-  pageTitleClasses,
-  pageSubtitleClasses,
 } from '@/lib/design-tokens';
 
 export default function VINDecoderPage() {
@@ -69,32 +66,24 @@ export default function VINDecoderPage() {
   };
 
   return (
-    <PageLayout className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <div className={cn(containerPadding, "max-w-6xl", layoutSpacing.page)}>
-        {/* Header */}
-        <div className="mb-8">
+    <div className="h-full flex flex-col">
+      <PageHeader
+        title="VIN Decoder"
+        subtitle="Decode vehicle identification numbers using NHTSA database"
+        icon={<Car />}
+        actions={
           <Button
             variant="ghost"
             onClick={() => navigate('/inventory')}
-            className="mb-4"
             data-testid="button-back"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Inventory
           </Button>
-          
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className={cn(pageTitleClasses, "text-3xl flex items-center gap-2")}>
-                <Car className="w-8 h-8" />
-                VIN Decoder
-              </h1>
-              <p className={cn(pageSubtitleClasses, "mt-1")}>
-                Decode vehicle identification numbers using NHTSA database
-              </p>
-            </div>
-          </div>
-        </div>
+        }
+      />
+
+      <PageContent className="container mx-auto max-w-6xl">
 
         {/* Main VIN Decoder Component */}
         <VINDecoderComponent
@@ -187,7 +176,7 @@ export default function VINDecoderPage() {
             </CardContent>
           </Card>
         )}
-      </div>
-    </PageLayout>
+      </PageContent>
+    </div>
   );
 }

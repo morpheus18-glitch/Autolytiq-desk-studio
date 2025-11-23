@@ -1,17 +1,25 @@
-import { Router } from "express";
+import { Router, Request } from "express";
 import { storage } from "../storage";
 import { insertCustomerSchema } from "@shared/schema";
 import { requireAuth } from "../auth";
 
 const router = Router();
 
+interface AuthRequest extends Request {
+  user?: {
+    id: string;
+    dealershipId: string;
+    role?: string;
+  };
+}
+
 // Helper to extract dealershipId from authenticated user
-function getDealershipId(req: any): string | null {
+function getDealershipId(req: AuthRequest): string | null {
   return req.user?.dealershipId || null;
 }
 
 // Helper to extract userId from authenticated user
-function getUserId(req: any): string | null {
+function getUserId(req: AuthRequest): string | null {
   return req.user?.id || null;
 }
 
@@ -27,8 +35,9 @@ router.get('/', requireAuth, async (req, res) => {
 
     const customers = await storage.searchCustomers('', dealershipId);
     res.json(customers);
-  } catch (error: any) {
-    console.error('[GET /api/customers] Error:', error.message, error.stack);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[GET /api/customers] Error:', errorMessage, error instanceof Error ? error.stack : '');
     res.status(500).json({ error: 'Failed to get customers' });
   }
 });
@@ -85,8 +94,9 @@ router.post('/', requireAuth, async (req, res) => {
 
     const customer = await storage.createCustomer(data, dealershipId);
     res.status(201).json(customer);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message || 'Failed to create customer' });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    res.status(400).json({ error: errorMessage || 'Failed to create customer' });
   }
 });
 
@@ -109,8 +119,9 @@ router.patch('/:id', requireAuth, async (req, res) => {
 
     const customer = await storage.updateCustomer(req.params.id, req.body);
     res.json(customer);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message || 'Failed to update customer' });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    res.status(400).json({ error: errorMessage || 'Failed to update customer' });
   }
 });
 
@@ -133,8 +144,9 @@ router.get('/:id/history', requireAuth, async (req, res) => {
 
     const history = await storage.getCustomerHistory(req.params.id);
     res.json(history);
-  } catch (error: any) {
-    console.error('[GET /api/customers/:id/history] Error:', error.message, error.stack);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[GET /api/customers/:id/history] Error:', errorMessage, error instanceof Error ? error.stack : '');
     res.status(500).json({ error: 'Failed to get customer history' });
   }
 });
@@ -158,8 +170,9 @@ router.get('/:id/notes', requireAuth, async (req, res) => {
 
     const notes = await storage.getCustomerNotes(req.params.id);
     res.json(notes);
-  } catch (error: any) {
-    console.error('[GET /api/customers/:id/notes] Error:', error.message, error.stack);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[GET /api/customers/:id/notes] Error:', errorMessage, error instanceof Error ? error.stack : '');
     res.status(500).json({ error: 'Failed to get customer notes' });
   }
 });
@@ -200,9 +213,10 @@ router.post('/:id/notes', requireAuth, async (req, res) => {
     });
 
     res.status(201).json(note);
-  } catch (error: any) {
-    console.error('[POST /api/customers/:id/notes] Error:', error.message, error.stack);
-    res.status(400).json({ error: error.message || 'Failed to create customer note' });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[POST /api/customers/:id/notes] Error:', errorMessage, error instanceof Error ? error.stack : '');
+    res.status(400).json({ error: errorMessage || 'Failed to create customer note' });
   }
 });
 

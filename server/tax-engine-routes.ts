@@ -39,7 +39,8 @@ router.post('/quote', async (req, res) => {
       success: true,
       taxProfile,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Tax Quote] Error:', error);
     res.status(500).json({
       success: false,
@@ -68,7 +69,8 @@ router.post('/deals/:dealId/recalculate', async (req, res) => {
       scenarioId: result.scenarioId,
       message: 'Taxes recalculated successfully',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Recalculate Taxes] Error:', error);
     res.status(500).json({
       success: false,
@@ -103,7 +105,8 @@ router.get('/customers/:customerId/preview', async (req, res) => {
       method: taxProfile.method,
       rules: taxProfile.rules,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Tax Preview] Error:', error);
     res.status(500).json({
       success: false,
@@ -155,7 +158,8 @@ router.get('/customers/:customerId/validate-address', async (req, res) => {
         county: customer.county,
       } : null,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Validate Address] Error:', error);
     res.status(500).json({
       valid: false,

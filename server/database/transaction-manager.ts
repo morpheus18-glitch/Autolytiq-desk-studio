@@ -90,14 +90,14 @@ class TransactionManager {
   /**
    * Check if error is transient and should be retried
    */
-  private isTransientError(error: any): boolean {
+  private isTransientError(error: unknown): boolean {
     // PostgreSQL error code is in error.code
-    if (error.code && TRANSIENT_ERROR_CODES.has(error.code)) {
+    if (error && typeof error === 'object' && 'code' in error && typeof error.code === 'string' && TRANSIENT_ERROR_CODES.has(error.code)) {
       return true;
     }
 
     // Check for specific error messages
-    const message = error.message?.toLowerCase() || '';
+    const message = (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string' ? error.message : '').toLowerCase();
     if (
       message.includes('deadlock') ||
       message.includes('could not serialize') ||
@@ -126,7 +126,7 @@ class TransactionManager {
     } = options;
 
     const connectionPool = getConnectionPool();
-    let lastError: any;
+    let lastError: unknown;
     let attempt = 0;
 
     while (attempt <= maxRetries) {
@@ -168,7 +168,7 @@ class TransactionManager {
         this.trackSuccess(duration, attempt);
 
         return result;
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Rollback transaction
         try {
           await client.query('ROLLBACK');
