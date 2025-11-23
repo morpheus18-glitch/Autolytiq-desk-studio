@@ -622,7 +622,7 @@ export default function Showroom() {
             )}
           </CardContent>
         </Card>
-      </div>
+        </div>
       </PageContent>
     </div>
   );
