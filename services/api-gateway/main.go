@@ -15,6 +15,10 @@ type Config struct {
 	Port               string
 	DealServiceURL     string
 	CustomerServiceURL string
+	InventoryServiceURL string
+	EmailServiceURL    string
+	UserServiceURL     string
+	ConfigServiceURL   string
 	AllowedOrigins     string
 	JWTSecret          string
 	JWTIssuer          string
@@ -60,13 +64,46 @@ func (s *Server) setupRoutes() {
 	api := s.router.PathPrefix("/api/v1").Subrouter()
 	api.Use(JWTMiddleware(s.jwtConfig))
 
-	// Deal routes (proxy to deal-service)
+	// Deal Service routes
 	api.HandleFunc("/deals", s.proxyToDealService).Methods("GET", "POST")
 	api.HandleFunc("/deals/{id}", s.proxyToDealService).Methods("GET", "PUT", "DELETE")
 
-	// Customer routes (proxy to customer-service)
+	// Customer Service routes
 	api.HandleFunc("/customers", s.proxyToCustomerService).Methods("GET", "POST")
 	api.HandleFunc("/customers/{id}", s.proxyToCustomerService).Methods("GET", "PUT", "DELETE")
+
+	// Inventory Service routes
+	api.HandleFunc("/inventory/vehicles", s.proxyToInventoryService).Methods("GET", "POST")
+	api.HandleFunc("/inventory/vehicles/{id}", s.proxyToInventoryService).Methods("GET", "PUT", "DELETE")
+	api.HandleFunc("/inventory/vehicles/validate-vin", s.proxyToInventoryService).Methods("POST")
+	api.HandleFunc("/inventory/stats", s.proxyToInventoryService).Methods("GET")
+
+	// Email Service routes
+	api.HandleFunc("/email/send", s.proxyToEmailService).Methods("POST")
+	api.HandleFunc("/email/send-template", s.proxyToEmailService).Methods("POST")
+	api.HandleFunc("/email/templates", s.proxyToEmailService).Methods("GET", "POST")
+	api.HandleFunc("/email/templates/{id}", s.proxyToEmailService).Methods("GET", "PUT", "DELETE")
+	api.HandleFunc("/email/logs", s.proxyToEmailService).Methods("GET")
+	api.HandleFunc("/email/logs/{id}", s.proxyToEmailService).Methods("GET")
+
+	// User Service routes
+	api.HandleFunc("/users", s.proxyToUserService).Methods("GET", "POST")
+	api.HandleFunc("/users/{id}", s.proxyToUserService).Methods("GET", "PUT", "DELETE")
+	api.HandleFunc("/users/{id}/role", s.proxyToUserService).Methods("PUT")
+	api.HandleFunc("/users/{id}/password", s.proxyToUserService).Methods("POST")
+	api.HandleFunc("/users/{id}/activity", s.proxyToUserService).Methods("GET")
+	api.HandleFunc("/users/{id}/preferences", s.proxyToUserService).Methods("GET", "PUT")
+	api.HandleFunc("/users/validate-email", s.proxyToUserService).Methods("POST")
+
+	// Config Service routes
+	api.HandleFunc("/config/settings", s.proxyToConfigService).Methods("GET")
+	api.HandleFunc("/config/settings/{key}", s.proxyToConfigService).Methods("GET", "PUT", "DELETE")
+	api.HandleFunc("/config/categories/{category}", s.proxyToConfigService).Methods("GET")
+	api.HandleFunc("/config/features", s.proxyToConfigService).Methods("GET", "POST")
+	api.HandleFunc("/config/features/{key}", s.proxyToConfigService).Methods("GET", "PUT", "DELETE")
+	api.HandleFunc("/config/features/{key}/evaluate", s.proxyToConfigService).Methods("POST")
+	api.HandleFunc("/config/integrations", s.proxyToConfigService).Methods("GET", "POST")
+	api.HandleFunc("/config/integrations/{id}", s.proxyToConfigService).Methods("GET", "PUT", "DELETE")
 }
 
 // healthCheck handler
@@ -85,18 +122,32 @@ func (s *Server) version(w http.ResponseWriter, r *http.Request) {
 
 // proxyToDealService proxies requests to deal-service
 func (s *Server) proxyToDealService(w http.ResponseWriter, r *http.Request) {
-	// TODO: Implement actual proxying logic
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusServiceUnavailable)
-	fmt.Fprintf(w, `{"error":"Deal service integration pending"}`)
+	s.proxyRequest(w, r, s.config.DealServiceURL, "/deals")
 }
 
 // proxyToCustomerService proxies requests to customer-service
 func (s *Server) proxyToCustomerService(w http.ResponseWriter, r *http.Request) {
-	// TODO: Implement actual proxying logic
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusServiceUnavailable)
-	fmt.Fprintf(w, `{"error":"Customer service integration pending"}`)
+	s.proxyRequest(w, r, s.config.CustomerServiceURL, "/customers")
+}
+
+// proxyToInventoryService proxies requests to inventory-service
+func (s *Server) proxyToInventoryService(w http.ResponseWriter, r *http.Request) {
+	s.proxyRequest(w, r, s.config.InventoryServiceURL, "/inventory")
+}
+
+// proxyToEmailService proxies requests to email-service
+func (s *Server) proxyToEmailService(w http.ResponseWriter, r *http.Request) {
+	s.proxyRequest(w, r, s.config.EmailServiceURL, "/email")
+}
+
+// proxyToUserService proxies requests to user-service
+func (s *Server) proxyToUserService(w http.ResponseWriter, r *http.Request) {
+	s.proxyRequest(w, r, s.config.UserServiceURL, "/users")
+}
+
+// proxyToConfigService proxies requests to config-service
+func (s *Server) proxyToConfigService(w http.ResponseWriter, r *http.Request) {
+	s.proxyRequest(w, r, s.config.ConfigServiceURL, "/config")
 }
 
 // loggingMiddleware logs all requests
@@ -145,12 +196,16 @@ func loadConfig() *Config {
 	}
 
 	return &Config{
-		Port:               getEnv("PORT", "8080"),
-		DealServiceURL:     getEnv("DEAL_SERVICE_URL", "http://localhost:8081"),
-		CustomerServiceURL: getEnv("CUSTOMER_SERVICE_URL", "http://localhost:8082"),
-		AllowedOrigins:     getEnv("ALLOWED_ORIGINS", "http://localhost:5173"),
-		JWTSecret:          jwtSecret,
-		JWTIssuer:          getEnv("JWT_ISSUER", "autolytiq-api-gateway"),
+		Port:                getEnv("PORT", "8080"),
+		DealServiceURL:      getEnv("DEAL_SERVICE_URL", "http://localhost:8081"),
+		CustomerServiceURL:  getEnv("CUSTOMER_SERVICE_URL", "http://localhost:8082"),
+		InventoryServiceURL: getEnv("INVENTORY_SERVICE_URL", "http://localhost:8083"),
+		EmailServiceURL:     getEnv("EMAIL_SERVICE_URL", "http://localhost:8084"),
+		UserServiceURL:      getEnv("USER_SERVICE_URL", "http://localhost:8085"),
+		ConfigServiceURL:    getEnv("CONFIG_SERVICE_URL", "http://localhost:8086"),
+		AllowedOrigins:      getEnv("ALLOWED_ORIGINS", "http://localhost:5173"),
+		JWTSecret:           jwtSecret,
+		JWTIssuer:           getEnv("JWT_ISSUER", "autolytiq-api-gateway"),
 	}
 }
 
