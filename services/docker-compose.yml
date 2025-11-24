@@ -6,12 +6,12 @@ services:
       context: ./api-gateway
       dockerfile: Dockerfile
     ports:
-      - "8080:8080"
+      - '${API_GATEWAY_PORT:-8080}:8080'
     environment:
       - PORT=8080
-      - DEAL_SERVICE_URL=http://deal-service:8081
-      - CUSTOMER_SERVICE_URL=http://customer-service:8082
-      - ALLOWED_ORIGINS=*
+      - DEAL_SERVICE_URL=${DEAL_SERVICE_URL:-http://deal-service:8081}
+      - CUSTOMER_SERVICE_URL=${CUSTOMER_SERVICE_URL:-http://customer-service:8082}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173}
     depends_on:
       - deal-service
       - customer-service
@@ -23,10 +23,10 @@ services:
       context: ./deal-service
       dockerfile: Dockerfile
     ports:
-      - "8081:8081"
+      - '${DEAL_SERVICE_PORT:-8081}:8081'
     environment:
       - PORT=8081
-      - DATABASE_URL=postgresql://postgres:password@postgres:5432/autolytiq
+      - DATABASE_URL=${DATABASE_URL}
     depends_on:
       - postgres
     networks:
@@ -37,10 +37,10 @@ services:
       context: ./customer-service
       dockerfile: Dockerfile
     ports:
-      - "8082:8082"
+      - '${CUSTOMER_SERVICE_PORT:-8082}:8082'
     environment:
       - PORT=8082
-      - DATABASE_URL=postgresql://postgres:password@postgres:5432/autolytiq
+      - DATABASE_URL=${DATABASE_URL}
     depends_on:
       - postgres
     networks:
@@ -49,11 +49,11 @@ services:
   postgres:
     image: postgres:15-alpine
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=autolytiq
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB:-autolytiq}
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
