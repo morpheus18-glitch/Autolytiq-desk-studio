@@ -267,17 +267,97 @@ export interface LocalJurisdictionConfig {
 }
 
 /**
+ * Major Jurisdiction Rate Configuration
+ */
+export interface MajorJurisdictionRate {
+  state?: number;
+  local?: number;
+  total?: number;
+  county?: number;
+  city?: number;
+  [key: string]: unknown;
+}
+
+/**
+ * Lease-Specific Extra Configuration
+ */
+export interface LeaseExtrasConfig {
+  leasePriceFormula?: string;
+  tradeInAddsToLeasePrice?: boolean;
+  tradeInReducesBase?: boolean;
+  flatFee?: number;
+  baseRate?: number;
+  excludedFromBase?: string[];
+  includedInBase?: string[];
+  [key: string]: unknown;
+}
+
+/**
+ * County Configuration for multi-county states
+ */
+export interface CountyConfig {
+  rate?: number;
+  effectiveRate?: number;
+  surcharge?: number;
+  [key: string]: unknown;
+}
+
+/**
  * State-Specific Extra Configurations
  *
  * Allows states with unique tax systems (TAVT, HUT, Privilege Tax, etc.) to
  * provide additional configuration beyond the standard DSL.
  */
 export interface StateExtras {
+  // Special tax scheme configs
   gaTAVT?: GeorgiaTAVTConfig; // Georgia Title Ad Valorem Tax config
   ncHUT?: NorthCarolinaHUTConfig; // North Carolina Highway Use Tax config
   wvPrivilege?: WestVirginiaPrivilegeConfig; // West Virginia Privilege Tax config
+
+  // Rate ranges
   localTaxRange?: { min: number; max: number }; // For states with variable local rates
+  localRateRange?: { min: number; max: number }; // Alias for local rate range
+  combinedRateRange?: { min: number; max: number }; // Combined state + local range
+
+  // Jurisdiction data
   localJurisdictions?: Record<string, LocalJurisdictionConfig>; // City/county-specific rates
+  majorJurisdictions?: Record<string, MajorJurisdictionRate>; // Major cities/counties
+  counties?: Record<string, CountyConfig>; // County-specific data
+  jurisdictionCount?: number; // Number of jurisdictions in state
+
+  // State tax rates
+  stateAutomotiveSalesRate?: number; // State automotive sales tax rate (%)
+  stateAutomotiveLeaseRate?: number; // State automotive lease tax rate (%)
+  stateGeneralSalesRate?: number; // General sales tax rate (%)
+  stateGeneralRentalRate?: number; // General rental tax rate (%)
+  baseRate?: number; // Base tax rate
+  effectiveRate?: number; // Effective combined rate
+  maxPassOnRate?: number; // Maximum pass-on rate
+
+  // Fee information
+  avgDocFee?: number; // Average doc fee in state
+  docFeeCap?: number | string | { withIntegrator?: number; withoutIntegrator?: number; notes?: string } | null; // Doc fee cap (null if no cap)
+  titleFee?: number; // Title fee amount
+  titleFees?: Record<string, unknown>; // Complex title fee structures
+
+  // Lease-specific extras
+  leaseRules?: LeaseExtrasConfig;
+
+  // Exemption and credit info
+  allowTradeInCredit?: boolean;
+  tradeInMethod?: string;
+  useTax?: boolean;
+
+  // Metadata
+  lastUpdated?: string;
+  sources?: string[];
+  notes?: string;
+
+  // Drive-out provision (AL, etc.)
+  driveOutProvisionEffectiveDate?: string;
+  driveOutRemovalWindow?: string;
+
+  // Generic extensibility
   [key: string]: unknown; // Other state-specific data
 }
 

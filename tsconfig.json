@@ -5,10 +5,9 @@
     "server/**/*",
     "src/**/*",
     "gateway/**/*",
-    "tests/**/*",
     "scripts/**/*"
   ],
-  "exclude": ["node_modules", "build", "dist"],
+  "exclude": ["node_modules", "build", "dist", "tests/**/*", "scripts/**/*"],
   "compilerOptions": {
     "incremental": true,
     "tsBuildInfoFile": "./node_modules/typescript/tsbuildinfo",

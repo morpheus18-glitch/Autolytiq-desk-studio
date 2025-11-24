@@ -10,6 +10,7 @@ import type {
   TaxCalculationInput,
   TaxCalculationResult,
 } from './types.js';
+import { calculateTax } from './engine/calculateTax.js';
 
 // WASM module will be imported dynamically when available
 let wasmModule: typeof import('./wasm/tax_engine_rs.js') | null = null;
@@ -83,8 +84,7 @@ export async function calculateVehicleTaxWasm(
   }
 
   // Fall back to TypeScript implementation
-  // TODO: Import and call the existing TypeScript calculateVehicleTax function
-  throw new Error('TypeScript fallback not yet implemented. Please initialize WASM module.');
+  return calculateTax(input, rules);
 }
 
 /**
@@ -122,8 +122,9 @@ export async function compareTaxEnginePerformance(
     throw new Error('WASM module not available for performance comparison');
   }
 
-  // Warm up
+  // Warm up both implementations
   await calculateVehicleTaxWasm(rules, input);
+  calculateTax(input, rules);
 
   // Benchmark WASM
   const wasmStart = performance.now();
@@ -133,22 +134,25 @@ export async function compareTaxEnginePerformance(
   }
   const wasmTime = performance.now() - wasmStart;
 
-  // TODO: Benchmark TypeScript implementation
-  // const tsStart = performance.now();
-  // let tsResult: TaxCalculationResult | null = null;
-  // for (let i = 0; i < iterations; i++) {
-  //   tsResult = await calculateVehicleTaxTypeScript(rules, input);
-  // }
-  // const tsTime = performance.now() - tsStart;
+  // Benchmark TypeScript implementation
+  const tsStart = performance.now();
+  let tsResult: TaxCalculationResult | null = null;
+  for (let i = 0; i < iterations; i++) {
+    tsResult = calculateTax(input, rules);
+  }
+  const tsTime = performance.now() - tsStart;
 
-  const tsTime = 0; // Placeholder
-  const tsResult = wasmResult; // Placeholder
+  // Compare results (check total tax matches within small tolerance)
+  const resultsMatch =
+    wasmResult !== null &&
+    tsResult !== null &&
+    Math.abs(wasmResult.taxes.totalTax - tsResult.taxes.totalTax) < 0.01;
 
   return {
     wasmTime,
     tsTime,
-    speedup: tsTime / wasmTime,
-    resultsMatch: JSON.stringify(wasmResult) === JSON.stringify(tsResult),
+    speedup: tsTime > 0 ? tsTime / wasmTime : 0,
+    resultsMatch,
   };
 }
 

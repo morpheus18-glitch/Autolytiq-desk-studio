@@ -382,7 +382,7 @@ const AR_RULES: TaxRulesConfig = {
     fullRateThreshold: 10000,
 
     // Local tax information
-    localTaxRange: "0% to 5%",
+    localTaxRange: { min: 0, max: 0.05 },
     averageLocalRate: 0.02688, // ~2.688% average local rate
     typicalCombinedRate: "8.5% to 11.5%",
 

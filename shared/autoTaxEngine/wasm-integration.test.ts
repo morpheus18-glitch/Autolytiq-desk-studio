@@ -32,45 +32,57 @@ describe('WASM Tax Engine Integration', () => {
 
   it('should calculate Indiana retail tax correctly', async () => {
     const rules: TaxRulesConfig = {
-      state_code: 'IN',
+      stateCode: 'IN',
       version: 1,
-      trade_in_policy: { type: 'FULL' },
+      tradeInPolicy: { type: 'FULL' },
       rebates: [],
-      doc_fee_taxable: false,
-      fee_tax_rules: [],
-      tax_on_accessories: true,
-      tax_on_negative_equity: false,
-      tax_on_service_contracts: false,
-      tax_on_gap: false,
-      vehicle_tax_scheme: 'STATE_ONLY',
-      vehicle_uses_local_sales_tax: false,
-      lease_rules: {
+      docFeeTaxable: false,
+      feeTaxRules: [],
+      taxOnAccessories: true,
+      taxOnNegativeEquity: false,
+      taxOnServiceContracts: false,
+      taxOnGap: false,
+      vehicleTaxScheme: 'STATE_ONLY',
+      vehicleUsesLocalSalesTax: false,
+      leaseRules: {
         method: 'MONTHLY',
-        tax_cap_reduction: false,
-        rebate_behavior: 'FOLLOW_RETAIL_RULE',
-        doc_fee_taxability: 'FOLLOW_RETAIL_RULE',
-        trade_in_credit: 'FOLLOW_RETAIL_RULE',
-        negative_equity_taxable: false,
-        fee_tax_rules: [],
-        title_fee_rules: [],
-        tax_fees_upfront: true,
+        taxCapReduction: false,
+        rebateBehavior: 'FOLLOW_RETAIL_RULE',
+        docFeeTaxability: 'FOLLOW_RETAIL_RULE',
+        tradeInCredit: 'FOLLOW_RETAIL_RULE',
+        negativeEquityTaxable: false,
+        feeTaxRules: [],
+        titleFeeRules: [],
+        taxFeesUpfront: true,
+        specialScheme: 'NONE',
       },
       reciprocity: {
         enabled: false,
         scope: 'NONE',
-        home_state_behavior: 'NONE',
-        require_proof_of_tax_paid: false,
+        homeStateBehavior: 'NONE',
+        requireProofOfTaxPaid: false,
         basis: 'TAX_PAID',
-        cap_at_this_states_tax: true,
-        has_lease_exception: false,
+        capAtThisStatesTax: true,
+        hasLeaseException: false,
       },
     };
 
     const input: TaxCalculationInput = {
-      state_code: 'IN',
-      deal_type: 'RETAIL',
-      vehicle_price: 30000.0,
-      trade_allowance: 5000.0,
+      stateCode: 'IN',
+      asOfDate: '2025-01-01',
+      dealType: 'RETAIL',
+      vehiclePrice: 30000.0,
+      accessoriesAmount: 0,
+      tradeInValue: 5000.0,
+      rebateManufacturer: 0,
+      rebateDealer: 0,
+      docFee: 0,
+      otherFees: [],
+      serviceContracts: 0,
+      gap: 0,
+      negativeEquity: 0,
+      taxAlreadyCollected: 0,
+      rates: [{ label: 'STATE', rate: 0.07 }],
     };
 
     const result = await calculateVehicleTaxWasm(rules, input);
@@ -78,164 +90,204 @@ describe('WASM Tax Engine Integration', () => {
     // Indiana has 7% tax, full trade-in credit
     // Taxable: $30,000 - $5,000 = $25,000
     // Tax: $25,000 * 0.07 = $1,750
-    expect(result.taxable_amount).toBe(25000);
-    expect(result.state_tax).toBeCloseTo(1750, 2);
-    expect(result.local_tax).toBe(0);
-    expect(result.total_tax).toBeCloseTo(1750, 2);
-    expect(result.effective_rate).toBeCloseTo(0.07, 4);
+    expect(result.bases.totalTaxableBase).toBe(25000);
+    expect(result.taxes.totalTax).toBeCloseTo(1750, 2);
+    expect(result.mode).toBe('RETAIL');
   });
 
   it('should handle trade-in credit correctly', async () => {
     const rules: TaxRulesConfig = {
-      state_code: 'CA',
+      stateCode: 'CA',
       version: 1,
-      trade_in_policy: { type: 'FULL' },
+      tradeInPolicy: { type: 'FULL' },
       rebates: [],
-      doc_fee_taxable: false,
-      fee_tax_rules: [],
-      tax_on_accessories: true,
-      tax_on_negative_equity: false,
-      tax_on_service_contracts: false,
-      tax_on_gap: false,
-      vehicle_tax_scheme: 'STATE_PLUS_LOCAL',
-      vehicle_uses_local_sales_tax: true,
-      lease_rules: {
+      docFeeTaxable: false,
+      feeTaxRules: [],
+      taxOnAccessories: true,
+      taxOnNegativeEquity: false,
+      taxOnServiceContracts: false,
+      taxOnGap: false,
+      vehicleTaxScheme: 'STATE_PLUS_LOCAL',
+      vehicleUsesLocalSalesTax: true,
+      leaseRules: {
         method: 'MONTHLY',
-        tax_cap_reduction: false,
-        rebate_behavior: 'FOLLOW_RETAIL_RULE',
-        doc_fee_taxability: 'FOLLOW_RETAIL_RULE',
-        trade_in_credit: 'FOLLOW_RETAIL_RULE',
-        negative_equity_taxable: false,
-        fee_tax_rules: [],
-        title_fee_rules: [],
-        tax_fees_upfront: true,
+        taxCapReduction: false,
+        rebateBehavior: 'FOLLOW_RETAIL_RULE',
+        docFeeTaxability: 'FOLLOW_RETAIL_RULE',
+        tradeInCredit: 'FOLLOW_RETAIL_RULE',
+        negativeEquityTaxable: false,
+        feeTaxRules: [],
+        titleFeeRules: [],
+        taxFeesUpfront: true,
+        specialScheme: 'NONE',
       },
       reciprocity: {
         enabled: false,
         scope: 'NONE',
-        home_state_behavior: 'NONE',
-        require_proof_of_tax_paid: false,
+        homeStateBehavior: 'NONE',
+        requireProofOfTaxPaid: false,
         basis: 'TAX_PAID',
-        cap_at_this_states_tax: true,
-        has_lease_exception: false,
+        capAtThisStatesTax: true,
+        hasLeaseException: false,
       },
     };
 
     const input: TaxCalculationInput = {
-      state_code: 'CA',
-      deal_type: 'RETAIL',
-      vehicle_price: 40000.0,
-      trade_allowance: 10000.0,
+      stateCode: 'CA',
+      asOfDate: '2025-01-01',
+      dealType: 'RETAIL',
+      vehiclePrice: 40000.0,
+      accessoriesAmount: 0,
+      tradeInValue: 10000.0,
+      rebateManufacturer: 0,
+      rebateDealer: 0,
+      docFee: 0,
+      otherFees: [],
+      serviceContracts: 0,
+      gap: 0,
+      negativeEquity: 0,
+      taxAlreadyCollected: 0,
+      rates: [
+        { label: 'STATE', rate: 0.0725 },
+        { label: 'LOCAL', rate: 0.01 },
+      ],
     };
 
     const result = await calculateVehicleTaxWasm(rules, input);
 
     // California has 7.25% state + ~1% local
     // Taxable: $40,000 - $10,000 = $30,000
-    expect(result.taxable_amount).toBe(30000);
-    expect(result.total_tax).toBeGreaterThan(0);
-    expect(result.state_tax).toBeCloseTo(30000 * 0.0725, 2);
+    expect(result.bases.totalTaxableBase).toBe(30000);
+    expect(result.taxes.totalTax).toBeGreaterThan(0);
+    // State tax component: $30,000 * 0.0725 = $2,175
+    const stateTaxComponent = result.taxes.componentTaxes.find(
+      (c) => c.label === 'STATE'
+    );
+    expect(stateTaxComponent?.amount).toBeCloseTo(2175, 2);
   });
 
-  it('should handle no trade-in correctly', async () => {
+  it('should handle no trade-in policy correctly', async () => {
     const rules: TaxRulesConfig = {
-      state_code: 'TX',
+      stateCode: 'TX',
       version: 1,
-      trade_in_policy: { type: 'NONE' },
+      tradeInPolicy: { type: 'NONE' },
       rebates: [],
-      doc_fee_taxable: false,
-      fee_tax_rules: [],
-      tax_on_accessories: true,
-      tax_on_negative_equity: false,
-      tax_on_service_contracts: false,
-      tax_on_gap: false,
-      vehicle_tax_scheme: 'STATE_ONLY',
-      vehicle_uses_local_sales_tax: false,
-      lease_rules: {
+      docFeeTaxable: false,
+      feeTaxRules: [],
+      taxOnAccessories: true,
+      taxOnNegativeEquity: false,
+      taxOnServiceContracts: false,
+      taxOnGap: false,
+      vehicleTaxScheme: 'STATE_ONLY',
+      vehicleUsesLocalSalesTax: false,
+      leaseRules: {
         method: 'MONTHLY',
-        tax_cap_reduction: false,
-        rebate_behavior: 'FOLLOW_RETAIL_RULE',
-        doc_fee_taxability: 'FOLLOW_RETAIL_RULE',
-        trade_in_credit: 'NONE',
-        negative_equity_taxable: false,
-        fee_tax_rules: [],
-        title_fee_rules: [],
-        tax_fees_upfront: true,
+        taxCapReduction: false,
+        rebateBehavior: 'FOLLOW_RETAIL_RULE',
+        docFeeTaxability: 'FOLLOW_RETAIL_RULE',
+        tradeInCredit: 'NONE',
+        negativeEquityTaxable: false,
+        feeTaxRules: [],
+        titleFeeRules: [],
+        taxFeesUpfront: true,
+        specialScheme: 'NONE',
       },
       reciprocity: {
         enabled: false,
         scope: 'NONE',
-        home_state_behavior: 'NONE',
-        require_proof_of_tax_paid: false,
+        homeStateBehavior: 'NONE',
+        requireProofOfTaxPaid: false,
         basis: 'TAX_PAID',
-        cap_at_this_states_tax: true,
-        has_lease_exception: false,
+        capAtThisStatesTax: true,
+        hasLeaseException: false,
       },
     };
 
     const input: TaxCalculationInput = {
-      state_code: 'TX',
-      deal_type: 'RETAIL',
-      vehicle_price: 25000.0,
-      trade_allowance: 5000.0,
+      stateCode: 'TX',
+      asOfDate: '2025-01-01',
+      dealType: 'RETAIL',
+      vehiclePrice: 25000.0,
+      accessoriesAmount: 0,
+      tradeInValue: 5000.0, // Will be ignored due to NONE policy
+      rebateManufacturer: 0,
+      rebateDealer: 0,
+      docFee: 0,
+      otherFees: [],
+      serviceContracts: 0,
+      gap: 0,
+      negativeEquity: 0,
+      taxAlreadyCollected: 0,
+      rates: [{ label: 'STATE', rate: 0.0625 }],
     };
 
     const result = await calculateVehicleTaxWasm(rules, input);
 
-    // Texas doesn't allow trade-in credit
-    // Taxable: $25,000 (full vehicle price)
+    // Texas doesn't allow trade-in credit (NONE policy)
+    // Taxable: $25,000 (full vehicle price, trade-in ignored)
     // Tax: $25,000 * 0.0625 = $1,562.50
-    expect(result.taxable_amount).toBe(25000);
-    expect(result.total_tax).toBeCloseTo(1562.5, 2);
+    expect(result.bases.totalTaxableBase).toBe(25000);
+    expect(result.taxes.totalTax).toBeCloseTo(1562.5, 2);
   });
 
   it('should handle rebates correctly', async () => {
     const rules: TaxRulesConfig = {
-      state_code: 'FL',
+      stateCode: 'FL',
       version: 1,
-      trade_in_policy: { type: 'FULL' },
+      tradeInPolicy: { type: 'FULL' },
       rebates: [
         {
-          applies_to: 'MANUFACTURER',
+          appliesTo: 'MANUFACTURER',
           taxable: false,
         },
       ],
-      doc_fee_taxable: false,
-      fee_tax_rules: [],
-      tax_on_accessories: true,
-      tax_on_negative_equity: false,
-      tax_on_service_contracts: false,
-      tax_on_gap: false,
-      vehicle_tax_scheme: 'STATE_ONLY',
-      vehicle_uses_local_sales_tax: false,
-      lease_rules: {
+      docFeeTaxable: false,
+      feeTaxRules: [],
+      taxOnAccessories: true,
+      taxOnNegativeEquity: false,
+      taxOnServiceContracts: false,
+      taxOnGap: false,
+      vehicleTaxScheme: 'STATE_ONLY',
+      vehicleUsesLocalSalesTax: false,
+      leaseRules: {
         method: 'MONTHLY',
-        tax_cap_reduction: false,
-        rebate_behavior: 'FOLLOW_RETAIL_RULE',
-        doc_fee_taxability: 'FOLLOW_RETAIL_RULE',
-        trade_in_credit: 'FOLLOW_RETAIL_RULE',
-        negative_equity_taxable: false,
-        fee_tax_rules: [],
-        title_fee_rules: [],
-        tax_fees_upfront: true,
+        taxCapReduction: false,
+        rebateBehavior: 'FOLLOW_RETAIL_RULE',
+        docFeeTaxability: 'FOLLOW_RETAIL_RULE',
+        tradeInCredit: 'FOLLOW_RETAIL_RULE',
+        negativeEquityTaxable: false,
+        feeTaxRules: [],
+        titleFeeRules: [],
+        taxFeesUpfront: true,
+        specialScheme: 'NONE',
       },
       reciprocity: {
         enabled: false,
         scope: 'NONE',
-        home_state_behavior: 'NONE',
-        require_proof_of_tax_paid: false,
+        homeStateBehavior: 'NONE',
+        requireProofOfTaxPaid: false,
         basis: 'TAX_PAID',
-        cap_at_this_states_tax: true,
-        has_lease_exception: false,
+        capAtThisStatesTax: true,
+        hasLeaseException: false,
       },
     };
 
     const input: TaxCalculationInput = {
-      state_code: 'FL',
-      deal_type: 'RETAIL',
-      vehicle_price: 35000.0,
-      trade_allowance: 5000.0,
-      rebates: 2000.0,
+      stateCode: 'FL',
+      asOfDate: '2025-01-01',
+      dealType: 'RETAIL',
+      vehiclePrice: 35000.0,
+      accessoriesAmount: 0,
+      tradeInValue: 5000.0,
+      rebateManufacturer: 2000.0,
+      rebateDealer: 0,
+      docFee: 0,
+      otherFees: [],
+      serviceContracts: 0,
+      gap: 0,
+      negativeEquity: 0,
+      taxAlreadyCollected: 0,
+      rates: [{ label: 'STATE', rate: 0.06 }],
     };
 
     const result = await calculateVehicleTaxWasm(rules, input);
@@ -243,103 +295,133 @@ describe('WASM Tax Engine Integration', () => {
     // Florida: 6% tax
     // Taxable: $35,000 - $5,000 (trade) - $2,000 (rebate) = $28,000
     // Tax: $28,000 * 0.06 = $1,680
-    expect(result.taxable_amount).toBe(28000);
-    expect(result.total_tax).toBeCloseTo(1680, 2);
+    expect(result.bases.totalTaxableBase).toBe(28000);
+    expect(result.taxes.totalTax).toBeCloseTo(1680, 2);
   });
 
   it('should handle dealer fees when taxable', async () => {
     const rules: TaxRulesConfig = {
-      state_code: 'IL',
+      stateCode: 'IL',
       version: 1,
-      trade_in_policy: { type: 'FULL' },
+      tradeInPolicy: { type: 'FULL' },
       rebates: [],
-      doc_fee_taxable: true, // Illinois taxes doc fees
-      fee_tax_rules: [],
-      tax_on_accessories: true,
-      tax_on_negative_equity: false,
-      tax_on_service_contracts: false,
-      tax_on_gap: false,
-      vehicle_tax_scheme: 'STATE_PLUS_LOCAL',
-      vehicle_uses_local_sales_tax: true,
-      lease_rules: {
+      docFeeTaxable: true, // Illinois taxes doc fees
+      feeTaxRules: [],
+      taxOnAccessories: true,
+      taxOnNegativeEquity: false,
+      taxOnServiceContracts: false,
+      taxOnGap: false,
+      vehicleTaxScheme: 'STATE_PLUS_LOCAL',
+      vehicleUsesLocalSalesTax: true,
+      leaseRules: {
         method: 'MONTHLY',
-        tax_cap_reduction: false,
-        rebate_behavior: 'FOLLOW_RETAIL_RULE',
-        doc_fee_taxability: 'ALWAYS',
-        trade_in_credit: 'FOLLOW_RETAIL_RULE',
-        negative_equity_taxable: false,
-        fee_tax_rules: [],
-        title_fee_rules: [],
-        tax_fees_upfront: true,
+        taxCapReduction: false,
+        rebateBehavior: 'FOLLOW_RETAIL_RULE',
+        docFeeTaxability: 'ALWAYS',
+        tradeInCredit: 'FOLLOW_RETAIL_RULE',
+        negativeEquityTaxable: false,
+        feeTaxRules: [],
+        titleFeeRules: [],
+        taxFeesUpfront: true,
+        specialScheme: 'NONE',
       },
       reciprocity: {
         enabled: false,
         scope: 'NONE',
-        home_state_behavior: 'NONE',
-        require_proof_of_tax_paid: false,
+        homeStateBehavior: 'NONE',
+        requireProofOfTaxPaid: false,
         basis: 'TAX_PAID',
-        cap_at_this_states_tax: true,
-        has_lease_exception: false,
+        capAtThisStatesTax: true,
+        hasLeaseException: false,
       },
     };
 
     const input: TaxCalculationInput = {
-      state_code: 'IL',
-      deal_type: 'RETAIL',
-      vehicle_price: 30000.0,
-      dealer_fees: 500.0,
+      stateCode: 'IL',
+      asOfDate: '2025-01-01',
+      dealType: 'RETAIL',
+      vehiclePrice: 30000.0,
+      accessoriesAmount: 0,
+      tradeInValue: 0,
+      rebateManufacturer: 0,
+      rebateDealer: 0,
+      docFee: 500.0,
+      otherFees: [],
+      serviceContracts: 0,
+      gap: 0,
+      negativeEquity: 0,
+      taxAlreadyCollected: 0,
+      rates: [
+        { label: 'STATE', rate: 0.0625 },
+        { label: 'LOCAL', rate: 0.02 },
+      ],
     };
 
     const result = await calculateVehicleTaxWasm(rules, input);
 
     // Illinois: 6.25% state + ~2% local
     // Taxable: $30,000 + $500 (doc fee) = $30,500
-    expect(result.taxable_amount).toBe(30500);
-    expect(result.state_tax).toBeCloseTo(30500 * 0.0625, 2);
+    expect(result.bases.totalTaxableBase).toBe(30500);
+    // State tax: $30,500 * 0.0625 = $1,906.25
+    const stateTaxComponent = result.taxes.componentTaxes.find(
+      (c) => c.label === 'STATE'
+    );
+    expect(stateTaxComponent?.amount).toBeCloseTo(1906.25, 2);
   });
 
   it('should handle negative equity when taxable', async () => {
     const rules: TaxRulesConfig = {
-      state_code: 'AZ',
+      stateCode: 'AZ',
       version: 1,
-      trade_in_policy: { type: 'FULL' },
+      tradeInPolicy: { type: 'FULL' },
       rebates: [],
-      doc_fee_taxable: false,
-      fee_tax_rules: [],
-      tax_on_accessories: true,
-      tax_on_negative_equity: true, // Arizona taxes negative equity
-      tax_on_service_contracts: false,
-      tax_on_gap: false,
-      vehicle_tax_scheme: 'STATE_ONLY',
-      vehicle_uses_local_sales_tax: false,
-      lease_rules: {
+      docFeeTaxable: false,
+      feeTaxRules: [],
+      taxOnAccessories: true,
+      taxOnNegativeEquity: true, // Arizona taxes negative equity
+      taxOnServiceContracts: false,
+      taxOnGap: false,
+      vehicleTaxScheme: 'STATE_ONLY',
+      vehicleUsesLocalSalesTax: false,
+      leaseRules: {
         method: 'MONTHLY',
-        tax_cap_reduction: false,
-        rebate_behavior: 'FOLLOW_RETAIL_RULE',
-        doc_fee_taxability: 'FOLLOW_RETAIL_RULE',
-        trade_in_credit: 'FOLLOW_RETAIL_RULE',
-        negative_equity_taxable: true,
-        fee_tax_rules: [],
-        title_fee_rules: [],
-        tax_fees_upfront: true,
+        taxCapReduction: false,
+        rebateBehavior: 'FOLLOW_RETAIL_RULE',
+        docFeeTaxability: 'FOLLOW_RETAIL_RULE',
+        tradeInCredit: 'FOLLOW_RETAIL_RULE',
+        negativeEquityTaxable: true,
+        feeTaxRules: [],
+        titleFeeRules: [],
+        taxFeesUpfront: true,
+        specialScheme: 'NONE',
       },
       reciprocity: {
         enabled: false,
         scope: 'NONE',
-        home_state_behavior: 'NONE',
-        require_proof_of_tax_paid: false,
+        homeStateBehavior: 'NONE',
+        requireProofOfTaxPaid: false,
         basis: 'TAX_PAID',
-        cap_at_this_states_tax: true,
-        has_lease_exception: false,
+        capAtThisStatesTax: true,
+        hasLeaseException: false,
       },
     };
 
     const input: TaxCalculationInput = {
-      state_code: 'AZ',
-      deal_type: 'RETAIL',
-      vehicle_price: 30000.0,
-      trade_allowance: 5000.0,
-      trade_payoff: 8000.0, // $3,000 negative equity
+      stateCode: 'AZ',
+      asOfDate: '2025-01-01',
+      dealType: 'RETAIL',
+      vehiclePrice: 30000.0,
+      accessoriesAmount: 0,
+      tradeInValue: 5000.0,
+      rebateManufacturer: 0,
+      rebateDealer: 0,
+      docFee: 0,
+      otherFees: [],
+      serviceContracts: 0,
+      gap: 0,
+      negativeEquity: 3000.0, // $3,000 negative equity
+      taxAlreadyCollected: 0,
+      rates: [{ label: 'STATE', rate: 0.056 }],
     };
 
     const result = await calculateVehicleTaxWasm(rules, input);
@@ -347,7 +429,7 @@ describe('WASM Tax Engine Integration', () => {
     // Arizona: 5.6% tax
     // Taxable: $30,000 - $5,000 (trade allowance) + $3,000 (negative equity) = $28,000
     // Tax: $28,000 * 0.056 = $1,568
-    expect(result.taxable_amount).toBe(28000);
-    expect(result.total_tax).toBeCloseTo(1568, 2);
+    expect(result.bases.totalTaxableBase).toBe(28000);
+    expect(result.taxes.totalTax).toBeCloseTo(1568, 2);
   });
 });
