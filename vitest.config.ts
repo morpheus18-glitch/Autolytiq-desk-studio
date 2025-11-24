@@ -1,25 +1,38 @@
-import { defineConfig } from "vitest/config";
-import path from "path";
+import { defineConfig } from 'vitest/config';
+import react from '@vitejs/plugin-react';
+import path from 'path';
 
 export default defineConfig({
+  plugins: [react()],
   test: {
     globals: true,
-    environment: "node",
+    environment: 'happy-dom',
+    setupFiles: ['./tests/helpers/setup.ts'],
     coverage: {
-      provider: "v8",
-      reporter: ["text", "json", "html"],
-      include: ["shared/autoTaxEngine/**/*.ts"],
+      provider: 'v8',
+      reporter: ['text', 'html', 'lcov'],
       exclude: [
-        "**/*.test.ts",
-        "**/*.spec.ts",
-        "**/node_modules/**",
-        "**/dist/**",
+        'node_modules/',
+        'tests/',
+        '**/*.spec.ts',
+        '**/*.test.ts',
+        'dist/',
+        '.next/',
+        'migrations/',
+        'scripts/',
       ],
+      lines: 80,
+      functions: 80,
+      branches: 75,
+      statements: 80,
     },
   },
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./shared"),
+      '@': path.resolve(__dirname, './'),
+      '@/server': path.resolve(__dirname, './server'),
+      '@/client': path.resolve(__dirname, './client'),
+      '@/shared': path.resolve(__dirname, './shared'),
     },
   },
 });
