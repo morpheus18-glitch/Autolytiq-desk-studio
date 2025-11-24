@@ -185,6 +185,7 @@ const APPROVED_STRUCTURE = {
       '.gitignore',
       'README.md',
       'CLAUDE.md',
+      'ARCHITECTURE.md',
       'ARCHITECTURE_RULES.md',
       'AGENT_WORKFLOW_GUIDE.md',
       'MANDATORY_SESSION_START.md',
@@ -239,6 +240,11 @@ function isFileApproved(filePath) {
       const fileName = parts[parts.length - 1];
       const isAllowed = config.allowed.some((pattern) => {
         if (pattern === '**/*' || pattern === '**/*.*') return true;
+        if (pattern.startsWith('**/.')) {
+          // Handle patterns like **/.gitignore
+          const specificFile = pattern.slice(3);
+          return fileName === specificFile;
+        }
         if (pattern.startsWith('**/*.')) {
           const ext = pattern.slice(4);
           return fileName.endsWith(ext);
