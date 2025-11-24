@@ -1,0 +1,33 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# LAYER 5: PRE-COMMIT VALIDATION
+# Physically REJECTS commits that violate quality standards
+
+echo "🔍 Running pre-commit validation..."
+
+# Layer 1: File Structure
+echo "→ Validating file structure..."
+npm run validate:structure || {
+  echo "❌ File structure violations detected"
+  echo "   Fix violations before committing"
+  exit 1
+}
+
+# Layer 2: ESLint
+echo "→ Running ESLint..."
+npx lint-staged || {
+  echo "❌ ESLint errors detected"
+  echo "   Fix linting errors before committing"
+  exit 1
+}
+
+# Layer 3 & 4: TypeScript + Tests (run on staged files)
+echo "→ Type checking..."
+npm run typecheck || {
+  echo "❌ TypeScript errors detected"
+  echo "   Fix type errors before committing"
+  exit 1
+}
+
+echo "✅ All validation passed - commit allowed"
