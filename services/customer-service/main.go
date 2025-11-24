@@ -37,17 +37,17 @@ type Config struct {
 
 // Server represents the Customer service server
 type Server struct {
-	router    *mux.Router
-	config    *Config
-	customers map[string]*Customer // In-memory storage for now
+	router *mux.Router
+	config *Config
+	db     CustomerDatabase
 }
 
 // NewServer creates a new Customer service server
-func NewServer(config *Config) *Server {
+func NewServer(config *Config, db CustomerDatabase) *Server {
 	s := &Server{
-		router:    mux.NewRouter(),
-		config:    config,
-		customers: make(map[string]*Customer),
+		router: mux.NewRouter(),
+		config: config,
+		db:     db,
 	}
 
 	s.setupRoutes()
@@ -77,9 +77,17 @@ func (s *Server) healthCheck(w http.ResponseWriter, r *http.Request) {
 
 // listCustomers returns all customers
 func (s *Server) listCustomers(w http.ResponseWriter, r *http.Request) {
-	customers := make([]*Customer, 0, len(s.customers))
-	for _, customer := range s.customers {
-		customers = append(customers, customer)
+	// Optional dealership filter
+	dealershipID := r.URL.Query().Get("dealership_id")
+
+	customers, err := s.db.ListCustomers(dealershipID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to list customers: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	if customers == nil {
+		customers = []*Customer{}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -94,11 +102,16 @@ func (s *Server) createCustomer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Set defaults
 	customer.ID = uuid.New().String()
 	customer.CreatedAt = time.Now()
 	customer.UpdatedAt = time.Now()
 
-	s.customers[customer.ID] = &customer
+	// Save to database
+	if err := s.db.CreateCustomer(&customer); err != nil {
+		http.Error(w, fmt.Sprintf("Failed to create customer: %v", err), http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -110,8 +123,13 @@ func (s *Server) getCustomer(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	customer, exists := s.customers[id]
-	if !exists {
+	customer, err := s.db.GetCustomer(id)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to get customer: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	if customer == nil {
 		http.Error(w, "Customer not found", http.StatusNotFound)
 		return
 	}
@@ -125,12 +143,6 @@ func (s *Server) updateCustomer(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	_, exists := s.customers[id]
-	if !exists {
-		http.Error(w, "Customer not found", http.StatusNotFound)
-		return
-	}
-
 	var updatedCustomer Customer
 	if err := json.NewDecoder(r.Body).Decode(&updatedCustomer); err != nil {
 		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
@@ -139,7 +151,15 @@ func (s *Server) updateCustomer(w http.ResponseWriter, r *http.Request) {
 
 	updatedCustomer.ID = id
 	updatedCustomer.UpdatedAt = time.Now()
-	s.customers[id] = &updatedCustomer
+
+	if err := s.db.UpdateCustomer(&updatedCustomer); err != nil {
+		if err.Error() == fmt.Sprintf("customer not found: %s", id) {
+			http.Error(w, "Customer not found", http.StatusNotFound)
+		} else {
+			http.Error(w, fmt.Sprintf("Failed to update customer: %v", err), http.StatusInternalServerError)
+		}
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(updatedCustomer)
@@ -150,13 +170,14 @@ func (s *Server) deleteCustomer(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	_, exists := s.customers[id]
-	if !exists {
-		http.Error(w, "Customer not found", http.StatusNotFound)
+	if err := s.db.DeleteCustomer(id); err != nil {
+		if err.Error() == fmt.Sprintf("customer not found: %s", id) {
+			http.Error(w, "Customer not found", http.StatusNotFound)
+		} else {
+			http.Error(w, fmt.Sprintf("Failed to delete customer: %v", err), http.StatusInternalServerError)
+		}
 		return
 	}
-
-	delete(s.customers, id)
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -183,7 +204,20 @@ func getEnv(key, defaultValue string) string {
 
 func main() {
 	config := loadConfig()
-	server := NewServer(config)
 
+	// Connect to database
+	db, err := NewDatabase(config.DatabaseURL)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer db.Close()
+
+	// Initialize schema
+	if err := db.InitSchema(); err != nil {
+		log.Fatalf("Failed to initialize schema: %v", err)
+	}
+
+	// Create and start server
+	server := NewServer(config, db)
 	log.Fatal(server.Start())
 }
