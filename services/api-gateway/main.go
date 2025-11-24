@@ -12,16 +12,19 @@ import (
 
 // Config holds application configuration
 type Config struct {
-	Port            string
-	DealServiceURL  string
+	Port               string
+	DealServiceURL     string
 	CustomerServiceURL string
-	AllowedOrigins  string
+	AllowedOrigins     string
+	JWTSecret          string
+	JWTIssuer          string
 }
 
 // Server represents the API Gateway server
 type Server struct {
-	router *mux.Router
-	config *Config
+	router    *mux.Router
+	config    *Config
+	jwtConfig *JWTConfig
 }
 
 // NewServer creates a new API Gateway server
@@ -29,6 +32,10 @@ func NewServer(config *Config) *Server {
 	s := &Server{
 		router: mux.NewRouter(),
 		config: config,
+		jwtConfig: &JWTConfig{
+			SecretKey: config.JWTSecret,
+			Issuer:    config.JWTIssuer,
+		},
 	}
 
 	s.setupRoutes()
@@ -45,21 +52,21 @@ func (s *Server) setupMiddleware() {
 
 // setupRoutes configures all routes for the API Gateway
 func (s *Server) setupRoutes() {
-	// Health check
+	// Public routes (no authentication required)
 	s.router.HandleFunc("/health", s.healthCheck).Methods("GET")
-
-	// API version
 	s.router.HandleFunc("/api/v1/version", s.version).Methods("GET")
 
+	// Protected routes (authentication required)
+	api := s.router.PathPrefix("/api/v1").Subrouter()
+	api.Use(JWTMiddleware(s.jwtConfig))
+
 	// Deal routes (proxy to deal-service)
-	dealRouter := s.router.PathPrefix("/api/v1/deals").Subrouter()
-	dealRouter.HandleFunc("", s.proxyToDealService).Methods("GET", "POST")
-	dealRouter.HandleFunc("/{id}", s.proxyToDealService).Methods("GET", "PUT", "DELETE")
+	api.HandleFunc("/deals", s.proxyToDealService).Methods("GET", "POST")
+	api.HandleFunc("/deals/{id}", s.proxyToDealService).Methods("GET", "PUT", "DELETE")
 
 	// Customer routes (proxy to customer-service)
-	customerRouter := s.router.PathPrefix("/api/v1/customers").Subrouter()
-	customerRouter.HandleFunc("", s.proxyToCustomerService).Methods("GET", "POST")
-	customerRouter.HandleFunc("/{id}", s.proxyToCustomerService).Methods("GET", "PUT", "DELETE")
+	api.HandleFunc("/customers", s.proxyToCustomerService).Methods("GET", "POST")
+	api.HandleFunc("/customers/{id}", s.proxyToCustomerService).Methods("GET", "PUT", "DELETE")
 }
 
 // healthCheck handler
@@ -126,11 +133,24 @@ func (s *Server) Start() error {
 }
 
 func loadConfig() *Config {
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		log.Println("WARNING: JWT_SECRET not set, using development default. DO NOT use in production!")
+		jwtSecret = "development-secret-change-in-production"
+	}
+
+	// Validate JWT secret strength
+	if len(jwtSecret) < 32 {
+		log.Fatalf("JWT_SECRET must be at least 32 characters (got %d). Use a strong random key for security.", len(jwtSecret))
+	}
+
 	return &Config{
-		Port:            getEnv("PORT", "8080"),
-		DealServiceURL:  getEnv("DEAL_SERVICE_URL", "http://localhost:8081"),
+		Port:               getEnv("PORT", "8080"),
+		DealServiceURL:     getEnv("DEAL_SERVICE_URL", "http://localhost:8081"),
 		CustomerServiceURL: getEnv("CUSTOMER_SERVICE_URL", "http://localhost:8082"),
-		AllowedOrigins:  getEnv("ALLOWED_ORIGINS", "*"),
+		AllowedOrigins:     getEnv("ALLOWED_ORIGINS", "http://localhost:5173"),
+		JWTSecret:          jwtSecret,
+		JWTIssuer:          getEnv("JWT_ISSUER", "autolytiq-api-gateway"),
 	}
 }
 
