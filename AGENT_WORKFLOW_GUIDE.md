@@ -31,13 +31,14 @@ git pull origin feat/unbreakable-architecture
 npm run typecheck
 ```
 
-### Read These Files FIRST
-1. **ARCHITECTURE_RULES.md** - Unbreakable architecture rules
-2. **THIS FILE** (AGENT_WORKFLOW_GUIDE.md) - Workflow discipline
-3. **docs/LOGGING_STANDARDS.md** - Logging requirements
-4. **CURRENT_STATUS.md** or **CLAUDE.md** - Current project state
+### Read These Files FIRST (IN ORDER)
+1. **MANDATORY_SESSION_START.md** - CRITICAL: Read this FIRST every session
+2. **ARCHITECTURE_RULES.md** - Unbreakable architecture rules
+3. **THIS FILE** (AGENT_WORKFLOW_GUIDE.md) - Workflow discipline
+4. **CLAUDE.md** - Current project status and priorities
+5. **docs/WEEK2_PLAN.md** - Current phase implementation plan
 
-**DO NOT** start coding until you've read and understood these files.
+**DO NOT** start coding until you've read and understood ALL files.
 
 ---
 
