@@ -38,15 +38,15 @@ type Config struct {
 type Server struct {
 	router *mux.Router
 	config *Config
-	deals  map[string]*Deal // In-memory storage for now
+	db     DealDatabase
 }
 
 // NewServer creates a new Deal service server
-func NewServer(config *Config) *Server {
+func NewServer(config *Config, db DealDatabase) *Server {
 	s := &Server{
 		router: mux.NewRouter(),
 		config: config,
-		deals:  make(map[string]*Deal),
+		db:     db,
 	}
 
 	s.setupRoutes()
@@ -76,9 +76,17 @@ func (s *Server) healthCheck(w http.ResponseWriter, r *http.Request) {
 
 // listDeals returns all deals
 func (s *Server) listDeals(w http.ResponseWriter, r *http.Request) {
-	deals := make([]*Deal, 0, len(s.deals))
-	for _, deal := range s.deals {
-		deals = append(deals, deal)
+	// Optional dealership filter
+	dealershipID := r.URL.Query().Get("dealership_id")
+
+	deals, err := s.db.ListDeals(dealershipID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to list deals: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	if deals == nil {
+		deals = []*Deal{}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -93,12 +101,19 @@ func (s *Server) createDeal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Set defaults
 	deal.ID = uuid.New().String()
 	deal.CreatedAt = time.Now()
 	deal.UpdatedAt = time.Now()
-	deal.Status = "draft"
+	if deal.Status == "" {
+		deal.Status = "draft"
+	}
 
-	s.deals[deal.ID] = &deal
+	// Save to database
+	if err := s.db.CreateDeal(&deal); err != nil {
+		http.Error(w, fmt.Sprintf("Failed to create deal: %v", err), http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -110,8 +125,13 @@ func (s *Server) getDeal(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	deal, exists := s.deals[id]
-	if !exists {
+	deal, err := s.db.GetDeal(id)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to get deal: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	if deal == nil {
 		http.Error(w, "Deal not found", http.StatusNotFound)
 		return
 	}
@@ -125,12 +145,6 @@ func (s *Server) updateDeal(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	_, exists := s.deals[id]
-	if !exists {
-		http.Error(w, "Deal not found", http.StatusNotFound)
-		return
-	}
-
 	var updatedDeal Deal
 	if err := json.NewDecoder(r.Body).Decode(&updatedDeal); err != nil {
 		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
@@ -139,7 +153,15 @@ func (s *Server) updateDeal(w http.ResponseWriter, r *http.Request) {
 
 	updatedDeal.ID = id
 	updatedDeal.UpdatedAt = time.Now()
-	s.deals[id] = &updatedDeal
+
+	if err := s.db.UpdateDeal(&updatedDeal); err != nil {
+		if err.Error() == fmt.Sprintf("deal not found: %s", id) {
+			http.Error(w, "Deal not found", http.StatusNotFound)
+		} else {
+			http.Error(w, fmt.Sprintf("Failed to update deal: %v", err), http.StatusInternalServerError)
+		}
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(updatedDeal)
@@ -150,13 +172,14 @@ func (s *Server) deleteDeal(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	_, exists := s.deals[id]
-	if !exists {
-		http.Error(w, "Deal not found", http.StatusNotFound)
+	if err := s.db.DeleteDeal(id); err != nil {
+		if err.Error() == fmt.Sprintf("deal not found: %s", id) {
+			http.Error(w, "Deal not found", http.StatusNotFound)
+		} else {
+			http.Error(w, fmt.Sprintf("Failed to delete deal: %v", err), http.StatusInternalServerError)
+		}
 		return
 	}
-
-	delete(s.deals, id)
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -183,7 +206,20 @@ func getEnv(key, defaultValue string) string {
 
 func main() {
 	config := loadConfig()
-	server := NewServer(config)
 
+	// Connect to database
+	db, err := NewDatabase(config.DatabaseURL)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer db.Close()
+
+	// Initialize schema
+	if err := db.InitSchema(); err != nil {
+		log.Fatalf("Failed to initialize schema: %v", err)
+	}
+
+	// Create and start server
+	server := NewServer(config, db)
 	log.Fatal(server.Start())
 }
