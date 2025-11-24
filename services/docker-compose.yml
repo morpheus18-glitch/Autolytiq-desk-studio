@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - DEAL_SERVICE_URL=http://deal-service:8081
+      - CUSTOMER_SERVICE_URL=http://customer-service:8082
+      - ALLOWED_ORIGINS=*
+    depends_on:
+      - deal-service
+      - customer-service
+    networks:
+      - autolytiq-network
+
+  deal-service:
+    build:
+      context: ./deal-service
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      - PORT=8081
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/autolytiq
+    depends_on:
+      - postgres
+    networks:
+      - autolytiq-network
+
+  customer-service:
+    build:
+      context: ./customer-service
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8082"
+    environment:
+      - PORT=8082
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/autolytiq
+    depends_on:
+      - postgres
+    networks:
+      - autolytiq-network
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=autolytiq
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - autolytiq-network
+
+networks:
+  autolytiq-network:
+    driver: bridge
+
+volumes:
+  postgres-data:

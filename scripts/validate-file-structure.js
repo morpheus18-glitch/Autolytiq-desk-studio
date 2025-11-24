@@ -41,7 +41,7 @@ const APPROVED_STRUCTURE = {
 
   // Tax engine - UNTOUCHABLE
   'shared/autoTaxEngine': {
-    allowed: ['**/*.ts', '**/*.md', '**/*.json', '**/*.js', '**/*.wasm', '**/*.mjs'],
+    allowed: ['**/*.ts', '**/*.md', '**/*.json', '**/*.js', '**/*.wasm', '**/*.mjs', '**/.gitignore'],
     description: 'Tax engine (PROTECTED - includes Rust WASM module)',
   },
 
@@ -238,7 +238,7 @@ function isFileApproved(filePath) {
       // Check if file matches allowed patterns
       const fileName = parts[parts.length - 1];
       const isAllowed = config.allowed.some((pattern) => {
-        if (pattern === '**/*.*') return true;
+        if (pattern === '**/*' || pattern === '**/*.*') return true;
         if (pattern.startsWith('**/*.')) {
           const ext = pattern.slice(4);
           return fileName.endsWith(ext);

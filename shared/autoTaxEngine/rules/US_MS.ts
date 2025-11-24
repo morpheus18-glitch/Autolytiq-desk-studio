@@ -485,16 +485,23 @@ export const US_MS: TaxRulesConfig = {
    * Department of Revenue. For private party sales, buyer pays use tax when
    * registering vehicle with Mississippi Department of Revenue.
    *
+   * AD VALOREM TAX (Out of Scope):
+   * Mississippi also has an annual motor vehicle ad valorem property tax
+   * (30% of MSRP × local millage rate × depreciation factor) paid at
+   * registration time to the county tax collector. This is NOT collected
+   * by dealers at purchase and is therefore out of scope for this tax engine.
+   *
    * IMPLEMENTATION NOTE:
    * The 3% heavy truck rate requires vehicle weight classification. In the
    * tax engine, this should be handled by checking vehicle GVW:
    * - If GVW > 10,000 lbs: Use 3% rate
    * - If GVW ≤ 10,000 lbs: Use 5% rate
    *
-   * Source: Miss. Code § 27-65-201, Mississippi DOR Sales Tax Rate Tables
+   * Source: Miss. Code § 27-65-201, Mississippi DOR Sales Tax Rate Tables,
+   * Mississippi DOR Motor Vehicle Ad Valorem Tax page
    */
-  vehicleTaxScheme: "STATE_PLUS_LOCAL",
-  vehicleUsesLocalSalesTax: true,
+  vehicleTaxScheme: "STATE_ONLY",
+  vehicleUsesLocalSalesTax: false,
 
   // ============================================================================
   // LEASE TRANSACTION RULES

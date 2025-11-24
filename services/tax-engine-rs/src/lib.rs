@@ -4,6 +4,7 @@
 //! Replaces the TypeScript implementation with proper type safety and performance.
 
 mod calculator;
+mod state_rules;
 mod types;
 
 use wasm_bindgen::prelude::*;
@@ -39,6 +40,18 @@ pub fn calculate_vehicle_tax(rules_json: &str, input_json: &str) -> Result<Strin
 #[wasm_bindgen]
 pub fn get_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
+}
+
+/// Get tax rules for a specific state (WASM-exported function)
+#[wasm_bindgen]
+pub fn get_state_rules(state_code: &str) -> Result<String, JsValue> {
+    let all_rules = state_rules::load_all_state_rules();
+
+    match all_rules.get(state_code) {
+        Some(rules) => serde_json::to_string(rules)
+            .map_err(|e| JsValue::from_str(&format!("Failed to serialize rules: {}", e))),
+        None => Err(JsValue::from_str(&format!("No rules found for state: {}", state_code)))
+    }
 }
 
 #[cfg(test)]
