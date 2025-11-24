@@ -81,3 +81,19 @@ quick-*.mjs
 .replit
 replit.md
 *.png
+
+# Go compiled binaries
+services/*/api-gateway
+services/*/customer-service
+services/*/deal-service
+services/*/inventory-service
+services/*/email-service
+services/*/user-service
+services/*/config-service
+services/api-gateway/api-gateway
+services/customer-service/customer-service
+services/deal-service/deal-service
+services/inventory-service/inventory-service
+services/email-service/email-service
+services/user-service/user-service
+services/config-service/config-service

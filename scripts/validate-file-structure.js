@@ -59,6 +59,12 @@ const APPROVED_STRUCTURE = {
     description: 'Domain models and Zod schemas',
   },
 
+  // Design System
+  'shared/design-system': {
+    allowed: ['**/*.ts', '**/*.tsx', '**/*.css', '**/*.md'],
+    description: 'Shared React design system components and tokens',
+  },
+
   // Database
   'shared/schema.ts': {
     allowed: ['schema.ts'],
@@ -191,6 +197,7 @@ const APPROVED_STRUCTURE = {
       'MANDATORY_SESSION_START.md',
       'CHANGELOG.md',
       'WEEK2_PLAN.md',
+      'DESIGN_SYSTEM_OVERVIEW.md',
     ],
     description: 'Root configuration files',
   },

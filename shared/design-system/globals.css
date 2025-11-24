@@ -1,0 +1,354 @@
+/**
+ * Autolytiq Design System - Global Styles
+ *
+ * This file provides the base CSS custom properties for the design system.
+ * Import this in your main app entry point.
+ *
+ * Usage in main.tsx or App.tsx:
+ * import '@/design-system/globals.css';
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Base font smoothing */
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+  }
+
+  /* Light theme (default) */
+  :root,
+  .light {
+    /* Base colors */
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+
+    /* Cards and containers */
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --card-border: 214 32% 91%;
+
+    /* Popover/Dropdown */
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --popover-border: 214 32% 91%;
+
+    /* Primary action color */
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary/muted actions */
+    --secondary: 214 32% 91%;
+    --secondary-foreground: 222 47% 11%;
+
+    /* Muted backgrounds */
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    /* Accent highlights */
+    --accent: 38 92% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Destructive/error */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Success */
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+
+    /* Warning */
+    --warning: 25 95% 53%;
+    --warning-foreground: 0 0% 100%;
+
+    /* Info */
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+
+    /* Border and input */
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 217 91% 60%;
+
+    /* Sidebar */
+    --sidebar: 0 0% 98%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 40% 96%;
+    --sidebar-accent-foreground: 222 47% 11%;
+  }
+
+  /* Dark theme */
+  .dark {
+    /* Base colors */
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+
+    /* Cards and containers */
+    --card: 215 25% 17%;
+    --card-foreground: 210 40% 98%;
+    --card-border: 215 19% 25%;
+
+    /* Popover/Dropdown */
+    --popover: 215 25% 17%;
+    --popover-foreground: 210 40% 98%;
+    --popover-border: 215 19% 25%;
+
+    /* Primary action color */
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary/muted actions */
+    --secondary: 215 25% 27%;
+    --secondary-foreground: 210 40% 98%;
+
+    /* Muted backgrounds */
+    --muted: 215 25% 27%;
+    --muted-foreground: 215 20% 65%;
+
+    /* Accent highlights */
+    --accent: 38 92% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Destructive/error */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Success */
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+
+    /* Warning */
+    --warning: 25 95% 53%;
+    --warning-foreground: 0 0% 100%;
+
+    /* Info */
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+
+    /* Border and input */
+    --border: 215 19% 25%;
+    --input: 215 19% 25%;
+    --ring: 217 91% 60%;
+
+    /* Sidebar */
+    --sidebar: 222 47% 11%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-border: 215 19% 25%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 215 25% 27%;
+    --sidebar-accent-foreground: 210 40% 98%;
+  }
+}
+
+@layer base {
+  /* Focus-visible styles for better keyboard navigation */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Typography defaults */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-semibold tracking-tight;
+  }
+
+  h1 {
+    @apply text-4xl;
+  }
+
+  h2 {
+    @apply text-3xl;
+  }
+
+  h3 {
+    @apply text-2xl;
+  }
+
+  h4 {
+    @apply text-xl;
+  }
+
+  h5 {
+    @apply text-lg;
+  }
+
+  h6 {
+    @apply text-base;
+  }
+
+  /* Link styles */
+  a {
+    @apply text-primary underline-offset-4 hover:underline;
+  }
+
+  /* Code blocks */
+  code {
+    @apply relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold;
+  }
+
+  /* Selection */
+  ::selection {
+    @apply bg-primary/20;
+  }
+}
+
+/* Custom utilities */
+@layer utilities {
+  /* Text balance for better typography */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Prevent text from wrapping */
+  .no-wrap {
+    white-space: nowrap;
+  }
+
+  /* Visually hidden but accessible to screen readers */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  /* Focus ring utilities */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+  }
+
+  .focus-ring-destructive {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2;
+  }
+
+  /* Scrollbar styling */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    @apply bg-muted;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/30 rounded-full;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/50;
+  }
+}
+
+/* Animation keyframes */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes slide-in-from-top {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-from-bottom {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-from-left {
+  from {
+    transform: translateX(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-from-right {
+  from {
+    transform: translateX(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Animation utilities */
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
+
+.animate-slide-in-from-top {
+  animation: slide-in-from-top 0.2s ease-out;
+}
+
+.animate-slide-in-from-bottom {
+  animation: slide-in-from-bottom 0.2s ease-out;
+}
+
+.animate-slide-in-from-left {
+  animation: slide-in-from-left 0.2s ease-out;
+}
+
+.animate-slide-in-from-right {
+  animation: slide-in-from-right 0.2s ease-out;
+}
