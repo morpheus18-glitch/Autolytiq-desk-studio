@@ -250,6 +250,23 @@ export interface WestVirginiaPrivilegeConfig {
 }
 
 /**
+ * Local Jurisdiction Config
+ * For city/county-specific tax rates
+ */
+export interface LocalJurisdictionConfig {
+  rate?: number;
+  baseRate?: number;
+  countyRate?: number;
+  cityRate?: number;
+  specialRate?: number;
+  effectiveRate?: number;
+  maxPassOnRate?: number;
+  countySurcharge?: number;
+  allowTradeInCredit?: boolean;
+  [key: string]: unknown;
+}
+
+/**
  * State-Specific Extra Configurations
  *
  * Allows states with unique tax systems (TAVT, HUT, Privilege Tax, etc.) to
@@ -259,6 +276,8 @@ export interface StateExtras {
   gaTAVT?: GeorgiaTAVTConfig; // Georgia Title Ad Valorem Tax config
   ncHUT?: NorthCarolinaHUTConfig; // North Carolina Highway Use Tax config
   wvPrivilege?: WestVirginiaPrivilegeConfig; // West Virginia Privilege Tax config
+  localTaxRange?: { min: number; max: number }; // For states with variable local rates
+  localJurisdictions?: Record<string, LocalJurisdictionConfig>; // City/county-specific rates
   [key: string]: unknown; // Other state-specific data
 }
 

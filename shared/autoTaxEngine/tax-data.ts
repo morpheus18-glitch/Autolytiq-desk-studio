@@ -1,7 +1,7 @@
 /**
  * Comprehensive 50-State Automotive Tax Data
  * Current as of 2024
- * 
+ *
  * This module contains accurate tax rates, fees, and rules for all 50 US states
  * plus DC, including special automotive tax considerations.
  */
@@ -79,7 +79,8 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0.01, max: 0.07 },
     averageLocalTax: 0.0514,
     evFee: 200,
-    notes: 'County and city taxes can add up to 7% additional. Trade-in credit applies to the difference.'
+    notes:
+      'County and city taxes can add up to 7% additional. Trade-in credit applies to the difference.',
   },
 
   // ALASKA
@@ -95,7 +96,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     hasLocalTax: true,
     localTaxRanges: { min: 0, max: 0.075 },
     averageLocalTax: 0.0143,
-    notes: 'No state sales tax, but some municipalities charge local sales tax up to 7.5%.'
+    notes: 'No state sales tax, but some municipalities charge local sales tax up to 7.5%.',
   },
 
   // ARIZONA
@@ -115,9 +116,9 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     evFee: 0,
     specialRules: [
       'Uses Vehicle License Tax (VLT) instead of sales tax',
-      'VLT rate decreases annually based on vehicle age'
+      'VLT rate decreases annually based on vehicle age',
     ],
-    notes: 'Arizona charges VLT based on 60% of MSRP, decreasing annually.'
+    notes: 'Arizona charges VLT based on 60% of MSRP, decreasing annually.',
   },
 
   // ARKANSAS
@@ -134,7 +135,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0, max: 0.055 },
     averageLocalTax: 0.0291,
     evFee: 200,
-    notes: 'Trade-in credit reduces taxable amount. Local taxes can add up to 5.5%.'
+    notes: 'Trade-in credit reduces taxable amount. Local taxes can add up to 5.5%.',
   },
 
   // CALIFORNIA
@@ -156,9 +157,9 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     specialRules: [
       'No trade-in tax credit',
       'Doc fee strictly limited to $85',
-      'Registration based on vehicle value'
+      'Registration based on vehicle value',
     ],
-    notes: 'California has no trade-in tax credit. Total tax can exceed 10% in some areas.'
+    notes: 'California has no trade-in tax credit. Total tax can exceed 10% in some areas.',
   },
 
   // COLORADO
@@ -177,7 +178,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     averageLocalTax: 0.0465,
     evIncentive: 2500,
     evFee: 50,
-    notes: 'No trade-in credit. Local taxes vary significantly by county and city.'
+    notes: 'No trade-in credit. Local taxes vary significantly by county and city.',
   },
 
   // CONNECTICUT
@@ -198,10 +199,8 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     luxuryTaxRate: 0.0775,
     evIncentive: 5000,
     evFee: 0,
-    specialRules: [
-      'Luxury tax of 7.75% on vehicles over $50,000'
-    ],
-    notes: 'Trade-in credit available. Luxury tax applies to vehicles over $50,000.'
+    specialRules: ['Luxury tax of 7.75% on vehicles over $50,000'],
+    notes: 'Trade-in credit available. Luxury tax applies to vehicles over $50,000.',
   },
 
   // DELAWARE
@@ -220,10 +219,8 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     averageLocalTax: 0,
     evIncentive: 2500,
     evFee: 0,
-    specialRules: [
-      'Document fee of 4.25% of vehicle price or $429, whichever is less'
-    ],
-    notes: 'No sales tax, but 4.25% document fee on vehicle purchases.'
+    specialRules: ['Document fee of 4.25% of vehicle price or $429, whichever is less'],
+    notes: 'No sales tax, but 4.25% document fee on vehicle purchases.',
   },
 
   // FLORIDA
@@ -242,7 +239,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     averageLocalTax: 0.0105,
     evFee: 0,
     capOnTax: 1500, // Cap on discretionary sales surtax
-    notes: 'Trade-in credit available. County surtax can add up to 2%. Doc fee max $399.'
+    notes: 'Trade-in credit available. County surtax can add up to 2%. Doc fee max $399.',
   },
 
   // GEORGIA
@@ -262,9 +259,9 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     evFee: 213,
     specialRules: [
       'Uses Title Ad Valorem Tax (TAVT) instead of annual ad valorem tax',
-      'One-time TAVT payment at purchase'
+      'One-time TAVT payment at purchase',
     ],
-    notes: 'Georgia charges 6.75% TAVT on fair market value. Trade-in credit available.'
+    notes: 'Georgia charges 6.75% TAVT on fair market value. Trade-in credit available.',
   },
 
   // HAWAII
@@ -281,7 +278,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0.0025, max: 0.005 },
     averageLocalTax: 0.0044,
     evFee: 0,
-    notes: 'No trade-in credit. County surcharge can add 0.25% to 0.5%.'
+    notes: 'No trade-in credit. County surcharge can add 0.25% to 0.5%.',
   },
 
   // IDAHO
@@ -298,7 +295,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0, max: 0.03 },
     averageLocalTax: 0.0003,
     evFee: 140,
-    notes: 'Trade-in credit available. Some resort cities add local option tax.'
+    notes: 'Trade-in credit available. Some resort cities add local option tax.',
   },
 
   // ILLINOIS
@@ -318,7 +315,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0, max: 0.0475 },
     averageLocalTax: 0.0249,
     evFee: 251,
-    notes: 'Trade-in credit on first $10,000. Chicago adds 1.25% city tax.'
+    notes: 'Trade-in credit on first $10,000. Chicago adds 1.25% city tax.',
   },
 
   // INDIANA
@@ -342,7 +339,8 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     accessoriesTaxable: true, // ✅ NEW: Physical accessories ARE taxed in IN
     rebateTaxable: false, // ✅ Rebates themselves are not taxed
     rebateReducesTaxable: false, // ✅ CRITICAL: Rebates do NOT reduce taxable amount in Indiana!
-    notes: 'Trade-in credit available. Flat 7% state tax with no local additions. Doc fee IS taxable. IMPORTANT: Manufacturer rebates do NOT reduce taxable amount - you pay tax on full MSRP before rebates.'
+    notes:
+      'Trade-in credit available. Flat 7% state tax with no local additions. Doc fee IS taxable. IMPORTANT: Manufacturer rebates do NOT reduce taxable amount - you pay tax on full MSRP before rebates.',
   },
 
   // IOWA
@@ -361,7 +359,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0, max: 0.01 },
     averageLocalTax: 0.0082,
     evFee: 130,
-    notes: 'Trade-in credit available. Registration fee based on vehicle value.'
+    notes: 'Trade-in credit available. Registration fee based on vehicle value.',
   },
 
   // KANSAS
@@ -378,7 +376,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0, max: 0.04 },
     averageLocalTax: 0.0217,
     evFee: 100,
-    notes: 'Trade-in credit available. Local taxes can add up to 4%.'
+    notes: 'Trade-in credit available. Local taxes can add up to 4%.',
   },
 
   // KENTUCKY
@@ -395,7 +393,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0, max: 0 },
     averageLocalTax: 0,
     evFee: 120,
-    notes: 'Trade-in credit available. 6% state tax, no local additions.'
+    notes: 'Trade-in credit available. 6% state tax, no local additions.',
   },
 
   // LOUISIANA
@@ -413,7 +411,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0, max: 0.07 },
     averageLocalTax: 0.05,
     evFee: 110,
-    notes: 'Trade-in credit available. Parish taxes can be significant.'
+    notes: 'Trade-in credit available. Parish taxes can be significant.',
   },
 
   // MAINE
@@ -432,7 +430,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     averageLocalTax: 0,
     evIncentive: 2000,
     evFee: 0,
-    notes: 'Trade-in credit available. 5.5% state tax with no local additions.'
+    notes: 'Trade-in credit available. 5.5% state tax with no local additions.',
   },
 
   // MARYLAND
@@ -451,7 +449,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     averageLocalTax: 0,
     evIncentive: 3000,
     evFee: 0,
-    notes: 'No trade-in credit. 6% excise tax on vehicle purchases.'
+    notes: 'No trade-in credit. 6% excise tax on vehicle purchases.',
   },
 
   // MASSACHUSETTS
@@ -470,7 +468,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     averageLocalTax: 0,
     evIncentive: 2500,
     evFee: 0,
-    notes: 'Trade-in credit available. 6.25% state tax, no local additions.'
+    notes: 'Trade-in credit available. 6.25% state tax, no local additions.',
   },
 
   // MICHIGAN
@@ -488,7 +486,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0, max: 0 },
     averageLocalTax: 0,
     evFee: 140,
-    notes: 'Trade-in credit available. 6% state tax, no local additions.'
+    notes: 'Trade-in credit available. 6% state tax, no local additions.',
   },
 
   // MINNESOTA
@@ -506,7 +504,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0, max: 0.02 },
     averageLocalTax: 0.0055,
     evFee: 75,
-    notes: 'Trade-in credit available. Some transit districts add local tax.'
+    notes: 'Trade-in credit available. Some transit districts add local tax.',
   },
 
   // MISSISSIPPI
@@ -523,7 +521,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0, max: 0.02 },
     averageLocalTax: 0.0007,
     evFee: 150,
-    notes: 'Trade-in credit available. 5% state tax on vehicles.'
+    notes: 'Trade-in credit available. 5% state tax on vehicles.',
   },
 
   // MISSOURI
@@ -541,7 +539,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0, max: 0.0525 },
     averageLocalTax: 0.0391,
     evFee: 75,
-    notes: 'Trade-in credit available. Local taxes can be significant.'
+    notes: 'Trade-in credit available. Local taxes can be significant.',
   },
 
   // MONTANA
@@ -558,7 +556,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0, max: 0.03 },
     averageLocalTax: 0,
     evFee: 0,
-    notes: 'No state sales tax. Some resort areas have local option tax.'
+    notes: 'No state sales tax. Some resort areas have local option tax.',
   },
 
   // NEBRASKA
@@ -575,7 +573,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0, max: 0.02 },
     averageLocalTax: 0.014,
     evFee: 75,
-    notes: 'Trade-in credit available. Local taxes up to 2%.'
+    notes: 'Trade-in credit available. Local taxes up to 2%.',
   },
 
   // NEVADA
@@ -593,7 +591,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0, max: 0.01475 },
     averageLocalTax: 0.0129,
     evFee: 0,
-    notes: 'No trade-in credit. Local taxes can add up to 1.475%.'
+    notes: 'No trade-in credit. Local taxes can add up to 1.475%.',
   },
 
   // NEW HAMPSHIRE
@@ -611,7 +609,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0, max: 0 },
     averageLocalTax: 0,
     evFee: 0,
-    notes: 'No sales tax on vehicle purchases.'
+    notes: 'No sales tax on vehicle purchases.',
   },
 
   // NEW JERSEY
@@ -630,7 +628,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     averageLocalTax: 0,
     evIncentive: 4000,
     evFee: 0,
-    notes: 'No trade-in credit. 6.625% state tax.'
+    notes: 'No trade-in credit. 6.625% state tax.',
   },
 
   // NEW MEXICO
@@ -647,7 +645,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0, max: 0.04875 },
     averageLocalTax: 0.0351,
     evFee: 0,
-    notes: 'Trade-in credit available. 4% excise tax on vehicles.'
+    notes: 'Trade-in credit available. 4% excise tax on vehicles.',
   },
 
   // NEW YORK
@@ -666,10 +664,8 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     averageLocalTax: 0.045,
     evIncentive: 2000,
     evFee: 0,
-    specialRules: [
-      'NYC adds 4.5% tax on top of state tax'
-    ],
-    notes: 'Trade-in credit available. NYC has 8.875% total tax.'
+    specialRules: ['NYC adds 4.5% tax on top of state tax'],
+    notes: 'Trade-in credit available. NYC has 8.875% total tax.',
   },
 
   // NORTH CAROLINA
@@ -689,10 +685,8 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     averageLocalTax: 0.0218,
     evFee: 140,
     capOnTax: 2000,
-    specialRules: [
-      'Highway Use Tax capped at $2,000 for vehicles over $66,667'
-    ],
-    notes: '3% Highway Use Tax with $2,000 cap. Trade-in credit available.'
+    specialRules: ['Highway Use Tax capped at $2,000 for vehicles over $66,667'],
+    notes: '3% Highway Use Tax with $2,000 cap. Trade-in credit available.',
   },
 
   // NORTH DAKOTA
@@ -709,7 +703,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0, max: 0.03 },
     averageLocalTax: 0.0196,
     evFee: 120,
-    notes: 'No trade-in credit. 5% motor vehicle excise tax.'
+    notes: 'No trade-in credit. 5% motor vehicle excise tax.',
   },
 
   // OHIO
@@ -727,7 +721,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0, max: 0.0225 },
     averageLocalTax: 0.0142,
     evFee: 200,
-    notes: 'Trade-in credit available. County tax can add up to 2.25%.'
+    notes: 'Trade-in credit available. County tax can add up to 2.25%.',
   },
 
   // OKLAHOMA
@@ -744,7 +738,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0, max: 0.065 },
     averageLocalTax: 0.0442,
     evFee: 110,
-    notes: 'Trade-in credit available. 3.25% excise tax plus local taxes.'
+    notes: 'Trade-in credit available. 3.25% excise tax plus local taxes.',
   },
 
   // OREGON
@@ -763,10 +757,8 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     averageLocalTax: 0,
     evIncentive: 2500,
     evFee: 0,
-    specialRules: [
-      'Privilege tax of 0.5% on vehicles 20 MPG or less'
-    ],
-    notes: 'No sales tax. Privilege tax on low-MPG vehicles.'
+    specialRules: ['Privilege tax of 0.5% on vehicles 20 MPG or less'],
+    notes: 'No sales tax. Privilege tax on low-MPG vehicles.',
   },
 
   // PENNSYLVANIA
@@ -783,11 +775,8 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0.01, max: 0.02 },
     averageLocalTax: 0.0034,
     evFee: 0,
-    specialRules: [
-      'Allegheny County adds 1% tax',
-      'Philadelphia adds 2% tax'
-    ],
-    notes: 'Trade-in credit available. Philadelphia has 8% total tax.'
+    specialRules: ['Allegheny County adds 1% tax', 'Philadelphia adds 2% tax'],
+    notes: 'Trade-in credit available. Philadelphia has 8% total tax.',
   },
 
   // RHODE ISLAND
@@ -807,7 +796,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     averageLocalTax: 0,
     evIncentive: 2500,
     evFee: 0,
-    notes: 'Trade-in credit up to value of new vehicle. 7% state tax.'
+    notes: 'Trade-in credit up to value of new vehicle. 7% state tax.',
   },
 
   // SOUTH CAROLINA
@@ -826,10 +815,8 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     averageLocalTax: 0.0143,
     evFee: 120,
     capOnTax: 500,
-    specialRules: [
-      'Sales tax capped at $500 per vehicle'
-    ],
-    notes: 'Trade-in credit available. 5% tax capped at $500.'
+    specialRules: ['Sales tax capped at $500 per vehicle'],
+    notes: 'Trade-in credit available. 5% tax capped at $500.',
   },
 
   // SOUTH DAKOTA
@@ -846,7 +833,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0, max: 0.02 },
     averageLocalTax: 0.019,
     evFee: 50,
-    notes: 'Trade-in credit available. 4% excise tax on vehicles.'
+    notes: 'Trade-in credit available. 4% excise tax on vehicles.',
   },
 
   // TENNESSEE
@@ -864,7 +851,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0.0125, max: 0.0275 },
     averageLocalTax: 0.0247,
     evFee: 100,
-    notes: 'No trade-in credit. Local tax 1.25-2.75% on first $1,600.'
+    notes: 'No trade-in credit. Local tax 1.25-2.75% on first $1,600.',
   },
 
   // TEXAS
@@ -882,7 +869,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0, max: 0.02 },
     averageLocalTax: 0.0192,
     evFee: 200,
-    notes: 'Trade-in credit available. Local taxes up to 2% for total of 8.25%.'
+    notes: 'Trade-in credit available. Local taxes up to 2% for total of 8.25%.',
   },
 
   // UTAH
@@ -900,7 +887,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0.0125, max: 0.035 },
     averageLocalTax: 0.0221,
     evFee: 120,
-    notes: 'Trade-in credit available. Local taxes can be significant.'
+    notes: 'Trade-in credit available. Local taxes can be significant.',
   },
 
   // VERMONT
@@ -918,7 +905,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     averageLocalTax: 0.0024,
     evIncentive: 4000,
     evFee: 0,
-    notes: 'Trade-in credit available. Some towns add 1% local option tax.'
+    notes: 'Trade-in credit available. Some towns add 1% local option tax.',
   },
 
   // VIRGINIA
@@ -936,7 +923,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0, max: 0.01 },
     averageLocalTax: 0.0035,
     evFee: 0,
-    notes: 'Trade-in credit available. 4.15% motor vehicle sales tax.'
+    notes: 'Trade-in credit available. 4.15% motor vehicle sales tax.',
   },
 
   // WASHINGTON
@@ -954,7 +941,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0.005, max: 0.04 },
     averageLocalTax: 0.029,
     evFee: 150,
-    notes: 'No trade-in credit. Total tax can exceed 10% in Seattle area.'
+    notes: 'No trade-in credit. Total tax can exceed 10% in Seattle area.',
   },
 
   // WEST VIRGINIA
@@ -972,7 +959,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0, max: 0.01 },
     averageLocalTax: 0.007,
     evFee: 200,
-    notes: 'Trade-in credit available. Some cities add up to 1%.'
+    notes: 'Trade-in credit available. Some cities add up to 1%.',
   },
 
   // WISCONSIN
@@ -989,7 +976,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0, max: 0.006 },
     averageLocalTax: 0.0044,
     evFee: 100,
-    notes: 'Trade-in credit available. County tax up to 0.6%.'
+    notes: 'Trade-in credit available. County tax up to 0.6%.',
   },
 
   // WYOMING
@@ -1006,7 +993,7 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     localTaxRanges: { min: 0, max: 0.02 },
     averageLocalTax: 0.0136,
     evFee: 200,
-    notes: 'Trade-in credit available. Local taxes up to 2%.'
+    notes: 'Trade-in credit available. Local taxes up to 2%.',
   },
 
   // WASHINGTON DC
@@ -1024,8 +1011,8 @@ export const STATE_TAX_DATA: Record<string, StateTax> = {
     averageLocalTax: 0,
     evIncentive: 0,
     evFee: 0,
-    notes: 'No trade-in credit. 6% excise tax on vehicle purchases.'
-  }
+    notes: 'No trade-in credit. 6% excise tax on vehicle purchases.',
+  },
 };
 
 // Sample local tax rates for major cities/counties
@@ -1035,31 +1022,31 @@ export const LOCAL_TAX_RATES: LocalTaxRate[] = [
   { zipCode: '94102', city: 'San Francisco', county: 'San Francisco', localTaxRate: 0.01375 },
   { zipCode: '92101', city: 'San Diego', county: 'San Diego', localTaxRate: 0.0175 },
   { zipCode: '95814', city: 'Sacramento', county: 'Sacramento', localTaxRate: 0.0175 },
-  
+
   // Texas
   { zipCode: '77001', city: 'Houston', county: 'Harris', localTaxRate: 0.02 },
   { zipCode: '78701', city: 'Austin', county: 'Travis', localTaxRate: 0.02 },
   { zipCode: '75201', city: 'Dallas', county: 'Dallas', localTaxRate: 0.02 },
   { zipCode: '78201', city: 'San Antonio', county: 'Bexar', localTaxRate: 0.02 },
-  
+
   // Florida
   { zipCode: '33101', city: 'Miami', county: 'Miami-Dade', localTaxRate: 0.01 },
   { zipCode: '32801', city: 'Orlando', county: 'Orange', localTaxRate: 0.005 },
   { zipCode: '33601', city: 'Tampa', county: 'Hillsborough', localTaxRate: 0.015 },
   { zipCode: '32202', city: 'Jacksonville', county: 'Duval', localTaxRate: 0.015 },
-  
+
   // New York
   { zipCode: '10001', city: 'New York City', county: 'New York', localTaxRate: 0.04875 },
   { zipCode: '11201', city: 'Brooklyn', county: 'Kings', localTaxRate: 0.04875 },
   { zipCode: '10451', city: 'Bronx', county: 'Bronx', localTaxRate: 0.04875 },
   { zipCode: '14201', city: 'Buffalo', county: 'Erie', localTaxRate: 0.0475 },
-  
+
   // Illinois
   { zipCode: '60601', city: 'Chicago', county: 'Cook', localTaxRate: 0.0475 },
   { zipCode: '60101', city: 'Addison', county: 'DuPage', localTaxRate: 0.0175 },
   { zipCode: '61601', city: 'Peoria', county: 'Peoria', localTaxRate: 0.035 },
   { zipCode: '62701', city: 'Springfield', county: 'Sangamon', localTaxRate: 0.03 },
-  
+
   // Add more as needed for accurate calculations
 ];
 
@@ -1074,7 +1061,7 @@ export function getStateTaxInfo(stateCode: string): StateTax | null {
  * Get local tax rate by ZIP code
  */
 export function getLocalTaxRate(zipCode: string): LocalTaxRate | null {
-  return LOCAL_TAX_RATES.find(rate => rate.zipCode === zipCode) || null;
+  return LOCAL_TAX_RATES.find((rate) => rate.zipCode === zipCode) || null;
 }
 
 /**
@@ -1083,9 +1070,9 @@ export function getLocalTaxRate(zipCode: string): LocalTaxRate | null {
 export function getEffectiveTaxRate(stateCode: string, zipCode?: string): number {
   const stateTax = getStateTaxInfo(stateCode);
   if (!stateTax) return 0;
-  
+
   let effectiveRate = stateTax.baseTaxRate;
-  
+
   if (zipCode) {
     const localTax = getLocalTaxRate(zipCode);
     if (localTax) {
@@ -1095,7 +1082,7 @@ export function getEffectiveTaxRate(stateCode: string, zipCode?: string): number
       effectiveRate += stateTax.averageLocalTax;
     }
   }
-  
+
   return effectiveRate;
 }
 
@@ -1111,7 +1098,5 @@ export function hasTradeInCredit(stateCode: string): boolean {
  * Get all states sorted alphabetically
  */
 export function getAllStates(): StateTax[] {
-  return Object.values(STATE_TAX_DATA).sort((a, b) => 
-    a.stateName.localeCompare(b.stateName)
-  );
+  return Object.values(STATE_TAX_DATA).sort((a, b) => a.stateName.localeCompare(b.stateName));
 }

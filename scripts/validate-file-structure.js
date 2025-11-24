@@ -33,10 +33,16 @@ const colors = {
  * Any file outside these patterns is REJECTED.
  */
 const APPROVED_STRUCTURE = {
+  // Rust WASM services
+  'services': {
+    allowed: ['**/*'],
+    description: 'Rust/WASM microservices (tax-engine-rs, etc.)',
+  },
+
   // Tax engine - UNTOUCHABLE
   'shared/autoTaxEngine': {
-    allowed: ['**/*.ts', '**/*.md', '**/*.json'],
-    description: 'Tax engine (PROTECTED - no modifications without permission)',
+    allowed: ['**/*.ts', '**/*.md', '**/*.json', '**/*.js', '**/*.wasm', '**/*.mjs'],
+    description: 'Tax engine (PROTECTED - includes Rust WASM module)',
   },
 
   // Shared contracts and types
@@ -201,7 +207,7 @@ const FORBIDDEN_DIRECTORIES = [
   'frontend/src/modules', // Modules belong in src/modules
   'backend',
   'api',
-  'services', // Should be in src/modules
+  // 'services' is now ALLOWED for Rust/WASM microservices
 ];
 
 /**
