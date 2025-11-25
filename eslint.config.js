@@ -273,6 +273,125 @@ export default [
   },
 
   // ============================================
+  // CLIENT FRONTEND - React application
+  // ============================================
+  {
+    files: ['client/**/*.ts', 'client/**/*.tsx'],
+    languageOptions: {
+      parser: tsparser,
+      parserOptions: {
+        project: './client/tsconfig.json',
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+        ecmaFeatures: {
+          jsx: true,
+        },
+      },
+      globals: {
+        console: 'readonly',
+        window: 'readonly',
+        document: 'readonly',
+        localStorage: 'readonly',
+        sessionStorage: 'readonly',
+        fetch: 'readonly',
+        FormData: 'readonly',
+        performance: 'readonly',
+        Response: 'readonly',
+        Request: 'readonly',
+        Headers: 'readonly',
+        URL: 'readonly',
+        URLSearchParams: 'readonly',
+        atob: 'readonly',
+        btoa: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        React: 'readonly',
+      },
+    },
+    plugins: {
+      '@typescript-eslint': tseslint,
+      'import': importPlugin,
+    },
+    rules: {
+      // React frontend uses more relaxed rules
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-unused-vars': 'off',
+      'no-unused-vars': 'off',
+      '@typescript-eslint/consistent-type-imports': [
+        'error',
+        {
+          prefer: 'type-imports',
+          fixStyle: 'separate-type-imports',
+        },
+      ],
+      // Relax for React development
+      '@typescript-eslint/explicit-function-return-type': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+      '@typescript-eslint/no-floating-promises': 'off',
+      '@typescript-eslint/no-misused-promises': 'off',
+      '@typescript-eslint/naming-convention': 'off',
+      'no-magic-numbers': 'off',
+      'max-lines': 'off',
+      'max-lines-per-function': 'off',
+      'no-console': ['error', { allow: ['warn', 'error'] }],
+      'complexity': ['error', 20],
+      'max-depth': ['error', 5],
+      'eqeqeq': ['error', 'always'],
+    },
+  },
+
+  // ============================================
+  // SHARED DESIGN SYSTEM - React components
+  // ============================================
+  {
+    files: ['shared/design-system/**/*.ts', 'shared/design-system/**/*.tsx'],
+    languageOptions: {
+      parser: tsparser,
+      parserOptions: {
+        project: './client/tsconfig.json',
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+        ecmaFeatures: {
+          jsx: true,
+        },
+      },
+      globals: {
+        console: 'readonly',
+        window: 'readonly',
+        document: 'readonly',
+        localStorage: 'readonly',
+      },
+    },
+    plugins: {
+      '@typescript-eslint': tseslint,
+      'import': importPlugin,
+    },
+    rules: {
+      // Design system components - relaxed rules
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/explicit-function-return-type': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+      '@typescript-eslint/no-floating-promises': 'off',
+      '@typescript-eslint/no-misused-promises': 'off',
+      '@typescript-eslint/naming-convention': 'off',
+      'no-magic-numbers': 'off',
+      'max-lines': 'off',
+      'max-lines-per-function': 'off',
+      'no-console': ['error', { allow: ['warn', 'error'] }],
+    },
+  },
+
+  // ============================================
   // IGNORE PATTERNS
   // ============================================
   {
@@ -284,10 +403,15 @@ export default [
       'coverage/**',
       'migrations/**',
       'public/**',
+      'client/node_modules/**',
+      'client/dist/**',
       '**/*.js',
       '**/*.mjs',
       '!eslint.config.js',
       '!*.config.js',
+      'vite.config.ts',
+      'client/vite.config.ts',
+      '*.config.ts',
     ],
   },
 ];

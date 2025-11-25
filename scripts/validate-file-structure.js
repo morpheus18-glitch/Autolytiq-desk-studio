@@ -167,6 +167,12 @@ const APPROVED_STRUCTURE = {
     description: 'Public static assets',
   },
 
+  // Client frontend (Vite + React)
+  'client': {
+    allowed: ['**/*.ts', '**/*.tsx', '**/*.css', '**/*.html', '**/*.json', '**/*.js', '**/*.svg', '**/*.md', '**/*.mjs'],
+    description: 'Vite + React frontend application',
+  },
+
   // Config files (root level only)
   '.': {
     allowed: [
@@ -208,7 +214,6 @@ const APPROVED_STRUCTURE = {
  * Any files in these directories are REJECTED.
  */
 const FORBIDDEN_DIRECTORIES = [
-  'client',
   'server',
   'src/client',
   'src/server',
@@ -216,6 +221,7 @@ const FORBIDDEN_DIRECTORIES = [
   'backend',
   'api',
   // 'services' is now ALLOWED for Rust/WASM microservices
+  // 'client' is ALLOWED for the Vite+React frontend application
 ];
 
 /**
