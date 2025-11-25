@@ -284,4 +284,48 @@ export const queryKeys = {
     all: ['config'] as const,
     dealership: () => [...queryKeys.config.all, 'dealership'] as const,
   },
+
+  // Showroom
+  showroom: {
+    all: ['showroom'] as const,
+    visits: {
+      all: () => [...queryKeys.showroom.all, 'visits'] as const,
+      lists: () => [...queryKeys.showroom.visits.all(), 'list'] as const,
+      list: (filters: Record<string, unknown>) =>
+        [...queryKeys.showroom.visits.lists(), filters] as const,
+      details: () => [...queryKeys.showroom.visits.all(), 'detail'] as const,
+      detail: (id: string) => [...queryKeys.showroom.visits.details(), id] as const,
+    },
+    workflowConfig: () => [...queryKeys.showroom.all, 'workflowConfig'] as const,
+  },
+
+  // Messaging
+  messaging: {
+    all: ['messaging'] as const,
+    conversations: {
+      all: () => [...queryKeys.messaging.all, 'conversations'] as const,
+      lists: () => [...queryKeys.messaging.conversations.all(), 'list'] as const,
+      list: (filters: Record<string, unknown>) =>
+        [...queryKeys.messaging.conversations.lists(), filters] as const,
+      details: () => [...queryKeys.messaging.conversations.all(), 'detail'] as const,
+      detail: (id: string) => [...queryKeys.messaging.conversations.details(), id] as const,
+    },
+    messages: {
+      all: () => [...queryKeys.messaging.all, 'messages'] as const,
+      lists: () => [...queryKeys.messaging.messages.all(), 'list'] as const,
+      list: (conversationId: string, filters: Record<string, unknown>) =>
+        [...queryKeys.messaging.messages.lists(), conversationId, filters] as const,
+      details: () => [...queryKeys.messaging.messages.all(), 'detail'] as const,
+      detail: (conversationId: string, messageId: string) =>
+        [...queryKeys.messaging.messages.details(), conversationId, messageId] as const,
+    },
+  },
+
+  // Settings
+  settings: {
+    all: ['settings'] as const,
+    user: () => [...queryKeys.settings.all, 'user'] as const,
+    userSection: (section: string) => [...queryKeys.settings.user(), section] as const,
+    dealership: () => [...queryKeys.settings.all, 'dealership'] as const,
+  },
 } as const;

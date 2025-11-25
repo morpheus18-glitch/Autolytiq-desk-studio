@@ -11,8 +11,9 @@ export interface User {
   id: string;
   dealership_id: string;
   email: string;
-  name: string;
-  role: 'ADMIN' | 'MANAGER' | 'SALESPERSON';
+  first_name: string;
+  last_name: string;
+  role: 'ADMIN' | 'MANAGER' | 'SALESPERSON' | 'FINANCE' | 'SERVICE';
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -26,7 +27,7 @@ interface UsersResponse {
 export function useUsers() {
   return useQuery({
     queryKey: ['users'],
-    queryFn: () => api.get<UsersResponse>('/users'),
+    queryFn: () => api.get<UsersResponse>('/v1/users'),
   });
 }
 
@@ -34,7 +35,8 @@ export function useUpdateProfile() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: { name: string; email: string }) => api.put('/users/me', data),
+    mutationFn: (data: { first_name: string; last_name: string; email: string }) =>
+      api.put('/v1/users/me', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
     },
@@ -44,6 +46,6 @@ export function useUpdateProfile() {
 export function useChangePassword() {
   return useMutation({
     mutationFn: (data: { current_password: string; new_password: string }) =>
-      api.post('/users/me/password', data),
+      api.post('/v1/auth/change-password', data),
   });
 }

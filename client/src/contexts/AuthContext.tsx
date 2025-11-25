@@ -65,18 +65,24 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
       return;
     }
 
-    // Parse user from token
+    // Parse user from token for basic info
     const payload = parseJwtPayload<JwtPayload>(token);
     if (payload) {
-      setUser({
-        id: payload.sub,
-        email: payload.email,
-        name: payload.name,
-        role: payload.role,
-        dealership_id: payload.dealership_id,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      });
+      // Try to fetch full user data from API
+      try {
+        const userData = await api.get<User>('/v1/auth/me');
+        setUser(userData);
+      } catch {
+        // Fallback to token data if API fails
+        setUser({
+          id: payload.user_id || payload.sub,
+          email: payload.email,
+          first_name: '',
+          last_name: '',
+          role: payload.role,
+          dealership_id: payload.dealership_id,
+        });
+      }
     }
 
     setIsLoading(false);

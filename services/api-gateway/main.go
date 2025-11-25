@@ -12,16 +12,20 @@ import (
 
 // Config holds application configuration
 type Config struct {
-	Port               string
-	DealServiceURL     string
-	CustomerServiceURL string
+	Port                string
+	AuthServiceURL      string
+	DealServiceURL      string
+	CustomerServiceURL  string
 	InventoryServiceURL string
-	EmailServiceURL    string
-	UserServiceURL     string
-	ConfigServiceURL   string
-	AllowedOrigins     string
-	JWTSecret          string
-	JWTIssuer          string
+	EmailServiceURL     string
+	UserServiceURL      string
+	ConfigServiceURL    string
+	ShowroomServiceURL  string
+	MessagingServiceURL string
+	SettingsServiceURL  string
+	AllowedOrigins      string
+	JWTSecret           string
+	JWTIssuer           string
 }
 
 // Server represents the API Gateway server
@@ -59,6 +63,21 @@ func (s *Server) setupRoutes() {
 	// Public routes (no authentication required)
 	s.router.HandleFunc("/health", s.healthCheck).Methods("GET")
 	s.router.HandleFunc("/api/v1/version", s.version).Methods("GET")
+
+	// Auth routes (public - no JWT required)
+	s.router.HandleFunc("/api/v1/auth/register", s.proxyToAuthService).Methods("POST")
+	s.router.HandleFunc("/api/v1/auth/login", s.proxyToAuthService).Methods("POST")
+	s.router.HandleFunc("/api/v1/auth/refresh", s.proxyToAuthService).Methods("POST")
+	s.router.HandleFunc("/api/v1/auth/forgot-password", s.proxyToAuthService).Methods("POST")
+	s.router.HandleFunc("/api/v1/auth/reset-password", s.proxyToAuthService).Methods("POST")
+	s.router.HandleFunc("/api/v1/auth/verify-email", s.proxyToAuthService).Methods("POST")
+
+	// Auth routes (protected - requires JWT)
+	authProtected := s.router.PathPrefix("/api/v1/auth").Subrouter()
+	authProtected.Use(JWTMiddleware(s.jwtConfig))
+	authProtected.HandleFunc("/logout", s.proxyToAuthService).Methods("POST")
+	authProtected.HandleFunc("/me", s.proxyToAuthService).Methods("GET")
+	authProtected.HandleFunc("/change-password", s.proxyToAuthService).Methods("POST")
 
 	// Protected routes (authentication required)
 	api := s.router.PathPrefix("/api/v1").Subrouter()
@@ -104,6 +123,42 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/config/features/{key}/evaluate", s.proxyToConfigService).Methods("POST")
 	api.HandleFunc("/config/integrations", s.proxyToConfigService).Methods("GET", "POST")
 	api.HandleFunc("/config/integrations/{id}", s.proxyToConfigService).Methods("GET", "PUT", "DELETE")
+
+	// Showroom Service routes
+	api.HandleFunc("/showroom/visits", s.proxyToShowroomService).Methods("GET", "POST")
+	api.HandleFunc("/showroom/visits/{id}", s.proxyToShowroomService).Methods("GET", "PATCH")
+	api.HandleFunc("/showroom/visits/{id}/status", s.proxyToShowroomService).Methods("POST")
+	api.HandleFunc("/showroom/visits/{id}/vehicle", s.proxyToShowroomService).Methods("POST")
+	api.HandleFunc("/showroom/visits/{id}/close", s.proxyToShowroomService).Methods("POST")
+	api.HandleFunc("/showroom/visits/{id}/timers", s.proxyToShowroomService).Methods("GET", "POST")
+	api.HandleFunc("/showroom/visits/{id}/timers/{timer_id}/stop", s.proxyToShowroomService).Methods("POST")
+	api.HandleFunc("/showroom/visits/{id}/notes", s.proxyToShowroomService).Methods("GET", "POST")
+	api.HandleFunc("/showroom/visits/{id}/notes/{note_id}", s.proxyToShowroomService).Methods("PATCH", "DELETE")
+	api.HandleFunc("/showroom/visits/{id}/events", s.proxyToShowroomService).Methods("GET")
+	api.HandleFunc("/showroom/workflow-config", s.proxyToShowroomService).Methods("GET", "PUT")
+
+	// WebSocket endpoint for showroom (upgrade handled separately)
+	s.router.HandleFunc("/ws/showroom", s.proxyWebSocketToShowroom)
+
+	// Messaging Service routes
+	api.HandleFunc("/messaging/conversations", s.proxyToMessagingService).Methods("GET", "POST")
+	api.HandleFunc("/messaging/conversations/{id}", s.proxyToMessagingService).Methods("GET", "PATCH")
+	api.HandleFunc("/messaging/conversations/{conversationId}/messages", s.proxyToMessagingService).Methods("GET", "POST")
+	api.HandleFunc("/messaging/conversations/{conversationId}/messages/{messageId}", s.proxyToMessagingService).Methods("GET", "PATCH", "DELETE")
+	api.HandleFunc("/messaging/conversations/{conversationId}/read", s.proxyToMessagingService).Methods("POST")
+	api.HandleFunc("/messaging/conversations/{conversationId}/messages/{messageId}/reactions", s.proxyToMessagingService).Methods("POST")
+	api.HandleFunc("/messaging/conversations/{conversationId}/messages/{messageId}/reactions/{reactionType}", s.proxyToMessagingService).Methods("DELETE")
+	api.HandleFunc("/messaging/conversations/{conversationId}/typing", s.proxyToMessagingService).Methods("POST")
+	api.HandleFunc("/messaging/conversations/{conversationId}/participants", s.proxyToMessagingService).Methods("GET", "POST")
+	api.HandleFunc("/messaging/conversations/{conversationId}/participants/{userId}", s.proxyToMessagingService).Methods("DELETE")
+
+	// WebSocket endpoint for messaging
+	s.router.HandleFunc("/ws/messaging", s.proxyWebSocketToMessaging)
+
+	// Settings Service routes
+	api.HandleFunc("/settings/user", s.proxyToSettingsService).Methods("GET", "POST", "PUT", "DELETE")
+	api.HandleFunc("/settings/user/{section}", s.proxyToSettingsService).Methods("PATCH")
+	api.HandleFunc("/settings/dealership", s.proxyToSettingsService).Methods("GET", "POST", "PUT")
 }
 
 // healthCheck handler
@@ -148,6 +203,36 @@ func (s *Server) proxyToUserService(w http.ResponseWriter, r *http.Request) {
 // proxyToConfigService proxies requests to config-service
 func (s *Server) proxyToConfigService(w http.ResponseWriter, r *http.Request) {
 	s.proxyRequest(w, r, s.config.ConfigServiceURL, "/config")
+}
+
+// proxyToAuthService proxies requests to auth-service
+func (s *Server) proxyToAuthService(w http.ResponseWriter, r *http.Request) {
+	s.proxyRequest(w, r, s.config.AuthServiceURL, "/auth")
+}
+
+// proxyToShowroomService proxies requests to showroom-service
+func (s *Server) proxyToShowroomService(w http.ResponseWriter, r *http.Request) {
+	s.proxyRequest(w, r, s.config.ShowroomServiceURL, "/showroom")
+}
+
+// proxyWebSocketToShowroom proxies WebSocket connections to showroom-service
+func (s *Server) proxyWebSocketToShowroom(w http.ResponseWriter, r *http.Request) {
+	s.proxyWebSocket(w, r, s.config.ShowroomServiceURL)
+}
+
+// proxyToMessagingService proxies requests to messaging-service
+func (s *Server) proxyToMessagingService(w http.ResponseWriter, r *http.Request) {
+	s.proxyRequest(w, r, s.config.MessagingServiceURL, "/messaging")
+}
+
+// proxyWebSocketToMessaging proxies WebSocket connections to messaging-service
+func (s *Server) proxyWebSocketToMessaging(w http.ResponseWriter, r *http.Request) {
+	s.proxyWebSocket(w, r, s.config.MessagingServiceURL)
+}
+
+// proxyToSettingsService proxies requests to settings-service
+func (s *Server) proxyToSettingsService(w http.ResponseWriter, r *http.Request) {
+	s.proxyRequest(w, r, s.config.SettingsServiceURL, "/settings")
 }
 
 // loggingMiddleware logs all requests
@@ -197,15 +282,19 @@ func loadConfig() *Config {
 
 	return &Config{
 		Port:                getEnv("PORT", "8080"),
+		AuthServiceURL:      getEnv("AUTH_SERVICE_URL", "http://localhost:8087"),
 		DealServiceURL:      getEnv("DEAL_SERVICE_URL", "http://localhost:8081"),
 		CustomerServiceURL:  getEnv("CUSTOMER_SERVICE_URL", "http://localhost:8082"),
 		InventoryServiceURL: getEnv("INVENTORY_SERVICE_URL", "http://localhost:8083"),
 		EmailServiceURL:     getEnv("EMAIL_SERVICE_URL", "http://localhost:8084"),
 		UserServiceURL:      getEnv("USER_SERVICE_URL", "http://localhost:8085"),
 		ConfigServiceURL:    getEnv("CONFIG_SERVICE_URL", "http://localhost:8086"),
+		ShowroomServiceURL:  getEnv("SHOWROOM_SERVICE_URL", "http://localhost:8088"),
+		MessagingServiceURL: getEnv("MESSAGING_SERVICE_URL", "http://localhost:8089"),
+		SettingsServiceURL:  getEnv("SETTINGS_SERVICE_URL", "http://localhost:8090"),
 		AllowedOrigins:      getEnv("ALLOWED_ORIGINS", "http://localhost:5173"),
 		JWTSecret:           jwtSecret,
-		JWTIssuer:           getEnv("JWT_ISSUER", "autolytiq-api-gateway"),
+		JWTIssuer:           getEnv("JWT_ISSUER", "autolytiq"),
 	}
 }
 

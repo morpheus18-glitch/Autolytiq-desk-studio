@@ -1,0 +1,457 @@
+version: '3.8'
+
+# ===========================================
+# PRODUCTION DOCKER COMPOSE
+# ===========================================
+# Usage:
+#   docker-compose -f docker-compose.prod.yml up -d
+#
+# Prerequisites:
+#   - Copy .env.production.example to .env and fill in values
+#   - Generate strong JWT_SECRET: openssl rand -base64 64
+#   - Configure your domain in ALLOWED_ORIGINS
+# ===========================================
+
+services:
+  # ===========================================
+  # INFRASTRUCTURE
+  # ===========================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: autolytiq-postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./postgres-backups:/backups
+    networks:
+      - autolytiq-internal
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+  redis:
+    image: redis:7-alpine
+    container_name: autolytiq-redis
+    restart: always
+    volumes:
+      - redis-data:/data
+    networks:
+      - autolytiq-internal
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+
+  # ===========================================
+  # NGINX REVERSE PROXY
+  # ===========================================
+  nginx:
+    image: nginx:alpine
+    container_name: autolytiq-nginx
+    restart: always
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./client-dist:/usr/share/nginx/html:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    depends_on:
+      - api-gateway
+    networks:
+      - autolytiq-internal
+      - autolytiq-external
+    healthcheck:
+      test: ['CMD', 'nginx', '-t']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===========================================
+  # API GATEWAY
+  # ===========================================
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: autolytiq-gateway
+    restart: always
+    environment:
+      - PORT=8080
+      - AUTH_SERVICE_URL=http://auth-service:8087
+      - DEAL_SERVICE_URL=http://deal-service:8081
+      - CUSTOMER_SERVICE_URL=http://customer-service:8082
+      - INVENTORY_SERVICE_URL=http://inventory-service:8083
+      - EMAIL_SERVICE_URL=http://email-service:8084
+      - USER_SERVICE_URL=http://user-service:8085
+      - CONFIG_SERVICE_URL=http://config-service:8086
+      - SHOWROOM_SERVICE_URL=http://showroom-service:8088
+      - MESSAGING_SERVICE_URL=http://messaging-service:8089
+      - SETTINGS_SERVICE_URL=http://settings-service:8090
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_ISSUER=${JWT_ISSUER}
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      deal-service:
+        condition: service_healthy
+      customer-service:
+        condition: service_healthy
+    networks:
+      - autolytiq-internal
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8080/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  # ===========================================
+  # AUTH SERVICE
+  # ===========================================
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: autolytiq-auth
+    restart: always
+    environment:
+      - PORT=8087
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_ISSUER=${JWT_ISSUER}
+      - ACCESS_TOKEN_TTL=${ACCESS_TOKEN_TTL}
+      - REFRESH_TOKEN_TTL=${REFRESH_TOKEN_TTL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - autolytiq-internal
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8087/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  # ===========================================
+  # DEAL SERVICE
+  # ===========================================
+  deal-service:
+    build:
+      context: ./deal-service
+      dockerfile: Dockerfile
+    container_name: autolytiq-deals
+    restart: always
+    environment:
+      - PORT=8081
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - autolytiq-internal
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8081/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  # ===========================================
+  # CUSTOMER SERVICE
+  # ===========================================
+  customer-service:
+    build:
+      context: ./customer-service
+      dockerfile: Dockerfile
+    container_name: autolytiq-customers
+    restart: always
+    environment:
+      - PORT=8082
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - autolytiq-internal
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8082/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  # ===========================================
+  # INVENTORY SERVICE
+  # ===========================================
+  inventory-service:
+    build:
+      context: ./inventory-service
+      dockerfile: Dockerfile
+    container_name: autolytiq-inventory
+    restart: always
+    environment:
+      - PORT=8083
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - autolytiq-internal
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8083/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  # ===========================================
+  # EMAIL SERVICE
+  # ===========================================
+  email-service:
+    build:
+      context: ./email-service
+      dockerfile: Dockerfile
+    container_name: autolytiq-email
+    restart: always
+    environment:
+      - PORT=8084
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - FROM_EMAIL=${FROM_EMAIL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - autolytiq-internal
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8084/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  # ===========================================
+  # USER SERVICE
+  # ===========================================
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    container_name: autolytiq-users
+    restart: always
+    environment:
+      - PORT=8085
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=${POSTGRES_USER}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_NAME=${POSTGRES_DB}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - autolytiq-internal
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8085/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  # ===========================================
+  # CONFIG SERVICE
+  # ===========================================
+  config-service:
+    build:
+      context: ./config-service
+      dockerfile: Dockerfile
+    container_name: autolytiq-config
+    restart: always
+    environment:
+      - PORT=8086
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - autolytiq-internal
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8086/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  # ===========================================
+  # SHOWROOM SERVICE
+  # ===========================================
+  showroom-service:
+    build:
+      context: ./showroom-service
+      dockerfile: Dockerfile
+    container_name: autolytiq-showroom
+    restart: always
+    environment:
+      - PORT=8088
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - autolytiq-internal
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8088/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  # ===========================================
+  # MESSAGING SERVICE
+  # ===========================================
+  messaging-service:
+    build:
+      context: ./messaging-service
+      dockerfile: Dockerfile
+    container_name: autolytiq-messaging
+    restart: always
+    environment:
+      - PORT=8089
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - autolytiq-internal
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8089/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  # ===========================================
+  # SETTINGS SERVICE
+  # ===========================================
+  settings-service:
+    build:
+      context: ./settings-service
+      dockerfile: Dockerfile
+    container_name: autolytiq-settings
+    restart: always
+    environment:
+      - PORT=8090
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - autolytiq-internal
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8090/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+networks:
+  autolytiq-internal:
+    driver: bridge
+    internal: true
+  autolytiq-external:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:

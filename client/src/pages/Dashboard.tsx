@@ -569,7 +569,7 @@ export function DashboardPage(): JSX.Element {
   const { data: stats, isLoading: statsLoading, error: statsError } = useDashboardStats();
   const { data: recentDeals, isLoading: dealsLoading, error: dealsError } = useRecentDeals(5);
 
-  const greeting = `Good ${getGreeting()}, ${user?.name?.split(' ')[0] || 'there'}!`;
+  const greeting = `Good ${getGreeting()}, ${user?.first_name || 'there'}!`;
 
   return (
     <MainLayout>

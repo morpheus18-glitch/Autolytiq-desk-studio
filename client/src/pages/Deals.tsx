@@ -602,7 +602,7 @@ export function DealsPage(): JSX.Element {
   }));
   const salespersonOptions = (usersData?.users ?? [])
     .filter((u) => canBeSalesperson(u.role))
-    .map((u) => ({ id: u.id, name: u.name }));
+    .map((u) => ({ id: u.id, name: `${u.first_name} ${u.last_name}`.trim() || u.email }));
 
   // Modal handlers
   const openCreateModal = () => {

@@ -89,6 +89,13 @@ export function getInitials(name: string): string {
 }
 
 /**
+ * Get full name from first and last name
+ */
+export function getFullName(firstName?: string, lastName?: string): string {
+  return [firstName, lastName].filter(Boolean).join(' ') || 'User';
+}
+
+/**
  * Debounce function
  */
 export function debounce<T extends (...args: Parameters<T>) => void>(

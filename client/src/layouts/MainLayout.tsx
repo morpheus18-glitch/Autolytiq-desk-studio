@@ -18,10 +18,12 @@ import {
   X,
   ChevronDown,
   Bell,
+  Store,
+  MessageCircle,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ThemeToggle } from '@design-system';
-import { cn, getInitials } from '@/lib/utils';
+import { cn, getInitials, getFullName } from '@/lib/utils';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -32,6 +34,8 @@ interface MainLayoutProps {
  */
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/showroom', label: 'Showroom', icon: Store },
+  { href: '/messages', label: 'Messages', icon: MessageCircle },
   { href: '/deals', label: 'Deals', icon: Handshake },
   { href: '/customers', label: 'Customers', icon: Users },
   { href: '/inventory', label: 'Inventory', icon: Car },
@@ -107,11 +111,11 @@ export function MainLayout({ children }: MainLayoutProps): JSX.Element {
           <div className="border-t border-sidebar-border p-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
-                {user ? getInitials(user.name) : 'U'}
+                {user ? getInitials(getFullName(user.first_name, user.last_name)) : 'U'}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="truncate text-sm font-medium text-sidebar-foreground">
-                  {user?.name || 'User'}
+                  {user ? getFullName(user.first_name, user.last_name) : 'User'}
                 </p>
                 <p className="truncate text-xs text-muted-foreground">{user?.email || ''}</p>
               </div>
@@ -159,7 +163,7 @@ export function MainLayout({ children }: MainLayoutProps): JSX.Element {
                 className="flex items-center gap-2 rounded-md p-2 text-foreground hover:bg-muted"
               >
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
-                  {user ? getInitials(user.name) : 'U'}
+                  {user ? getInitials(getFullName(user.first_name, user.last_name)) : 'U'}
                 </div>
                 <ChevronDown
                   className={cn('h-4 w-4 transition-transform', userMenuOpen && 'rotate-180')}
@@ -172,7 +176,9 @@ export function MainLayout({ children }: MainLayoutProps): JSX.Element {
                   <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
                   <div className="absolute right-0 z-50 mt-2 w-56 rounded-lg border border-border bg-popover p-1 shadow-lg animate-fade-in">
                     <div className="border-b border-border px-3 py-2">
-                      <p className="text-sm font-medium text-foreground">{user?.name}</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {user ? getFullName(user.first_name, user.last_name) : 'User'}
+                      </p>
                       <p className="text-xs text-muted-foreground">{user?.email}</p>
                     </div>
                     <div className="py-1">

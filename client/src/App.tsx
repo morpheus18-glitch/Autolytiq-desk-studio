@@ -17,6 +17,8 @@ import {
   CustomersPage,
   InventoryPage,
   SettingsPage,
+  ShowroomPage,
+  MessagesPage,
 } from '@/pages';
 
 /**
@@ -96,6 +98,18 @@ function AppRoutes(): JSX.Element {
       <Route path="/settings">
         <ProtectedRoute>
           <SettingsPage />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/showroom">
+        <ProtectedRoute>
+          <ShowroomPage />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/messages">
+        <ProtectedRoute>
+          <MessagesPage />
         </ProtectedRoute>
       </Route>
 

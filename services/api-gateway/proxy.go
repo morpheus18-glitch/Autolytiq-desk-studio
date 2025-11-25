@@ -6,7 +6,11 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 // httpClient is a shared HTTP client with reasonable timeouts
@@ -113,4 +117,105 @@ func (s *Server) proxyRequest(w http.ResponseWriter, r *http.Request, targetServ
 	}
 
 	log.Printf("PROXY: %s %s -> %s [%d]", r.Method, r.URL.Path, targetURL, resp.StatusCode)
+}
+
+// WebSocket upgrader for the API gateway
+var wsUpgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		return true // Allow all origins in development
+	},
+}
+
+// proxyWebSocket proxies WebSocket connections to a target service
+func (s *Server) proxyWebSocket(w http.ResponseWriter, r *http.Request, targetServiceURL string) {
+	// Parse target URL and convert to WebSocket URL
+	targetURL, err := url.Parse(targetServiceURL)
+	if err != nil {
+		log.Printf("ERROR: Failed to parse target URL: %v", err)
+		http.Error(w, `{"error":"Invalid target URL"}`, http.StatusInternalServerError)
+		return
+	}
+
+	// Convert http:// to ws:// or https:// to wss://
+	wsScheme := "ws"
+	if targetURL.Scheme == "https" {
+		wsScheme = "wss"
+	}
+
+	// Build the WebSocket target URL
+	wsTarget := fmt.Sprintf("%s://%s%s", wsScheme, targetURL.Host, r.URL.Path)
+	if r.URL.RawQuery != "" {
+		wsTarget += "?" + r.URL.RawQuery
+	}
+
+	log.Printf("WEBSOCKET PROXY: %s -> %s", r.URL.Path, wsTarget)
+
+	// Connect to the backend WebSocket service
+	backendConn, resp, err := websocket.DefaultDialer.Dial(wsTarget, nil)
+	if err != nil {
+		log.Printf("ERROR: Failed to connect to backend WebSocket: %v", err)
+		if resp != nil {
+			log.Printf("ERROR: Backend response status: %d", resp.StatusCode)
+		}
+		http.Error(w, `{"error":"Failed to connect to backend"}`, http.StatusServiceUnavailable)
+		return
+	}
+	defer backendConn.Close()
+
+	// Upgrade the client connection
+	clientConn, err := wsUpgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Printf("ERROR: Failed to upgrade client connection: %v", err)
+		return
+	}
+	defer clientConn.Close()
+
+	// Create error channels
+	errChan := make(chan error, 2)
+
+	// Client -> Backend
+	go func() {
+		for {
+			messageType, message, err := clientConn.ReadMessage()
+			if err != nil {
+				if !websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseNormalClosure) &&
+					!strings.Contains(err.Error(), "use of closed network connection") {
+					log.Printf("ERROR: Client read error: %v", err)
+				}
+				errChan <- err
+				return
+			}
+			if err := backendConn.WriteMessage(messageType, message); err != nil {
+				log.Printf("ERROR: Backend write error: %v", err)
+				errChan <- err
+				return
+			}
+		}
+	}()
+
+	// Backend -> Client
+	go func() {
+		for {
+			messageType, message, err := backendConn.ReadMessage()
+			if err != nil {
+				if !websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseNormalClosure) &&
+					!strings.Contains(err.Error(), "use of closed network connection") {
+					log.Printf("ERROR: Backend read error: %v", err)
+				}
+				errChan <- err
+				return
+			}
+			if err := clientConn.WriteMessage(messageType, message); err != nil {
+				log.Printf("ERROR: Client write error: %v", err)
+				errChan <- err
+				return
+			}
+		}
+	}()
+
+	// Wait for either goroutine to finish
+	<-errChan
+	log.Printf("WEBSOCKET PROXY: Connection closed for %s", r.URL.Path)
 }

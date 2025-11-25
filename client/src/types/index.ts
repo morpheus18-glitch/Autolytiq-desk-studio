@@ -3,6 +3,9 @@
  */
 
 export * from './auth';
+export * from './showroom';
+export * from './messaging';
+export * from './settings';
 
 /**
  * Pagination

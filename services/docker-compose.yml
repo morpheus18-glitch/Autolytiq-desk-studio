@@ -1,63 +1,340 @@
 version: '3.8'
 
 services:
-  api-gateway:
-    build:
-      context: ./api-gateway
-      dockerfile: Dockerfile
-    ports:
-      - '${API_GATEWAY_PORT:-8080}:8080'
-    environment:
-      - PORT=8080
-      - DEAL_SERVICE_URL=${DEAL_SERVICE_URL:-http://deal-service:8081}
-      - CUSTOMER_SERVICE_URL=${CUSTOMER_SERVICE_URL:-http://customer-service:8082}
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173}
-    depends_on:
-      - deal-service
-      - customer-service
-    networks:
-      - autolytiq-network
-
-  deal-service:
-    build:
-      context: ./deal-service
-      dockerfile: Dockerfile
-    ports:
-      - '${DEAL_SERVICE_PORT:-8081}:8081'
-    environment:
-      - PORT=8081
-      - DATABASE_URL=${DATABASE_URL}
-    depends_on:
-      - postgres
-    networks:
-      - autolytiq-network
-
-  customer-service:
-    build:
-      context: ./customer-service
-      dockerfile: Dockerfile
-    ports:
-      - '${CUSTOMER_SERVICE_PORT:-8082}:8082'
-    environment:
-      - PORT=8082
-      - DATABASE_URL=${DATABASE_URL}
-    depends_on:
-      - postgres
-    networks:
-      - autolytiq-network
-
+  # ===========================================
+  # INFRASTRUCTURE
+  # ===========================================
   postgres:
     image: postgres:15-alpine
+    container_name: autolytiq-postgres
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - POSTGRES_DB=${POSTGRES_DB:-autolytiq}
     ports:
       - '5432:5432'
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - autolytiq-network
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: autolytiq-redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+    networks:
+      - autolytiq-network
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    command: redis-server --appendonly yes
+
+  # ===========================================
+  # API GATEWAY
+  # ===========================================
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: autolytiq-gateway
+    ports:
+      - '${API_GATEWAY_PORT:-8080}:8080'
+    environment:
+      - PORT=8080
+      - AUTH_SERVICE_URL=http://auth-service:8087
+      - DEAL_SERVICE_URL=http://deal-service:8081
+      - CUSTOMER_SERVICE_URL=http://customer-service:8082
+      - INVENTORY_SERVICE_URL=http://inventory-service:8083
+      - EMAIL_SERVICE_URL=http://email-service:8084
+      - USER_SERVICE_URL=http://user-service:8085
+      - CONFIG_SERVICE_URL=http://config-service:8086
+      - SHOWROOM_SERVICE_URL=http://showroom-service:8088
+      - MESSAGING_SERVICE_URL=http://messaging-service:8089
+      - SETTINGS_SERVICE_URL=http://settings-service:8090
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_ISSUER=${JWT_ISSUER:-autolytiq}
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      deal-service:
+        condition: service_healthy
+      customer-service:
+        condition: service_healthy
+    networks:
+      - autolytiq-network
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8080/health']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ===========================================
+  # AUTH SERVICE
+  # ===========================================
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: autolytiq-auth
+    ports:
+      - '${AUTH_SERVICE_PORT:-8087}:8087'
+    environment:
+      - PORT=8087
+      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-autolytiq}?sslmode=disable
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_ISSUER=${JWT_ISSUER:-autolytiq}
+      - ACCESS_TOKEN_TTL=${ACCESS_TOKEN_TTL:-15m}
+      - REFRESH_TOKEN_TTL=${REFRESH_TOKEN_TTL:-7d}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - autolytiq-network
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8087/health']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ===========================================
+  # DEAL SERVICE
+  # ===========================================
+  deal-service:
+    build:
+      context: ./deal-service
+      dockerfile: Dockerfile
+    container_name: autolytiq-deals
+    ports:
+      - '${DEAL_SERVICE_PORT:-8081}:8081'
+    environment:
+      - PORT=8081
+      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-autolytiq}?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - autolytiq-network
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8081/health']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ===========================================
+  # CUSTOMER SERVICE
+  # ===========================================
+  customer-service:
+    build:
+      context: ./customer-service
+      dockerfile: Dockerfile
+    container_name: autolytiq-customers
+    ports:
+      - '${CUSTOMER_SERVICE_PORT:-8082}:8082'
+    environment:
+      - PORT=8082
+      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-autolytiq}?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - autolytiq-network
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8082/health']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ===========================================
+  # INVENTORY SERVICE
+  # ===========================================
+  inventory-service:
+    build:
+      context: ./inventory-service
+      dockerfile: Dockerfile
+    container_name: autolytiq-inventory
+    ports:
+      - '${INVENTORY_SERVICE_PORT:-8083}:8083'
+    environment:
+      - PORT=8083
+      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-autolytiq}?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - autolytiq-network
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8083/health']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ===========================================
+  # EMAIL SERVICE
+  # ===========================================
+  email-service:
+    build:
+      context: ./email-service
+      dockerfile: Dockerfile
+    container_name: autolytiq-email
+    ports:
+      - '${EMAIL_SERVICE_PORT:-8084}:8084'
+    environment:
+      - PORT=8084
+      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-autolytiq}?sslmode=disable
+      - SMTP_HOST=${SMTP_HOST:-smtp.mailtrap.io}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - FROM_EMAIL=${FROM_EMAIL:-noreply@autolytiq.com}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - autolytiq-network
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8084/health']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ===========================================
+  # USER SERVICE
+  # ===========================================
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    container_name: autolytiq-users
+    ports:
+      - '${USER_SERVICE_PORT:-8085}:8085'
+    environment:
+      - PORT=8085
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=${POSTGRES_USER:-postgres}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - DB_NAME=${POSTGRES_DB:-autolytiq}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - autolytiq-network
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8085/health']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ===========================================
+  # CONFIG SERVICE
+  # ===========================================
+  config-service:
+    build:
+      context: ./config-service
+      dockerfile: Dockerfile
+    container_name: autolytiq-config
+    ports:
+      - '${CONFIG_SERVICE_PORT:-8086}:8086'
+    environment:
+      - PORT=8086
+      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-autolytiq}?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - autolytiq-network
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8086/health']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ===========================================
+  # SHOWROOM SERVICE
+  # ===========================================
+  showroom-service:
+    build:
+      context: ./showroom-service
+      dockerfile: Dockerfile
+    container_name: autolytiq-showroom
+    ports:
+      - '${SHOWROOM_SERVICE_PORT:-8088}:8088'
+    environment:
+      - PORT=8088
+      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-autolytiq}?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - autolytiq-network
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8088/health']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ===========================================
+  # MESSAGING SERVICE
+  # ===========================================
+  messaging-service:
+    build:
+      context: ./messaging-service
+      dockerfile: Dockerfile
+    container_name: autolytiq-messaging
+    ports:
+      - '${MESSAGING_SERVICE_PORT:-8089}:8089'
+    environment:
+      - PORT=8089
+      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-autolytiq}?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - autolytiq-network
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8089/health']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ===========================================
+  # SETTINGS SERVICE
+  # ===========================================
+  settings-service:
+    build:
+      context: ./settings-service
+      dockerfile: Dockerfile
+    container_name: autolytiq-settings
+    ports:
+      - '${SETTINGS_SERVICE_PORT:-8090}:8090'
+    environment:
+      - PORT=8090
+      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-autolytiq}?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - autolytiq-network
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8090/health']
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
 networks:
   autolytiq-network:
@@ -65,3 +342,4 @@ networks:
 
 volumes:
   postgres-data:
+  redis-data:
