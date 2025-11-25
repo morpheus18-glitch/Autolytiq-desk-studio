@@ -9,6 +9,7 @@ import { Route, Switch } from 'wouter';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '@design-system';
 import { AuthProvider, ProtectedRoute, PublicRoute } from '@/contexts/AuthContext';
+import { ToastProvider } from '@/components/ui';
 import {
   LoginPage,
   DashboardPage,
@@ -114,7 +115,9 @@ export function App(): JSX.Element {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light" storageKey="autolytiq-theme">
         <AuthProvider>
-          <AppRoutes />
+          <ToastProvider>
+            <AppRoutes />
+          </ToastProvider>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

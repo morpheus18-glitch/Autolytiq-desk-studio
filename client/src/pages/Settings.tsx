@@ -1,10 +1,10 @@
 /**
  * Settings Page
  *
- * User and dealership settings management.
+ * User and dealership settings management with real API integration.
  */
 
-import { useState, type JSX } from 'react';
+import { useState, useEffect, type JSX } from 'react';
 import { User, Building2, Bell, Shield, Palette, Save, Check } from 'lucide-react';
 import { MainLayout } from '@/layouts';
 import {
@@ -18,6 +18,8 @@ import {
 } from '@design-system';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@design-system';
+import { useToast } from '@/components/ui';
+import { useUpdateProfile, useChangePassword } from '@/hooks/useUsers';
 import { cn } from '@/lib/utils';
 
 /**
@@ -34,9 +36,14 @@ const settingsTabs = [
 export function SettingsPage(): JSX.Element {
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState('profile');
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [profileSaveSuccess, setProfileSaveSuccess] = useState(false);
+  const [passwordSaveSuccess, setPasswordSaveSuccess] = useState(false);
+
+  // Mutations
+  const updateProfile = useUpdateProfile();
+  const changePassword = useChangePassword();
 
   // Form state
   const [profileData, setProfileData] = useState({
@@ -46,13 +53,62 @@ export function SettingsPage(): JSX.Element {
     title: 'Sales Manager',
   });
 
-  const handleSave = async () => {
-    setIsSaving(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsSaving(false);
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+
+  // Update profile data when user changes
+  useEffect(() => {
+    if (user) {
+      setProfileData((prev) => ({
+        ...prev,
+        name: user.name || '',
+        email: user.email || '',
+      }));
+    }
+  }, [user]);
+
+  const handleSaveProfile = async () => {
+    try {
+      await updateProfile.mutateAsync({
+        name: profileData.name,
+        email: profileData.email,
+      });
+      setProfileSaveSuccess(true);
+      toast.success('Profile updated', 'Your profile has been updated successfully.');
+      setTimeout(() => setProfileSaveSuccess(false), 3000);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update profile';
+      toast.error('Error', message);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error('Error', 'New passwords do not match.');
+      return;
+    }
+
+    if (passwordData.newPassword.length < 8) {
+      toast.error('Error', 'Password must be at least 8 characters.');
+      return;
+    }
+
+    try {
+      await changePassword.mutateAsync({
+        current_password: passwordData.currentPassword,
+        new_password: passwordData.newPassword,
+      });
+      setPasswordSaveSuccess(true);
+      toast.success('Password updated', 'Your password has been changed successfully.');
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setTimeout(() => setPasswordSaveSuccess(false), 3000);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to change password';
+      toast.error('Error', message);
+    }
   };
 
   return (
@@ -161,8 +217,8 @@ export function SettingsPage(): JSX.Element {
                   </div>
 
                   <div className="flex items-center gap-3 border-t border-border pt-6">
-                    <Button onClick={handleSave} loading={isSaving}>
-                      {saveSuccess ? (
+                    <Button onClick={handleSaveProfile} loading={updateProfile.isPending}>
+                      {profileSaveSuccess ? (
                         <>
                           <Check className="mr-2 h-4 w-4" />
                           Saved!
@@ -233,7 +289,7 @@ export function SettingsPage(): JSX.Element {
                   </div>
 
                   <div className="flex items-center gap-3 border-t border-border pt-6">
-                    <Button onClick={handleSave} loading={isSaving}>
+                    <Button onClick={handleSaveProfile} loading={updateProfile.isPending}>
                       <Save className="mr-2 h-4 w-4" />
                       Save Changes
                     </Button>
@@ -306,9 +362,9 @@ export function SettingsPage(): JSX.Element {
                   ))}
 
                   <div className="flex items-center gap-3 border-t border-border pt-6">
-                    <Button onClick={handleSave} loading={isSaving}>
+                    <Button onClick={handleSaveProfile} loading={updateProfile.isPending}>
                       <Save className="mr-2 h-4 w-4" />
-                      Save Changes
+                      Save Preferences
                     </Button>
                   </div>
                 </CardContent>
@@ -332,6 +388,10 @@ export function SettingsPage(): JSX.Element {
                         </label>
                         <input
                           type="password"
+                          value={passwordData.currentPassword}
+                          onChange={(e) =>
+                            setPasswordData({ ...passwordData, currentPassword: e.target.value })
+                          }
                           className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                         />
                       </div>
@@ -339,6 +399,10 @@ export function SettingsPage(): JSX.Element {
                         <label className="text-sm font-medium text-foreground">New Password</label>
                         <input
                           type="password"
+                          value={passwordData.newPassword}
+                          onChange={(e) =>
+                            setPasswordData({ ...passwordData, newPassword: e.target.value })
+                          }
                           className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                         />
                       </div>
@@ -348,6 +412,10 @@ export function SettingsPage(): JSX.Element {
                         </label>
                         <input
                           type="password"
+                          value={passwordData.confirmPassword}
+                          onChange={(e) =>
+                            setPasswordData({ ...passwordData, confirmPassword: e.target.value })
+                          }
                           className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                         />
                       </div>
@@ -365,9 +433,26 @@ export function SettingsPage(): JSX.Element {
                   </div>
 
                   <div className="flex items-center gap-3 border-t border-border pt-6">
-                    <Button onClick={handleSave} loading={isSaving}>
-                      <Save className="mr-2 h-4 w-4" />
-                      Update Password
+                    <Button
+                      onClick={handleChangePassword}
+                      loading={changePassword.isPending}
+                      disabled={
+                        !passwordData.currentPassword ||
+                        !passwordData.newPassword ||
+                        !passwordData.confirmPassword
+                      }
+                    >
+                      {passwordSaveSuccess ? (
+                        <>
+                          <Check className="mr-2 h-4 w-4" />
+                          Password Updated!
+                        </>
+                      ) : (
+                        <>
+                          <Save className="mr-2 h-4 w-4" />
+                          Update Password
+                        </>
+                      )}
                     </Button>
                   </div>
                 </CardContent>
