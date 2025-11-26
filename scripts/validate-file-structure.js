@@ -111,11 +111,8 @@ const APPROVED_STRUCTURE = {
     description: 'HTTP middleware and utilities',
   },
 
-  // Gateway/BFF
-  'gateway': {
-    allowed: ['**/*.ts', '**/*.test.ts', '**/*.yaml'],
-    description: 'API Gateway (Backend for Frontend)',
-  },
+  // Gateway/BFF - handled by Go API Gateway in services/api-gateway/
+  // No TypeScript gateway needed - all business logic in Go microservices
 
   // Tests
   'tests/contract': {

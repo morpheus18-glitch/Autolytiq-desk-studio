@@ -4,7 +4,6 @@
     "shared/**/*",
     "server/**/*",
     "src/**/*",
-    "gateway/**/*",
     "scripts/**/*"
   ],
   "exclude": [
