@@ -2,22 +2,24 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"strconv"
+
+	"autolytiq/shared/logging"
 
 	"github.com/gorilla/mux"
 )
 
 // Handler holds dependencies for HTTP handlers
 type Handler struct {
-	db  MessagingDatabase
-	hub *Hub
+	db     MessagingDatabase
+	hub    *Hub
+	logger *logging.Logger
 }
 
 // NewHandler creates a new Handler
-func NewHandler(db MessagingDatabase, hub *Hub) *Handler {
-	return &Handler{db: db, hub: hub}
+func NewHandler(db MessagingDatabase, hub *Hub, logger *logging.Logger) *Handler {
+	return &Handler{db: db, hub: hub, logger: logger}
 }
 
 // Helper functions
@@ -100,7 +102,7 @@ func (h *Handler) ListConversations(w http.ResponseWriter, r *http.Request) {
 
 	conversations, total, err := h.db.ListConversations(dealershipID, userID, filter)
 	if err != nil {
-		log.Printf("Error listing conversations: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to list conversations")
 		respondError(w, http.StatusInternalServerError, "Failed to list conversations")
 		return
 	}
@@ -135,7 +137,7 @@ func (h *Handler) GetConversation(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusNotFound, "Conversation not found")
 			return
 		}
-		log.Printf("Error getting conversation: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to get conversation")
 		respondError(w, http.StatusInternalServerError, "Failed to get conversation")
 		return
 	}
@@ -159,19 +161,7 @@ func (h *Handler) CreateConversation(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req CreateConversationRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid request body")
-		return
-	}
-
-	// Validate
-	if !IsValidConversationType(req.Type) {
-		respondError(w, http.StatusBadRequest, "Invalid conversation type")
-		return
-	}
-
-	if len(req.ParticipantIDs) == 0 {
-		respondError(w, http.StatusBadRequest, "At least one participant required")
+	if !decodeAndValidateMessaging(r, w, &req) {
 		return
 	}
 
@@ -179,7 +169,7 @@ func (h *Handler) CreateConversation(w http.ResponseWriter, r *http.Request) {
 	if req.Type == "DIRECT" && len(req.ParticipantIDs) == 1 {
 		conversation, err := h.db.GetOrCreateDirectConversation(dealershipID, userID, req.ParticipantIDs[0])
 		if err != nil {
-			log.Printf("Error getting/creating direct conversation: %v", err)
+			h.logger.WithContext(r.Context()).WithError(err).Error("Failed to get/create direct conversation")
 			respondError(w, http.StatusInternalServerError, "Failed to create conversation")
 			return
 		}
@@ -190,7 +180,7 @@ func (h *Handler) CreateConversation(w http.ResponseWriter, r *http.Request) {
 
 	conversation, err := h.db.CreateConversation(dealershipID, userID, req)
 	if err != nil {
-		log.Printf("Error creating conversation: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to create conversation")
 		respondError(w, http.StatusInternalServerError, "Failed to create conversation")
 		return
 	}
@@ -215,14 +205,13 @@ func (h *Handler) UpdateConversation(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req UpdateConversationRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid request body")
+	if !decodeAndValidateMessaging(r, w, &req) {
 		return
 	}
 
 	conversation, err := h.db.UpdateConversation(conversationID, dealershipID, userID, req)
 	if err != nil {
-		log.Printf("Error updating conversation: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to update conversation")
 		respondError(w, http.StatusInternalServerError, "Failed to update conversation")
 		return
 	}
@@ -267,7 +256,7 @@ func (h *Handler) ListMessages(w http.ResponseWriter, r *http.Request) {
 
 	messages, total, hasMore, err := h.db.ListMessages(conversationID, dealershipID, userID, filter)
 	if err != nil {
-		log.Printf("Error listing messages: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to list messages")
 		respondError(w, http.StatusInternalServerError, "Failed to list messages")
 		return
 	}
@@ -291,25 +280,13 @@ func (h *Handler) SendMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req SendMessageRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid request body")
-		return
-	}
-
-	// Validate
-	if !IsValidMessageType(req.Type) {
-		respondError(w, http.StatusBadRequest, "Invalid message type")
-		return
-	}
-
-	if req.Content == "" && req.Type == "TEXT" {
-		respondError(w, http.StatusBadRequest, "Message content required")
+	if !decodeAndValidateMessaging(r, w, &req) {
 		return
 	}
 
 	message, err := h.db.CreateMessage(conversationID, dealershipID, userID, req)
 	if err != nil {
-		log.Printf("Error creating message: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to create message")
 		respondError(w, http.StatusInternalServerError, "Failed to send message")
 		return
 	}
@@ -334,7 +311,7 @@ func (h *Handler) GetMessage(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusNotFound, "Message not found")
 			return
 		}
-		log.Printf("Error getting message: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to get message")
 		respondError(w, http.StatusInternalServerError, "Failed to get message")
 		return
 	}
@@ -354,19 +331,13 @@ func (h *Handler) UpdateMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req UpdateMessageRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid request body")
-		return
-	}
-
-	if req.Content == "" {
-		respondError(w, http.StatusBadRequest, "Content required")
+	if !decodeAndValidateMessaging(r, w, &req) {
 		return
 	}
 
 	message, err := h.db.UpdateMessage(messageID, conversationID, userID, req)
 	if err != nil {
-		log.Printf("Error updating message: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to update message")
 		respondError(w, http.StatusInternalServerError, "Failed to update message")
 		return
 	}
@@ -390,7 +361,7 @@ func (h *Handler) DeleteMessage(w http.ResponseWriter, r *http.Request) {
 
 	err := h.db.DeleteMessage(messageID, conversationID, userID)
 	if err != nil {
-		log.Printf("Error deleting message: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to delete message")
 		respondError(w, http.StatusInternalServerError, "Failed to delete message")
 		return
 	}
@@ -415,7 +386,7 @@ func (h *Handler) MarkAsRead(w http.ResponseWriter, r *http.Request) {
 
 	err := h.db.MarkAsRead(conversationID, userID)
 	if err != nil {
-		log.Printf("Error marking as read: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to mark as read")
 		respondError(w, http.StatusInternalServerError, "Failed to mark as read")
 		return
 	}
@@ -444,19 +415,13 @@ func (h *Handler) AddReaction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req AddReactionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid request body")
-		return
-	}
-
-	if !IsValidReactionType(req.ReactionType) {
-		respondError(w, http.StatusBadRequest, "Invalid reaction type")
+	if !decodeAndValidateMessaging(r, w, &req) {
 		return
 	}
 
 	reaction, err := h.db.AddReaction(messageID, userID, userName, req)
 	if err != nil {
-		log.Printf("Error adding reaction: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to add reaction")
 		respondError(w, http.StatusInternalServerError, "Failed to add reaction")
 		return
 	}
@@ -481,7 +446,7 @@ func (h *Handler) RemoveReaction(w http.ResponseWriter, r *http.Request) {
 
 	err := h.db.RemoveReaction(messageID, userID, reactionType)
 	if err != nil {
-		log.Printf("Error removing reaction: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to remove reaction")
 		respondError(w, http.StatusInternalServerError, "Failed to remove reaction")
 		return
 	}
@@ -550,7 +515,7 @@ func (h *Handler) AddParticipant(w http.ResponseWriter, r *http.Request) {
 
 	participant, err := h.db.AddParticipant(conversationID, req.UserID, userID, req.Role)
 	if err != nil {
-		log.Printf("Error adding participant: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to add participant")
 		respondError(w, http.StatusInternalServerError, "Failed to add participant")
 		return
 	}
@@ -579,7 +544,7 @@ func (h *Handler) RemoveParticipant(w http.ResponseWriter, r *http.Request) {
 
 	err := h.db.RemoveParticipant(conversationID, participantUserID, userID)
 	if err != nil {
-		log.Printf("Error removing participant: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to remove participant")
 		respondError(w, http.StatusInternalServerError, "Failed to remove participant")
 		return
 	}
@@ -598,7 +563,7 @@ func (h *Handler) GetParticipants(w http.ResponseWriter, r *http.Request) {
 
 	participants, err := h.db.GetParticipants(conversationID)
 	if err != nil {
-		log.Printf("Error getting participants: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to get participants")
 		respondError(w, http.StatusInternalServerError, "Failed to get participants")
 		return
 	}

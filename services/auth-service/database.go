@@ -3,8 +3,9 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"time"
+
+	"autolytiq/shared/logging"
 
 	_ "github.com/lib/pq"
 )
@@ -43,11 +44,12 @@ type AuthDatabase interface {
 
 // PostgresDB implements AuthDatabase using PostgreSQL
 type PostgresDB struct {
-	conn *sql.DB
+	conn   *sql.DB
+	logger *logging.Logger
 }
 
 // NewPostgresDB creates a new PostgreSQL database connection
-func NewPostgresDB(databaseURL string) (*PostgresDB, error) {
+func NewPostgresDB(databaseURL string, logger *logging.Logger) (*PostgresDB, error) {
 	conn, err := sql.Open("postgres", databaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
@@ -63,9 +65,9 @@ func NewPostgresDB(databaseURL string) (*PostgresDB, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	log.Println("Database connected successfully")
+	logger.Info("Database connected successfully")
 
-	return &PostgresDB{conn: conn}, nil
+	return &PostgresDB{conn: conn, logger: logger}, nil
 }
 
 // Close closes the database connection
@@ -102,7 +104,9 @@ func (db *PostgresDB) InitSchema() error {
 		return fmt.Errorf("failed to create schema: %w", err)
 	}
 
-	log.Println("Database schema initialized")
+	if db.logger != nil {
+		db.logger.Info("Database schema initialized")
+	}
 	return nil
 }
 

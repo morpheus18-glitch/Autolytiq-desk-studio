@@ -1,0 +1,322 @@
+---
+# =============================================================================
+# Velero Backup Schedules
+# =============================================================================
+# Automated backup schedules for different frequencies and retention periods
+# - Hourly: For cluster state and critical configs
+# - Daily: For full namespace backups
+# - Weekly: For long-term retention
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Hourly Backup - Cluster State
+# -----------------------------------------------------------------------------
+# Backs up ConfigMaps, Secrets, and cluster-level resources
+# Retention: 7 days (168 hourly backups max)
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: hourly-cluster-state
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: backup-schedule
+    backup-type: hourly
+spec:
+  # Run every hour at minute 0
+  schedule: '0 * * * *'
+
+  # Use default backup storage location
+  useOwnerReferencesInBackup: false
+
+  template:
+    # Include cluster-scoped resources
+    includeClusterResources: true
+
+    # Included namespaces
+    includedNamespaces:
+      - autolytiq
+      - kube-system
+
+    # Resources to include
+    includedResources:
+      - configmaps
+      - secrets
+      - serviceaccounts
+      - roles
+      - rolebindings
+      - clusterroles
+      - clusterrolebindings
+      - persistentvolumeclaims
+      - persistentvolumes
+
+    # Exclude some secrets
+    labelSelector:
+      matchExpressions:
+        - key: velero.io/exclude-from-backup
+          operator: NotIn
+          values:
+            - 'true'
+
+    # Storage location
+    storageLocation: primary
+
+    # Snapshot volumes
+    snapshotVolumes: false
+
+    # TTL for backup retention (7 days)
+    ttl: 168h
+
+    # Metadata
+    metadata:
+      labels:
+        backup-type: hourly
+        backup-scope: cluster-state
+
+---
+# -----------------------------------------------------------------------------
+# Daily Backup - Full Application
+# -----------------------------------------------------------------------------
+# Backs up all resources in autolytiq namespace including PVs
+# Retention: 30 days
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: daily-full-backup
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: backup-schedule
+    backup-type: daily
+spec:
+  # Run daily at 2:00 AM UTC
+  schedule: '0 2 * * *'
+
+  useOwnerReferencesInBackup: false
+
+  template:
+    includeClusterResources: true
+
+    # Include all autolytiq-related namespaces
+    includedNamespaces:
+      - autolytiq
+      - monitoring
+      - ingress-nginx
+
+    # Include all resources
+    includedResources:
+      - '*'
+
+    # Exclude temporary resources
+    excludedResources:
+      - events
+      - events.events.k8s.io
+      - backups.velero.io
+      - restores.velero.io
+
+    labelSelector:
+      matchExpressions:
+        - key: velero.io/exclude-from-backup
+          operator: NotIn
+          values:
+            - 'true'
+
+    storageLocation: primary
+
+    # Include volume snapshots
+    snapshotVolumes: true
+    volumeSnapshotLocations:
+      - primary
+
+    # Enable file-level backup for PVs without snapshot support
+    defaultVolumesToFsBackup: true
+
+    # TTL for backup retention (30 days)
+    ttl: 720h
+
+    metadata:
+      labels:
+        backup-type: daily
+        backup-scope: full-application
+
+    # Hooks for application-consistent backups
+    hooks:
+      resources:
+        # Pre-backup hook for databases
+        - name: postgres-backup-hook
+          includedNamespaces:
+            - autolytiq
+          labelSelector:
+            matchLabels:
+              app: postgres
+          pre:
+            - exec:
+                container: postgres
+                command:
+                  - /bin/bash
+                  - -c
+                  - 'pg_dump -U $POSTGRES_USER -d $POSTGRES_DB -F c -f /tmp/backup.dump'
+                onError: Continue
+                timeout: 300s
+          post:
+            - exec:
+                container: postgres
+                command:
+                  - /bin/bash
+                  - -c
+                  - 'rm -f /tmp/backup.dump'
+                onError: Continue
+                timeout: 60s
+
+---
+# -----------------------------------------------------------------------------
+# Weekly Backup - Long-term Retention
+# -----------------------------------------------------------------------------
+# Full backup with cross-region copy for disaster recovery
+# Retention: 90 days
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: weekly-dr-backup
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: backup-schedule
+    backup-type: weekly
+    purpose: disaster-recovery
+spec:
+  # Run weekly on Sunday at 3:00 AM UTC
+  schedule: '0 3 * * 0'
+
+  useOwnerReferencesInBackup: false
+
+  template:
+    includeClusterResources: true
+
+    # Include all namespaces except system
+    includedNamespaces:
+      - autolytiq
+      - monitoring
+      - ingress-nginx
+      - velero
+
+    includedResources:
+      - '*'
+
+    excludedResources:
+      - events
+      - events.events.k8s.io
+      - backups.velero.io
+      - restores.velero.io
+      - podmetrics.metrics.k8s.io
+      - nodemetrics.metrics.k8s.io
+
+    labelSelector:
+      matchExpressions:
+        - key: velero.io/exclude-from-backup
+          operator: NotIn
+          values:
+            - 'true'
+
+    storageLocation: primary
+
+    snapshotVolumes: true
+    volumeSnapshotLocations:
+      - primary
+
+    defaultVolumesToFsBackup: true
+
+    # TTL for backup retention (90 days)
+    ttl: 2160h
+
+    metadata:
+      labels:
+        backup-type: weekly
+        backup-scope: full-cluster
+        disaster-recovery: 'true'
+
+---
+# -----------------------------------------------------------------------------
+# Pre-Deployment Backup Template
+# -----------------------------------------------------------------------------
+# Manual backup triggered before deployments
+# This is a backup template, not a schedule
+apiVersion: velero.io/v1
+kind: Backup
+metadata:
+  name: pre-deployment-template
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: backup-template
+    backup-type: pre-deployment
+  annotations:
+    description: 'Template for pre-deployment backups. Do not modify directly.'
+spec:
+  includeClusterResources: true
+
+  includedNamespaces:
+    - autolytiq
+
+  includedResources:
+    - '*'
+
+  excludedResources:
+    - events
+    - events.events.k8s.io
+
+  storageLocation: primary
+
+  snapshotVolumes: true
+  volumeSnapshotLocations:
+    - primary
+
+  # 7 day retention for pre-deployment backups
+  ttl: 168h
+
+  metadata:
+    labels:
+      backup-type: pre-deployment
+
+---
+# -----------------------------------------------------------------------------
+# Monitoring Namespace Backup
+# -----------------------------------------------------------------------------
+# Separate backup for monitoring stack configuration
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: daily-monitoring-backup
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: backup-schedule
+    backup-type: daily
+spec:
+  # Run daily at 4:00 AM UTC (after main backup)
+  schedule: '0 4 * * *'
+
+  template:
+    includeClusterResources: false
+
+    includedNamespaces:
+      - monitoring
+
+    includedResources:
+      - configmaps
+      - secrets
+      - deployments
+      - services
+      - servicemonitors
+      - prometheusrules
+      - alertmanagerconfigs
+
+    storageLocation: primary
+    snapshotVolumes: false
+
+    ttl: 168h # 7 days
+
+    metadata:
+      labels:
+        backup-type: daily
+        backup-scope: monitoring

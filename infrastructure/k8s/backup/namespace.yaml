@@ -1,0 +1,44 @@
+---
+# =============================================================================
+# Velero Namespace
+# =============================================================================
+# Dedicated namespace for Velero backup system and related resources
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: backup
+    app.kubernetes.io/part-of: autolytiq
+---
+# Resource quota for velero namespace
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: velero-quota
+  namespace: velero
+spec:
+  hard:
+    requests.cpu: '2'
+    requests.memory: 4Gi
+    limits.cpu: '4'
+    limits.memory: 8Gi
+    persistentvolumeclaims: '10'
+---
+# Limit range for velero namespace
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: velero-limit-range
+  namespace: velero
+spec:
+  limits:
+    - default:
+        cpu: '500m'
+        memory: '512Mi'
+      defaultRequest:
+        cpu: '100m'
+        memory: '128Mi'
+      type: Container

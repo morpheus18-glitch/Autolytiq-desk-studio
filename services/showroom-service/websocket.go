@@ -2,10 +2,11 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"sync"
 	"time"
+
+	"autolytiq/shared/logging"
 
 	"github.com/gorilla/websocket"
 )
@@ -24,6 +25,7 @@ type Client struct {
 	conn         *websocket.Conn
 	send         chan []byte
 	dealershipID string
+	logger       *logging.Logger
 }
 
 // Hub maintains the set of active clients and broadcasts messages
@@ -34,6 +36,7 @@ type Hub struct {
 	register   chan *Client
 	unregister chan *Client
 	mu         sync.RWMutex
+	logger     *logging.Logger
 }
 
 // BroadcastMessage is a message to be broadcast to clients
@@ -55,13 +58,14 @@ type SubscribeMessage struct {
 }
 
 // NewHub creates a new Hub instance
-func NewHub() *Hub {
+func NewHub(logger *logging.Logger) *Hub {
 	return &Hub{
 		clients:    make(map[*Client]bool),
 		rooms:      make(map[string]map[*Client]bool),
 		broadcast:  make(chan *BroadcastMessage, 256),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
+		logger:     logger,
 	}
 }
 
@@ -73,7 +77,9 @@ func (h *Hub) Run() {
 			h.mu.Lock()
 			h.clients[client] = true
 			h.mu.Unlock()
-			log.Printf("Client connected. Total clients: %d", len(h.clients))
+			h.logger.WithFields(map[string]interface{}{
+				"total_clients": len(h.clients),
+			}).Debug("WebSocket client connected")
 
 		case client := <-h.unregister:
 			h.mu.Lock()
@@ -92,7 +98,9 @@ func (h *Hub) Run() {
 				}
 			}
 			h.mu.Unlock()
-			log.Printf("Client disconnected. Total clients: %d", len(h.clients))
+			h.logger.WithFields(map[string]interface{}{
+				"total_clients": len(h.clients),
+			}).Debug("WebSocket client disconnected")
 
 		case msg := <-h.broadcast:
 			h.mu.RLock()
@@ -121,7 +129,7 @@ func (h *Hub) Broadcast(dealershipID string, messageType string, data interface{
 
 	jsonData, err := json.Marshal(msg)
 	if err != nil {
-		log.Printf("Error marshaling WebSocket message: %v", err)
+		h.logger.WithError(err).Error("Error marshaling WebSocket message")
 		return
 	}
 
@@ -149,7 +157,7 @@ func (c *Client) readPump() {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("WebSocket error: %v", err)
+				c.logger.WithError(err).Warn("WebSocket read error")
 			}
 			break
 		}
@@ -157,7 +165,7 @@ func (c *Client) readPump() {
 		// Parse message
 		var subMsg SubscribeMessage
 		if err := json.Unmarshal(message, &subMsg); err != nil {
-			log.Printf("Error parsing WebSocket message: %v", err)
+			c.logger.WithError(err).Warn("Error parsing WebSocket message")
 			continue
 		}
 
@@ -184,7 +192,9 @@ func (c *Client) readPump() {
 
 			c.hub.mu.Unlock()
 
-			log.Printf("Client subscribed to dealership: %s", c.dealershipID)
+			c.logger.WithFields(map[string]interface{}{
+				"dealership_id": c.dealershipID,
+			}).Debug("Client subscribed to dealership")
 
 			// Send confirmation
 			confirmMsg := WSMessage{
@@ -244,14 +254,15 @@ func (c *Client) writePump() {
 func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("WebSocket upgrade error: %v", err)
+		hub.logger.WithError(err).Error("WebSocket upgrade error")
 		return
 	}
 
 	client := &Client{
-		hub:  hub,
-		conn: conn,
-		send: make(chan []byte, 256),
+		hub:    hub,
+		conn:   conn,
+		send:   make(chan []byte, 256),
+		logger: hub.logger,
 	}
 
 	client.hub.register <- client

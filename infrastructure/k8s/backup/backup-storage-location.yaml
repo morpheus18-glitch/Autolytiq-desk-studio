@@ -1,0 +1,123 @@
+---
+# =============================================================================
+# Velero Backup Storage Locations
+# =============================================================================
+# Defines S3 bucket locations for storing Velero backups
+# Both primary and DR region storage locations are configured
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Primary Backup Storage Location (us-east-1)
+# -----------------------------------------------------------------------------
+apiVersion: velero.io/v1
+kind: BackupStorageLocation
+metadata:
+  name: primary
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: backup-storage
+spec:
+  # Provider is AWS
+  provider: aws
+
+  # Default backup location
+  default: true
+
+  # Access mode (ReadWrite for primary)
+  accessMode: ReadWrite
+
+  # Object storage configuration
+  objectStorage:
+    # S3 bucket name (update with actual bucket name)
+    bucket: autolytiq-ENVIRONMENT-velero-backups-ACCOUNT_ID
+
+    # Prefix for all backups
+    prefix: velero
+
+  # AWS-specific configuration
+  config:
+    # AWS region
+    region: us-east-1
+
+    # Use IRSA for authentication
+    # If using IRSA, credentials are provided via service account
+    # profile: default
+
+    # Enable server-side encryption
+    s3ForcePathStyle: 'false'
+
+    # KMS key for encryption (optional, uses bucket default if not specified)
+    # kmsKeyId: alias/autolytiq-ENVIRONMENT-backup
+
+  # Validation frequency
+  validationFrequency: 1h
+
+---
+# -----------------------------------------------------------------------------
+# DR Backup Storage Location (us-west-2)
+# -----------------------------------------------------------------------------
+apiVersion: velero.io/v1
+kind: BackupStorageLocation
+metadata:
+  name: dr-region
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: backup-storage
+    purpose: disaster-recovery
+spec:
+  provider: aws
+
+  # Not default, used for cross-region copies
+  default: false
+
+  # Read-write for DR region
+  accessMode: ReadWrite
+
+  objectStorage:
+    bucket: autolytiq-ENVIRONMENT-velero-dr-ACCOUNT_ID
+    prefix: velero
+
+  config:
+    region: us-west-2
+    s3ForcePathStyle: 'false'
+
+  validationFrequency: 1h
+
+---
+# -----------------------------------------------------------------------------
+# Volume Snapshot Location (Primary)
+# -----------------------------------------------------------------------------
+apiVersion: velero.io/v1
+kind: VolumeSnapshotLocation
+metadata:
+  name: primary
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: volume-snapshot
+spec:
+  provider: aws
+
+  config:
+    region: us-east-1
+
+---
+# -----------------------------------------------------------------------------
+# Volume Snapshot Location (DR)
+# -----------------------------------------------------------------------------
+apiVersion: velero.io/v1
+kind: VolumeSnapshotLocation
+metadata:
+  name: dr-region
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: volume-snapshot
+    purpose: disaster-recovery
+spec:
+  provider: aws
+
+  config:
+    region: us-west-2

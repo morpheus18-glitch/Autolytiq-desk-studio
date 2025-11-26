@@ -1,0 +1,417 @@
+# VirtualServices for Traffic Management
+# Includes canary deployments, traffic splitting, header-based routing, and retry policies
+---
+# Istio Gateway for external traffic
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: autolytiq-gateway
+  namespace: autolytiq
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - 'api.autolytiq.com'
+        - '*.autolytiq.com'
+      tls:
+        httpsRedirect: true
+    - port:
+        number: 443
+        name: https
+        protocol: HTTPS
+      hosts:
+        - 'api.autolytiq.com'
+        - '*.autolytiq.com'
+      tls:
+        mode: SIMPLE
+        credentialName: autolytiq-tls-cert
+---
+# API Gateway VirtualService - Entry point
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: api-gateway
+  namespace: autolytiq
+spec:
+  hosts:
+    - 'api.autolytiq.com'
+    - api-gateway.autolytiq.svc.cluster.local
+  gateways:
+    - autolytiq-gateway
+    - mesh
+  http:
+    # Header-based routing for testing/canary
+    - match:
+        - headers:
+            x-canary:
+              exact: 'true'
+      route:
+        - destination:
+            host: api-gateway.autolytiq.svc.cluster.local
+            subset: canary
+            port:
+              number: 8080
+      timeout: 30s
+      retries:
+        attempts: 3
+        perTryTimeout: 10s
+        retryOn: gateway-error,connect-failure,refused-stream,unavailable,cancelled,retriable-4xx,reset
+
+    # A/B Testing with user header
+    - match:
+        - headers:
+            x-user-group:
+              exact: 'beta'
+      route:
+        - destination:
+            host: api-gateway.autolytiq.svc.cluster.local
+            subset: canary
+            port:
+              number: 8080
+
+    # Default traffic split (90% stable, 10% canary for gradual rollout)
+    - route:
+        - destination:
+            host: api-gateway.autolytiq.svc.cluster.local
+            subset: stable
+            port:
+              number: 8080
+          weight: 100
+        # Uncomment for canary deployments:
+        # - destination:
+        #     host: api-gateway.autolytiq.svc.cluster.local
+        #     subset: canary
+        #     port:
+        #       number: 8080
+        #   weight: 10
+      timeout: 30s
+      retries:
+        attempts: 3
+        perTryTimeout: 10s
+        retryOn: gateway-error,connect-failure,refused-stream,unavailable,cancelled,reset
+---
+# Auth Service VirtualService
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: auth-service
+  namespace: autolytiq
+spec:
+  hosts:
+    - auth-service.autolytiq.svc.cluster.local
+  http:
+    # Canary routing
+    - match:
+        - headers:
+            x-canary:
+              exact: 'true'
+      route:
+        - destination:
+            host: auth-service.autolytiq.svc.cluster.local
+            subset: canary
+            port:
+              number: 8087
+      timeout: 10s
+      retries:
+        attempts: 3
+        perTryTimeout: 3s
+        retryOn: gateway-error,connect-failure,refused-stream,unavailable,cancelled,reset
+
+    # Default route with retry policy
+    - route:
+        - destination:
+            host: auth-service.autolytiq.svc.cluster.local
+            subset: stable
+            port:
+              number: 8087
+          weight: 100
+      timeout: 10s
+      retries:
+        attempts: 3
+        perTryTimeout: 3s
+        retryOn: gateway-error,connect-failure,refused-stream,unavailable,cancelled,reset
+        retryRemoteLocalities: true
+---
+# Deal Service VirtualService
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: deal-service
+  namespace: autolytiq
+spec:
+  hosts:
+    - deal-service.autolytiq.svc.cluster.local
+  http:
+    # Canary routing
+    - match:
+        - headers:
+            x-canary:
+              exact: 'true'
+      route:
+        - destination:
+            host: deal-service.autolytiq.svc.cluster.local
+            subset: canary
+            port:
+              number: 8082
+      timeout: 30s
+      retries:
+        attempts: 3
+        perTryTimeout: 10s
+        retryOn: gateway-error,connect-failure,refused-stream,unavailable,cancelled,reset
+
+    # Priority routing for critical deal operations
+    - match:
+        - headers:
+            x-priority:
+              exact: 'high'
+      route:
+        - destination:
+            host: deal-service.autolytiq.svc.cluster.local
+            subset: stable
+            port:
+              number: 8082
+      timeout: 60s
+      retries:
+        attempts: 5
+        perTryTimeout: 15s
+        retryOn: gateway-error,connect-failure,refused-stream,unavailable,cancelled,reset
+
+    # Default route
+    - route:
+        - destination:
+            host: deal-service.autolytiq.svc.cluster.local
+            subset: stable
+            port:
+              number: 8082
+          weight: 100
+      timeout: 30s
+      retries:
+        attempts: 3
+        perTryTimeout: 10s
+        retryOn: gateway-error,connect-failure,refused-stream,unavailable,cancelled,reset
+---
+# Customer Service VirtualService
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: customer-service
+  namespace: autolytiq
+spec:
+  hosts:
+    - customer-service.autolytiq.svc.cluster.local
+  http:
+    # Canary routing
+    - match:
+        - headers:
+            x-canary:
+              exact: 'true'
+      route:
+        - destination:
+            host: customer-service.autolytiq.svc.cluster.local
+            subset: canary
+            port:
+              number: 8083
+      timeout: 20s
+      retries:
+        attempts: 3
+        perTryTimeout: 6s
+        retryOn: gateway-error,connect-failure,refused-stream,unavailable,cancelled,reset
+
+    # Default route
+    - route:
+        - destination:
+            host: customer-service.autolytiq.svc.cluster.local
+            subset: stable
+            port:
+              number: 8083
+          weight: 100
+      timeout: 20s
+      retries:
+        attempts: 3
+        perTryTimeout: 6s
+        retryOn: gateway-error,connect-failure,refused-stream,unavailable,cancelled,reset
+---
+# Inventory Service VirtualService
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: inventory-service
+  namespace: autolytiq
+spec:
+  hosts:
+    - inventory-service.autolytiq.svc.cluster.local
+  http:
+    # Canary routing
+    - match:
+        - headers:
+            x-canary:
+              exact: 'true'
+      route:
+        - destination:
+            host: inventory-service.autolytiq.svc.cluster.local
+            subset: canary
+            port:
+              number: 8084
+      timeout: 20s
+      retries:
+        attempts: 3
+        perTryTimeout: 6s
+        retryOn: gateway-error,connect-failure,refused-stream,unavailable,cancelled,reset
+
+    # Read-heavy operations can have longer timeout
+    - match:
+        - uri:
+            prefix: '/api/v1/inventory/search'
+      route:
+        - destination:
+            host: inventory-service.autolytiq.svc.cluster.local
+            subset: stable
+            port:
+              number: 8084
+      timeout: 60s
+      retries:
+        attempts: 2
+        perTryTimeout: 25s
+        retryOn: gateway-error,connect-failure,refused-stream
+
+    # Default route
+    - route:
+        - destination:
+            host: inventory-service.autolytiq.svc.cluster.local
+            subset: stable
+            port:
+              number: 8084
+          weight: 100
+      timeout: 20s
+      retries:
+        attempts: 3
+        perTryTimeout: 6s
+        retryOn: gateway-error,connect-failure,refused-stream,unavailable,cancelled,reset
+---
+# Email Service VirtualService
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: email-service
+  namespace: autolytiq
+spec:
+  hosts:
+    - email-service.autolytiq.svc.cluster.local
+  http:
+    # Canary routing
+    - match:
+        - headers:
+            x-canary:
+              exact: 'true'
+      route:
+        - destination:
+            host: email-service.autolytiq.svc.cluster.local
+            subset: canary
+            port:
+              number: 8085
+      timeout: 60s
+      retries:
+        attempts: 5
+        perTryTimeout: 15s
+        retryOn: gateway-error,connect-failure,refused-stream,unavailable,cancelled,reset
+
+    # Email sending has longer timeouts
+    - route:
+        - destination:
+            host: email-service.autolytiq.svc.cluster.local
+            subset: stable
+            port:
+              number: 8085
+          weight: 100
+      timeout: 60s
+      retries:
+        attempts: 5
+        perTryTimeout: 15s
+        retryOn: gateway-error,connect-failure,refused-stream,unavailable,cancelled,reset
+---
+# User Service VirtualService
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: user-service
+  namespace: autolytiq
+spec:
+  hosts:
+    - user-service.autolytiq.svc.cluster.local
+  http:
+    # Canary routing
+    - match:
+        - headers:
+            x-canary:
+              exact: 'true'
+      route:
+        - destination:
+            host: user-service.autolytiq.svc.cluster.local
+            subset: canary
+            port:
+              number: 8086
+      timeout: 10s
+      retries:
+        attempts: 3
+        perTryTimeout: 3s
+        retryOn: gateway-error,connect-failure,refused-stream,unavailable,cancelled,reset
+
+    # Default route
+    - route:
+        - destination:
+            host: user-service.autolytiq.svc.cluster.local
+            subset: stable
+            port:
+              number: 8086
+          weight: 100
+      timeout: 10s
+      retries:
+        attempts: 3
+        perTryTimeout: 3s
+        retryOn: gateway-error,connect-failure,refused-stream,unavailable,cancelled,reset
+---
+# Config Service VirtualService
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: config-service
+  namespace: autolytiq
+spec:
+  hosts:
+    - config-service.autolytiq.svc.cluster.local
+  http:
+    # Canary routing
+    - match:
+        - headers:
+            x-canary:
+              exact: 'true'
+      route:
+        - destination:
+            host: config-service.autolytiq.svc.cluster.local
+            subset: canary
+            port:
+              number: 8088
+      timeout: 10s
+      retries:
+        attempts: 3
+        perTryTimeout: 3s
+        retryOn: gateway-error,connect-failure,refused-stream,unavailable,cancelled,reset
+
+    # Config reads should be fast
+    - route:
+        - destination:
+            host: config-service.autolytiq.svc.cluster.local
+            subset: stable
+            port:
+              number: 8088
+          weight: 100
+      timeout: 10s
+      retries:
+        attempts: 3
+        perTryTimeout: 3s
+        retryOn: gateway-error,connect-failure,refused-stream,unavailable,cancelled,reset

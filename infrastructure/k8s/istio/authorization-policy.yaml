@@ -1,0 +1,383 @@
+# Authorization Policies for Service-to-Service Communication
+# These policies define which services can communicate with each other
+---
+# Deny-all policy for the namespace (defense in depth)
+# All traffic is denied unless explicitly allowed
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: deny-all
+  namespace: autolytiq
+spec:
+  # Empty spec means deny all traffic
+  {}
+---
+# Allow health checks from kubelet (non-mesh traffic)
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-health-checks
+  namespace: autolytiq
+spec:
+  action: ALLOW
+  rules:
+    - to:
+        - operation:
+            paths:
+              - '/health'
+              - '/healthz'
+              - '/ready'
+              - '/readiness'
+              - '/liveness'
+              - '/metrics'
+---
+# API Gateway - Entry point for external traffic
+# Can communicate with all backend services
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: api-gateway-policy
+  namespace: autolytiq
+spec:
+  selector:
+    matchLabels:
+      app: api-gateway
+  action: ALLOW
+  rules:
+    # Allow ingress gateway to reach API gateway
+    - from:
+        - source:
+            principals:
+              - 'cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account'
+      to:
+        - operation:
+            ports:
+              - '8080'
+    # Allow Prometheus scraping
+    - from:
+        - source:
+            namespaces:
+              - 'monitoring'
+      to:
+        - operation:
+            paths:
+              - '/metrics'
+---
+# Auth Service - Handles authentication
+# Only API Gateway can call it
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: auth-service-policy
+  namespace: autolytiq
+spec:
+  selector:
+    matchLabels:
+      app: auth-service
+  action: ALLOW
+  rules:
+    # Allow API Gateway to call auth service
+    - from:
+        - source:
+            principals:
+              - 'cluster.local/ns/autolytiq/sa/default'
+            namespaces:
+              - 'autolytiq'
+      to:
+        - operation:
+            ports:
+              - '8087'
+            methods:
+              - 'GET'
+              - 'POST'
+              - 'PUT'
+              - 'DELETE'
+              - 'PATCH'
+    # Allow Prometheus scraping
+    - from:
+        - source:
+            namespaces:
+              - 'monitoring'
+      to:
+        - operation:
+            paths:
+              - '/metrics'
+---
+# Deal Service - Handles deal management
+# API Gateway and other services can call it
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: deal-service-policy
+  namespace: autolytiq
+spec:
+  selector:
+    matchLabels:
+      app: deal-service
+  action: ALLOW
+  rules:
+    # Allow API Gateway and other autolytiq services
+    - from:
+        - source:
+            namespaces:
+              - 'autolytiq'
+      to:
+        - operation:
+            ports:
+              - '8082'
+            methods:
+              - 'GET'
+              - 'POST'
+              - 'PUT'
+              - 'DELETE'
+              - 'PATCH'
+    # Allow Prometheus scraping
+    - from:
+        - source:
+            namespaces:
+              - 'monitoring'
+      to:
+        - operation:
+            paths:
+              - '/metrics'
+---
+# Customer Service - Handles customer data
+# API Gateway, Deal Service can call it
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: customer-service-policy
+  namespace: autolytiq
+spec:
+  selector:
+    matchLabels:
+      app: customer-service
+  action: ALLOW
+  rules:
+    # Allow from API Gateway and Deal Service
+    - from:
+        - source:
+            namespaces:
+              - 'autolytiq'
+      to:
+        - operation:
+            ports:
+              - '8083'
+            methods:
+              - 'GET'
+              - 'POST'
+              - 'PUT'
+              - 'DELETE'
+              - 'PATCH'
+    # Allow Prometheus scraping
+    - from:
+        - source:
+            namespaces:
+              - 'monitoring'
+      to:
+        - operation:
+            paths:
+              - '/metrics'
+---
+# Inventory Service - Handles inventory/vehicle data
+# API Gateway, Deal Service can call it
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: inventory-service-policy
+  namespace: autolytiq
+spec:
+  selector:
+    matchLabels:
+      app: inventory-service
+  action: ALLOW
+  rules:
+    # Allow from API Gateway and Deal Service
+    - from:
+        - source:
+            namespaces:
+              - 'autolytiq'
+      to:
+        - operation:
+            ports:
+              - '8084'
+            methods:
+              - 'GET'
+              - 'POST'
+              - 'PUT'
+              - 'DELETE'
+              - 'PATCH'
+    # Allow Prometheus scraping
+    - from:
+        - source:
+            namespaces:
+              - 'monitoring'
+      to:
+        - operation:
+            paths:
+              - '/metrics'
+---
+# Email Service - Handles email notifications
+# Only specific services should call it
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: email-service-policy
+  namespace: autolytiq
+spec:
+  selector:
+    matchLabels:
+      app: email-service
+  action: ALLOW
+  rules:
+    # Allow from API Gateway, Deal Service, Auth Service (password reset emails)
+    - from:
+        - source:
+            namespaces:
+              - 'autolytiq'
+      to:
+        - operation:
+            ports:
+              - '8085'
+            methods:
+              - 'GET'
+              - 'POST'
+    # Allow Prometheus scraping
+    - from:
+        - source:
+            namespaces:
+              - 'monitoring'
+      to:
+        - operation:
+            paths:
+              - '/metrics'
+---
+# User Service - Handles user management
+# API Gateway can call it
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: user-service-policy
+  namespace: autolytiq
+spec:
+  selector:
+    matchLabels:
+      app: user-service
+  action: ALLOW
+  rules:
+    # Allow from API Gateway and Auth Service
+    - from:
+        - source:
+            namespaces:
+              - 'autolytiq'
+      to:
+        - operation:
+            ports:
+              - '8086'
+            methods:
+              - 'GET'
+              - 'POST'
+              - 'PUT'
+              - 'DELETE'
+              - 'PATCH'
+    # Allow Prometheus scraping
+    - from:
+        - source:
+            namespaces:
+              - 'monitoring'
+      to:
+        - operation:
+            paths:
+              - '/metrics'
+---
+# Config Service - Handles configuration
+# All services may need to read config
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: config-service-policy
+  namespace: autolytiq
+spec:
+  selector:
+    matchLabels:
+      app: config-service
+  action: ALLOW
+  rules:
+    # Allow all autolytiq services to read config
+    - from:
+        - source:
+            namespaces:
+              - 'autolytiq'
+      to:
+        - operation:
+            ports:
+              - '8088'
+            methods:
+              - 'GET'
+    # Only API Gateway can modify config
+    - from:
+        - source:
+            namespaces:
+              - 'autolytiq'
+      to:
+        - operation:
+            ports:
+              - '8088'
+            methods:
+              - 'POST'
+              - 'PUT'
+              - 'DELETE'
+              - 'PATCH'
+    # Allow Prometheus scraping
+    - from:
+        - source:
+            namespaces:
+              - 'monitoring'
+      to:
+        - operation:
+            paths:
+              - '/metrics'
+---
+# PostgreSQL - Allow only backend services
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: postgres-policy
+  namespace: autolytiq
+spec:
+  selector:
+    matchLabels:
+      app: postgres
+  action: ALLOW
+  rules:
+    # Allow backend services to connect
+    - from:
+        - source:
+            namespaces:
+              - 'autolytiq'
+      to:
+        - operation:
+            ports:
+              - '5432'
+---
+# Redis - Allow only backend services
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: redis-policy
+  namespace: autolytiq
+spec:
+  selector:
+    matchLabels:
+      app: redis
+  action: ALLOW
+  rules:
+    # Allow backend services to connect
+    - from:
+        - source:
+            namespaces:
+              - 'autolytiq'
+      to:
+        - operation:
+            ports:
+              - '6379'

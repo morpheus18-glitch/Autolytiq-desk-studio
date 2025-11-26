@@ -3,11 +3,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
+
+	"autolytiq/shared/logging"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -24,18 +25,27 @@ type Server struct {
 	router *mux.Router
 	config *Config
 	db     VehicleDatabase
+	logger *logging.Logger
 }
 
 // NewServer creates a new Inventory service server
-func NewServer(config *Config, db VehicleDatabase) *Server {
+func NewServer(config *Config, db VehicleDatabase, logger *logging.Logger) *Server {
 	s := &Server{
 		router: mux.NewRouter(),
 		config: config,
 		db:     db,
+		logger: logger,
 	}
 
+	s.setupMiddleware()
 	s.setupRoutes()
 	return s
+}
+
+// setupMiddleware configures middleware
+func (s *Server) setupMiddleware() {
+	s.router.Use(logging.RequestIDMiddleware)
+	s.router.Use(logging.RequestLoggingMiddleware(s.logger))
 }
 
 // setupRoutes configures all routes
@@ -105,6 +115,7 @@ func (s *Server) listVehicles(w http.ResponseWriter, r *http.Request) {
 
 	vehicles, err := s.db.ListVehicles(dealershipID, filters)
 	if err != nil {
+		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to list vehicles")
 		http.Error(w, fmt.Sprintf("Failed to list vehicles: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -119,50 +130,46 @@ func (s *Server) listVehicles(w http.ResponseWriter, r *http.Request) {
 
 // createVehicle creates a new vehicle
 func (s *Server) createVehicle(w http.ResponseWriter, r *http.Request) {
-	var vehicle Vehicle
-	if err := json.NewDecoder(r.Body).Decode(&vehicle); err != nil {
-		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
+	var req CreateVehicleRequest
+	if !decodeAndValidate(r, w, &req) {
 		return
 	}
 
-	// Validate required fields
-	if vehicle.Make == "" || vehicle.Model == "" || vehicle.Year == 0 || vehicle.Price == 0 {
-		http.Error(w, "Missing required fields: make, model, year, and price are required", http.StatusBadRequest)
-		return
-	}
-
-	// Validate VIN if provided
-	if vehicle.VIN != "" {
-		valid, err := s.db.ValidateVIN(vehicle.VIN)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Failed to validate VIN: %v", err), http.StatusInternalServerError)
-			return
-		}
-		if !valid {
-			http.Error(w, "Invalid VIN format", http.StatusBadRequest)
-			return
-		}
+	// Map request to Vehicle
+	vehicle := Vehicle{
+		ID:           uuid.New().String(),
+		DealershipID: req.DealershipID,
+		VIN:          req.VIN,
+		Make:         req.Make,
+		Model:        req.Model,
+		Year:         req.Year,
+		Condition:    req.Condition,
+		Status:       req.Status,
+		Price:        req.Price,
+		Mileage:      req.Mileage,
+		Color:        req.Color,
+		Description:  req.Description,
+		StockNumber:  req.StockNumber,
+		CreatedAt:    time.Now().Format(time.RFC3339),
+		UpdatedAt:    time.Now().Format(time.RFC3339),
 	}
 
 	// Set defaults
-	vehicle.ID = uuid.New().String()
-	vehicle.CreatedAt = time.Now().Format(time.RFC3339)
-	vehicle.UpdatedAt = time.Now().Format(time.RFC3339)
 	if vehicle.Condition == "" {
 		vehicle.Condition = "used"
 	}
 	if vehicle.Status == "" {
 		vehicle.Status = "available"
 	}
-	if vehicle.Mileage == 0 {
-		vehicle.Mileage = 0
-	}
 
 	// Save to database
 	if err := s.db.CreateVehicle(&vehicle); err != nil {
+		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to create vehicle")
 		http.Error(w, fmt.Sprintf("Failed to create vehicle: %v", err), http.StatusInternalServerError)
 		return
 	}
+
+	s.logger.WithContext(r.Context()).WithField("vehicle_id", vehicle.ID).Info("Vehicle created")
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -176,6 +183,7 @@ func (s *Server) getVehicle(w http.ResponseWriter, r *http.Request) {
 
 	vehicle, err := s.db.GetVehicle(id)
 	if err != nil {
+		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to get vehicle")
 		http.Error(w, fmt.Sprintf("Failed to get vehicle: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -194,39 +202,77 @@ func (s *Server) updateVehicle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	var updatedVehicle Vehicle
-	if err := json.NewDecoder(r.Body).Decode(&updatedVehicle); err != nil {
-		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
+	if !validateUUID(w, id, "id") {
 		return
 	}
 
-	// Validate VIN if provided
-	if updatedVehicle.VIN != "" {
-		valid, err := s.db.ValidateVIN(updatedVehicle.VIN)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Failed to validate VIN: %v", err), http.StatusInternalServerError)
-			return
-		}
-		if !valid {
-			http.Error(w, "Invalid VIN format", http.StatusBadRequest)
-			return
-		}
+	var req UpdateVehicleRequest
+	if !decodeAndValidate(r, w, &req) {
+		return
 	}
 
-	updatedVehicle.ID = id
-	updatedVehicle.UpdatedAt = time.Now().Format(time.RFC3339)
+	// Get existing vehicle first
+	existingVehicle, err := s.db.GetVehicle(id)
+	if err != nil {
+		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to get vehicle")
+		http.Error(w, fmt.Sprintf("Failed to get vehicle: %v", err), http.StatusInternalServerError)
+		return
+	}
+	if existingVehicle == nil {
+		http.Error(w, "Vehicle not found", http.StatusNotFound)
+		return
+	}
 
-	if err := s.db.UpdateVehicle(&updatedVehicle); err != nil {
+	// Apply updates
+	if req.VIN != "" {
+		existingVehicle.VIN = req.VIN
+	}
+	if req.Make != "" {
+		existingVehicle.Make = req.Make
+	}
+	if req.Model != "" {
+		existingVehicle.Model = req.Model
+	}
+	if req.Year != 0 {
+		existingVehicle.Year = req.Year
+	}
+	if req.Condition != "" {
+		existingVehicle.Condition = req.Condition
+	}
+	if req.Status != "" {
+		existingVehicle.Status = req.Status
+	}
+	if req.Price > 0 {
+		existingVehicle.Price = req.Price
+	}
+	if req.Mileage > 0 {
+		existingVehicle.Mileage = req.Mileage
+	}
+	if req.Color != "" {
+		existingVehicle.Color = req.Color
+	}
+	if req.Description != "" {
+		existingVehicle.Description = req.Description
+	}
+	if req.StockNumber != "" {
+		existingVehicle.StockNumber = req.StockNumber
+	}
+	existingVehicle.UpdatedAt = time.Now().Format(time.RFC3339)
+
+	if err := s.db.UpdateVehicle(existingVehicle); err != nil {
 		if err.Error() == fmt.Sprintf("vehicle not found: %s", id) {
 			http.Error(w, "Vehicle not found", http.StatusNotFound)
 		} else {
+			s.logger.WithContext(r.Context()).WithError(err).Error("Failed to update vehicle")
 			http.Error(w, fmt.Sprintf("Failed to update vehicle: %v", err), http.StatusInternalServerError)
 		}
 		return
 	}
 
+	s.logger.WithContext(r.Context()).WithField("vehicle_id", id).Info("Vehicle updated")
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(updatedVehicle)
+	json.NewEncoder(w).Encode(existingVehicle)
 }
 
 // deleteVehicle deletes a specific vehicle
@@ -238,39 +284,34 @@ func (s *Server) deleteVehicle(w http.ResponseWriter, r *http.Request) {
 		if err.Error() == fmt.Sprintf("vehicle not found: %s", id) {
 			http.Error(w, "Vehicle not found", http.StatusNotFound)
 		} else {
+			s.logger.WithContext(r.Context()).WithError(err).Error("Failed to delete vehicle")
 			http.Error(w, fmt.Sprintf("Failed to delete vehicle: %v", err), http.StatusInternalServerError)
 		}
 		return
 	}
+
+	s.logger.WithContext(r.Context()).WithField("vehicle_id", id).Info("Vehicle deleted")
 
 	w.WriteHeader(http.StatusNoContent)
 }
 
 // validateVIN validates a VIN
 func (s *Server) validateVIN(w http.ResponseWriter, r *http.Request) {
-	var request struct {
-		VIN string `json:"vin"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
+	var req ValidateVINRequest
+	if !decodeAndValidate(r, w, &req) {
 		return
 	}
 
-	if request.VIN == "" {
-		http.Error(w, "VIN is required", http.StatusBadRequest)
-		return
-	}
-
-	valid, err := s.db.ValidateVIN(request.VIN)
+	valid, err := s.db.ValidateVIN(req.VIN)
 	if err != nil {
+		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to validate VIN")
 		http.Error(w, fmt.Sprintf("Failed to validate VIN: %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"vin":   request.VIN,
+		"vin":   req.VIN,
 		"valid": valid,
 	})
 }
@@ -286,6 +327,7 @@ func (s *Server) getInventoryStats(w http.ResponseWriter, r *http.Request) {
 
 	stats, err := s.db.GetInventoryStats(dealershipID)
 	if err != nil {
+		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to get inventory stats")
 		http.Error(w, fmt.Sprintf("Failed to get inventory stats: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -296,7 +338,7 @@ func (s *Server) getInventoryStats(w http.ResponseWriter, r *http.Request) {
 
 // Start starts the Inventory service server
 func (s *Server) Start() error {
-	log.Printf("Starting Inventory Service on port %s", s.config.Port)
+	s.logger.Infof("Starting Inventory Service on port %s", s.config.Port)
 	return http.ListenAndServe(":"+s.config.Port, s.router)
 }
 
@@ -315,21 +357,28 @@ func getEnv(key, defaultValue string) string {
 }
 
 func main() {
+	// Initialize logger
+	logger := logging.New(logging.Config{
+		Service: "inventory-service",
+	})
+
 	config := loadConfig()
 
 	// Connect to database
-	db, err := NewDatabase(config.DatabaseURL)
+	db, err := NewDatabase(config.DatabaseURL, logger)
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		logger.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer db.Close()
 
 	// Initialize schema
 	if err := db.InitSchema(); err != nil {
-		log.Fatalf("Failed to initialize schema: %v", err)
+		logger.Fatalf("Failed to initialize schema: %v", err)
 	}
 
 	// Create and start server
-	server := NewServer(config, db)
-	log.Fatal(server.Start())
+	server := NewServer(config, db, logger)
+	if err := server.Start(); err != nil {
+		logger.Fatal(err.Error())
+	}
 }

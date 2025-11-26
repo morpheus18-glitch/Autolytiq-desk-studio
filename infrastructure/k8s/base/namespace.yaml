@@ -5,3 +5,5 @@ metadata:
   labels:
     app.kubernetes.io/name: autolytiq
     app.kubernetes.io/part-of: autolytiq-desk-studio
+    # Enable Istio sidecar injection for all pods in this namespace
+    istio-injection: enabled

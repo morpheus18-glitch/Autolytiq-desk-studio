@@ -1,0 +1,43 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: external-secrets
+
+resources:
+  - namespace.yaml
+  - operator.yaml
+  - cluster-secret-store.yaml
+  - service-accounts.yaml
+  - external-secrets.yaml
+
+commonLabels:
+  app.kubernetes.io/part-of: autolytiq
+  app.kubernetes.io/managed-by: kustomize
+  app.kubernetes.io/component: secrets-management
+
+# ConfigMapGenerator for environment-specific values
+configMapGenerator:
+  - name: external-secrets-config
+    literals:
+      - ENVIRONMENT=dev
+      - AWS_REGION=us-east-1
+
+# Replacements for environment variables in manifests
+# These will be replaced by the actual environment value during deployment
+replacements:
+  - source:
+      kind: ConfigMap
+      name: external-secrets-config
+      fieldPath: data.ENVIRONMENT
+    targets:
+      - select:
+          kind: ExternalSecret
+        fieldPaths:
+          - spec.data.*.remoteRef.key
+        options:
+          delimiter: '/'
+          index: 1
+
+images:
+  - name: ghcr.io/external-secrets/external-secrets
+    newTag: v0.9.10

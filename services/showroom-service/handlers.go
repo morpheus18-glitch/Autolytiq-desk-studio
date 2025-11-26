@@ -2,23 +2,25 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
+
+	"autolytiq/shared/logging"
 
 	"github.com/gorilla/mux"
 )
 
 // Handler holds dependencies for HTTP handlers
 type Handler struct {
-	db  ShowroomDatabase
-	hub *Hub
+	db     ShowroomDatabase
+	hub    *Hub
+	logger *logging.Logger
 }
 
 // NewHandler creates a new Handler instance
-func NewHandler(db ShowroomDatabase, hub *Hub) *Handler {
-	return &Handler{db: db, hub: hub}
+func NewHandler(db ShowroomDatabase, hub *Hub, logger *logging.Logger) *Handler {
+	return &Handler{db: db, hub: hub, logger: logger}
 }
 
 // respondJSON writes a JSON response
@@ -103,7 +105,7 @@ func (h *Handler) ListVisits(w http.ResponseWriter, r *http.Request) {
 
 	visits, total, err := h.db.ListVisits(filter)
 	if err != nil {
-		log.Printf("Error listing visits: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to list visits")
 		respondError(w, http.StatusInternalServerError, "Failed to list visits")
 		return
 	}
@@ -131,7 +133,7 @@ func (h *Handler) GetVisit(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusNotFound, "Visit not found")
 			return
 		}
-		log.Printf("Error getting visit: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to get visit")
 		respondError(w, http.StatusInternalServerError, "Failed to get visit")
 		return
 	}
@@ -149,19 +151,13 @@ func (h *Handler) CreateVisit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req CreateVisitRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid request body")
-		return
-	}
-
-	if req.CustomerID == "" {
-		respondError(w, http.StatusBadRequest, "Customer ID is required")
+	if !decodeAndValidateShowroom(r, w, &req) {
 		return
 	}
 
 	visit, err := h.db.CreateVisit(dealershipID, req)
 	if err != nil {
-		log.Printf("Error creating visit: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to create visit")
 		respondError(w, http.StatusInternalServerError, "Failed to create visit")
 		return
 	}
@@ -172,7 +168,7 @@ func (h *Handler) CreateVisit(w http.ResponseWriter, r *http.Request) {
 	// Auto-start WAIT_TIME timer
 	timer, err := h.db.StartTimer(visit.ID, "WAIT_TIME", &userID)
 	if err != nil {
-		log.Printf("Error auto-starting timer: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Warn("Failed to auto-start timer")
 	} else {
 		visit.ActiveTimer = timer
 		visit.Timers = []Timer{*timer}
@@ -185,7 +181,7 @@ func (h *Handler) CreateVisit(w http.ResponseWriter, r *http.Request) {
 			IsPinned: false,
 		})
 		if err != nil {
-			log.Printf("Error creating initial note: %v", err)
+			h.logger.WithContext(r.Context()).WithError(err).Warn("Failed to create initial note")
 		} else {
 			visit.Notes = []Note{*note}
 		}
@@ -210,8 +206,7 @@ func (h *Handler) UpdateVisit(w http.ResponseWriter, r *http.Request) {
 	visitID := vars["id"]
 
 	var req UpdateVisitRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid request body")
+	if !decodeAndValidateShowroom(r, w, &req) {
 		return
 	}
 
@@ -221,7 +216,7 @@ func (h *Handler) UpdateVisit(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusNotFound, "Visit not found")
 			return
 		}
-		log.Printf("Error updating visit: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to update visit")
 		respondError(w, http.StatusInternalServerError, "Failed to update visit")
 		return
 	}
@@ -248,13 +243,7 @@ func (h *Handler) ChangeStatus(w http.ResponseWriter, r *http.Request) {
 	visitID := vars["id"]
 
 	var req ChangeStatusRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid request body")
-		return
-	}
-
-	if !IsValidStatus(req.Status) {
-		respondError(w, http.StatusBadRequest, "Invalid status")
+	if !decodeAndValidateShowroom(r, w, &req) {
 		return
 	}
 
@@ -265,7 +254,7 @@ func (h *Handler) ChangeStatus(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusNotFound, "Visit not found")
 			return
 		}
-		log.Printf("Error getting visit: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to get visit")
 		respondError(w, http.StatusInternalServerError, "Failed to get visit")
 		return
 	}
@@ -274,7 +263,7 @@ func (h *Handler) ChangeStatus(w http.ResponseWriter, r *http.Request) {
 
 	visit, err := h.db.ChangeStatus(visitID, dealershipID, req.Status)
 	if err != nil {
-		log.Printf("Error changing status: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to change status")
 		respondError(w, http.StatusInternalServerError, "Failed to change status")
 		return
 	}
@@ -305,13 +294,7 @@ func (h *Handler) AttachVehicle(w http.ResponseWriter, r *http.Request) {
 	visitID := vars["id"]
 
 	var req AttachVehicleRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid request body")
-		return
-	}
-
-	if req.VehicleID == "" {
-		respondError(w, http.StatusBadRequest, "Vehicle ID is required")
+	if !decodeAndValidateShowroom(r, w, &req) {
 		return
 	}
 
@@ -321,7 +304,7 @@ func (h *Handler) AttachVehicle(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusNotFound, "Visit not found")
 			return
 		}
-		log.Printf("Error attaching vehicle: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to attach vehicle")
 		respondError(w, http.StatusInternalServerError, "Failed to attach vehicle")
 		return
 	}
@@ -348,8 +331,7 @@ func (h *Handler) CloseVisit(w http.ResponseWriter, r *http.Request) {
 	visitID := vars["id"]
 
 	var req ChangeStatusRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid request body")
+	if !decodeAndValidateShowroom(r, w, &req) {
 		return
 	}
 
@@ -365,7 +347,7 @@ func (h *Handler) CloseVisit(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusNotFound, "Visit not found")
 			return
 		}
-		log.Printf("Error getting visit: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to get visit")
 		respondError(w, http.StatusInternalServerError, "Failed to get visit")
 		return
 	}
@@ -374,7 +356,7 @@ func (h *Handler) CloseVisit(w http.ResponseWriter, r *http.Request) {
 
 	visit, err := h.db.CloseVisit(visitID, dealershipID, req.Status)
 	if err != nil {
-		log.Printf("Error closing visit: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to close visit")
 		respondError(w, http.StatusInternalServerError, "Failed to close visit")
 		return
 	}
@@ -405,13 +387,7 @@ func (h *Handler) StartTimer(w http.ResponseWriter, r *http.Request) {
 	visitID := vars["id"]
 
 	var req StartTimerRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid request body")
-		return
-	}
-
-	if !IsValidTimerType(req.TimerType) {
-		respondError(w, http.StatusBadRequest, "Invalid timer type")
+	if !decodeAndValidateShowroom(r, w, &req) {
 		return
 	}
 
@@ -422,14 +398,14 @@ func (h *Handler) StartTimer(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusNotFound, "Visit not found")
 			return
 		}
-		log.Printf("Error getting visit: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to get visit")
 		respondError(w, http.StatusInternalServerError, "Failed to verify visit")
 		return
 	}
 
 	timer, err := h.db.StartTimer(visitID, req.TimerType, &userID)
 	if err != nil {
-		log.Printf("Error starting timer: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to start timer")
 		respondError(w, http.StatusInternalServerError, "Failed to start timer")
 		return
 	}
@@ -466,7 +442,7 @@ func (h *Handler) StopTimer(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusNotFound, "Visit not found")
 			return
 		}
-		log.Printf("Error getting visit: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to get visit")
 		respondError(w, http.StatusInternalServerError, "Failed to verify visit")
 		return
 	}
@@ -477,7 +453,7 @@ func (h *Handler) StopTimer(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusNotFound, "Timer not found")
 			return
 		}
-		log.Printf("Error stopping timer: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to stop timer")
 		respondError(w, http.StatusInternalServerError, "Failed to stop timer")
 		return
 	}
@@ -512,14 +488,14 @@ func (h *Handler) ListTimers(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusNotFound, "Visit not found")
 			return
 		}
-		log.Printf("Error getting visit: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to get visit")
 		respondError(w, http.StatusInternalServerError, "Failed to verify visit")
 		return
 	}
 
 	timers, err := h.db.GetTimers(visitID)
 	if err != nil {
-		log.Printf("Error getting timers: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to get timers")
 		respondError(w, http.StatusInternalServerError, "Failed to get timers")
 		return
 	}
@@ -548,13 +524,7 @@ func (h *Handler) CreateNote(w http.ResponseWriter, r *http.Request) {
 	visitID := vars["id"]
 
 	var req CreateNoteRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid request body")
-		return
-	}
-
-	if req.Content == "" {
-		respondError(w, http.StatusBadRequest, "Content is required")
+	if !decodeAndValidateShowroom(r, w, &req) {
 		return
 	}
 
@@ -565,14 +535,14 @@ func (h *Handler) CreateNote(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusNotFound, "Visit not found")
 			return
 		}
-		log.Printf("Error getting visit: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to get visit")
 		respondError(w, http.StatusInternalServerError, "Failed to verify visit")
 		return
 	}
 
 	note, err := h.db.CreateNote(visitID, userID, req)
 	if err != nil {
-		log.Printf("Error creating note: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to create note")
 		respondError(w, http.StatusInternalServerError, "Failed to create note")
 		return
 	}
@@ -599,8 +569,7 @@ func (h *Handler) UpdateNote(w http.ResponseWriter, r *http.Request) {
 	noteID := vars["note_id"]
 
 	var req UpdateNoteRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid request body")
+	if !decodeAndValidateShowroom(r, w, &req) {
 		return
 	}
 
@@ -611,7 +580,7 @@ func (h *Handler) UpdateNote(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusNotFound, "Visit not found")
 			return
 		}
-		log.Printf("Error getting visit: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to get visit")
 		respondError(w, http.StatusInternalServerError, "Failed to verify visit")
 		return
 	}
@@ -622,7 +591,7 @@ func (h *Handler) UpdateNote(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusNotFound, "Note not found")
 			return
 		}
-		log.Printf("Error updating note: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to update note")
 		respondError(w, http.StatusInternalServerError, "Failed to update note")
 		return
 	}
@@ -655,7 +624,7 @@ func (h *Handler) DeleteNote(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusNotFound, "Visit not found")
 			return
 		}
-		log.Printf("Error getting visit: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to get visit")
 		respondError(w, http.StatusInternalServerError, "Failed to verify visit")
 		return
 	}
@@ -666,7 +635,7 @@ func (h *Handler) DeleteNote(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusNotFound, "Note not found")
 			return
 		}
-		log.Printf("Error deleting note: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to delete note")
 		respondError(w, http.StatusInternalServerError, "Failed to delete note")
 		return
 	}
@@ -698,14 +667,14 @@ func (h *Handler) ListNotes(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusNotFound, "Visit not found")
 			return
 		}
-		log.Printf("Error getting visit: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to get visit")
 		respondError(w, http.StatusInternalServerError, "Failed to verify visit")
 		return
 	}
 
 	notes, err := h.db.GetNotes(visitID)
 	if err != nil {
-		log.Printf("Error getting notes: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to get notes")
 		respondError(w, http.StatusInternalServerError, "Failed to get notes")
 		return
 	}
@@ -735,14 +704,14 @@ func (h *Handler) ListEvents(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusNotFound, "Visit not found")
 			return
 		}
-		log.Printf("Error getting visit: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to get visit")
 		respondError(w, http.StatusInternalServerError, "Failed to verify visit")
 		return
 	}
 
 	events, err := h.db.GetEvents(visitID)
 	if err != nil {
-		log.Printf("Error getting events: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to get events")
 		respondError(w, http.StatusInternalServerError, "Failed to get events")
 		return
 	}
@@ -768,7 +737,7 @@ func (h *Handler) GetWorkflowConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		log.Printf("Error getting workflow config: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to get workflow config")
 		respondError(w, http.StatusInternalServerError, "Failed to get workflow config")
 		return
 	}
@@ -799,7 +768,7 @@ func (h *Handler) UpdateWorkflowConfig(w http.ResponseWriter, r *http.Request) {
 
 	updatedConfig, err := h.db.UpsertWorkflowConfig(config)
 	if err != nil {
-		log.Printf("Error updating workflow config: %v", err)
+		h.logger.WithContext(r.Context()).WithError(err).Error("Failed to update workflow config")
 		respondError(w, http.StatusInternalServerError, "Failed to update workflow config")
 		return
 	}

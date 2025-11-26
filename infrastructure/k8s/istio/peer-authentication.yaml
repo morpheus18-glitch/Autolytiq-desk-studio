@@ -1,0 +1,168 @@
+# PeerAuthentication Policies for mTLS
+# These policies enforce mutual TLS for service-to-service communication
+---
+# Mesh-wide STRICT mTLS policy
+# This is the default for all namespaces unless overridden
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: istio-system
+spec:
+  # STRICT mode requires mTLS for all workloads in the mesh
+  mtls:
+    mode: STRICT
+---
+# Namespace-level STRICT mTLS for autolytiq namespace
+# Explicitly enforces mTLS for all services in the autolytiq namespace
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: autolytiq-strict-mtls
+  namespace: autolytiq
+spec:
+  mtls:
+    mode: STRICT
+---
+# Per-service mTLS configuration examples
+# Use these when you need service-specific TLS settings
+
+# API Gateway - STRICT mTLS
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: api-gateway-mtls
+  namespace: autolytiq
+spec:
+  selector:
+    matchLabels:
+      app: api-gateway
+  mtls:
+    mode: STRICT
+  # Port-level mTLS configuration
+  portLevelMtls:
+    8080:
+      mode: STRICT
+---
+# Auth Service - STRICT mTLS with port-level config
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: auth-service-mtls
+  namespace: autolytiq
+spec:
+  selector:
+    matchLabels:
+      app: auth-service
+  mtls:
+    mode: STRICT
+  portLevelMtls:
+    8087:
+      mode: STRICT
+---
+# Deal Service - STRICT mTLS
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: deal-service-mtls
+  namespace: autolytiq
+spec:
+  selector:
+    matchLabels:
+      app: deal-service
+  mtls:
+    mode: STRICT
+  portLevelMtls:
+    8082:
+      mode: STRICT
+---
+# Customer Service - STRICT mTLS
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: customer-service-mtls
+  namespace: autolytiq
+spec:
+  selector:
+    matchLabels:
+      app: customer-service
+  mtls:
+    mode: STRICT
+  portLevelMtls:
+    8083:
+      mode: STRICT
+---
+# Inventory Service - STRICT mTLS
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: inventory-service-mtls
+  namespace: autolytiq
+spec:
+  selector:
+    matchLabels:
+      app: inventory-service
+  mtls:
+    mode: STRICT
+  portLevelMtls:
+    8084:
+      mode: STRICT
+---
+# Email Service - STRICT mTLS
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: email-service-mtls
+  namespace: autolytiq
+spec:
+  selector:
+    matchLabels:
+      app: email-service
+  mtls:
+    mode: STRICT
+  portLevelMtls:
+    8085:
+      mode: STRICT
+---
+# User Service - STRICT mTLS
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: user-service-mtls
+  namespace: autolytiq
+spec:
+  selector:
+    matchLabels:
+      app: user-service
+  mtls:
+    mode: STRICT
+  portLevelMtls:
+    8086:
+      mode: STRICT
+---
+# Config Service - STRICT mTLS
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: config-service-mtls
+  namespace: autolytiq
+spec:
+  selector:
+    matchLabels:
+      app: config-service
+  mtls:
+    mode: STRICT
+  portLevelMtls:
+    8088:
+      mode: STRICT
+---
+# Monitoring namespace - PERMISSIVE to allow Prometheus scraping
+# This allows both plaintext and mTLS connections for observability
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: monitoring-permissive
+  namespace: monitoring
+spec:
+  mtls:
+    mode: PERMISSIVE

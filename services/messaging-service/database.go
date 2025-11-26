@@ -4,9 +4,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 	"time"
+
+	"autolytiq/shared/logging"
 
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
@@ -45,11 +46,12 @@ type MessagingDatabase interface {
 
 // PostgresDB implements MessagingDatabase
 type PostgresDB struct {
-	db *sql.DB
+	db     *sql.DB
+	logger *logging.Logger
 }
 
 // NewPostgresDB creates a new PostgreSQL connection
-func NewPostgresDB(connectionString string) (*PostgresDB, error) {
+func NewPostgresDB(connectionString string, logger *logging.Logger) (*PostgresDB, error) {
 	db, err := sql.Open("postgres", connectionString)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
@@ -63,8 +65,8 @@ func NewPostgresDB(connectionString string) (*PostgresDB, error) {
 	db.SetMaxIdleConns(5)
 	db.SetConnMaxLifetime(5 * time.Minute)
 
-	log.Println("Connected to PostgreSQL database")
-	return &PostgresDB{db: db}, nil
+	logger.Info("Connected to PostgreSQL database")
+	return &PostgresDB{db: db, logger: logger}, nil
 }
 
 // Close closes the database connection

@@ -1,0 +1,439 @@
+---
+# =============================================================================
+# Velero Installation
+# =============================================================================
+# This file contains the core Velero installation manifests including:
+# - ServiceAccount with IRSA annotation
+# - ClusterRole and ClusterRoleBinding
+# - Velero deployment
+# - Node agent (restic) DaemonSet for PV backups
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Service Account with IRSA
+# -----------------------------------------------------------------------------
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: velero
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: server
+  annotations:
+    # IRSA annotation - update with actual IAM role ARN
+    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/autolytiq-ENVIRONMENT-velero
+
+---
+# -----------------------------------------------------------------------------
+# Cluster Role
+# -----------------------------------------------------------------------------
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: server
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - namespaces
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ''
+    resources:
+      - persistentvolumes
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - ''
+    resources:
+      - persistentvolumeclaims
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - ''
+    resources:
+      - secrets
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ''
+    resources:
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ''
+    resources:
+      - pods
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - ''
+    resources:
+      - pods/exec
+    verbs:
+      - create
+  - apiGroups:
+      - ''
+    resources:
+      - pods/log
+    verbs:
+      - get
+  - apiGroups:
+      - ''
+    resources:
+      - services
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ''
+    resources:
+      - events
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+      - daemonsets
+      - replicasets
+      - statefulsets
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - batch
+    resources:
+      - jobs
+      - cronjobs
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - velero.io
+    resources:
+      - '*'
+    verbs:
+      - '*'
+  - apiGroups:
+      - snapshot.storage.k8s.io
+    resources:
+      - volumesnapshots
+      - volumesnapshotcontents
+      - volumesnapshotclasses
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+
+---
+# -----------------------------------------------------------------------------
+# Cluster Role Binding
+# -----------------------------------------------------------------------------
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: server
+subjects:
+  - kind: ServiceAccount
+    name: velero
+    namespace: velero
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: velero
+
+---
+# -----------------------------------------------------------------------------
+# Velero Deployment
+# -----------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: velero
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: velero
+      app.kubernetes.io/component: server
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: velero
+        app.kubernetes.io/component: server
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '8085'
+        prometheus.io/path: '/metrics'
+    spec:
+      serviceAccountName: velero
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: velero
+          image: velero/velero:v1.12.2
+          imagePullPolicy: IfNotPresent
+          command:
+            - /velero
+          args:
+            - server
+            - --features=EnableCSI
+            - --uploader-type=kopia
+          env:
+            - name: VELERO_SCRATCH_DIR
+              value: /scratch
+            - name: VELERO_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+            - name: LD_LIBRARY_PATH
+              value: /plugins
+            - name: AWS_SHARED_CREDENTIALS_FILE
+              value: /credentials/cloud
+          ports:
+            - name: metrics
+              containerPort: 8085
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: 8085
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 8085
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+          resources:
+            requests:
+              cpu: 500m
+              memory: 128Mi
+            limits:
+              cpu: 1000m
+              memory: 512Mi
+          volumeMounts:
+            - name: plugins
+              mountPath: /plugins
+            - name: scratch
+              mountPath: /scratch
+            - name: cloud-credentials
+              mountPath: /credentials
+            - name: tmp
+              mountPath: /tmp
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+      initContainers:
+        - name: velero-plugin-for-aws
+          image: velero/velero-plugin-for-aws:v1.8.2
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: plugins
+              mountPath: /target
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+        - name: velero-plugin-for-csi
+          image: velero/velero-plugin-for-csi:v0.6.2
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: plugins
+              mountPath: /target
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+      volumes:
+        - name: plugins
+          emptyDir: {}
+        - name: scratch
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        - name: cloud-credentials
+          secret:
+            secretName: velero-cloud-credentials
+            optional: true
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+        - key: 'node.kubernetes.io/not-ready'
+          operator: 'Exists'
+          effect: 'NoExecute'
+          tolerationSeconds: 300
+        - key: 'node.kubernetes.io/unreachable'
+          operator: 'Exists'
+          effect: 'NoExecute'
+          tolerationSeconds: 300
+
+---
+# -----------------------------------------------------------------------------
+# Node Agent DaemonSet (for file-level backups)
+# -----------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-agent
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: node-agent
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: velero
+      app.kubernetes.io/component: node-agent
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: velero
+        app.kubernetes.io/component: node-agent
+    spec:
+      serviceAccountName: velero
+      securityContext:
+        runAsUser: 0
+      containers:
+        - name: node-agent
+          image: velero/velero:v1.12.2
+          imagePullPolicy: IfNotPresent
+          command:
+            - /velero
+          args:
+            - node-agent
+            - server
+          env:
+            - name: VELERO_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: VELERO_SCRATCH_DIR
+              value: /scratch
+            - name: AWS_SHARED_CREDENTIALS_FILE
+              value: /credentials/cloud
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+          volumeMounts:
+            - name: host-pods
+              mountPath: /host_pods
+              mountPropagation: HostToContainer
+            - name: scratch
+              mountPath: /scratch
+            - name: cloud-credentials
+              mountPath: /credentials
+          securityContext:
+            privileged: true
+      volumes:
+        - name: host-pods
+          hostPath:
+            path: /var/lib/kubelet/pods
+        - name: scratch
+          emptyDir: {}
+        - name: cloud-credentials
+          secret:
+            secretName: velero-cloud-credentials
+            optional: true
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+        - operator: Exists
+
+---
+# -----------------------------------------------------------------------------
+# Velero Service (for metrics)
+# -----------------------------------------------------------------------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: velero
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: server
+spec:
+  type: ClusterIP
+  ports:
+    - name: metrics
+      port: 8085
+      targetPort: 8085
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: server

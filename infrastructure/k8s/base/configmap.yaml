@@ -3,29 +3,125 @@ kind: ConfigMap
 metadata:
   name: autolytiq-config
   namespace: autolytiq
+  labels:
+    app.kubernetes.io/name: autolytiq
+    app.kubernetes.io/component: config
 data:
-  # Service ports
+  # ===========================================
+  # Service Ports
+  # ===========================================
   API_GATEWAY_PORT: '8080'
   AUTH_SERVICE_PORT: '8087'
-  DEAL_SERVICE_PORT: '8082'
-  CUSTOMER_SERVICE_PORT: '8083'
-  INVENTORY_SERVICE_PORT: '8084'
-  EMAIL_SERVICE_PORT: '8085'
-  USER_SERVICE_PORT: '8086'
-  CONFIG_SERVICE_PORT: '8088'
+  DEAL_SERVICE_PORT: '8081'
+  CUSTOMER_SERVICE_PORT: '8082'
+  INVENTORY_SERVICE_PORT: '8083'
+  EMAIL_SERVICE_PORT: '8084'
+  USER_SERVICE_PORT: '8085'
+  CONFIG_SERVICE_PORT: '8086'
+  SHOWROOM_SERVICE_PORT: '8088'
+  MESSAGING_SERVICE_PORT: '8089'
+  SETTINGS_SERVICE_PORT: '8090'
 
-  # Database
+  # ===========================================
+  # Database Configuration
+  # ===========================================
+  # Connection pool size
   DB_POOL_SIZE: '25'
+  # Idle connection timeout in milliseconds
+  DB_IDLE_TIMEOUT_MS: '30000'
+  # Connection timeout in milliseconds
+  DB_CONNECTION_TIMEOUT_MS: '5000'
+  # SSL mode (disable, require, verify-ca, verify-full)
   DB_SSL_MODE: 'require'
 
-  # Redis
+  # ===========================================
+  # Redis Configuration
+  # ===========================================
   REDIS_DB: '0'
+  REDIS_TLS_ENABLED: 'true'
+  REDIS_MAX_RETRIES: '3'
+  REDIS_RETRY_DELAY_MS: '1000'
+  REDIS_CONNECTION_TIMEOUT_MS: '5000'
 
-  # JWT
+  # ===========================================
+  # JWT Configuration
+  # ===========================================
   JWT_ISSUER: 'autolytiq'
   ACCESS_TOKEN_TTL: '15m'
   REFRESH_TOKEN_TTL: '7d'
 
-  # Logging
+  # ===========================================
+  # Session Configuration
+  # ===========================================
+  SESSION_MAX_AGE_MS: '86400000'
+  SESSION_SECURE: 'true'
+  SESSION_SAME_SITE: 'strict'
+
+  # ===========================================
+  # Logging & Monitoring
+  # ===========================================
   LOG_LEVEL: 'info'
   LOG_FORMAT: 'json'
+
+  # ===========================================
+  # Rate Limiting Configuration
+  # ===========================================
+  # Enable/disable rate limiting
+  RATE_LIMIT_ENABLED: 'true'
+
+  # Rate limits (requests per window)
+  RATE_LIMIT_IP: '100'
+  RATE_LIMIT_USER: '1000'
+  RATE_LIMIT_DEALERSHIP: '5000'
+
+  # Window duration in seconds
+  RATE_LIMIT_WINDOW_SECONDS: '60'
+
+  # Paths to bypass rate limiting (comma-separated)
+  RATE_LIMIT_BYPASS_PATHS: '/health,/ready,/live,/metrics'
+
+  # ===========================================
+  # Health Check Configuration
+  # ===========================================
+  # Timeout for individual dependency checks (ms)
+  HEALTH_CHECK_TIMEOUT_MS: '5000'
+  # Interval between background health checks (ms)
+  HEALTH_CHECK_INTERVAL_MS: '30000'
+  # Critical services (comma-separated) - must be healthy for readiness
+  CRITICAL_SERVICES: 'database,redis'
+  # Non-critical services - degraded status if down
+  NON_CRITICAL_SERVICES: 'email,s3'
+
+  # ===========================================
+  # Feature Flags
+  # ===========================================
+  FEATURE_SHOWROOM_ENABLED: 'true'
+  FEATURE_MESSAGING_ENABLED: 'true'
+  FEATURE_ADVANCED_ANALYTICS: 'true'
+
+  # ===========================================
+  # Email Configuration
+  # ===========================================
+  RESEND_FROM_NAME: 'Autolytiq'
+
+  # ===========================================
+  # CORS Configuration
+  # ===========================================
+  # Allowed origins (comma-separated) - override in overlays
+  ALLOWED_ORIGINS: 'https://app.autolytiq.com'
+---
+# Environment-specific ConfigMap documentation
+# This ConfigMap contains non-sensitive configuration.
+# Sensitive values (DATABASE_URL, REDIS_URL, JWT_SECRET, etc.)
+# should be in Secrets managed by External Secrets Operator.
+#
+# Override values per environment using Kustomize overlays:
+#
+# infrastructure/k8s/overlays/staging/configmap-patch.yaml:
+#   apiVersion: v1
+#   kind: ConfigMap
+#   metadata:
+#     name: autolytiq-config
+#   data:
+#     LOG_LEVEL: 'debug'
+#     ALLOWED_ORIGINS: 'https://staging.autolytiq.com'

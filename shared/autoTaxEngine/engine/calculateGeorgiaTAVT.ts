@@ -26,7 +26,7 @@ import type {
   TaxAmountBreakdown,
   LeaseTaxBreakdown,
   AutoTaxDebug,
-} from "../types";
+} from '../types';
 
 /**
  * Calculate Georgia TAVT for retail or lease transactions
@@ -42,12 +42,10 @@ export function calculateGeorgiaTAVT(
   const tavtConfig = rules.extras?.gaTAVT;
 
   if (!tavtConfig) {
-    throw new Error(
-      "Georgia TAVT configuration (extras.gaTAVT) is missing in state rules."
-    );
+    throw new Error('Georgia TAVT configuration (extras.gaTAVT) is missing in state rules.');
   }
 
-  notes.push("Georgia TAVT Calculation: Using Title Ad Valorem Tax system");
+  notes.push('Georgia TAVT Calculation: Using Title Ad Valorem Tax system');
 
   // ============================================================================
   // STEP 1: Determine Initial TAVT Base
@@ -55,32 +53,24 @@ export function calculateGeorgiaTAVT(
 
   let rawBase: number;
 
-  if (input.dealType === "RETAIL") {
+  if (input.dealType === 'RETAIL') {
     // Retail: Start with vehicle price
     rawBase = input.vehiclePrice;
-    notes.push(
-      `TAVT Base (Retail): Starting with vehicle price of $${rawBase.toFixed(2)}`
-    );
+    notes.push(`TAVT Base (Retail): Starting with vehicle price of $${rawBase.toFixed(2)}`);
   } else {
     // Lease: Use lease base mode from config
-    if (tavtConfig.leaseBaseMode === "CAP_COST") {
+    if (tavtConfig.leaseBaseMode === 'CAP_COST') {
       rawBase = input.grossCapCost || input.vehiclePrice;
-      notes.push(
-        `TAVT Base (Lease): Using gross cap cost of $${rawBase.toFixed(2)}`
-      );
-    } else if (tavtConfig.leaseBaseMode === "AGREED_VALUE") {
+      notes.push(`TAVT Base (Lease): Using gross cap cost of $${rawBase.toFixed(2)}`);
+    } else if (tavtConfig.leaseBaseMode === 'AGREED_VALUE') {
       // In Georgia, leases often use an "agreed value" which is typically
       // the vehicle price or a negotiated fair market value
       rawBase = input.vehiclePrice;
-      notes.push(
-        `TAVT Base (Lease): Using agreed value of $${rawBase.toFixed(2)}`
-      );
+      notes.push(`TAVT Base (Lease): Using agreed value of $${rawBase.toFixed(2)}`);
     } else {
       // CUSTOM or fallback
       rawBase = input.vehiclePrice;
-      notes.push(
-        `TAVT Base (Lease): Using vehicle price (custom mode) of $${rawBase.toFixed(2)}`
-      );
+      notes.push(`TAVT Base (Lease): Using vehicle price (custom mode) of $${rawBase.toFixed(2)}`);
     }
   }
 
@@ -92,13 +82,13 @@ export function calculateGeorgiaTAVT(
   // For now, we note the configuration but use the deal price
   if (tavtConfig.useAssessedValue) {
     notes.push(
-      "TAVT: Config specifies useAssessedValue=true. DMV assessed value should be integrated when available."
+      'TAVT: Config specifies useAssessedValue=true. DMV assessed value should be integrated when available.'
     );
   }
 
   if (tavtConfig.useHigherOfPriceOrAssessed) {
     notes.push(
-      "TAVT: Config specifies useHigherOfPriceOrAssessed=true. TAVT base should be max(price, assessed) when assessed value is available."
+      'TAVT: Config specifies useHigherOfPriceOrAssessed=true. TAVT base should be max(price, assessed) when assessed value is available.'
     );
   }
 
@@ -111,7 +101,7 @@ export function calculateGeorgiaTAVT(
   let appliedTradeIn = 0;
 
   if (tavtConfig.allowTradeInCredit && input.tradeInValue > 0) {
-    if (tavtConfig.tradeInAppliesTo === "VEHICLE_ONLY") {
+    if (tavtConfig.tradeInAppliesTo === 'VEHICLE_ONLY') {
       // Trade-in reduces the TAVT base directly
       appliedTradeIn = Math.min(input.tradeInValue, tavtBase);
       tavtBase -= appliedTradeIn;
@@ -122,9 +112,7 @@ export function calculateGeorgiaTAVT(
       // FULL: Trade-in applies to full transaction (same behavior for TAVT)
       appliedTradeIn = Math.min(input.tradeInValue, tavtBase);
       tavtBase -= appliedTradeIn;
-      notes.push(
-        `TAVT: Applied full trade-in credit of $${appliedTradeIn.toFixed(2)}`
-      );
+      notes.push(`TAVT: Applied full trade-in credit of $${appliedTradeIn.toFixed(2)}`);
     }
   } else if (input.tradeInValue > 0) {
     notes.push(
@@ -138,9 +126,7 @@ export function calculateGeorgiaTAVT(
 
   if (tavtConfig.applyNegativeEquityToBase && input.negativeEquity > 0) {
     tavtBase += input.negativeEquity;
-    notes.push(
-      `TAVT: Added negative equity of $${input.negativeEquity.toFixed(2)} to TAVT base`
-    );
+    notes.push(`TAVT: Added negative equity of $${input.negativeEquity.toFixed(2)} to TAVT base`);
   } else if (input.negativeEquity > 0) {
     notes.push(
       `TAVT: Negative equity of $${input.negativeEquity.toFixed(2)} not added to base (config.applyNegativeEquityToBase=false)`
@@ -167,29 +153,22 @@ export function calculateGeorgiaTAVT(
   // ============================================================================
 
   let finalTavtTax = rawTavtTax;
-  let reciprocityCredit = 0;
+  // Stored for potential future use in detailed breakdown
+  let _reciprocityCredit = 0;
 
-  if (
-    rules.reciprocity.enabled &&
-    input.originTaxInfo &&
-    input.originTaxInfo.amount > 0
-  ) {
+  if (rules.reciprocity.enabled && input.originTaxInfo && input.originTaxInfo.amount > 0) {
     // Georgia provides credit for tax paid in other states, capped at GA TAVT amount
     const creditAmount = Math.min(input.originTaxInfo.amount, rawTavtTax);
-    reciprocityCredit = creditAmount;
+    _reciprocityCredit = creditAmount;
     finalTavtTax = rawTavtTax - creditAmount;
 
     notes.push(
       `TAVT Reciprocity: Credit of $${creditAmount.toFixed(2)} for tax paid in ${input.originTaxInfo.stateCode}`
     );
-    notes.push(
-      `TAVT: Final tax after reciprocity = $${finalTavtTax.toFixed(2)}`
-    );
+    notes.push(`TAVT: Final tax after reciprocity = $${finalTavtTax.toFixed(2)}`);
 
     if (rules.reciprocity.requireProofOfTaxPaid) {
-      notes.push(
-        "TAVT Reciprocity: Proof of tax paid required (receipt, registration, etc.)"
-      );
+      notes.push('TAVT Reciprocity: Proof of tax paid required (receipt, registration, etc.)');
     }
   }
 
@@ -200,7 +179,7 @@ export function calculateGeorgiaTAVT(
   const tavtTaxes: TaxAmountBreakdown = {
     componentTaxes: [
       {
-        label: "GA_TAVT",
+        label: 'GA_TAVT',
         rate: tavtRate,
         amount: finalTavtTax,
       },
@@ -242,7 +221,7 @@ export function calculateGeorgiaTAVT(
   // STEP 10: Format Result Based on Deal Type
   // ============================================================================
 
-  if (input.dealType === "LEASE") {
+  if (input.dealType === 'LEASE') {
     // For Georgia leases, TAVT is typically an upfront event
     // The lease payments themselves may have their own sales tax in some cases
     // (future enhancement), but for now we treat TAVT as upfront-only
@@ -255,7 +234,7 @@ export function calculateGeorgiaTAVT(
     };
 
     return {
-      mode: "LEASE",
+      mode: 'LEASE',
       bases,
       taxes: tavtTaxes,
       leaseBreakdown,
@@ -265,7 +244,7 @@ export function calculateGeorgiaTAVT(
 
   // Retail mode
   return {
-    mode: "RETAIL",
+    mode: 'RETAIL',
     bases,
     taxes: tavtTaxes,
     debug,

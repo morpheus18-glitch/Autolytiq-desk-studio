@@ -7,7 +7,19 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"autolytiq/shared/logging"
 )
+
+// proxyTestLogger creates a logger for proxy tests
+func proxyTestLogger() *logging.Logger {
+	return logging.New(logging.Config{
+		Service:     "api-gateway-test",
+		Level:       logging.LevelError, // Suppress log output during tests
+		Output:      &bytes.Buffer{},
+		PrettyPrint: false,
+	})
+}
 
 // mockBackendService creates a test HTTP server that simulates a backend service
 func mockBackendService(t *testing.T, expectedDealershipID string) *httptest.Server {
@@ -49,7 +61,7 @@ func TestProxyRequest_Success(t *testing.T) {
 		JWTSecret:       "development-secret-change-in-production-testing",
 		JWTIssuer:       "test-issuer",
 	}
-	server := NewServer(config)
+	server := NewServer(config, proxyTestLogger())
 
 	// Create test request with JWT context
 	reqBody := bytes.NewBufferString(`{"test":"data"}`)
@@ -100,7 +112,7 @@ func TestProxyRequest_MissingDealershipID(t *testing.T) {
 		JWTSecret:       "development-secret-change-in-production-testing",
 		JWTIssuer:       "test-issuer",
 	}
-	server := NewServer(config)
+	server := NewServer(config, proxyTestLogger())
 
 	// Create test request WITHOUT JWT context (missing dealership_id)
 	reqBody := bytes.NewBufferString(`{"test":"data"}`)
@@ -160,7 +172,7 @@ func TestProxyRequest_HeaderForwarding(t *testing.T) {
 		JWTSecret:       "development-secret-change-in-production-testing",
 		JWTIssuer:       "test-issuer",
 	}
-	server := NewServer(config)
+	server := NewServer(config, proxyTestLogger())
 
 	// Create test request with custom headers
 	req := httptest.NewRequest("GET", "/api/v1/deals", nil)
@@ -210,7 +222,7 @@ func TestProxyRequest_QueryParameters(t *testing.T) {
 		JWTSecret:       "development-secret-change-in-production-testing",
 		JWTIssuer:       "test-issuer",
 	}
-	server := NewServer(config)
+	server := NewServer(config, proxyTestLogger())
 
 	// Create test request with query parameters
 	req := httptest.NewRequest("GET", "/api/v1/deals?status=active&limit=10", nil)
@@ -241,7 +253,7 @@ func TestProxyRequest_ErrorHandling(t *testing.T) {
 		JWTSecret:       "development-secret-change-in-production-testing",
 		JWTIssuer:       "test-issuer",
 	}
-	server := NewServer(config)
+	server := NewServer(config, proxyTestLogger())
 
 	// Create test request
 	req := httptest.NewRequest("GET", "/api/v1/deals", nil)
@@ -332,7 +344,7 @@ func TestProxyRequest_AllServices(t *testing.T) {
 				JWTSecret:           "development-secret-change-in-production-testing",
 				JWTIssuer:           "test-issuer",
 			}
-			server := NewServer(config)
+			server := NewServer(config, proxyTestLogger())
 
 			// Create test request
 			req := httptest.NewRequest("GET", tc.path, nil)

@@ -1,0 +1,271 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: autolytiq-services
+  namespace: monitoring
+  labels:
+    app: autolytiq
+    release: prometheus
+spec:
+  jobLabel: autolytiq-services
+  namespaceSelector:
+    matchNames:
+      - autolytiq
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: autolytiq
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+      honorLabels: true
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_service_name]
+          targetLabel: service
+        - sourceLabels: [__meta_kubernetes_pod_name]
+          targetLabel: pod
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: api-gateway
+  namespace: monitoring
+  labels:
+    app: api-gateway
+    release: prometheus
+spec:
+  jobLabel: api-gateway
+  namespaceSelector:
+    matchNames:
+      - autolytiq
+  selector:
+    matchLabels:
+      app: api-gateway
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: auth-service
+  namespace: monitoring
+  labels:
+    app: auth-service
+    release: prometheus
+spec:
+  jobLabel: auth-service
+  namespaceSelector:
+    matchNames:
+      - autolytiq
+  selector:
+    matchLabels:
+      app: auth-service
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: deal-service
+  namespace: monitoring
+  labels:
+    app: deal-service
+    release: prometheus
+spec:
+  jobLabel: deal-service
+  namespaceSelector:
+    matchNames:
+      - autolytiq
+  selector:
+    matchLabels:
+      app: deal-service
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: customer-service
+  namespace: monitoring
+  labels:
+    app: customer-service
+    release: prometheus
+spec:
+  jobLabel: customer-service
+  namespaceSelector:
+    matchNames:
+      - autolytiq
+  selector:
+    matchLabels:
+      app: customer-service
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: inventory-service
+  namespace: monitoring
+  labels:
+    app: inventory-service
+    release: prometheus
+spec:
+  jobLabel: inventory-service
+  namespaceSelector:
+    matchNames:
+      - autolytiq
+  selector:
+    matchLabels:
+      app: inventory-service
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: email-service
+  namespace: monitoring
+  labels:
+    app: email-service
+    release: prometheus
+spec:
+  jobLabel: email-service
+  namespaceSelector:
+    matchNames:
+      - autolytiq
+  selector:
+    matchLabels:
+      app: email-service
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: user-service
+  namespace: monitoring
+  labels:
+    app: user-service
+    release: prometheus
+spec:
+  jobLabel: user-service
+  namespaceSelector:
+    matchNames:
+      - autolytiq
+  selector:
+    matchLabels:
+      app: user-service
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: config-service
+  namespace: monitoring
+  labels:
+    app: config-service
+    release: prometheus
+spec:
+  jobLabel: config-service
+  namespaceSelector:
+    matchNames:
+      - autolytiq
+  selector:
+    matchLabels:
+      app: config-service
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: settings-service
+  namespace: monitoring
+  labels:
+    app: settings-service
+    release: prometheus
+spec:
+  jobLabel: settings-service
+  namespaceSelector:
+    matchNames:
+      - autolytiq
+  selector:
+    matchLabels:
+      app: settings-service
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: messaging-service
+  namespace: monitoring
+  labels:
+    app: messaging-service
+    release: prometheus
+spec:
+  jobLabel: messaging-service
+  namespaceSelector:
+    matchNames:
+      - autolytiq
+  selector:
+    matchLabels:
+      app: messaging-service
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: showroom-service
+  namespace: monitoring
+  labels:
+    app: showroom-service
+    release: prometheus
+spec:
+  jobLabel: showroom-service
+  namespaceSelector:
+    matchNames:
+      - autolytiq
+  selector:
+    matchLabels:
+      app: showroom-service
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s

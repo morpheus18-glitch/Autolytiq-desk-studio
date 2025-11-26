@@ -3,21 +3,23 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"regexp"
 	"strings"
 	"time"
+
+	"autolytiq/shared/logging"
 
 	_ "github.com/lib/pq"
 )
 
 // Database wraps the SQL database connection
 type Database struct {
-	conn *sql.DB
+	conn   *sql.DB
+	logger *logging.Logger
 }
 
 // NewDatabase creates a new database connection
-func NewDatabase(databaseURL string) (*Database, error) {
+func NewDatabase(databaseURL string, logger *logging.Logger) (*Database, error) {
 	conn, err := sql.Open("postgres", databaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
@@ -33,9 +35,9 @@ func NewDatabase(databaseURL string) (*Database, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	log.Println("✅ Database connected successfully")
+	logger.Info("Database connected successfully")
 
-	return &Database{conn: conn}, nil
+	return &Database{conn: conn, logger: logger}, nil
 }
 
 // Close closes the database connection
@@ -81,7 +83,9 @@ func (db *Database) InitSchema() error {
 		return fmt.Errorf("failed to initialize schema: %w", err)
 	}
 
-	log.Println("✅ Database schema initialized")
+	if db.logger != nil {
+		db.logger.Info("Database schema initialized")
+	}
 	return nil
 }
 

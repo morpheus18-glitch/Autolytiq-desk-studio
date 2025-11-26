@@ -21,6 +21,7 @@ type Vehicle struct {
 	DriveType    string  `json:"drive_type"`
 	BodyStyle    string  `json:"body_style"`
 	ImageURL     string  `json:"image_url"`
+	Description  string  `json:"description"`
 	Features     string  `json:"features"` // JSON array stored as string
 	CreatedAt    string  `json:"created_at"`
 	UpdatedAt    string  `json:"updated_at"`

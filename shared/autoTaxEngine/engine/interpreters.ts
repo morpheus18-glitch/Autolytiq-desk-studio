@@ -19,7 +19,7 @@ import type {
   LeaseSpecialScheme,
   TaxRateComponent,
   TradeInPolicy,
-} from "../types";
+} from '../types';
 
 // ============================================================================
 // LOCAL TAX RATE HELPER (For SERVER-SIDE Integration)
@@ -53,14 +53,14 @@ export function buildRateComponentsFromLocalInfo(localInfo: {
 
   // Always include state rate
   components.push({
-    label: "STATE",
+    label: 'STATE',
     rate: localInfo.stateTaxRate,
   });
 
   // Add county if non-zero
   if (localInfo.countyRate > 0) {
     components.push({
-      label: "COUNTY",
+      label: 'COUNTY',
       rate: localInfo.countyRate,
     });
   }
@@ -68,7 +68,7 @@ export function buildRateComponentsFromLocalInfo(localInfo: {
   // Add city if non-zero
   if (localInfo.cityRate > 0) {
     components.push({
-      label: "CITY",
+      label: 'CITY',
       rate: localInfo.cityRate,
     });
   }
@@ -76,7 +76,7 @@ export function buildRateComponentsFromLocalInfo(localInfo: {
   // Add special district if non-zero
   if (localInfo.specialDistrictRate > 0) {
     components.push({
-      label: "SPECIAL_DISTRICT",
+      label: 'SPECIAL_DISTRICT',
       rate: localInfo.specialDistrictRate,
     });
   }
@@ -93,15 +93,18 @@ export function buildRateComponentsFromLocalInfo(localInfo: {
  * @param breakdown - Detailed breakdown from local-tax-service
  * @returns Array of tax rate components with proper labels
  */
-export function buildRateComponentsFromBreakdown(breakdown: {
-  jurisdictionType: "STATE" | "COUNTY" | "CITY" | "SPECIAL_DISTRICT";
-  name: string;
-  rate: number;
-}[]): TaxRateComponent[] {
+export function buildRateComponentsFromBreakdown(
+  breakdown: {
+    jurisdictionType: 'STATE' | 'COUNTY' | 'CITY' | 'SPECIAL_DISTRICT';
+    name: string;
+    rate: number;
+  }[]
+): TaxRateComponent[] {
   return breakdown.map((item) => ({
-    label: item.jurisdictionType === "SPECIAL_DISTRICT"
-      ? `DISTRICT_${item.name.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase()}`
-      : item.jurisdictionType,
+    label:
+      item.jurisdictionType === 'SPECIAL_DISTRICT'
+        ? `DISTRICT_${item.name.replace(/[^a-zA-Z0-9]/g, '_').toUpperCase()}`
+        : item.jurisdictionType,
     rate: item.rate,
   }));
 }
@@ -116,7 +119,7 @@ export function buildRateComponentsFromBreakdown(breakdown: {
 export function interpretVehicleTaxScheme(
   scheme: VehicleTaxScheme,
   rates: TaxRateComponent[],
-  rules: TaxRulesConfig
+  _rules: TaxRulesConfig
 ): {
   effectiveRates: TaxRateComponent[];
   notes: string[];
@@ -124,45 +127,36 @@ export function interpretVehicleTaxScheme(
   const notes: string[] = [];
 
   switch (scheme) {
-    case "STATE_ONLY":
+    case 'STATE_ONLY': {
       // Only state-level tax, ignore any local components
-      const stateRates = rates.filter((r) => r.label === "STATE");
-      notes.push(
-        `Vehicle tax scheme: STATE_ONLY (ignoring local rates, state only)`
-      );
+      const stateRates = rates.filter((r) => r.label === 'STATE');
+      notes.push(`Vehicle tax scheme: STATE_ONLY (ignoring local rates, state only)`);
       return { effectiveRates: stateRates, notes };
+    }
 
-    case "STATE_PLUS_LOCAL":
+    case 'STATE_PLUS_LOCAL':
       // Full stacked jurisdictions (state + county + city + districts)
-      notes.push(
-        `Vehicle tax scheme: STATE_PLUS_LOCAL (all jurisdiction rates apply)`
-      );
+      notes.push(`Vehicle tax scheme: STATE_PLUS_LOCAL (all jurisdiction rates apply)`);
       return { effectiveRates: rates, notes };
 
-    case "SPECIAL_HUT":
+    case 'SPECIAL_HUT':
       // North Carolina Highway Use Tax
       // Special calculation - flat rate on vehicle price
-      notes.push(
-        `Vehicle tax scheme: SPECIAL_HUT (NC Highway Use Tax - special calculation)`
-      );
+      notes.push(`Vehicle tax scheme: SPECIAL_HUT (NC Highway Use Tax - special calculation)`);
       // In real implementation, this would apply NC-specific HUT logic
       // For now, pass through rates
       return { effectiveRates: rates, notes };
 
-    case "SPECIAL_TAVT":
+    case 'SPECIAL_TAVT':
       // Georgia Title Ad Valorem Tax
       // One-time tax instead of annual property tax
-      notes.push(
-        `Vehicle tax scheme: SPECIAL_TAVT (GA Title Ad Valorem Tax - one-time charge)`
-      );
+      notes.push(`Vehicle tax scheme: SPECIAL_TAVT (GA Title Ad Valorem Tax - one-time charge)`);
       // In real implementation, this would apply GA-specific TAVT logic
       return { effectiveRates: rates, notes };
 
-    case "DMV_PRIVILEGE_TAX":
+    case 'DMV_PRIVILEGE_TAX':
       // West Virginia style privilege/title tax
-      notes.push(
-        `Vehicle tax scheme: DMV_PRIVILEGE_TAX (WV-style privilege tax)`
-      );
+      notes.push(`Vehicle tax scheme: DMV_PRIVILEGE_TAX (WV-style privilege tax)`);
       // In real implementation, this would apply WV-specific logic
       return { effectiveRates: rates, notes };
 
@@ -186,30 +180,32 @@ export function interpretTradeInPolicy(
   notes: string[]
 ): number {
   switch (policy.type) {
-    case "NONE":
-      notes.push("Trade-in policy: No credit allowed");
+    case 'NONE':
+      notes.push('Trade-in policy: No credit allowed');
       return 0;
 
-    case "FULL":
+    case 'FULL':
       notes.push(`Trade-in policy: Full credit of $${tradeInValue.toFixed(2)}`);
       return tradeInValue;
 
-    case "CAPPED":
+    case 'CAPPED': {
       const cappedAmount = Math.min(tradeInValue, policy.capAmount);
       notes.push(
         `Trade-in policy: Capped at $${policy.capAmount} (applied: $${cappedAmount.toFixed(2)})`
       );
       return cappedAmount;
+    }
 
-    case "PERCENT":
+    case 'PERCENT': {
       const percentAmount = tradeInValue * policy.percent;
       notes.push(
         `Trade-in policy: ${policy.percent * 100}% credit (applied: $${percentAmount.toFixed(2)})`
       );
       return percentAmount;
+    }
 
     default:
-      notes.push("Trade-in policy: Unknown policy, no credit applied");
+      notes.push('Trade-in policy: Unknown policy, no credit applied');
       return 0;
   }
 }
@@ -228,6 +224,7 @@ export interface LeaseSchemeAdjustment {
 /**
  * Interprets lease special schemes and returns adjustments to apply
  */
+// eslint-disable-next-line max-params
 export function interpretLeaseSpecialScheme(
   scheme: LeaseSpecialScheme,
   grossCapCost: number,
@@ -239,22 +236,20 @@ export function interpretLeaseSpecialScheme(
   const specialFees: { code: string; amount: number }[] = [];
 
   switch (scheme) {
-    case "NONE":
+    case 'NONE':
       return {
         upfrontBaseAdjustment: 0,
         monthlyBaseAdjustment: 0,
         specialFees: [],
-        notes: ["Lease scheme: Standard (no special adjustments)"],
+        notes: ['Lease scheme: Standard (no special adjustments)'],
       };
 
-    case "NY_MTR":
+    case 'NY_MTR':
       // New York Metropolitan Commuter Transportation District (MCTD) surcharge
       // Additional 0.375% in certain counties
+      notes.push('Lease scheme: NY_MTR (Metropolitan Commuter Transportation District)');
       notes.push(
-        "Lease scheme: NY_MTR (Metropolitan Commuter Transportation District)"
-      );
-      notes.push(
-        "NY MCTD surcharge: 0.375% may apply in certain counties (Bronx, Kings, New York, Queens, Richmond, Dutchess, Nassau, Orange, Putnam, Rockland, Suffolk, Westchester)"
+        'NY MCTD surcharge: 0.375% may apply in certain counties (Bronx, Kings, New York, Queens, Richmond, Dutchess, Nassau, Orange, Putnam, Rockland, Suffolk, Westchester)'
       );
       // In real implementation, would check if jurisdiction is in MCTD zone
       return {
@@ -264,16 +259,14 @@ export function interpretLeaseSpecialScheme(
         notes,
       };
 
-    case "NJ_LUXURY":
+    case 'NJ_LUXURY':
       // New Jersey luxury tax on leases over certain threshold
-      notes.push("Lease scheme: NJ_LUXURY (luxury vehicle surcharge)");
+      notes.push('Lease scheme: NJ_LUXURY (luxury vehicle surcharge)');
       // NJ: Additional tax on vehicles over $45,000 MSRP
       if (grossCapCost > 45000) {
         const luxuryFee = (grossCapCost - 45000) * 0.004; // 0.4% on amount over $45k
-        specialFees.push({ code: "NJ_LUXURY_TAX", amount: luxuryFee });
-        notes.push(
-          `NJ luxury tax: 0.4% on amount over $45,000 = $${luxuryFee.toFixed(2)}`
-        );
+        specialFees.push({ code: 'NJ_LUXURY_TAX', amount: luxuryFee });
+        notes.push(`NJ luxury tax: 0.4% on amount over $45,000 = $${luxuryFee.toFixed(2)}`);
       }
       return {
         upfrontBaseAdjustment: 0,
@@ -282,11 +275,9 @@ export function interpretLeaseSpecialScheme(
         notes,
       };
 
-    case "PA_LEASE_TAX":
+    case 'PA_LEASE_TAX':
       // Pennsylvania lease tax (tax on monthly payment only, no upfront)
-      notes.push(
-        "Lease scheme: PA_LEASE_TAX (tax on monthly payments, no upfront)"
-      );
+      notes.push('Lease scheme: PA_LEASE_TAX (tax on monthly payments, no upfront)');
       // PA: Monthly only, no special adjustments needed (handled by method: MONTHLY)
       return {
         upfrontBaseAdjustment: 0,
@@ -295,16 +286,12 @@ export function interpretLeaseSpecialScheme(
         notes,
       };
 
-    case "IL_CHICAGO_COOK":
+    case 'IL_CHICAGO_COOK':
       // Illinois Chicago/Cook County special lease rules
-      notes.push(
-        "Lease scheme: IL_CHICAGO_COOK (Chicago/Cook County lease rules)"
-      );
+      notes.push('Lease scheme: IL_CHICAGO_COOK (Chicago/Cook County lease rules)');
       // Chicago: Additional 0.5% lease tax in city limits
       // Cook County: Additional lease-specific rates
-      notes.push(
-        "IL: Chicago adds 0.5% lease tax, Cook County may have additional rates"
-      );
+      notes.push('IL: Chicago adds 0.5% lease tax, Cook County may have additional rates');
       return {
         upfrontBaseAdjustment: 0,
         monthlyBaseAdjustment: 0,
@@ -312,9 +299,9 @@ export function interpretLeaseSpecialScheme(
         notes,
       };
 
-    case "TX_LEASE_SPECIAL":
+    case 'TX_LEASE_SPECIAL':
       // Texas lease tax (motor vehicle sales tax on lease payments)
-      notes.push("Lease scheme: TX_LEASE_SPECIAL (motor vehicle sales tax)");
+      notes.push('Lease scheme: TX_LEASE_SPECIAL (motor vehicle sales tax)');
       // TX: 6.25% state + local on monthly payments
       // No special adjustments needed (handled by rates)
       return {
@@ -324,9 +311,9 @@ export function interpretLeaseSpecialScheme(
         notes,
       };
 
-    case "VA_USAGE":
+    case 'VA_USAGE':
       // Virginia motor vehicle sales and use tax on leases
-      notes.push("Lease scheme: VA_USAGE (motor vehicle sales/use tax)");
+      notes.push('Lease scheme: VA_USAGE (motor vehicle sales/use tax)');
       // VA: Tax on monthly payments, with county-specific rates
       return {
         upfrontBaseAdjustment: 0,
@@ -335,9 +322,9 @@ export function interpretLeaseSpecialScheme(
         notes,
       };
 
-    case "MD_UPFRONT_GAIN":
+    case 'MD_UPFRONT_GAIN':
       // Maryland taxes upfront gain on leases
-      notes.push("Lease scheme: MD_UPFRONT_GAIN (tax on upfront gain)");
+      notes.push('Lease scheme: MD_UPFRONT_GAIN (tax on upfront gain)');
       // MD: Taxes the "upfront gain" (cap cost - residual)
       // This is a simplified interpretation
       return {
@@ -347,14 +334,10 @@ export function interpretLeaseSpecialScheme(
         notes,
       };
 
-    case "CO_HOME_RULE_LEASE":
+    case 'CO_HOME_RULE_LEASE':
       // Colorado home-rule city lease complications
-      notes.push(
-        "Lease scheme: CO_HOME_RULE_LEASE (home-rule city complications)"
-      );
-      notes.push(
-        "CO: Home-rule cities may have different lease tax rates and rules"
-      );
+      notes.push('Lease scheme: CO_HOME_RULE_LEASE (home-rule city complications)');
+      notes.push('CO: Home-rule cities may have different lease tax rates and rules');
       // CO: Each home-rule city can have its own rules
       // Need jurisdiction-specific logic (handled by jurisdiction resolver)
       return {
@@ -369,7 +352,7 @@ export function interpretLeaseSpecialScheme(
         upfrontBaseAdjustment: 0,
         monthlyBaseAdjustment: 0,
         specialFees: [],
-        notes: ["Lease scheme: Unknown scheme, no adjustments applied"],
+        notes: ['Lease scheme: Unknown scheme, no adjustments applied'],
       };
   }
 }
@@ -383,10 +366,10 @@ export function interpretLeaseSpecialScheme(
  */
 export function isFeeTaxable(
   feeCode: string,
-  dealType: "RETAIL" | "LEASE",
+  dealType: 'RETAIL' | 'LEASE',
   rules: TaxRulesConfig
 ): boolean {
-  if (dealType === "RETAIL") {
+  if (dealType === 'RETAIL') {
     const feeRule = rules.feeTaxRules.find((r) => r.code === feeCode);
     return feeRule?.taxable ?? false;
   } else {
@@ -398,21 +381,18 @@ export function isFeeTaxable(
 /**
  * Determines if doc fee is taxable based on state rules and deal type
  */
-export function isDocFeeTaxable(
-  dealType: "RETAIL" | "LEASE",
-  rules: TaxRulesConfig
-): boolean {
-  if (dealType === "RETAIL") {
+export function isDocFeeTaxable(dealType: 'RETAIL' | 'LEASE', rules: TaxRulesConfig): boolean {
+  if (dealType === 'RETAIL') {
     return rules.docFeeTaxable;
   } else {
     switch (rules.leaseRules.docFeeTaxability) {
-      case "ALWAYS":
+      case 'ALWAYS':
         return true;
-      case "FOLLOW_RETAIL_RULE":
+      case 'FOLLOW_RETAIL_RULE':
         return rules.docFeeTaxable;
-      case "NEVER":
+      case 'NEVER':
         return false;
-      case "ONLY_UPFRONT":
+      case 'ONLY_UPFRONT':
         return true; // Taxable, but only upfront (handled in lease logic)
       default:
         return false;
@@ -428,12 +408,10 @@ export function isDocFeeTaxable(
  * Determines if a rebate is taxable based on state rules
  */
 export function isRebateTaxable(
-  rebateType: "MANUFACTURER" | "DEALER",
+  rebateType: 'MANUFACTURER' | 'DEALER',
   rules: TaxRulesConfig
 ): boolean {
-  const rebateRule = rules.rebates.find(
-    (r) => r.appliesTo === rebateType || r.appliesTo === "ANY"
-  );
+  const rebateRule = rules.rebates.find((r) => r.appliesTo === rebateType || r.appliesTo === 'ANY');
   return rebateRule?.taxable ?? false;
 }
 
@@ -444,11 +422,7 @@ export function isRebateTaxable(
 /**
  * Applies cap and floor to a value
  */
-export function applyCapAndFloor(
-  value: number,
-  cap?: number,
-  floor: number = 0
-): number {
+export function applyCapAndFloor(value: number, cap?: number, floor: number = 0): number {
   let result = value;
   if (cap !== undefined) {
     result = Math.min(result, cap);

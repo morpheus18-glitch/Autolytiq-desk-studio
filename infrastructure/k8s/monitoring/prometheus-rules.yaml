@@ -1,0 +1,210 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-rules
+  namespace: monitoring
+  labels:
+    app: prometheus
+data:
+  autolytiq-alerts.yaml: |
+    groups:
+      - name: autolytiq.service.alerts
+        rules:
+          # High Error Rate Alert - fires when error rate > 5%
+          - alert: HighErrorRate
+            expr: |
+              (
+                sum(rate(http_requests_total{status_code=~"5.."}[5m])) by (service)
+                /
+                sum(rate(http_requests_total[5m])) by (service)
+              ) * 100 > 5
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "High error rate on {{ $labels.service }}"
+              description: "Service {{ $labels.service }} has an error rate of {{ $value | printf \"%.2f\" }}% (threshold: 5%)"
+              runbook_url: "https://runbooks.autolytiq.com/high-error-rate"
+
+          # High Latency Alert - fires when p95 latency > 500ms
+          - alert: HighLatency
+            expr: |
+              histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (service, le)) > 0.5
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High latency on {{ $labels.service }}"
+              description: "Service {{ $labels.service }} has p95 latency of {{ $value | printf \"%.3f\" }}s (threshold: 500ms)"
+              runbook_url: "https://runbooks.autolytiq.com/high-latency"
+
+          # Very High Latency Alert - fires when p95 latency > 1s
+          - alert: VeryHighLatency
+            expr: |
+              histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (service, le)) > 1
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Very high latency on {{ $labels.service }}"
+              description: "Service {{ $labels.service }} has p95 latency of {{ $value | printf \"%.3f\" }}s (threshold: 1s)"
+              runbook_url: "https://runbooks.autolytiq.com/high-latency"
+
+          # Service Down Alert
+          - alert: ServiceDown
+            expr: |
+              up{job="autolytiq-services"} == 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Service {{ $labels.service }} is down"
+              description: "Service {{ $labels.service }} has been unreachable for more than 1 minute"
+              runbook_url: "https://runbooks.autolytiq.com/service-down"
+
+          # No Instances Available
+          - alert: NoServiceInstances
+            expr: |
+              count(up{job="autolytiq-services"}) by (service) == 0
+            for: 30s
+            labels:
+              severity: critical
+            annotations:
+              summary: "No instances of {{ $labels.service }} available"
+              description: "All instances of {{ $labels.service }} are down"
+              runbook_url: "https://runbooks.autolytiq.com/service-down"
+
+          # High Memory Usage Alert
+          - alert: HighMemoryUsage
+            expr: |
+              (
+                sum(container_memory_working_set_bytes{namespace="autolytiq"}) by (pod)
+                /
+                sum(container_spec_memory_limit_bytes{namespace="autolytiq"}) by (pod)
+              ) * 100 > 80
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High memory usage on {{ $labels.pod }}"
+              description: "Pod {{ $labels.pod }} is using {{ $value | printf \"%.1f\" }}% of memory limit (threshold: 80%)"
+              runbook_url: "https://runbooks.autolytiq.com/high-memory"
+
+          # Critical Memory Usage Alert
+          - alert: CriticalMemoryUsage
+            expr: |
+              (
+                sum(container_memory_working_set_bytes{namespace="autolytiq"}) by (pod)
+                /
+                sum(container_spec_memory_limit_bytes{namespace="autolytiq"}) by (pod)
+              ) * 100 > 95
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Critical memory usage on {{ $labels.pod }}"
+              description: "Pod {{ $labels.pod }} is using {{ $value | printf \"%.1f\" }}% of memory limit (threshold: 95%)"
+              runbook_url: "https://runbooks.autolytiq.com/high-memory"
+
+          # High CPU Usage Alert
+          - alert: HighCPUUsage
+            expr: |
+              (
+                sum(rate(container_cpu_usage_seconds_total{namespace="autolytiq"}[5m])) by (pod)
+                /
+                sum(container_spec_cpu_quota{namespace="autolytiq"}/container_spec_cpu_period{namespace="autolytiq"}) by (pod)
+              ) * 100 > 80
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High CPU usage on {{ $labels.pod }}"
+              description: "Pod {{ $labels.pod }} is using {{ $value | printf \"%.1f\" }}% of CPU limit (threshold: 80%)"
+              runbook_url: "https://runbooks.autolytiq.com/high-cpu"
+
+          # Pod Restart Alert
+          - alert: PodRestartingFrequently
+            expr: |
+              increase(kube_pod_container_status_restarts_total{namespace="autolytiq"}[1h]) > 3
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Pod {{ $labels.pod }} is restarting frequently"
+              description: "Pod {{ $labels.pod }} has restarted {{ $value | printf \"%.0f\" }} times in the last hour"
+              runbook_url: "https://runbooks.autolytiq.com/pod-restarts"
+
+      - name: autolytiq.database.alerts
+        rules:
+          # Database Connection Pool Exhaustion
+          - alert: DatabaseConnectionPoolExhausted
+            expr: |
+              db_pool_connections_in_use / db_pool_connections_max > 0.9
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Database connection pool nearly exhausted on {{ $labels.service }}"
+              description: "Service {{ $labels.service }} is using {{ $value | printf \"%.0f\" }}% of database connections"
+              runbook_url: "https://runbooks.autolytiq.com/db-pool-exhausted"
+
+          # Database Connection Errors
+          - alert: DatabaseConnectionErrors
+            expr: |
+              rate(db_connection_errors_total[5m]) > 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Database connection errors on {{ $labels.service }}"
+              description: "Service {{ $labels.service }} is experiencing database connection errors"
+              runbook_url: "https://runbooks.autolytiq.com/db-connection-errors"
+
+          # Slow Database Queries
+          - alert: SlowDatabaseQueries
+            expr: |
+              histogram_quantile(0.95, sum(rate(db_query_duration_seconds_bucket[5m])) by (service, le)) > 1
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Slow database queries on {{ $labels.service }}"
+              description: "Service {{ $labels.service }} has p95 query latency of {{ $value | printf \"%.3f\" }}s"
+              runbook_url: "https://runbooks.autolytiq.com/slow-queries"
+
+      - name: autolytiq.infrastructure.alerts
+        rules:
+          # Prometheus Target Down
+          - alert: PrometheusTargetDown
+            expr: up == 0
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Prometheus target {{ $labels.job }}/{{ $labels.instance }} is down"
+              description: "Target has been unreachable for 5 minutes"
+
+          # Prometheus Configuration Reload Failure
+          - alert: PrometheusConfigReloadFailed
+            expr: prometheus_config_last_reload_successful == 0
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Prometheus configuration reload failed"
+              description: "Prometheus has failed to reload its configuration"
+
+          # Disk Space Low
+          - alert: DiskSpaceLow
+            expr: |
+              (
+                node_filesystem_avail_bytes{mountpoint="/"}
+                /
+                node_filesystem_size_bytes{mountpoint="/"}
+              ) * 100 < 20
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Low disk space on {{ $labels.instance }}"
+              description: "Disk space is below 20% on {{ $labels.instance }}"

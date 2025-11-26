@@ -62,10 +62,23 @@ services:
       - SHOWROOM_SERVICE_URL=http://showroom-service:8088
       - MESSAGING_SERVICE_URL=http://messaging-service:8089
       - SETTINGS_SERVICE_URL=http://settings-service:8090
+      - DATA_RETENTION_SERVICE_URL=http://data-retention-service:8091
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173}
       - JWT_SECRET=${JWT_SECRET}
       - JWT_ISSUER=${JWT_ISSUER:-autolytiq}
+      # Rate limiting configuration
+      - REDIS_URL=redis://redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_DB=${REDIS_DB:-0}
+      - RATE_LIMIT_IP=${RATE_LIMIT_IP:-100}
+      - RATE_LIMIT_USER=${RATE_LIMIT_USER:-1000}
+      - RATE_LIMIT_DEALERSHIP=${RATE_LIMIT_DEALERSHIP:-5000}
+      - RATE_LIMIT_WINDOW_SECONDS=${RATE_LIMIT_WINDOW_SECONDS:-60}
+      - RATE_LIMIT_ENABLED=${RATE_LIMIT_ENABLED:-true}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
     depends_on:
+      redis:
+        condition: service_healthy
       auth-service:
         condition: service_healthy
       deal-service:
@@ -332,6 +345,39 @@ services:
       - autolytiq-network
     healthcheck:
       test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8090/health']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ===========================================
+  # DATA RETENTION SERVICE (GDPR/CCPA)
+  # ===========================================
+  data-retention-service:
+    build:
+      context: ..
+      dockerfile: services/data-retention-service/Dockerfile
+    container_name: autolytiq-data-retention
+    ports:
+      - '${DATA_RETENTION_SERVICE_PORT:-8091}:8091'
+    environment:
+      - PORT=8091
+      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-autolytiq}?sslmode=disable
+      - CUSTOMER_SERVICE_URL=http://customer-service:8082
+      - DEAL_SERVICE_URL=http://deal-service:8081
+      - EMAIL_SERVICE_URL=http://email-service:8084
+      - PII_ENCRYPTION_KEY=${PII_ENCRYPTION_KEY:-}
+      - DATA_RETENTION_ENABLED=${DATA_RETENTION_ENABLED:-true}
+      - ANONYMIZATION_ENABLED=${ANONYMIZATION_ENABLED:-true}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      customer-service:
+        condition: service_healthy
+    networks:
+      - autolytiq-network
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8091/health']
       interval: 10s
       timeout: 5s
       retries: 3

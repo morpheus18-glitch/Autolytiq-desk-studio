@@ -3,8 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
+
+	"autolytiq/shared/logging"
 
 	"github.com/go-redis/redis/v8"
 )
@@ -29,6 +30,7 @@ type TokenStore interface {
 type RedisStore struct {
 	client *redis.Client
 	ctx    context.Context
+	logger *logging.Logger
 }
 
 const (
@@ -39,7 +41,7 @@ const (
 )
 
 // NewRedisStore creates a new Redis store
-func NewRedisStore(redisURL string) (*RedisStore, error) {
+func NewRedisStore(redisURL string, logger *logging.Logger) (*RedisStore, error) {
 	opt, err := redis.ParseURL(redisURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse redis URL: %w", err)
@@ -53,11 +55,12 @@ func NewRedisStore(redisURL string) (*RedisStore, error) {
 		return nil, fmt.Errorf("failed to connect to redis: %w", err)
 	}
 
-	log.Println("Redis connected successfully")
+	logger.Info("Redis connected successfully")
 
 	return &RedisStore{
 		client: client,
 		ctx:    ctx,
+		logger: logger,
 	}, nil
 }
 

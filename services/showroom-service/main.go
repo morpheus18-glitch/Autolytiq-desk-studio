@@ -1,14 +1,22 @@
 package main
 
 import (
-	"log"
 	"net/http"
 	"os"
+
+	"autolytiq/shared/logging"
 
 	"github.com/gorilla/mux"
 )
 
+var logger *logging.Logger
+
 func main() {
+	// Initialize logger
+	logger = logging.New(logging.Config{
+		Service: "showroom-service",
+	})
+
 	// Configuration
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -23,21 +31,25 @@ func main() {
 	// Initialize database
 	db, err := NewPostgresDB(dbURL)
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		logger.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer db.Close()
-	log.Println("Connected to database")
+	logger.Info("Connected to database")
 
 	// Initialize WebSocket hub
-	hub := NewHub()
+	hub := NewHub(logger)
 	go hub.Run()
-	log.Println("WebSocket hub started")
+	logger.Info("WebSocket hub started")
 
 	// Initialize handler
-	handler := NewHandler(db, hub)
+	handler := NewHandler(db, hub, logger)
 
 	// Setup router
 	router := mux.NewRouter()
+
+	// Apply logging middleware
+	router.Use(logging.RequestIDMiddleware)
+	router.Use(logging.RequestLoggingMiddleware(logger))
 
 	// Health check
 	router.HandleFunc("/health", handler.HealthCheck).Methods("GET")
@@ -78,9 +90,9 @@ func main() {
 	// CORS middleware for development
 	corsHandler := corsMiddleware(router)
 
-	log.Printf("Showroom service starting on port %s", port)
+	logger.Infof("Showroom service starting on port %s", port)
 	if err := http.ListenAndServe(":"+port, corsHandler); err != nil {
-		log.Fatalf("Server failed to start: %v", err)
+		logger.Fatalf("Server failed to start: %v", err)
 	}
 }
 
@@ -89,7 +101,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Dealership-ID, X-User-ID")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Dealership-ID, X-User-ID, X-Request-ID")
 
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)

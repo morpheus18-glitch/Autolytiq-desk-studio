@@ -189,6 +189,7 @@ const APPROVED_STRUCTURE = {
       'package-lock.json',
       'tsconfig.json',
       'tsconfig.strict.json',
+      'tsconfig.eslint.json',
       'vite.config.ts',
       'vitest.config.ts',
       'drizzle.config.ts',

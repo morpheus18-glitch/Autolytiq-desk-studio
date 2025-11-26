@@ -6,6 +6,7 @@ metadata:
   labels:
     app: config-service
     tier: backend
+    version: stable
 spec:
   replicas: 2
   selector:
@@ -16,6 +17,16 @@ spec:
       labels:
         app: config-service
         tier: backend
+        version: stable
+      annotations:
+        sidecar.istio.io/inject: 'true'
+        sidecar.istio.io/proxyCPU: '50m'
+        sidecar.istio.io/proxyCPULimit: '300m'
+        sidecar.istio.io/proxyMemory: '64Mi'
+        sidecar.istio.io/proxyMemoryLimit: '128Mi'
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '8088'
+        prometheus.io/path: '/metrics'
     spec:
       containers:
         - name: config-service

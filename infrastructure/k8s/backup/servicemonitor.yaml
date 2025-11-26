@@ -1,0 +1,460 @@
+---
+# =============================================================================
+# Velero Monitoring Configuration
+# =============================================================================
+# Prometheus ServiceMonitor and alerting rules for Velero backup system
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# ServiceMonitor for Velero metrics
+# -----------------------------------------------------------------------------
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: velero
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: monitoring
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: velero
+      app.kubernetes.io/component: server
+  namespaceSelector:
+    matchNames:
+      - velero
+  endpoints:
+    - port: metrics
+      interval: 30s
+      path: /metrics
+      scheme: http
+
+---
+# -----------------------------------------------------------------------------
+# PrometheusRule for Velero alerts
+# -----------------------------------------------------------------------------
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: velero-alerts
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: monitoring
+    prometheus: autolytiq
+    role: alert-rules
+spec:
+  groups:
+    - name: velero.rules
+      rules:
+        # Alert when backup fails
+        - alert: VeleroBackupFailed
+          expr: |
+            increase(velero_backup_failure_total[1h]) > 0
+          for: 5m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: 'Velero backup failed'
+            description: 'Velero backup has failed in the last hour. Check Velero logs for details.'
+            runbook_url: 'https://docs.autolytiq.com/runbooks/velero-backup-failed'
+
+        # Alert when backup is partially failed
+        - alert: VeleroBackupPartiallyFailed
+          expr: |
+            increase(velero_backup_partial_failure_total[1h]) > 0
+          for: 5m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: 'Velero backup partially failed'
+            description: 'Velero backup completed with partial failures. Some resources may not have been backed up.'
+            runbook_url: 'https://docs.autolytiq.com/runbooks/velero-backup-partial'
+
+        # Alert when no backups in 24 hours
+        - alert: VeleroNoRecentBackup
+          expr: |
+            time() - velero_backup_last_successful_timestamp > 86400
+          for: 1h
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: 'No recent Velero backup'
+            description: 'No successful Velero backup in the last 24 hours for schedule {{ $labels.schedule }}.'
+            runbook_url: 'https://docs.autolytiq.com/runbooks/velero-no-recent-backup'
+
+        # Alert when restore fails
+        - alert: VeleroRestoreFailed
+          expr: |
+            increase(velero_restore_failure_total[1h]) > 0
+          for: 5m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: 'Velero restore failed'
+            description: 'A Velero restore operation has failed. Investigate immediately.'
+            runbook_url: 'https://docs.autolytiq.com/runbooks/velero-restore-failed'
+
+        # Alert when backup storage location is unavailable
+        - alert: VeleroBackupStorageLocationUnavailable
+          expr: |
+            velero_backup_storage_location_available == 0
+          for: 5m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: 'Velero backup storage location unavailable'
+            description: 'Backup storage location {{ $labels.name }} is not available. Backups cannot be stored.'
+            runbook_url: 'https://docs.autolytiq.com/runbooks/velero-storage-unavailable'
+
+        # Alert when Velero server is down
+        - alert: VeleroServerDown
+          expr: |
+            absent(up{job="velero"}) or up{job="velero"} == 0
+          for: 5m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: 'Velero server is down'
+            description: 'Velero server is not running. Backup and restore operations are not possible.'
+            runbook_url: 'https://docs.autolytiq.com/runbooks/velero-server-down'
+
+        # Alert when backup takes too long
+        - alert: VeleroBackupTakingTooLong
+          expr: |
+            velero_backup_duration_seconds > 3600
+          for: 15m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: 'Velero backup taking too long'
+            description: 'Velero backup {{ $labels.backup }} has been running for over 1 hour.'
+            runbook_url: 'https://docs.autolytiq.com/runbooks/velero-backup-slow'
+
+        # Alert when backup storage is getting full
+        - alert: VeleroBackupStorageNearCapacity
+          expr: |
+            velero_backup_items_total > 10000
+          for: 30m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: 'High number of backup items'
+            description: 'The number of backup items is very high ({{ $value }}). Consider cleanup or increasing storage.'
+
+    - name: velero.records
+      rules:
+        # Recording rule for backup success rate
+        - record: velero:backup_success_rate:ratio
+          expr: |
+            sum(increase(velero_backup_success_total[24h])) /
+            (sum(increase(velero_backup_success_total[24h])) + sum(increase(velero_backup_failure_total[24h])))
+
+        # Recording rule for average backup duration
+        - record: velero:backup_duration_seconds:avg
+          expr: |
+            avg(velero_backup_duration_seconds)
+
+        # Recording rule for total backup size
+        - record: velero:backup_size_bytes:total
+          expr: |
+            sum(velero_backup_items_total)
+
+---
+# -----------------------------------------------------------------------------
+# Grafana Dashboard ConfigMap
+# -----------------------------------------------------------------------------
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: velero-dashboard
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: monitoring
+    grafana_dashboard: '1'
+data:
+  velero-dashboard.json: |
+    {
+      "annotations": {
+        "list": []
+      },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 0,
+      "id": null,
+      "links": [],
+      "liveNow": false,
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "red", "value": 0.95 }
+                ]
+              },
+              "unit": "percentunit"
+            }
+          },
+          "gridPos": { "h": 8, "w": 6, "x": 0, "y": 0 },
+          "id": 1,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": ["lastNotNull"],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "targets": [
+            {
+              "expr": "velero:backup_success_rate:ratio",
+              "legendFormat": "Success Rate"
+            }
+          ],
+          "title": "Backup Success Rate (24h)",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null }
+                ]
+              }
+            }
+          },
+          "gridPos": { "h": 8, "w": 6, "x": 6, "y": 0 },
+          "id": 2,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": ["lastNotNull"],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "targets": [
+            {
+              "expr": "sum(increase(velero_backup_success_total[24h]))",
+              "legendFormat": "Successful Backups"
+            }
+          ],
+          "title": "Successful Backups (24h)",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "red", "value": 1 }
+                ]
+              }
+            }
+          },
+          "gridPos": { "h": 8, "w": 6, "x": 12, "y": 0 },
+          "id": 3,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": ["lastNotNull"],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "targets": [
+            {
+              "expr": "sum(increase(velero_backup_failure_total[24h]))",
+              "legendFormat": "Failed Backups"
+            }
+          ],
+          "title": "Failed Backups (24h)",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null }
+                ]
+              },
+              "unit": "s"
+            }
+          },
+          "gridPos": { "h": 8, "w": 6, "x": 18, "y": 0 },
+          "id": 4,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": ["mean"],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "targets": [
+            {
+              "expr": "avg(velero_backup_duration_seconds)",
+              "legendFormat": "Avg Duration"
+            }
+          ],
+          "title": "Average Backup Duration",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null }
+                ]
+              },
+              "unit": "s"
+            }
+          },
+          "gridPos": { "h": 10, "w": 24, "x": 0, "y": 8 },
+          "id": 5,
+          "options": {
+            "legend": {
+              "calcs": ["mean", "max"],
+              "displayMode": "table",
+              "placement": "right",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "expr": "velero_backup_duration_seconds",
+              "legendFormat": "{{ schedule }}"
+            }
+          ],
+          "title": "Backup Duration Over Time",
+          "type": "timeseries"
+        }
+      ],
+      "refresh": "30s",
+      "schemaVersion": 38,
+      "style": "dark",
+      "tags": ["velero", "backup", "disaster-recovery"],
+      "templating": {
+        "list": []
+      },
+      "time": {
+        "from": "now-24h",
+        "to": "now"
+      },
+      "timepicker": {},
+      "timezone": "browser",
+      "title": "Velero Backup Dashboard",
+      "uid": "velero-backup",
+      "version": 1
+    }

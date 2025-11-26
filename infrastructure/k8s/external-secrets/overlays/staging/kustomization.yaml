@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../
+
+configMapGenerator:
+  - name: external-secrets-config
+    behavior: replace
+    literals:
+      - ENVIRONMENT=staging
+      - AWS_REGION=us-east-1
+
+patches:
+  # 30 minute refresh interval for staging
+  - patch: |-
+      - op: replace
+        path: /spec/refreshInterval
+        value: 30m
+    target:
+      kind: ExternalSecret
+
+commonLabels:
+  environment: staging

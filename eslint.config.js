@@ -161,8 +161,10 @@ export default [
   {
     files: ['shared/autoTaxEngine/**/*.ts'],
     rules: {
-      // Relax rules for legacy tax engine
+      // Relax rules for legacy tax engine (TypeScript fallback for WASM)
       '@typescript-eslint/explicit-function-return-type': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+      'no-unused-vars': 'off',
       'no-magic-numbers': 'off',
       'max-lines-per-function': 'off',
       'max-lines': 'off',
@@ -189,6 +191,17 @@ export default [
       'max-lines-per-function': 'off',
       'max-lines': 'off',
       '@typescript-eslint/no-floating-promises': 'off',
+    },
+  },
+
+  // ============================================
+  // SCRIPTS - CLI scripts need console.log
+  // ============================================
+  {
+    files: ['scripts/**/*.ts'],
+    rules: {
+      'no-console': 'off',
+      '@typescript-eslint/explicit-function-return-type': 'off',
     },
   },
 

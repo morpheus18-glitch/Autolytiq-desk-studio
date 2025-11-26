@@ -6,6 +6,7 @@ metadata:
   labels:
     app: api-gateway
     tier: gateway
+    version: stable
 spec:
   replicas: 2
   selector:
@@ -16,13 +17,36 @@ spec:
       labels:
         app: api-gateway
         tier: gateway
+        version: stable
+      annotations:
+        # Istio sidecar configuration
+        sidecar.istio.io/inject: 'true'
+        # Proxy resource limits
+        sidecar.istio.io/proxyCPU: '100m'
+        sidecar.istio.io/proxyCPULimit: '500m'
+        sidecar.istio.io/proxyMemory: '64Mi'
+        sidecar.istio.io/proxyMemoryLimit: '256Mi'
+        # Enable access logging
+        proxy.istio.io/config: |
+          proxyStatsMatcher:
+            inclusionPrefixes:
+            - "cluster.outbound"
+            - "cluster.inbound"
+        # Prometheus scraping
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '8080'
+        prometheus.io/path: '/metrics'
     spec:
+      terminationGracePeriodSeconds: 30
+      serviceAccountName: api-gateway
       containers:
         - name: api-gateway
           image: autolytiq/api-gateway:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
               name: http
+              protocol: TCP
           env:
             - name: PORT
               valueFrom:
@@ -34,18 +58,86 @@ spec:
                 secretKeyRef:
                   name: autolytiq-secrets
                   key: JWT_SECRET
+            - name: JWT_ISSUER
+              valueFrom:
+                configMapKeyRef:
+                  name: autolytiq-config
+                  key: JWT_ISSUER
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: autolytiq-secrets
+                  key: REDIS_URL
+            # Internal service URLs using Kubernetes DNS
             - name: AUTH_SERVICE_URL
-              value: 'http://auth-service:8087'
+              value: 'http://auth-service.autolytiq.svc.cluster.local:8087'
             - name: DEAL_SERVICE_URL
-              value: 'http://deal-service:8082'
+              value: 'http://deal-service.autolytiq.svc.cluster.local:8081'
             - name: CUSTOMER_SERVICE_URL
-              value: 'http://customer-service:8083'
+              value: 'http://customer-service.autolytiq.svc.cluster.local:8082'
             - name: INVENTORY_SERVICE_URL
-              value: 'http://inventory-service:8084'
+              value: 'http://inventory-service.autolytiq.svc.cluster.local:8083'
             - name: EMAIL_SERVICE_URL
-              value: 'http://email-service:8085'
+              value: 'http://email-service.autolytiq.svc.cluster.local:8084'
             - name: USER_SERVICE_URL
-              value: 'http://user-service:8086'
+              value: 'http://user-service.autolytiq.svc.cluster.local:8085'
+            - name: CONFIG_SERVICE_URL
+              value: 'http://config-service.autolytiq.svc.cluster.local:8086'
+            - name: SHOWROOM_SERVICE_URL
+              value: 'http://showroom-service.autolytiq.svc.cluster.local:8088'
+            - name: MESSAGING_SERVICE_URL
+              value: 'http://messaging-service.autolytiq.svc.cluster.local:8089'
+            - name: SETTINGS_SERVICE_URL
+              value: 'http://settings-service.autolytiq.svc.cluster.local:8090'
+            # Rate limiting configuration
+            - name: RATE_LIMIT_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: autolytiq-config
+                  key: RATE_LIMIT_ENABLED
+            - name: RATE_LIMIT_IP
+              valueFrom:
+                configMapKeyRef:
+                  name: autolytiq-config
+                  key: RATE_LIMIT_IP
+            - name: RATE_LIMIT_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: autolytiq-config
+                  key: RATE_LIMIT_USER
+            - name: RATE_LIMIT_DEALERSHIP
+              valueFrom:
+                configMapKeyRef:
+                  name: autolytiq-config
+                  key: RATE_LIMIT_DEALERSHIP
+            - name: RATE_LIMIT_WINDOW_SECONDS
+              valueFrom:
+                configMapKeyRef:
+                  name: autolytiq-config
+                  key: RATE_LIMIT_WINDOW_SECONDS
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: autolytiq-config
+                  key: LOG_LEVEL
+            - name: LOG_FORMAT
+              valueFrom:
+                configMapKeyRef:
+                  name: autolytiq-config
+                  key: LOG_FORMAT
+            # Pod metadata for logging/tracing
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
           resources:
             requests:
               memory: '64Mi'
@@ -53,18 +145,42 @@ spec:
             limits:
               memory: '256Mi'
               cpu: '500m'
-          livenessProbe:
+          # Startup probe - allows time for initial startup
+          # Useful for slow-starting containers
+          startupProbe:
             httpGet:
-              path: /health
-              port: 8080
-            initialDelaySeconds: 10
-            periodSeconds: 10
-          readinessProbe:
-            httpGet:
-              path: /health
+              path: /live
               port: 8080
             initialDelaySeconds: 5
             periodSeconds: 5
+            failureThreshold: 30 # 30 * 5 = 150 seconds max startup time
+            timeoutSeconds: 3
+          # Liveness probe - is the process alive?
+          # Restarts container if this fails
+          livenessProbe:
+            httpGet:
+              path: /live
+              port: 8080
+            initialDelaySeconds: 0 # Start after startup probe succeeds
+            periodSeconds: 10
+            failureThreshold: 3
+            timeoutSeconds: 3
+          # Readiness probe - is the service ready for traffic?
+          # Removes from service if this fails
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 0 # Start after startup probe succeeds
+            periodSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
+            timeoutSeconds: 5
+          lifecycle:
+            preStop:
+              exec:
+                # Allow time for load balancer to drain connections
+                command: ['/bin/sh', '-c', 'sleep 10']
 ---
 apiVersion: v1
 kind: Service
@@ -81,4 +197,12 @@ spec:
       protocol: TCP
       name: http
   selector:
+    app: api-gateway
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: api-gateway
+  namespace: autolytiq
+  labels:
     app: api-gateway

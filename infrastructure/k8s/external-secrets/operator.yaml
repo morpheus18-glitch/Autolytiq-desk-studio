@@ -1,0 +1,62 @@
+---
+# External Secrets Operator Installation via Helm
+# This manifest uses the Helm chart approach via HelmRelease
+# For production, install via Helm CLI or ArgoCD
+#
+# Manual installation:
+# helm repo add external-secrets https://charts.external-secrets.io
+# helm install external-secrets external-secrets/external-secrets \
+#   -n external-secrets \
+#   --create-namespace \
+#   --set installCRDs=true \
+#   --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"="${EXTERNAL_SECRETS_ROLE_ARN}"
+
+# ServiceAccount with IRSA annotation for AWS access
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: external-secrets
+  namespace: external-secrets
+  annotations:
+    # This annotation is set by Terraform output
+    # Replace with actual role ARN from: terraform output external_secrets_role_arn
+    eks.amazonaws.com/role-arn: '${EXTERNAL_SECRETS_ROLE_ARN}'
+  labels:
+    app.kubernetes.io/name: external-secrets
+---
+# ClusterRole for External Secrets Operator
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: external-secrets-controller
+  labels:
+    app.kubernetes.io/name: external-secrets
+rules:
+  - apiGroups: ['external-secrets.io']
+    resources: ['externalsecrets', 'secretstores', 'clustersecretstores']
+    verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete']
+  - apiGroups: ['external-secrets.io']
+    resources: ['externalsecrets/status', 'secretstores/status', 'clustersecretstores/status']
+    verbs: ['get', 'update', 'patch']
+  - apiGroups: ['']
+    resources: ['secrets']
+    verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete']
+  - apiGroups: ['']
+    resources: ['events']
+    verbs: ['create', 'patch']
+---
+# ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: external-secrets-controller
+  labels:
+    app.kubernetes.io/name: external-secrets
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: external-secrets-controller
+subjects:
+  - kind: ServiceAccount
+    name: external-secrets
+    namespace: external-secrets

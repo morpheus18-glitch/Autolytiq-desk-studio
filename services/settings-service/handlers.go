@@ -115,8 +115,7 @@ func (s *Server) handleUpdateUserSettings(w http.ResponseWriter, r *http.Request
 	}
 
 	var settings UserSettings
-	if err := json.NewDecoder(r.Body).Decode(&settings); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+	if !decodeAndValidateSettings(r, w, &settings) {
 		return
 	}
 
@@ -141,6 +140,11 @@ func (s *Server) handleUpdateSettingsSection(w http.ResponseWriter, r *http.Requ
 
 	vars := mux.Vars(r)
 	section := vars["section"]
+
+	// Validate section name
+	if !validateSection(w, section) {
+		return
+	}
 
 	// Read the raw JSON body
 	var data json.RawMessage
@@ -258,7 +262,7 @@ func (s *Server) handleUpdateDealershipSettings(w http.ResponseWriter, r *http.R
 
 	var settings DealershipSettings
 	if err := json.NewDecoder(r.Body).Decode(&settings); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "Invalid request body: "+err.Error())
 		return
 	}
 

@@ -1,13 +1,16 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
+
+	"autolytiq/shared/logging"
+	"autolytiq/shared/secrets"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -15,14 +18,14 @@ import (
 
 // Config holds application configuration
 type Config struct {
-	Port             string
-	DatabaseURL      string
-	SMTPHost         string
-	SMTPPort         int
-	SMTPUsername     string
-	SMTPPassword     string
-	SMTPFromEmail    string
-	SMTPFromName     string
+	Port          string
+	DatabaseURL   string
+	SMTPHost      string
+	SMTPPort      int
+	SMTPUsername  string
+	SMTPPassword  string
+	SMTPFromEmail string
+	SMTPFromName  string
 }
 
 // Server holds application dependencies
@@ -30,6 +33,8 @@ type Server struct {
 	db         EmailDatabase
 	smtpClient SMTPClient
 	config     Config
+	logger     *logging.Logger
+	router     *mux.Router
 }
 
 // SendEmailRequest represents a simple email send request
@@ -66,7 +71,7 @@ type UpdateTemplateRequest struct {
 }
 
 // NewServer creates a new server instance
-func NewServer(config Config) (*Server, error) {
+func NewServer(config Config, logger *logging.Logger) (*Server, error) {
 	// Initialize database
 	db, err := NewPostgresEmailDatabase(config.DatabaseURL)
 	if err != nil {
@@ -89,11 +94,45 @@ func NewServer(config Config) (*Server, error) {
 	}
 	smtpClient := NewGoMailSMTPClient(smtpConfig)
 
-	return &Server{
+	s := &Server{
 		db:         db,
 		smtpClient: smtpClient,
 		config:     config,
-	}, nil
+		logger:     logger,
+		router:     mux.NewRouter(),
+	}
+
+	s.setupMiddleware()
+	s.setupRoutes()
+
+	return s, nil
+}
+
+// setupMiddleware configures middleware
+func (s *Server) setupMiddleware() {
+	s.router.Use(logging.RequestIDMiddleware)
+	s.router.Use(logging.RequestLoggingMiddleware(s.logger))
+}
+
+// setupRoutes configures all routes
+func (s *Server) setupRoutes() {
+	// Health check
+	s.router.HandleFunc("/health", s.HealthCheckHandler).Methods("GET")
+
+	// Email sending
+	s.router.HandleFunc("/email/send", s.SendEmailHandler).Methods("POST")
+	s.router.HandleFunc("/email/send-template", s.SendTemplateEmailHandler).Methods("POST")
+
+	// Template management
+	s.router.HandleFunc("/email/templates", s.CreateTemplateHandler).Methods("POST")
+	s.router.HandleFunc("/email/templates", s.ListTemplatesHandler).Methods("GET")
+	s.router.HandleFunc("/email/templates/{id}", s.GetTemplateHandler).Methods("GET")
+	s.router.HandleFunc("/email/templates/{id}", s.UpdateTemplateHandler).Methods("PUT")
+	s.router.HandleFunc("/email/templates/{id}", s.DeleteTemplateHandler).Methods("DELETE")
+
+	// Log management
+	s.router.HandleFunc("/email/logs", s.ListLogsHandler).Methods("GET")
+	s.router.HandleFunc("/email/logs/{id}", s.GetLogHandler).Methods("GET")
 }
 
 // HealthCheckHandler handles health check requests
@@ -105,14 +144,7 @@ func (s *Server) HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 // SendEmailHandler handles simple email sending
 func (s *Server) SendEmailHandler(w http.ResponseWriter, r *http.Request) {
 	var req SendEmailRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	// Validate request
-	if req.DealershipID == "" || req.To == "" || req.Subject == "" || req.BodyHTML == "" {
-		http.Error(w, "Missing required fields", http.StatusBadRequest)
+	if !decodeAndValidate(r, w, &req) {
 		return
 	}
 
@@ -128,6 +160,7 @@ func (s *Server) SendEmailHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.db.CreateLog(emailLog); err != nil {
+		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to create log")
 		http.Error(w, "Failed to create log", http.StatusInternalServerError)
 		return
 	}
@@ -139,6 +172,7 @@ func (s *Server) SendEmailHandler(w http.ResponseWriter, r *http.Request) {
 		errMsg := err.Error()
 		s.db.UpdateLogStatus(logID, "failed", nil, &errMsg)
 
+		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to send email")
 		http.Error(w, fmt.Sprintf("Failed to send email: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -146,6 +180,8 @@ func (s *Server) SendEmailHandler(w http.ResponseWriter, r *http.Request) {
 	// Update log with success
 	sentAt := time.Now()
 	s.db.UpdateLogStatus(logID, "sent", &sentAt, nil)
+
+	s.logger.WithContext(r.Context()).WithField("log_id", logID).Info("Email sent successfully")
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -158,14 +194,7 @@ func (s *Server) SendEmailHandler(w http.ResponseWriter, r *http.Request) {
 // SendTemplateEmailHandler handles template-based email sending
 func (s *Server) SendTemplateEmailHandler(w http.ResponseWriter, r *http.Request) {
 	var req SendTemplateEmailRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	// Validate request
-	if req.DealershipID == "" || req.To == "" || req.TemplateID == "" {
-		http.Error(w, "Missing required fields", http.StatusBadRequest)
+	if !decodeAndValidate(r, w, &req) {
 		return
 	}
 
@@ -193,6 +222,7 @@ func (s *Server) SendTemplateEmailHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	if err := s.db.CreateLog(emailLog); err != nil {
+		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to create log")
 		http.Error(w, "Failed to create log", http.StatusInternalServerError)
 		return
 	}
@@ -204,6 +234,7 @@ func (s *Server) SendTemplateEmailHandler(w http.ResponseWriter, r *http.Request
 		errMsg := err.Error()
 		s.db.UpdateLogStatus(logID, "failed", nil, &errMsg)
 
+		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to send email")
 		http.Error(w, fmt.Sprintf("Failed to send email: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -211,6 +242,8 @@ func (s *Server) SendTemplateEmailHandler(w http.ResponseWriter, r *http.Request
 	// Update log with success
 	sentAt := time.Now()
 	s.db.UpdateLogStatus(logID, "sent", &sentAt, nil)
+
+	s.logger.WithContext(r.Context()).WithField("log_id", logID).Info("Template email sent successfully")
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -223,14 +256,7 @@ func (s *Server) SendTemplateEmailHandler(w http.ResponseWriter, r *http.Request
 // CreateTemplateHandler handles template creation
 func (s *Server) CreateTemplateHandler(w http.ResponseWriter, r *http.Request) {
 	var req CreateTemplateRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	// Validate request
-	if req.DealershipID == "" || req.Name == "" || req.Subject == "" || req.BodyHTML == "" {
-		http.Error(w, "Missing required fields", http.StatusBadRequest)
+	if !decodeAndValidate(r, w, &req) {
 		return
 	}
 
@@ -267,9 +293,12 @@ func (s *Server) CreateTemplateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.db.CreateTemplate(template); err != nil {
+		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to create template")
 		http.Error(w, "Failed to create template", http.StatusInternalServerError)
 		return
 	}
+
+	s.logger.WithContext(r.Context()).WithField("template_id", template.ID).Info("Template created")
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -280,10 +309,20 @@ func (s *Server) CreateTemplateHandler(w http.ResponseWriter, r *http.Request) {
 func (s *Server) GetTemplateHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	templateID := vars["id"]
-	dealershipID := r.URL.Query().Get("dealership_id")
 
+	// Validate UUID
+	if !validateUUID(w, templateID, "id") {
+		return
+	}
+
+	dealershipID := r.URL.Query().Get("dealership_id")
 	if dealershipID == "" {
-		http.Error(w, "Missing dealership_id", http.StatusBadRequest)
+		respondValidationError(w, &ValidationErrors{
+			Errors: []ValidationError{{Field: "dealership_id", Message: "dealership_id is required"}},
+		})
+		return
+	}
+	if !validateUUID(w, dealershipID, "dealership_id") {
 		return
 	}
 
@@ -301,7 +340,12 @@ func (s *Server) GetTemplateHandler(w http.ResponseWriter, r *http.Request) {
 func (s *Server) ListTemplatesHandler(w http.ResponseWriter, r *http.Request) {
 	dealershipID := r.URL.Query().Get("dealership_id")
 	if dealershipID == "" {
-		http.Error(w, "Missing dealership_id", http.StatusBadRequest)
+		respondValidationError(w, &ValidationErrors{
+			Errors: []ValidationError{{Field: "dealership_id", Message: "dealership_id is required"}},
+		})
+		return
+	}
+	if !validateUUID(w, dealershipID, "dealership_id") {
 		return
 	}
 
@@ -312,19 +356,20 @@ func (s *Server) ListTemplatesHandler(w http.ResponseWriter, r *http.Request) {
 	offset := 0
 
 	if limitStr != "" {
-		if val, err := strconv.Atoi(limitStr); err == nil {
+		if val, err := strconv.Atoi(limitStr); err == nil && val > 0 && val <= 100 {
 			limit = val
 		}
 	}
 
 	if offsetStr != "" {
-		if val, err := strconv.Atoi(offsetStr); err == nil {
+		if val, err := strconv.Atoi(offsetStr); err == nil && val >= 0 {
 			offset = val
 		}
 	}
 
 	templates, err := s.db.ListTemplates(dealershipID, limit, offset)
 	if err != nil {
+		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to list templates")
 		http.Error(w, "Failed to list templates", http.StatusInternalServerError)
 		return
 	}
@@ -337,22 +382,25 @@ func (s *Server) ListTemplatesHandler(w http.ResponseWriter, r *http.Request) {
 func (s *Server) UpdateTemplateHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	templateID := vars["id"]
-	dealershipID := r.URL.Query().Get("dealership_id")
 
+	// Validate UUID
+	if !validateUUID(w, templateID, "id") {
+		return
+	}
+
+	dealershipID := r.URL.Query().Get("dealership_id")
 	if dealershipID == "" {
-		http.Error(w, "Missing dealership_id", http.StatusBadRequest)
+		respondValidationError(w, &ValidationErrors{
+			Errors: []ValidationError{{Field: "dealership_id", Message: "dealership_id is required"}},
+		})
+		return
+	}
+	if !validateUUID(w, dealershipID, "dealership_id") {
 		return
 	}
 
 	var req UpdateTemplateRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	// Validate request
-	if req.Name == "" || req.Subject == "" || req.BodyHTML == "" {
-		http.Error(w, "Missing required fields", http.StatusBadRequest)
+	if !decodeAndValidate(r, w, &req) {
 		return
 	}
 
@@ -387,6 +435,7 @@ func (s *Server) UpdateTemplateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.db.UpdateTemplate(template); err != nil {
+		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to update template")
 		http.Error(w, "Failed to update template", http.StatusInternalServerError)
 		return
 	}
@@ -398,6 +447,8 @@ func (s *Server) UpdateTemplateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	s.logger.WithContext(r.Context()).WithField("template_id", templateID).Info("Template updated")
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(updatedTemplate)
 }
@@ -406,17 +457,30 @@ func (s *Server) UpdateTemplateHandler(w http.ResponseWriter, r *http.Request) {
 func (s *Server) DeleteTemplateHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	templateID := vars["id"]
-	dealershipID := r.URL.Query().Get("dealership_id")
 
+	// Validate UUID
+	if !validateUUID(w, templateID, "id") {
+		return
+	}
+
+	dealershipID := r.URL.Query().Get("dealership_id")
 	if dealershipID == "" {
-		http.Error(w, "Missing dealership_id", http.StatusBadRequest)
+		respondValidationError(w, &ValidationErrors{
+			Errors: []ValidationError{{Field: "dealership_id", Message: "dealership_id is required"}},
+		})
+		return
+	}
+	if !validateUUID(w, dealershipID, "dealership_id") {
 		return
 	}
 
 	if err := s.db.DeleteTemplate(templateID, dealershipID); err != nil {
+		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to delete template")
 		http.Error(w, "Failed to delete template", http.StatusNotFound)
 		return
 	}
+
+	s.logger.WithContext(r.Context()).WithField("template_id", templateID).Info("Template deleted")
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -425,28 +489,43 @@ func (s *Server) DeleteTemplateHandler(w http.ResponseWriter, r *http.Request) {
 func (s *Server) GetLogHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	logID := vars["id"]
-	dealershipID := r.URL.Query().Get("dealership_id")
 
-	if dealershipID == "" {
-		http.Error(w, "Missing dealership_id", http.StatusBadRequest)
+	// Validate UUID
+	if !validateUUID(w, logID, "id") {
 		return
 	}
 
-	log, err := s.db.GetLog(logID, dealershipID)
+	dealershipID := r.URL.Query().Get("dealership_id")
+	if dealershipID == "" {
+		respondValidationError(w, &ValidationErrors{
+			Errors: []ValidationError{{Field: "dealership_id", Message: "dealership_id is required"}},
+		})
+		return
+	}
+	if !validateUUID(w, dealershipID, "dealership_id") {
+		return
+	}
+
+	emailLog, err := s.db.GetLog(logID, dealershipID)
 	if err != nil {
 		http.Error(w, "Log not found", http.StatusNotFound)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(log)
+	json.NewEncoder(w).Encode(emailLog)
 }
 
 // ListLogsHandler handles log listing
 func (s *Server) ListLogsHandler(w http.ResponseWriter, r *http.Request) {
 	dealershipID := r.URL.Query().Get("dealership_id")
 	if dealershipID == "" {
-		http.Error(w, "Missing dealership_id", http.StatusBadRequest)
+		respondValidationError(w, &ValidationErrors{
+			Errors: []ValidationError{{Field: "dealership_id", Message: "dealership_id is required"}},
+		})
+		return
+	}
+	if !validateUUID(w, dealershipID, "dealership_id") {
 		return
 	}
 
@@ -457,19 +536,20 @@ func (s *Server) ListLogsHandler(w http.ResponseWriter, r *http.Request) {
 	offset := 0
 
 	if limitStr != "" {
-		if val, err := strconv.Atoi(limitStr); err == nil {
+		if val, err := strconv.Atoi(limitStr); err == nil && val > 0 && val <= 100 {
 			limit = val
 		}
 	}
 
 	if offsetStr != "" {
-		if val, err := strconv.Atoi(offsetStr); err == nil {
+		if val, err := strconv.Atoi(offsetStr); err == nil && val >= 0 {
 			offset = val
 		}
 	}
 
 	logs, err := s.db.ListLogs(dealershipID, limit, offset)
 	if err != nil {
+		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to list logs")
 		http.Error(w, "Failed to list logs", http.StatusInternalServerError)
 		return
 	}
@@ -478,38 +558,87 @@ func (s *Server) ListLogsHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(logs)
 }
 
-// LoadConfig loads configuration from environment variables
-func LoadConfig() Config {
+// LoadConfig loads configuration from secrets provider and environment variables
+func LoadConfig(ctx context.Context, logger *logging.Logger) Config {
+	// Initialize secrets provider (AWS Secrets Manager in production, env vars in development)
+	secretsProvider, err := secrets.AutoProvider(ctx)
+	if err != nil {
+		logger.Warn("Failed to initialize secrets provider, falling back to environment variables: " + err.Error())
+	}
+	defer func() {
+		if secretsProvider != nil {
+			secretsProvider.Close()
+		}
+	}()
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8004"
 	}
 
-	databaseURL := os.Getenv("DATABASE_URL")
-	if databaseURL == "" {
-		databaseURL = "postgres://postgres:postgres@localhost:5432/autolytiq_email?sslmode=disable"
+	var databaseURL string
+	var smtpConfig *secrets.SMTPConfig
+
+	if secretsProvider != nil {
+		// Try to get secrets from provider
+		if url, err := secretsProvider.GetDatabaseURL(ctx); err == nil {
+			databaseURL = url
+		}
+		if cfg, err := secretsProvider.GetSMTPConfig(ctx); err == nil {
+			smtpConfig = cfg
+		}
 	}
 
-	smtpHost := os.Getenv("SMTP_HOST")
+	// Fallback to environment variables for database URL
+	if databaseURL == "" {
+		databaseURL = os.Getenv("DATABASE_URL")
+		if databaseURL == "" {
+			databaseURL = "postgres://postgres:postgres@localhost:5432/autolytiq_email?sslmode=disable"
+		}
+	}
+
+	// Fallback to environment variables for SMTP config
+	smtpHost := ""
+	smtpPort := 587
+	smtpUsername := ""
+	smtpPassword := ""
+	smtpFromEmail := ""
+	smtpFromName := "Autolytiq"
+
+	if smtpConfig != nil {
+		smtpHost = smtpConfig.Host
+		smtpPort = smtpConfig.Port
+		smtpUsername = smtpConfig.Username
+		smtpPassword = smtpConfig.Password
+		smtpFromEmail = smtpConfig.FromEmail
+		smtpFromName = smtpConfig.FromName
+	}
+
+	// Override with environment variables if set
+	if envHost := os.Getenv("SMTP_HOST"); envHost != "" {
+		smtpHost = envHost
+	}
 	if smtpHost == "" {
 		smtpHost = "smtp.gmail.com"
 	}
 
-	smtpPortStr := os.Getenv("SMTP_PORT")
-	smtpPort := 587
-	if smtpPortStr != "" {
+	if smtpPortStr := os.Getenv("SMTP_PORT"); smtpPortStr != "" {
 		if val, err := strconv.Atoi(smtpPortStr); err == nil {
 			smtpPort = val
 		}
 	}
 
-	smtpUsername := os.Getenv("SMTP_USERNAME")
-	smtpPassword := os.Getenv("SMTP_PASSWORD")
-	smtpFromEmail := os.Getenv("SMTP_FROM_EMAIL")
-
-	smtpFromName := os.Getenv("SMTP_FROM_NAME")
-	if smtpFromName == "" {
-		smtpFromName = "Autolytiq"
+	if envUser := os.Getenv("SMTP_USERNAME"); envUser != "" {
+		smtpUsername = envUser
+	}
+	if envPass := os.Getenv("SMTP_PASSWORD"); envPass != "" {
+		smtpPassword = envPass
+	}
+	if envFrom := os.Getenv("SMTP_FROM_EMAIL"); envFrom != "" {
+		smtpFromEmail = envFrom
+	}
+	if envName := os.Getenv("SMTP_FROM_NAME"); envName != "" {
+		smtpFromName = envName
 	}
 
 	return Config{
@@ -525,34 +654,22 @@ func LoadConfig() Config {
 }
 
 func main() {
-	config := LoadConfig()
+	// Initialize logger
+	logger := logging.New(logging.Config{
+		Service: "email-service",
+	})
 
-	server, err := NewServer(config)
+	ctx := context.Background()
+	config := LoadConfig(ctx, logger)
+
+	server, err := NewServer(config, logger)
 	if err != nil {
-		log.Fatalf("Failed to create server: %v", err)
+		logger.Fatalf("Failed to create server: %v", err)
 	}
 	defer server.db.Close()
 
-	router := mux.NewRouter()
-
-	// Health check
-	router.HandleFunc("/health", server.HealthCheckHandler).Methods("GET")
-
-	// Email sending
-	router.HandleFunc("/email/send", server.SendEmailHandler).Methods("POST")
-	router.HandleFunc("/email/send-template", server.SendTemplateEmailHandler).Methods("POST")
-
-	// Template management
-	router.HandleFunc("/email/templates", server.CreateTemplateHandler).Methods("POST")
-	router.HandleFunc("/email/templates", server.ListTemplatesHandler).Methods("GET")
-	router.HandleFunc("/email/templates/{id}", server.GetTemplateHandler).Methods("GET")
-	router.HandleFunc("/email/templates/{id}", server.UpdateTemplateHandler).Methods("PUT")
-	router.HandleFunc("/email/templates/{id}", server.DeleteTemplateHandler).Methods("DELETE")
-
-	// Log management
-	router.HandleFunc("/email/logs", server.ListLogsHandler).Methods("GET")
-	router.HandleFunc("/email/logs/{id}", server.GetLogHandler).Methods("GET")
-
-	log.Printf("Email Service starting on port %s", config.Port)
-	log.Fatal(http.ListenAndServe(":"+config.Port, router))
+	logger.Infof("Email Service starting on port %s", config.Port)
+	if err := http.ListenAndServe(":"+config.Port, server.router); err != nil {
+		logger.Fatal(err.Error())
+	}
 }

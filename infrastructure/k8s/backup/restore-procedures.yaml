@@ -1,0 +1,259 @@
+---
+# =============================================================================
+# Velero Restore Templates and Procedures
+# =============================================================================
+# Pre-configured restore templates for common recovery scenarios
+# These can be used as starting points for actual restores
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Full Namespace Restore Template
+# -----------------------------------------------------------------------------
+# Use this template to restore the entire autolytiq namespace
+# Create actual restore by: kubectl apply -f restore-full-namespace.yaml
+apiVersion: velero.io/v1
+kind: Restore
+metadata:
+  name: restore-full-namespace-template
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: restore-template
+    restore-type: full-namespace
+  annotations:
+    description: 'Template for full namespace restore. Copy and modify for actual use.'
+spec:
+  # Backup to restore from (replace with actual backup name)
+  backupName: daily-full-backup-YYYYMMDDHHMMSS
+
+  # Namespaces to restore
+  includedNamespaces:
+    - autolytiq
+
+  # Restore all resources
+  includedResources:
+    - '*'
+
+  # Resources to exclude from restore
+  excludedResources:
+    - events
+    - events.events.k8s.io
+    - nodes
+    - persistentvolumes
+
+  # Label selector (optional)
+  # labelSelector:
+  #   matchLabels:
+  #     app: specific-app
+
+  # Restore PVs from snapshots
+  restorePVs: true
+
+  # Preserve node ports (important for services)
+  preserveNodePorts: true
+
+  # How to handle existing resources
+  existingResourcePolicy: update
+
+  # Namespace mapping (optional - restore to different namespace)
+  # namespaceMapping:
+  #   autolytiq: autolytiq-restored
+
+  # Include cluster-scoped resources
+  includeClusterResources: true
+
+  # Hooks for post-restore actions
+  hooks:
+    resources:
+      - name: database-init
+        includedNamespaces:
+          - autolytiq
+        labelSelector:
+          matchLabels:
+            app: api-gateway
+        postHooks:
+          - exec:
+              container: api-gateway
+              command:
+                - /bin/sh
+                - -c
+                - "echo 'Post-restore initialization complete'"
+              onError: Continue
+              timeout: 60s
+
+---
+# -----------------------------------------------------------------------------
+# Selective Service Restore Template
+# -----------------------------------------------------------------------------
+# Use this template to restore specific services/deployments
+apiVersion: velero.io/v1
+kind: Restore
+metadata:
+  name: restore-selective-service-template
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: restore-template
+    restore-type: selective
+  annotations:
+    description: 'Template for selective service restore.'
+spec:
+  backupName: daily-full-backup-YYYYMMDDHHMMSS
+
+  includedNamespaces:
+    - autolytiq
+
+  # Only restore specific resources
+  includedResources:
+    - deployments
+    - services
+    - configmaps
+    - secrets
+
+  # Use label selector to target specific services
+  labelSelector:
+    matchLabels:
+      app: deal-service # Change to target service
+
+  restorePVs: false
+  preserveNodePorts: true
+  existingResourcePolicy: update
+  includeClusterResources: false
+
+---
+# -----------------------------------------------------------------------------
+# ConfigMap and Secret Restore Template
+# -----------------------------------------------------------------------------
+# Use this template to restore only configuration
+apiVersion: velero.io/v1
+kind: Restore
+metadata:
+  name: restore-config-only-template
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: restore-template
+    restore-type: config-only
+  annotations:
+    description: 'Template for restoring ConfigMaps and Secrets only.'
+spec:
+  backupName: hourly-cluster-state-YYYYMMDDHHMMSS
+
+  includedNamespaces:
+    - autolytiq
+
+  includedResources:
+    - configmaps
+    - secrets
+
+  # Exclude specific secrets
+  labelSelector:
+    matchExpressions:
+      - key: velero.io/exclude-from-restore
+        operator: NotIn
+        values:
+          - 'true'
+
+  restorePVs: false
+  preserveNodePorts: false
+  existingResourcePolicy: update
+  includeClusterResources: false
+
+---
+# -----------------------------------------------------------------------------
+# Cross-Namespace Restore Template
+# -----------------------------------------------------------------------------
+# Use this template to restore to a different namespace (for testing)
+apiVersion: velero.io/v1
+kind: Restore
+metadata:
+  name: restore-to-staging-template
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: restore-template
+    restore-type: cross-namespace
+  annotations:
+    description: 'Template for restoring production backup to staging namespace.'
+spec:
+  backupName: daily-full-backup-YYYYMMDDHHMMSS
+
+  includedNamespaces:
+    - autolytiq
+
+  includedResources:
+    - '*'
+
+  excludedResources:
+    - events
+    - persistentvolumeclaims
+    - persistentvolumes
+
+  # Map production namespace to staging
+  namespaceMapping:
+    autolytiq: autolytiq-staging-test
+
+  restorePVs: false
+  preserveNodePorts: false
+  existingResourcePolicy: none # Don't overwrite existing
+  includeClusterResources: false
+
+---
+# -----------------------------------------------------------------------------
+# Disaster Recovery Restore Template
+# -----------------------------------------------------------------------------
+# Use this template for full DR recovery from cross-region backup
+apiVersion: velero.io/v1
+kind: Restore
+metadata:
+  name: restore-dr-full-template
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: restore-template
+    restore-type: disaster-recovery
+  annotations:
+    description: 'Template for full disaster recovery restore.'
+spec:
+  # Use DR backup (from dr-region storage location)
+  backupName: weekly-dr-backup-YYYYMMDDHHMMSS
+
+  # Restore all namespaces from backup
+  includedNamespaces:
+    - autolytiq
+    - monitoring
+    - ingress-nginx
+
+  includedResources:
+    - '*'
+
+  excludedResources:
+    - events
+    - events.events.k8s.io
+    - nodes
+
+  restorePVs: true
+  preserveNodePorts: true
+  existingResourcePolicy: update
+  includeClusterResources: true
+
+  # Post-restore hooks for DR
+  hooks:
+    resources:
+      - name: update-endpoints
+        includedNamespaces:
+          - autolytiq
+        labelSelector:
+          matchLabels:
+            app: api-gateway
+        postHooks:
+          - exec:
+              container: api-gateway
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  echo "Updating configuration for DR region..."
+                  # Add DR-specific configuration updates here
+              onError: Continue
+              timeout: 120s

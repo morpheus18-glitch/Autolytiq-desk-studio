@@ -1,0 +1,19 @@
+# Istio System Namespace
+# This namespace hosts Istio control plane components (istiod, ingress/egress gateways)
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: istio-system
+  labels:
+    istio-injection: disabled
+    app.kubernetes.io/name: istio-system
+    app.kubernetes.io/part-of: autolytiq-desk-studio
+---
+# Istio Operator Namespace (optional, for operator-based installation)
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: istio-operator
+  labels:
+    istio-injection: disabled
+    app.kubernetes.io/name: istio-operator

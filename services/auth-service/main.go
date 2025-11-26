@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
-	"log"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+
+	"autolytiq/shared/logging"
+	"autolytiq/shared/secrets"
 
 	"github.com/gorilla/mux"
 )
@@ -24,32 +27,39 @@ type Config struct {
 
 // Server represents the Auth service server
 type Server struct {
-	router      *mux.Router
-	config      *Config
-	db          AuthDatabase
-	redis       TokenStore
-	jwtService  *JWTService
+	router     *mux.Router
+	config     *Config
+	db         AuthDatabase
+	redis      TokenStore
+	jwtService *JWTService
+	logger     *logging.Logger
 }
 
 func main() {
-	config := loadConfig()
+	// Initialize logger
+	logger := logging.New(logging.Config{
+		Service: "auth-service",
+	})
+
+	ctx := context.Background()
+	config := loadConfig(ctx, logger)
 
 	// Initialize database
-	db, err := NewPostgresDB(config.DatabaseURL)
+	db, err := NewPostgresDB(config.DatabaseURL, logger)
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		logger.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer db.Close()
 
 	// Initialize schema
 	if err := db.InitSchema(); err != nil {
-		log.Fatalf("Failed to initialize schema: %v", err)
+		logger.Fatalf("Failed to initialize schema: %v", err)
 	}
 
 	// Initialize Redis
-	redis, err := NewRedisStore(config.RedisURL)
+	redis, err := NewRedisStore(config.RedisURL, logger)
 	if err != nil {
-		log.Fatalf("Failed to connect to Redis: %v", err)
+		logger.Fatalf("Failed to connect to Redis: %v", err)
 	}
 	defer redis.Close()
 
@@ -57,19 +67,69 @@ func main() {
 	jwtService := NewJWTService(config.JWTSecret, config.JWTIssuer, config.AccessTokenTTL, config.RefreshTokenTTL)
 
 	// Create server
-	server := NewServer(config, db, redis, jwtService)
+	server := NewServer(config, db, redis, jwtService, logger)
 
-	log.Printf("Auth service starting on port %s", config.Port)
-	log.Fatal(http.ListenAndServe(":"+config.Port, server.router))
+	logger.Infof("Auth service starting on port %s", config.Port)
+	if err := http.ListenAndServe(":"+config.Port, server.router); err != nil {
+		logger.Fatal(err.Error())
+	}
 }
 
-func loadConfig() *Config {
+func loadConfig(ctx context.Context, logger *logging.Logger) *Config {
+	// Initialize secrets provider (AWS Secrets Manager in production, env vars in development)
+	secretsProvider, err := secrets.AutoProvider(ctx)
+	if err != nil {
+		logger.Warn("Failed to initialize secrets provider, falling back to environment variables: " + err.Error())
+	}
+	defer func() {
+		if secretsProvider != nil {
+			secretsProvider.Close()
+		}
+	}()
+
+	// Load secrets with fallback to environment variables
+	var databaseURL, redisURL, jwtSecret, jwtIssuer string
+
+	if secretsProvider != nil {
+		// Try to get secrets from provider
+		if url, err := secretsProvider.GetDatabaseURL(ctx); err == nil {
+			databaseURL = url
+		}
+		if url, err := secretsProvider.GetRedisURL(ctx); err == nil {
+			redisURL = url
+		}
+		if secret, err := secretsProvider.GetJWTSecret(ctx); err == nil {
+			jwtSecret = secret
+		}
+		if issuer, err := secretsProvider.GetJWTIssuer(ctx); err == nil {
+			jwtIssuer = issuer
+		}
+	}
+
+	// Fallback to environment variables for any missing values
+	if databaseURL == "" {
+		databaseURL = getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/autolytiq?sslmode=disable")
+	}
+	if redisURL == "" {
+		redisURL = getEnv("REDIS_URL", "redis://localhost:6379")
+	}
+	if jwtSecret == "" {
+		jwtSecret = getEnv("JWT_SECRET", "")
+		if jwtSecret == "" {
+			logger.Warn("JWT_SECRET not set, using development default. DO NOT use in production!")
+			jwtSecret = "your-super-secret-key-change-in-production"
+		}
+	}
+	if jwtIssuer == "" {
+		jwtIssuer = getEnv("JWT_ISSUER", "autolytiq")
+	}
+
 	return &Config{
 		Port:            getEnv("PORT", "8087"),
-		DatabaseURL:     getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/autolytiq?sslmode=disable"),
-		RedisURL:        getEnv("REDIS_URL", "redis://localhost:6379"),
-		JWTSecret:       getEnv("JWT_SECRET", "your-super-secret-key-change-in-production"),
-		JWTIssuer:       getEnv("JWT_ISSUER", "autolytiq"),
+		DatabaseURL:     databaseURL,
+		RedisURL:        redisURL,
+		JWTSecret:       jwtSecret,
+		JWTIssuer:       jwtIssuer,
 		AccessTokenTTL:  parseDuration(getEnv("ACCESS_TOKEN_TTL", "15m")),
 		RefreshTokenTTL: parseDuration(getEnv("REFRESH_TOKEN_TTL", "7d")),
 	}
@@ -104,16 +164,23 @@ func parseDuration(s string) time.Duration {
 }
 
 // NewServer creates a new Auth service server
-func NewServer(config *Config, db AuthDatabase, redis TokenStore, jwtService *JWTService) *Server {
+func NewServer(config *Config, db AuthDatabase, redis TokenStore, jwtService *JWTService, logger *logging.Logger) *Server {
 	s := &Server{
 		router:     mux.NewRouter(),
 		config:     config,
 		db:         db,
 		redis:      redis,
 		jwtService: jwtService,
+		logger:     logger,
 	}
+	s.setupMiddleware()
 	s.setupRoutes()
 	return s
+}
+
+func (s *Server) setupMiddleware() {
+	s.router.Use(logging.RequestIDMiddleware)
+	s.router.Use(logging.RequestLoggingMiddleware(s.logger))
 }
 
 func (s *Server) setupRoutes() {

@@ -1,0 +1,73 @@
+---
+# =============================================================================
+# Kustomization for Velero Backup System
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: velero-backup-system
+
+# Namespace for all resources
+namespace: velero
+
+# Resources to include
+resources:
+  - namespace.yaml
+  - velero-install.yaml
+  - backup-storage-location.yaml
+  - backup-schedules.yaml
+  - restore-procedures.yaml
+  - servicemonitor.yaml
+
+# Common labels for all resources
+commonLabels:
+  app.kubernetes.io/part-of: autolytiq
+  app.kubernetes.io/managed-by: kustomize
+
+# ConfigMap generator for Velero configuration
+configMapGenerator:
+  - name: velero-config
+    literals:
+      - VELERO_NAMESPACE=velero
+      - DEFAULT_BACKUP_STORAGE_LOCATION=primary
+      - DEFAULT_VOLUME_SNAPSHOT_LOCATIONS=primary
+      - RESTORE_RESOURCE_PRIORITIES=customresourcedefinitions,namespaces,storageclasses,persistentvolumes,persistentvolumeclaims,secrets,configmaps,serviceaccounts,roles,rolebindings,clusterroles,clusterrolebindings,services,deployments,statefulsets,daemonsets,replicasets,jobs,cronjobs
+
+# Images configuration
+images:
+  - name: velero/velero
+    newTag: v1.12.2
+  - name: velero/velero-plugin-for-aws
+    newTag: v1.8.2
+  - name: velero/velero-plugin-for-csi
+    newTag: v0.6.2
+
+# Patches for environment-specific configuration
+# These should be overridden in overlays
+patches:
+  # Patch to update account ID and environment in storage locations
+  - target:
+      kind: BackupStorageLocation
+      name: primary
+    patch: |-
+      - op: replace
+        path: /spec/objectStorage/bucket
+        value: autolytiq-prod-velero-backups-123456789012
+
+  - target:
+      kind: BackupStorageLocation
+      name: dr-region
+    patch: |-
+      - op: replace
+        path: /spec/objectStorage/bucket
+        value: autolytiq-prod-velero-dr-123456789012
+
+  # Patch for service account IRSA annotation
+  - target:
+      kind: ServiceAccount
+      name: velero
+    patch: |-
+      - op: replace
+        path: /metadata/annotations/eks.amazonaws.com~1role-arn
+        value: arn:aws:iam::123456789012:role/autolytiq-prod-velero

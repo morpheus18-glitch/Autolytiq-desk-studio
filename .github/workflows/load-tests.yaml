@@ -1,0 +1,401 @@
+name: Load Tests
+
+on:
+  # Run smoke tests on PRs
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'services/**'
+      - 'shared/**'
+      - 'tests/load/**'
+
+  # Run full load tests before production deployment
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: 'Test scenario to run'
+        required: true
+        default: 'load'
+        type: choice
+        options:
+          - smoke
+          - load
+          - stress
+          - spike
+          - soak
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      vus:
+        description: 'Virtual users (optional override)'
+        required: false
+        type: string
+      duration:
+        description: 'Duration (optional override, e.g., 5m, 1h)'
+        required: false
+        type: string
+
+  # Scheduled load tests
+  schedule:
+    # Run load tests daily at 3 AM UTC against staging
+    - cron: '0 3 * * *'
+    # Run stress tests weekly on Sunday at 4 AM UTC
+    - cron: '0 4 * * 0'
+
+env:
+  K6_VERSION: '0.52.0'
+
+jobs:
+  # Smoke tests run on every PR
+  smoke-test-pr:
+    name: PR Smoke Test
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: autolytiq_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Build and start API Gateway
+        working-directory: services/api-gateway
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/autolytiq_test?sslmode=disable
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test-secret-key-at-least-32-characters-long
+          PORT: 8080
+        run: |
+          go build -o api-gateway .
+          ./api-gateway &
+          sleep 5
+
+      - name: Wait for service
+        run: |
+          timeout 30 bash -c 'until curl -s http://localhost:8080/health > /dev/null 2>&1; do sleep 1; done'
+          echo "Service is ready"
+
+      - name: Run Smoke Test
+        env:
+          BASE_URL: http://localhost:8080
+          TEST_USERNAME: ${{ secrets.LOAD_TEST_USER }}
+          TEST_PASSWORD: ${{ secrets.LOAD_TEST_PASSWORD }}
+        run: |
+          k6 run tests/load/scenarios/smoke.js \
+            --summary-export=results/smoke-summary.json \
+            --out json=results/smoke-results.json
+        continue-on-error: false
+
+      - name: Upload Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-test-results-${{ github.run_id }}
+          path: results/
+          retention-days: 7
+
+      - name: Check Thresholds
+        run: |
+          if [ -f results/smoke-summary.json ]; then
+            echo "Test completed. Checking thresholds..."
+            # Check if any thresholds failed
+            FAILED=$(jq '.root_group.checks | to_entries | map(select(.value.fails > 0)) | length' results/smoke-summary.json 2>/dev/null || echo "0")
+            if [ "$FAILED" -gt "0" ]; then
+              echo "::warning::Some checks failed during smoke test"
+            fi
+          fi
+
+  # Manual or scheduled load tests
+  load-test:
+    name: Load Test - ${{ inputs.scenario || 'load' }}
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'staging' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Determine scenario
+        id: scenario
+        run: |
+          if [ "${{ github.event_name }}" == "schedule" ]; then
+            # Daily runs use load test, weekly runs use stress test
+            if [ "$(date +%u)" == "0" ]; then
+              echo "scenario=stress" >> $GITHUB_OUTPUT
+            else
+              echo "scenario=load" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "scenario=${{ inputs.scenario }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Determine environment URL
+        id: env_url
+        run: |
+          ENV="${{ inputs.environment || 'staging' }}"
+          case $ENV in
+            staging)
+              echo "url=${{ secrets.STAGING_API_URL }}" >> $GITHUB_OUTPUT
+              ;;
+            production)
+              echo "url=${{ secrets.PRODUCTION_API_URL }}" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "url=http://localhost:8080" >> $GITHUB_OUTPUT
+              ;;
+          esac
+
+      - name: Create results directory
+        run: mkdir -p results
+
+      - name: Run Load Test
+        env:
+          BASE_URL: ${{ steps.env_url.outputs.url }}
+          TEST_USERNAME: ${{ secrets.LOAD_TEST_USER }}
+          TEST_PASSWORD: ${{ secrets.LOAD_TEST_PASSWORD }}
+          ENVIRONMENT: ${{ inputs.environment || 'staging' }}
+        run: |
+          SCENARIO=${{ steps.scenario.outputs.scenario }}
+          K6_ARGS=""
+
+          # Add optional overrides
+          if [ -n "${{ inputs.vus }}" ]; then
+            K6_ARGS="$K6_ARGS --vus ${{ inputs.vus }}"
+          fi
+
+          if [ -n "${{ inputs.duration }}" ]; then
+            K6_ARGS="$K6_ARGS --duration ${{ inputs.duration }}"
+          fi
+
+          echo "Running $SCENARIO test against $BASE_URL"
+          echo "Additional args: $K6_ARGS"
+
+          k6 run tests/load/scenarios/${SCENARIO}.js \
+            --summary-export=results/${SCENARIO}-summary.json \
+            --out json=results/${SCENARIO}-results.json \
+            $K6_ARGS
+
+      - name: Generate Report
+        if: always()
+        run: |
+          SCENARIO=${{ steps.scenario.outputs.scenario }}
+          echo "## Load Test Results - ${SCENARIO}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f results/${SCENARIO}-summary.json ]; then
+            echo "### Key Metrics" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            # Extract key metrics
+            P95=$(jq -r '.metrics.http_req_duration.values["p(95)"] // "N/A"' results/${SCENARIO}-summary.json)
+            P99=$(jq -r '.metrics.http_req_duration.values["p(99)"] // "N/A"' results/${SCENARIO}-summary.json)
+            ERROR_RATE=$(jq -r '.metrics.http_req_failed.values.rate // "N/A"' results/${SCENARIO}-summary.json)
+            REQS=$(jq -r '.metrics.http_reqs.values.count // "N/A"' results/${SCENARIO}-summary.json)
+            RPS=$(jq -r '.metrics.http_reqs.values.rate // "N/A"' results/${SCENARIO}-summary.json)
+
+            echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| p95 Latency | ${P95}ms |" >> $GITHUB_STEP_SUMMARY
+            echo "| p99 Latency | ${P99}ms |" >> $GITHUB_STEP_SUMMARY
+            echo "| Error Rate | ${ERROR_RATE} |" >> $GITHUB_STEP_SUMMARY
+            echo "| Total Requests | ${REQS} |" >> $GITHUB_STEP_SUMMARY
+            echo "| Requests/sec | ${RPS} |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ steps.scenario.outputs.scenario }}-test-results-${{ github.run_id }}
+          path: results/
+          retention-days: 30
+
+      - name: Send Slack Notification
+        if: always() && (inputs.environment == 'production' || github.event_name == 'schedule')
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          channel-id: ${{ secrets.SLACK_LOAD_TEST_CHANNEL }}
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "Load Test Results: ${{ steps.scenario.outputs.scenario }}"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Environment:* ${{ inputs.environment || 'staging' }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Status:* ${{ job.status }}"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Results>"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
+  # Store results for trending
+  store-results:
+    name: Store Results for Trending
+    needs: load-test
+    if: always() && (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: '*-test-results-*'
+          path: downloaded-results
+
+      - name: Process and store results
+        run: |
+          # Create a summary file for trending
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          SCENARIO="${{ inputs.scenario || 'load' }}"
+          ENV="${{ inputs.environment || 'staging' }}"
+
+          # Find the summary file
+          SUMMARY_FILE=$(find downloaded-results -name "*-summary.json" | head -1)
+
+          if [ -f "$SUMMARY_FILE" ]; then
+            # Extract metrics and create trend entry
+            jq --arg ts "$TIMESTAMP" --arg scenario "$SCENARIO" --arg env "$ENV" \
+              '{
+                timestamp: $ts,
+                scenario: $scenario,
+                environment: $env,
+                p95_latency: .metrics.http_req_duration.values["p(95)"],
+                p99_latency: .metrics.http_req_duration.values["p(99)"],
+                error_rate: .metrics.http_req_failed.values.rate,
+                total_requests: .metrics.http_reqs.values.count,
+                requests_per_second: .metrics.http_reqs.values.rate
+              }' "$SUMMARY_FILE" > trend-entry.json
+
+            echo "Created trend entry:"
+            cat trend-entry.json
+          fi
+
+      - name: Upload trend data
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: load-test-trend-${{ github.run_id }}
+          path: trend-entry.json
+          retention-days: 90
+
+  # Pre-deployment load test gate
+  pre-deploy-gate:
+    name: Pre-Deployment Load Test Gate
+    if: github.event_name == 'workflow_dispatch' && inputs.environment == 'production'
+    needs: load-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: '*-test-results-*'
+          path: downloaded-results
+
+      - name: Validate thresholds for production
+        run: |
+          SUMMARY_FILE=$(find downloaded-results -name "*-summary.json" | head -1)
+
+          if [ ! -f "$SUMMARY_FILE" ]; then
+            echo "::error::No summary file found"
+            exit 1
+          fi
+
+          # Strict thresholds for production
+          P95=$(jq -r '.metrics.http_req_duration.values["p(95)"]' "$SUMMARY_FILE")
+          ERROR_RATE=$(jq -r '.metrics.http_req_failed.values.rate' "$SUMMARY_FILE")
+
+          echo "P95 Latency: ${P95}ms (threshold: 500ms)"
+          echo "Error Rate: ${ERROR_RATE} (threshold: 0.01)"
+
+          # Check p95 latency
+          if (( $(echo "$P95 > 500" | bc -l) )); then
+            echo "::error::P95 latency exceeds production threshold (500ms)"
+            exit 1
+          fi
+
+          # Check error rate
+          if (( $(echo "$ERROR_RATE > 0.01" | bc -l) )); then
+            echo "::error::Error rate exceeds production threshold (1%)"
+            exit 1
+          fi
+
+          echo "::notice::All production thresholds passed!"

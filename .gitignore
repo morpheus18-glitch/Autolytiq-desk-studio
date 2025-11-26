@@ -98,4 +98,9 @@ services/deal-service/deal-service
 services/inventory-service/inventory-service
 services/email-service/email-service
 services/user-service/user-service
-services/config-service/config-service
+services/config-service/config-serviceservices/inventory-service/inventory-service
+services/user-service/user-service
+services/auth-service/auth-service
+services/messaging-service/messaging-service
+services/settings-service/settings-service
+services/showroom-service/showroom-service

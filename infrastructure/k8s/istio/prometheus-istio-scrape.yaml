@@ -1,0 +1,276 @@
+# Additional Prometheus scrape configuration for Istio
+# Add this to your existing Prometheus ConfigMap or merge with prometheus-config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-istio-config
+  namespace: monitoring
+  labels:
+    app: prometheus
+data:
+  istio-scrape.yaml: |
+    # Istio Control Plane (istiod)
+    - job_name: 'istiod'
+      kubernetes_sd_configs:
+        - role: endpoints
+          namespaces:
+            names:
+              - istio-system
+      relabel_configs:
+        - source_labels: [__meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+          action: keep
+          regex: istiod;http-monitoring
+        - action: labelmap
+          regex: __meta_kubernetes_service_label_(.+)
+        - source_labels: [__meta_kubernetes_namespace]
+          action: replace
+          target_label: namespace
+        - source_labels: [__meta_kubernetes_service_name]
+          action: replace
+          target_label: service
+
+    # Istio Ingress Gateway
+    - job_name: 'istio-ingressgateway'
+      kubernetes_sd_configs:
+        - role: pod
+          namespaces:
+            names:
+              - istio-system
+      relabel_configs:
+        - source_labels: [__meta_kubernetes_pod_label_istio]
+          action: keep
+          regex: ingressgateway
+        - source_labels: [__address__]
+          action: replace
+          regex: ([^:]+)(?::\d+)?
+          replacement: $1:15090
+          target_label: __address__
+        - source_labels: [__meta_kubernetes_pod_name]
+          action: replace
+          target_label: kubernetes_pod_name
+        - action: labelmap
+          regex: __meta_kubernetes_pod_label_(.+)
+
+    # Istio Egress Gateway
+    - job_name: 'istio-egressgateway'
+      kubernetes_sd_configs:
+        - role: pod
+          namespaces:
+            names:
+              - istio-system
+      relabel_configs:
+        - source_labels: [__meta_kubernetes_pod_label_istio]
+          action: keep
+          regex: egressgateway
+        - source_labels: [__address__]
+          action: replace
+          regex: ([^:]+)(?::\d+)?
+          replacement: $1:15090
+          target_label: __address__
+        - source_labels: [__meta_kubernetes_pod_name]
+          action: replace
+          target_label: kubernetes_pod_name
+        - action: labelmap
+          regex: __meta_kubernetes_pod_label_(.+)
+
+    # Envoy sidecars in autolytiq namespace
+    - job_name: 'envoy-stats'
+      metrics_path: /stats/prometheus
+      kubernetes_sd_configs:
+        - role: pod
+          namespaces:
+            names:
+              - autolytiq
+      relabel_configs:
+        - source_labels: [__meta_kubernetes_pod_container_name]
+          action: keep
+          regex: "istio-proxy"
+        - source_labels: [__address__]
+          action: replace
+          regex: ([^:]+)(?::\d+)?
+          replacement: $1:15090
+          target_label: __address__
+        - action: labelmap
+          regex: __meta_kubernetes_pod_label_(.+)
+        - source_labels: [__meta_kubernetes_namespace]
+          action: replace
+          target_label: namespace
+        - source_labels: [__meta_kubernetes_pod_name]
+          action: replace
+          target_label: pod_name
+
+    # Istio mesh metrics (from Prometheus telemetry)
+    - job_name: 'istio-mesh'
+      kubernetes_sd_configs:
+        - role: endpoints
+          namespaces:
+            names:
+              - istio-system
+      relabel_configs:
+        - source_labels: [__meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+          action: keep
+          regex: istio-telemetry;prometheus
+
+  # Prometheus recording rules for Istio
+  istio-recording-rules.yaml: |
+    groups:
+      - name: istio.recording-rules
+        interval: 30s
+        rules:
+          # Request rate per service
+          - record: istio:service:request_rate:5m
+            expr: |
+              sum(rate(istio_requests_total{reporter="destination"}[5m])) by (destination_service_name, destination_service_namespace)
+
+          # Error rate per service
+          - record: istio:service:error_rate:5m
+            expr: |
+              sum(rate(istio_requests_total{reporter="destination", response_code=~"5.."}[5m])) by (destination_service_name, destination_service_namespace)
+
+          # Success rate per service
+          - record: istio:service:success_rate:5m
+            expr: |
+              sum(rate(istio_requests_total{reporter="destination", response_code!~"5.."}[5m])) by (destination_service_name, destination_service_namespace)
+              /
+              sum(rate(istio_requests_total{reporter="destination"}[5m])) by (destination_service_name, destination_service_namespace)
+
+          # P50 latency per service
+          - record: istio:service:request_duration_seconds:p50
+            expr: |
+              histogram_quantile(0.50,
+                sum(rate(istio_request_duration_milliseconds_bucket{reporter="destination"}[5m])) by (destination_service_name, le)
+              ) / 1000
+
+          # P90 latency per service
+          - record: istio:service:request_duration_seconds:p90
+            expr: |
+              histogram_quantile(0.90,
+                sum(rate(istio_request_duration_milliseconds_bucket{reporter="destination"}[5m])) by (destination_service_name, le)
+              ) / 1000
+
+          # P99 latency per service
+          - record: istio:service:request_duration_seconds:p99
+            expr: |
+              histogram_quantile(0.99,
+                sum(rate(istio_request_duration_milliseconds_bucket{reporter="destination"}[5m])) by (destination_service_name, le)
+              ) / 1000
+
+          # mTLS traffic percentage
+          - record: istio:mesh:mtls_traffic_percentage
+            expr: |
+              sum(rate(istio_requests_total{reporter="destination", connection_security_policy="mutual_tls"}[5m]))
+              /
+              sum(rate(istio_requests_total{reporter="destination"}[5m]))
+
+          # Request bytes per service
+          - record: istio:service:request_bytes:rate5m
+            expr: |
+              sum(rate(istio_request_bytes_sum{reporter="destination"}[5m])) by (destination_service_name)
+
+          # Response bytes per service
+          - record: istio:service:response_bytes:rate5m
+            expr: |
+              sum(rate(istio_response_bytes_sum{reporter="destination"}[5m])) by (destination_service_name)
+
+          # TCP connections per service
+          - record: istio:service:tcp_connections_opened:rate5m
+            expr: |
+              sum(rate(istio_tcp_connections_opened_total{reporter="destination"}[5m])) by (destination_service_name)
+
+          # TCP connections closed per service
+          - record: istio:service:tcp_connections_closed:rate5m
+            expr: |
+              sum(rate(istio_tcp_connections_closed_total{reporter="destination"}[5m])) by (destination_service_name)
+
+  # Prometheus alerting rules for Istio
+  istio-alerting-rules.yaml: |
+    groups:
+      - name: istio.alerts
+        rules:
+          # High error rate
+          - alert: IstioHighErrorRate
+            expr: |
+              istio:service:error_rate:5m > 0.01
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High error rate detected for {{ $labels.destination_service_name }}"
+              description: "Service {{ $labels.destination_service_name }} has error rate of {{ $value | humanizePercentage }}"
+
+          # Critical error rate
+          - alert: IstioCriticalErrorRate
+            expr: |
+              istio:service:error_rate:5m > 0.05
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Critical error rate for {{ $labels.destination_service_name }}"
+              description: "Service {{ $labels.destination_service_name }} has error rate of {{ $value | humanizePercentage }}"
+
+          # High latency
+          - alert: IstioHighLatency
+            expr: |
+              istio:service:request_duration_seconds:p99 > 2
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High P99 latency for {{ $labels.destination_service_name }}"
+              description: "Service {{ $labels.destination_service_name }} P99 latency is {{ $value }}s"
+
+          # Circuit breaker triggered
+          - alert: IstioCircuitBreakerTriggered
+            expr: |
+              sum(rate(envoy_cluster_circuit_breakers_default_cx_open[5m])) by (cluster_name) > 0
+            for: 1m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Circuit breaker triggered for {{ $labels.cluster_name }}"
+              description: "Circuit breaker has been triggered for cluster {{ $labels.cluster_name }}"
+
+          # Outlier detection ejections
+          - alert: IstioOutlierEjection
+            expr: |
+              sum(rate(envoy_cluster_outlier_detection_ejections_active[5m])) by (cluster_name) > 0
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Outlier detection ejections for {{ $labels.cluster_name }}"
+              description: "Pods are being ejected due to outlier detection for {{ $labels.cluster_name }}"
+
+          # Low mTLS traffic
+          - alert: IstioLowMtlsTraffic
+            expr: |
+              istio:mesh:mtls_traffic_percentage < 0.95
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Low mTLS traffic percentage"
+              description: "Only {{ $value | humanizePercentage }} of traffic is using mTLS"
+
+          # Istiod not ready
+          - alert: IstiodNotReady
+            expr: |
+              sum(kube_pod_status_ready{namespace="istio-system", pod=~"istiod.*"}) < 1
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Istiod is not ready"
+              description: "Istiod control plane is not available"
+
+          # Ingress gateway unavailable
+          - alert: IstioIngressGatewayDown
+            expr: |
+              sum(kube_pod_status_ready{namespace="istio-system", pod=~"istio-ingressgateway.*"}) < 1
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Istio Ingress Gateway is down"
+              description: "No healthy Istio Ingress Gateway pods available"

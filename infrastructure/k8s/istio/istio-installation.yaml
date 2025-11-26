@@ -1,0 +1,263 @@
+# Istio Installation Configuration
+# Use: istioctl install -f istio-installation.yaml
+# Or apply the IstioOperator resource after installing the operator
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+metadata:
+  name: autolytiq-istio
+  namespace: istio-system
+spec:
+  # Istio version profile - production recommended
+  profile: default
+
+  # Global mesh configuration
+  meshConfig:
+    # Enable access logging for debugging
+    accessLogFile: /dev/stdout
+    accessLogEncoding: JSON
+
+    # Enable distributed tracing
+    enableTracing: true
+
+    # Default tracing settings
+    defaultConfig:
+      # Enable tracing for 100% of requests in non-prod, reduce in prod
+      tracing:
+        sampling: 100
+        zipkin:
+          address: jaeger-collector.istio-system.svc.cluster.local:9411
+
+      # Proxy concurrency - auto-detect based on CPU
+      concurrency: 0
+
+      # Hold application startup until proxy is ready
+      holdApplicationUntilProxyStarts: true
+
+      # Proxy resource limits
+      proxyStatsMatcher:
+        inclusionPrefixes:
+          - 'cluster.outbound'
+          - 'cluster.inbound'
+          - 'listener'
+          - 'http.outbound'
+          - 'http.inbound'
+
+    # Outbound traffic policy - REGISTRY_ONLY prevents unknown external calls
+    outboundTrafficPolicy:
+      mode: REGISTRY_ONLY
+
+    # Enable protocol detection for HTTP, gRPC, etc.
+    enableAutoMtls: true
+
+    # Trust domain for SPIFFE identity
+    trustDomain: cluster.local
+
+    # Default destination rule for TLS
+    defaultDestinationRuleExportTo:
+      - '*'
+
+    # Default virtual service export
+    defaultVirtualServiceExportTo:
+      - '*'
+
+  # Component-specific configuration
+  components:
+    # Istiod (Pilot) - control plane
+    pilot:
+      enabled: true
+      k8s:
+        env:
+          - name: PILOT_TRACE_SAMPLING
+            value: '100'
+          - name: PILOT_ENABLE_PROTOCOL_SNIFFING_FOR_OUTBOUND
+            value: 'true'
+          - name: PILOT_ENABLE_PROTOCOL_SNIFFING_FOR_INBOUND
+            value: 'true'
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        hpaSpec:
+          minReplicas: 2
+          maxReplicas: 5
+          metrics:
+            - type: Resource
+              resource:
+                name: cpu
+                targetAverageUtilization: 80
+        # Pod disruption budget
+        podDisruptionBudget:
+          minAvailable: 1
+        # Anti-affinity for HA
+        affinity:
+          podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 100
+                podAffinityTerm:
+                  labelSelector:
+                    matchExpressions:
+                      - key: app
+                        operator: In
+                        values:
+                          - istiod
+                  topologyKey: kubernetes.io/hostname
+
+    # Ingress Gateway - external traffic entry point
+    ingressGateways:
+      - name: istio-ingressgateway
+        enabled: true
+        k8s:
+          service:
+            type: LoadBalancer
+            ports:
+              - name: status-port
+                port: 15021
+                targetPort: 15021
+              - name: http2
+                port: 80
+                targetPort: 8080
+              - name: https
+                port: 443
+                targetPort: 8443
+            annotations:
+              # AWS ALB annotations
+              service.beta.kubernetes.io/aws-load-balancer-type: nlb
+              service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: 'true'
+              service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          hpaSpec:
+            minReplicas: 2
+            maxReplicas: 10
+            metrics:
+              - type: Resource
+                resource:
+                  name: cpu
+                  targetAverageUtilization: 80
+          podDisruptionBudget:
+            minAvailable: 1
+          affinity:
+            podAntiAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 100
+                  podAffinityTerm:
+                    labelSelector:
+                      matchExpressions:
+                        - key: app
+                          operator: In
+                          values:
+                            - istio-ingressgateway
+                    topologyKey: kubernetes.io/hostname
+
+    # Egress Gateway - controlled external access
+    egressGateways:
+      - name: istio-egressgateway
+        enabled: true
+        k8s:
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          hpaSpec:
+            minReplicas: 1
+            maxReplicas: 3
+
+  # Global values
+  values:
+    global:
+      # Proxy configuration
+      proxy:
+        # Sidecar resource limits
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+
+        # Lifecycle hooks for graceful shutdown
+        lifecycle:
+          preStop:
+            exec:
+              command:
+                - '/bin/sh'
+                - '-c'
+                - 'sleep 5'
+
+        # Log level (debug, info, warning, error, critical)
+        logLevel: warning
+        componentLogLevel: 'misc:error'
+
+        # Enable core dumps for debugging (disable in prod)
+        enableCoreDump: false
+
+      # Pilot settings
+      pilot:
+        # Enable status for debugging
+        enableProtocolSniffingForOutbound: true
+        enableProtocolSniffingForInbound: true
+
+      # mTLS mode - STRICT enforces mTLS everywhere
+      mtls:
+        enabled: true
+        auto: true
+
+      # Image configuration
+      hub: docker.io/istio
+      tag: 1.20.0
+
+      # Network configuration
+      network: ''
+
+      # Multi-cluster settings (disabled for single cluster)
+      multiCluster:
+        enabled: false
+
+    # Sidecar injector configuration
+    sidecarInjectorWebhook:
+      # Enable injection
+      enableNamespacesByDefault: false
+
+      # Inject into pods in labeled namespaces
+      neverInjectSelector:
+        - matchExpressions:
+            - key: sidecar.istio.io/inject
+              operator: In
+              values:
+                - 'false'
+
+      # Always inject into pods with this label
+      alwaysInjectSelector:
+        - matchExpressions:
+            - key: sidecar.istio.io/inject
+              operator: In
+              values:
+                - 'true'
+
+      # Rewrite probes for mTLS
+      rewriteAppHTTPProbe: true
+
+    # Telemetry settings
+    telemetry:
+      enabled: true
+      v2:
+        enabled: true
+        metadataExchange:
+          wasmEnabled: false
+        prometheus:
+          enabled: true
+          wasmEnabled: false
+        stackdriver:
+          enabled: false

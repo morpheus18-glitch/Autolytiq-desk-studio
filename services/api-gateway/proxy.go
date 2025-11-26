@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	"autolytiq/shared/logging"
 
 	"github.com/gorilla/websocket"
 )
@@ -26,10 +27,13 @@ var httpClient = &http.Client{
 // proxyRequest forwards an HTTP request to a target service
 // It extracts dealership_id from JWT context and adds it as X-Dealership-ID header
 func (s *Server) proxyRequest(w http.ResponseWriter, r *http.Request, targetServiceURL, basePath string) {
+	// Get logger with context
+	ctxLogger := s.logger.WithContext(r.Context())
+
 	// Extract dealership ID from JWT context
 	dealershipID := GetDealershipIDFromContext(r.Context())
 	if dealershipID == "" {
-		log.Printf("WARNING: No dealership_id found in JWT context for request %s %s", r.Method, r.URL.Path)
+		ctxLogger.Warn("No dealership_id found in JWT context")
 		http.Error(w, `{"error":"Missing dealership context"}`, http.StatusBadRequest)
 		return
 	}
@@ -47,7 +51,7 @@ func (s *Server) proxyRequest(w http.ResponseWriter, r *http.Request, targetServ
 		var err error
 		bodyBytes, err = io.ReadAll(r.Body)
 		if err != nil {
-			log.Printf("ERROR: Failed to read request body: %v", err)
+			ctxLogger.WithError(err).Error("Failed to read request body")
 			http.Error(w, `{"error":"Failed to read request body"}`, http.StatusInternalServerError)
 			return
 		}
@@ -57,7 +61,7 @@ func (s *Server) proxyRequest(w http.ResponseWriter, r *http.Request, targetServ
 	// Create new request
 	proxyReq, err := http.NewRequestWithContext(r.Context(), r.Method, targetURL, bytes.NewReader(bodyBytes))
 	if err != nil {
-		log.Printf("ERROR: Failed to create proxy request: %v", err)
+		ctxLogger.WithError(err).Error("Failed to create proxy request")
 		http.Error(w, `{"error":"Failed to create proxy request"}`, http.StatusInternalServerError)
 		return
 	}
@@ -71,6 +75,9 @@ func (s *Server) proxyRequest(w http.ResponseWriter, r *http.Request, targetServ
 			proxyReq.Header.Add(name, value)
 		}
 	}
+
+	// Propagate logging headers
+	logging.PropagateHeadersFromContext(r.Context(), proxyReq)
 
 	// Add dealership context header
 	proxyReq.Header.Set("X-Dealership-ID", dealershipID)
@@ -89,7 +96,9 @@ func (s *Server) proxyRequest(w http.ResponseWriter, r *http.Request, targetServ
 	// Execute request
 	resp, err := httpClient.Do(proxyReq)
 	if err != nil {
-		log.Printf("ERROR: Proxy request failed for %s %s: %v", r.Method, targetURL, err)
+		ctxLogger.WithError(err).WithFields(map[string]interface{}{
+			"target_url": targetURL,
+		}).Error("Proxy request failed")
 		http.Error(w, fmt.Sprintf(`{"error":"Service unavailable: %v"}`, err), http.StatusServiceUnavailable)
 		return
 	}
@@ -98,7 +107,7 @@ func (s *Server) proxyRequest(w http.ResponseWriter, r *http.Request, targetServ
 	// Read response body
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Printf("ERROR: Failed to read response body: %v", err)
+		ctxLogger.WithError(err).Error("Failed to read response body")
 		http.Error(w, `{"error":"Failed to read service response"}`, http.StatusInternalServerError)
 		return
 	}
@@ -113,10 +122,13 @@ func (s *Server) proxyRequest(w http.ResponseWriter, r *http.Request, targetServ
 	// Write response
 	w.WriteHeader(resp.StatusCode)
 	if _, err := w.Write(respBody); err != nil {
-		log.Printf("ERROR: Failed to write response: %v", err)
+		ctxLogger.WithError(err).Error("Failed to write response")
 	}
 
-	log.Printf("PROXY: %s %s -> %s [%d]", r.Method, r.URL.Path, targetURL, resp.StatusCode)
+	ctxLogger.WithFields(map[string]interface{}{
+		"target_url": targetURL,
+		"status":     resp.StatusCode,
+	}).Debug("Proxy request completed")
 }
 
 // WebSocket upgrader for the API gateway
@@ -130,10 +142,13 @@ var wsUpgrader = websocket.Upgrader{
 
 // proxyWebSocket proxies WebSocket connections to a target service
 func (s *Server) proxyWebSocket(w http.ResponseWriter, r *http.Request, targetServiceURL string) {
+	// Get logger with context
+	ctxLogger := s.logger.WithContext(r.Context())
+
 	// Parse target URL and convert to WebSocket URL
 	targetURL, err := url.Parse(targetServiceURL)
 	if err != nil {
-		log.Printf("ERROR: Failed to parse target URL: %v", err)
+		ctxLogger.WithError(err).Error("Failed to parse target URL")
 		http.Error(w, `{"error":"Invalid target URL"}`, http.StatusInternalServerError)
 		return
 	}
@@ -150,14 +165,14 @@ func (s *Server) proxyWebSocket(w http.ResponseWriter, r *http.Request, targetSe
 		wsTarget += "?" + r.URL.RawQuery
 	}
 
-	log.Printf("WEBSOCKET PROXY: %s -> %s", r.URL.Path, wsTarget)
+	ctxLogger.WithField("target", wsTarget).Debug("Proxying WebSocket connection")
 
 	// Connect to the backend WebSocket service
 	backendConn, resp, err := websocket.DefaultDialer.Dial(wsTarget, nil)
 	if err != nil {
-		log.Printf("ERROR: Failed to connect to backend WebSocket: %v", err)
+		ctxLogger.WithError(err).Error("Failed to connect to backend WebSocket")
 		if resp != nil {
-			log.Printf("ERROR: Backend response status: %d", resp.StatusCode)
+			ctxLogger.WithField("backend_status", resp.StatusCode).Error("Backend response status")
 		}
 		http.Error(w, `{"error":"Failed to connect to backend"}`, http.StatusServiceUnavailable)
 		return
@@ -167,7 +182,7 @@ func (s *Server) proxyWebSocket(w http.ResponseWriter, r *http.Request, targetSe
 	// Upgrade the client connection
 	clientConn, err := wsUpgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("ERROR: Failed to upgrade client connection: %v", err)
+		ctxLogger.WithError(err).Error("Failed to upgrade client connection")
 		return
 	}
 	defer clientConn.Close()
@@ -182,13 +197,13 @@ func (s *Server) proxyWebSocket(w http.ResponseWriter, r *http.Request, targetSe
 			if err != nil {
 				if !websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseNormalClosure) &&
 					!strings.Contains(err.Error(), "use of closed network connection") {
-					log.Printf("ERROR: Client read error: %v", err)
+					ctxLogger.WithError(err).Debug("Client read error")
 				}
 				errChan <- err
 				return
 			}
 			if err := backendConn.WriteMessage(messageType, message); err != nil {
-				log.Printf("ERROR: Backend write error: %v", err)
+				ctxLogger.WithError(err).Debug("Backend write error")
 				errChan <- err
 				return
 			}
@@ -202,13 +217,13 @@ func (s *Server) proxyWebSocket(w http.ResponseWriter, r *http.Request, targetSe
 			if err != nil {
 				if !websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseNormalClosure) &&
 					!strings.Contains(err.Error(), "use of closed network connection") {
-					log.Printf("ERROR: Backend read error: %v", err)
+					ctxLogger.WithError(err).Debug("Backend read error")
 				}
 				errChan <- err
 				return
 			}
 			if err := clientConn.WriteMessage(messageType, message); err != nil {
-				log.Printf("ERROR: Client write error: %v", err)
+				ctxLogger.WithError(err).Debug("Client write error")
 				errChan <- err
 				return
 			}
@@ -217,5 +232,5 @@ func (s *Server) proxyWebSocket(w http.ResponseWriter, r *http.Request, targetSe
 
 	// Wait for either goroutine to finish
 	<-errChan
-	log.Printf("WEBSOCKET PROXY: Connection closed for %s", r.URL.Path)
+	ctxLogger.Debug("WebSocket connection closed")
 }

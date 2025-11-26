@@ -37,6 +37,21 @@ provider "aws" {
   }
 }
 
+# Disaster Recovery Region Provider
+provider "aws" {
+  alias  = "dr"
+  region = var.dr_region
+
+  default_tags {
+    tags = {
+      Project     = "autolytiq"
+      Environment = var.environment
+      ManagedBy   = "terraform"
+      Purpose     = "disaster-recovery"
+    }
+  }
+}
+
 provider "kubernetes" {
   host                   = module.eks.cluster_endpoint
   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)

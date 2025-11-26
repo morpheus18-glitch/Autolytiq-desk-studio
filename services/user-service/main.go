@@ -3,18 +3,25 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
+
+	"autolytiq/shared/logging"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 
 var db UserDatabase
+var logger *logging.Logger
 
 func main() {
+	// Initialize logger
+	logger = logging.New(logging.Config{
+		Service: "user-service",
+	})
+
 	// Get database connection string from environment
 	dbHost := getEnv("DB_HOST", "localhost")
 	dbPort := getEnv("DB_PORT", "5432")
@@ -29,19 +36,23 @@ func main() {
 	var err error
 	db, err = NewPostgresUserDB(connStr)
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		logger.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer db.Close()
 
 	// Initialize schema
 	if err := db.InitSchema(); err != nil {
-		log.Fatalf("Failed to initialize schema: %v", err)
+		logger.Fatalf("Failed to initialize schema: %v", err)
 	}
 
-	log.Println("User service database initialized successfully")
+	logger.Info("User service database initialized successfully")
 
 	// Setup router
 	router := mux.NewRouter()
+
+	// Apply middleware
+	router.Use(logging.RequestIDMiddleware)
+	router.Use(logging.RequestLoggingMiddleware(logger))
 
 	// Health check
 	router.HandleFunc("/health", healthHandler).Methods("GET")
@@ -71,8 +82,10 @@ func main() {
 
 	// Start server
 	port := getEnv("PORT", "8080")
-	log.Printf("User service listening on port %s", port)
-	log.Fatal(http.ListenAndServe(":"+port, router))
+	logger.Infof("User service listening on port %s", port)
+	if err := http.ListenAndServe(":"+port, router); err != nil {
+		logger.Fatal(err.Error())
+	}
 }
 
 func getEnv(key, defaultValue string) string {
@@ -110,6 +123,7 @@ func createUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	user, err := db.CreateUser(req)
 	if err != nil {
+		logger.WithContext(r.Context()).WithError(err).Error("Failed to create user")
 		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -120,6 +134,7 @@ func createUserHandler(w http.ResponseWriter, r *http.Request) {
 		Action: "user_created",
 	})
 
+	logger.WithContext(r.Context()).WithField("user_id", user.ID).Info("User created")
 	respondJSON(w, http.StatusCreated, user)
 }
 
@@ -150,6 +165,7 @@ func listUsersHandler(w http.ResponseWriter, r *http.Request) {
 
 	users, err := db.ListUsers(filter)
 	if err != nil {
+		logger.WithContext(r.Context()).WithError(err).Error("Failed to list users")
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -214,6 +230,7 @@ func updateUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	user, err := db.UpdateUser(id, dealershipID, req)
 	if err != nil {
+		logger.WithContext(r.Context()).WithError(err).Error("Failed to update user")
 		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -224,6 +241,7 @@ func updateUserHandler(w http.ResponseWriter, r *http.Request) {
 		Action: "user_updated",
 	})
 
+	logger.WithContext(r.Context()).WithField("user_id", id).Info("User updated")
 	respondJSON(w, http.StatusOK, user)
 }
 
@@ -248,6 +266,7 @@ func deleteUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := db.DeleteUser(id, dealershipID); err != nil {
+		logger.WithContext(r.Context()).WithError(err).Error("Failed to delete user")
 		respondError(w, http.StatusNotFound, err.Error())
 		return
 	}
@@ -258,6 +277,7 @@ func deleteUserHandler(w http.ResponseWriter, r *http.Request) {
 		Action: "user_deleted",
 	})
 
+	logger.WithContext(r.Context()).WithField("user_id", id).Info("User deleted")
 	respondJSON(w, http.StatusOK, map[string]string{"message": "User deactivated successfully"})
 }
 
@@ -290,6 +310,7 @@ func updateRoleHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := db.UpdateRole(id, dealershipID, req.Role); err != nil {
+		logger.WithContext(r.Context()).WithError(err).Error("Failed to update role")
 		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -300,6 +321,7 @@ func updateRoleHandler(w http.ResponseWriter, r *http.Request) {
 		Action: "role_updated",
 	})
 
+	logger.WithContext(r.Context()).WithField("user_id", id).Info("User role updated")
 	user, _ := db.GetUser(id, dealershipID)
 	respondJSON(w, http.StatusOK, user)
 }
@@ -334,6 +356,7 @@ func updatePasswordHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := db.UpdatePassword(id, dealershipID, req.OldPassword, req.NewPassword); err != nil {
+		logger.WithContext(r.Context()).WithError(err).Error("Failed to update password")
 		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -344,6 +367,7 @@ func updatePasswordHandler(w http.ResponseWriter, r *http.Request) {
 		Action: "password_changed",
 	})
 
+	logger.WithContext(r.Context()).WithField("user_id", id).Info("User password changed")
 	respondJSON(w, http.StatusOK, map[string]string{"message": "Password updated successfully"})
 }
 
@@ -364,6 +388,7 @@ func getActivityHandler(w http.ResponseWriter, r *http.Request) {
 
 	activities, err := db.GetActivity(id, limit)
 	if err != nil {
+		logger.WithContext(r.Context()).WithError(err).Error("Failed to get activity")
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -388,10 +413,12 @@ func savePreferencesHandler(w http.ResponseWriter, r *http.Request) {
 	prefs.UserID = id
 
 	if err := db.SavePreferences(prefs); err != nil {
+		logger.WithContext(r.Context()).WithError(err).Error("Failed to save preferences")
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
+	logger.WithContext(r.Context()).WithField("user_id", id).Info("User preferences saved")
 	respondJSON(w, http.StatusOK, prefs)
 }
 
@@ -405,6 +432,7 @@ func getPreferencesHandler(w http.ResponseWriter, r *http.Request) {
 
 	prefs, err := db.GetPreferences(id)
 	if err != nil {
+		logger.WithContext(r.Context()).WithError(err).Error("Failed to get preferences")
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}

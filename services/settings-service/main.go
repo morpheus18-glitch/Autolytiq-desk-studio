@@ -2,10 +2,13 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"os"
+
+	"autolytiq/shared/logging"
 )
+
+var logger *logging.Logger
 
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
@@ -15,34 +18,43 @@ func getEnv(key, defaultValue string) string {
 }
 
 func main() {
-	// Get database connection string from environment
+	// Initialize logger
+	logger = logging.New(logging.Config{
+		Service: "settings-service",
+	})
+
+	// Get database connection string from environment (required)
 	connStr := os.Getenv("DATABASE_URL")
 	if connStr == "" {
-		connStr = "postgres://postgres:postgres@localhost:5432/autolytiq?sslmode=disable"
+		logger.Fatal("DATABASE_URL environment variable is required")
 	}
 
 	// Connect to database
 	db, err := NewPostgresSettingsDB(connStr)
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		logger.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer db.Close()
 
 	// Initialize schema
 	if err := db.InitSchema(); err != nil {
-		log.Fatalf("Failed to initialize schema: %v", err)
+		logger.Fatalf("Failed to initialize schema: %v", err)
 	}
 
-	log.Println("Settings service database initialized successfully")
+	logger.Info("Settings service database initialized successfully")
 
 	// Create and start server
 	server := NewServer(db)
 
+	// Apply logging middleware
+	server.router.Use(logging.RequestIDMiddleware)
+	server.router.Use(logging.RequestLoggingMiddleware(logger))
+
 	port := getEnv("PORT", "8090")
 	addr := fmt.Sprintf(":%s", port)
-	log.Printf("Settings service listening on %s", addr)
+	logger.Infof("Settings service listening on %s", addr)
 
 	if err := http.ListenAndServe(addr, server.router); err != nil {
-		log.Fatalf("Server failed: %v", err)
+		logger.Fatalf("Server failed: %v", err)
 	}
 }

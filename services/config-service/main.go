@@ -3,10 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"time"
+
+	"autolytiq/shared/logging"
 
 	"github.com/gorilla/mux"
 )
@@ -15,17 +16,26 @@ import (
 type Server struct {
 	db     ConfigDatabase
 	router *mux.Router
+	logger *logging.Logger
 }
 
 // NewServer creates a new config service server
-func NewServer(db ConfigDatabase) *Server {
+func NewServer(db ConfigDatabase, logger *logging.Logger) *Server {
 	s := &Server{
 		db:     db,
 		router: mux.NewRouter(),
+		logger: logger,
 	}
 
+	s.setupMiddleware()
 	s.setupRoutes()
 	return s
+}
+
+// setupMiddleware configures middleware
+func (s *Server) setupMiddleware() {
+	s.router.Use(logging.RequestIDMiddleware)
+	s.router.Use(logging.RequestLoggingMiddleware(s.logger))
 }
 
 // setupRoutes configures all HTTP routes
@@ -76,6 +86,7 @@ func (s *Server) handleGetAllSettings(w http.ResponseWriter, r *http.Request) {
 	for _, category := range categories {
 		configs, err := s.db.GetConfigsByCategory(dealershipID, category)
 		if err != nil {
+			s.logger.WithContext(r.Context()).WithError(err).Error("Failed to get configs by category")
 			respondError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -100,6 +111,7 @@ func (s *Server) handleGetSetting(w http.ResponseWriter, r *http.Request) {
 
 	config, err := s.db.GetConfig(dealershipID, key)
 	if err != nil {
+		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to get config")
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -153,16 +165,19 @@ func (s *Server) handleSetSetting(w http.ResponseWriter, r *http.Request) {
 
 	err := s.db.SetConfig(dealershipID, key, req.Value, req.Type, req.Category, req.Description)
 	if err != nil {
+		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to set config")
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	config, err := s.db.GetConfig(dealershipID, key)
 	if err != nil {
+		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to get config")
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
+	s.logger.WithContext(r.Context()).WithField("key", key).Info("Config setting updated")
 	respondJSON(w, http.StatusOK, config)
 }
 
@@ -179,10 +194,12 @@ func (s *Server) handleDeleteSetting(w http.ResponseWriter, r *http.Request) {
 
 	err := s.db.DeleteConfig(dealershipID, key)
 	if err != nil {
+		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to delete config")
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
+	s.logger.WithContext(r.Context()).WithField("key", key).Info("Config setting deleted")
 	respondJSON(w, http.StatusOK, map[string]string{"message": "config deleted"})
 }
 
@@ -206,6 +223,7 @@ func (s *Server) handleGetCategory(w http.ResponseWriter, r *http.Request) {
 
 	configs, err := s.db.GetConfigsByCategory(dealershipID, category)
 	if err != nil {
+		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to get category configs")
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -237,10 +255,12 @@ func (s *Server) handleCreateFeatureFlag(w http.ResponseWriter, r *http.Request)
 
 	flag, err := s.db.CreateFeatureFlag(req.FlagKey, req.Enabled, req.RolloutPercentage, req.ConstraintsJSON, req.Description)
 	if err != nil {
+		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to create feature flag")
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
+	s.logger.WithContext(r.Context()).WithField("flag_key", req.FlagKey).Info("Feature flag created")
 	respondJSON(w, http.StatusCreated, flag)
 }
 
@@ -248,6 +268,7 @@ func (s *Server) handleCreateFeatureFlag(w http.ResponseWriter, r *http.Request)
 func (s *Server) handleListFeatureFlags(w http.ResponseWriter, r *http.Request) {
 	flags, err := s.db.ListFeatureFlags()
 	if err != nil {
+		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to list feature flags")
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -262,6 +283,7 @@ func (s *Server) handleGetFeatureFlag(w http.ResponseWriter, r *http.Request) {
 
 	flag, err := s.db.GetFeatureFlag(key)
 	if err != nil {
+		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to get feature flag")
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -300,10 +322,12 @@ func (s *Server) handleUpdateFeatureFlag(w http.ResponseWriter, r *http.Request)
 
 	flag, err := s.db.UpdateFeatureFlag(key, req.Enabled, req.RolloutPercentage, req.ConstraintsJSON, req.Description)
 	if err != nil {
+		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to update feature flag")
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
+	s.logger.WithContext(r.Context()).WithField("flag_key", key).Info("Feature flag updated")
 	respondJSON(w, http.StatusOK, flag)
 }
 
@@ -314,10 +338,12 @@ func (s *Server) handleDeleteFeatureFlag(w http.ResponseWriter, r *http.Request)
 
 	err := s.db.DeleteFeatureFlag(key)
 	if err != nil {
+		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to delete feature flag")
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
+	s.logger.WithContext(r.Context()).WithField("flag_key", key).Info("Feature flag deleted")
 	respondJSON(w, http.StatusOK, map[string]string{"message": "feature flag deleted"})
 }
 
@@ -339,6 +365,7 @@ func (s *Server) handleEvaluateFeatureFlag(w http.ResponseWriter, r *http.Reques
 
 	enabled, err := s.db.EvaluateFeatureFlag(key, req.DealershipID)
 	if err != nil {
+		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to evaluate feature flag")
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -378,10 +405,12 @@ func (s *Server) handleCreateIntegration(w http.ResponseWriter, r *http.Request)
 
 	integration, err := s.db.CreateIntegration(req.DealershipID, req.Provider, req.ConfigJSON, req.Status)
 	if err != nil {
+		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to create integration")
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
+	s.logger.WithContext(r.Context()).WithField("integration_id", integration.ID).Info("Integration created")
 	respondJSON(w, http.StatusCreated, integration)
 }
 
@@ -395,6 +424,7 @@ func (s *Server) handleListIntegrations(w http.ResponseWriter, r *http.Request) 
 
 	integrations, err := s.db.ListIntegrations(dealershipID)
 	if err != nil {
+		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to list integrations")
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -409,6 +439,7 @@ func (s *Server) handleGetIntegration(w http.ResponseWriter, r *http.Request) {
 
 	integration, err := s.db.GetIntegration(id)
 	if err != nil {
+		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to get integration")
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -448,10 +479,12 @@ func (s *Server) handleUpdateIntegration(w http.ResponseWriter, r *http.Request)
 
 	integration, err := s.db.UpdateIntegration(id, req.ConfigJSON, req.Status, req.LastSync)
 	if err != nil {
+		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to update integration")
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
+	s.logger.WithContext(r.Context()).WithField("integration_id", id).Info("Integration updated")
 	respondJSON(w, http.StatusOK, integration)
 }
 
@@ -462,10 +495,12 @@ func (s *Server) handleDeleteIntegration(w http.ResponseWriter, r *http.Request)
 
 	err := s.db.DeleteIntegration(id)
 	if err != nil {
+		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to delete integration")
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
+	s.logger.WithContext(r.Context()).WithField("integration_id", id).Info("Integration deleted")
 	respondJSON(w, http.StatusOK, map[string]string{"message": "integration deleted"})
 }
 
@@ -489,6 +524,11 @@ func respondError(w http.ResponseWriter, status int, message string) {
 }
 
 func main() {
+	// Initialize logger
+	logger := logging.New(logging.Config{
+		Service: "config-service",
+	})
+
 	// Get database connection string from environment
 	connStr := os.Getenv("DATABASE_URL")
 	if connStr == "" {
@@ -498,17 +538,17 @@ func main() {
 	// Connect to database
 	db, err := NewPostgresConfigDB(connStr)
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		logger.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer db.Close()
 
 	// Initialize schema
 	if err := db.InitSchema(); err != nil {
-		log.Fatalf("Failed to initialize schema: %v", err)
+		logger.Fatalf("Failed to initialize schema: %v", err)
 	}
 
 	// Create and start server
-	server := NewServer(db)
+	server := NewServer(db, logger)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -516,9 +556,9 @@ func main() {
 	}
 
 	addr := fmt.Sprintf(":%s", port)
-	log.Printf("Config service listening on %s", addr)
+	logger.Infof("Config service listening on %s", addr)
 
 	if err := http.ListenAndServe(addr, server.router); err != nil {
-		log.Fatalf("Server failed: %v", err)
+		logger.Fatal(err.Error())
 	}
 }

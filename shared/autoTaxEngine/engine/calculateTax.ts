@@ -8,7 +8,7 @@ import type {
   AutoTaxDebug,
   TaxRateComponent,
   LeaseFields,
-} from "../types";
+} from '../types';
 import {
   interpretTradeInPolicy,
   interpretVehicleTaxScheme,
@@ -16,10 +16,10 @@ import {
   isDocFeeTaxable,
   isFeeTaxable,
   isRebateTaxable,
-} from "./interpreters";
-import { calculateGeorgiaTAVT } from "./calculateGeorgiaTAVT";
-import { calculateNorthCarolinaHUT } from "./calculateNorthCarolinaHUT";
-import { calculateWestVirginiaPrivilege } from "./calculateWestVirginiaPrivilege";
+} from './interpreters';
+import { calculateGeorgiaTAVT } from './calculateGeorgiaTAVT';
+import { calculateNorthCarolinaHUT } from './calculateNorthCarolinaHUT';
+import { calculateWestVirginiaPrivilege } from './calculateWestVirginiaPrivilege';
 
 /**
  * AUTO TAX ENGINE - CORE CALCULATION FUNCTION
@@ -47,17 +47,17 @@ export function calculateTax(
   // ============================================================================
 
   // Georgia TAVT (Title Ad Valorem Tax)
-  if (rules.vehicleTaxScheme === "SPECIAL_TAVT") {
+  if (rules.vehicleTaxScheme === 'SPECIAL_TAVT') {
     return calculateGeorgiaTAVT(input, rules);
   }
 
   // North Carolina HUT (Highway Use Tax)
-  if (rules.vehicleTaxScheme === "SPECIAL_HUT") {
+  if (rules.vehicleTaxScheme === 'SPECIAL_HUT') {
     return calculateNorthCarolinaHUT(input, rules);
   }
 
   // West Virginia Privilege Tax
-  if (rules.vehicleTaxScheme === "DMV_PRIVILEGE_TAX") {
+  if (rules.vehicleTaxScheme === 'DMV_PRIVILEGE_TAX') {
     return calculateWestVirginiaPrivilege(input, rules);
   }
 
@@ -65,7 +65,7 @@ export function calculateTax(
   // GENERIC SALES TAX PIPELINE: For most states
   // ============================================================================
 
-  if (input.dealType === "RETAIL") {
+  if (input.dealType === 'RETAIL') {
     return calculateRetailTax(input, rules);
   } else {
     return calculateLeaseTax(input, rules);
@@ -104,8 +104,8 @@ function applyReciprocity(
 
   // Optional: enforce scope
   if (
-    (rec.scope === "RETAIL_ONLY" && input.dealType === "LEASE") ||
-    (rec.scope === "LEASE_ONLY" && input.dealType === "RETAIL")
+    (rec.scope === 'RETAIL_ONLY' && input.dealType === 'LEASE') ||
+    (rec.scope === 'LEASE_ONLY' && input.dealType === 'RETAIL')
   ) {
     notes.push(`Reciprocity not applicable for ${input.dealType} deals in this state`);
     return { finalTax: baseTax, reciprocityCredit: 0 };
@@ -113,18 +113,20 @@ function applyReciprocity(
 
   const origin = input.originTaxInfo;
   if (!origin || origin.amount <= 0) {
-    notes.push("No origin tax info provided; no reciprocity credit applied");
+    notes.push('No origin tax info provided; no reciprocity credit applied');
     return { finalTax: baseTax, reciprocityCredit: 0 };
   }
 
   let credit = 0;
 
   switch (rec.homeStateBehavior) {
-    case "NONE":
-      notes.push(`Reciprocity: State ${rules.stateCode} does not provide credit for tax paid in ${origin.stateCode}`);
+    case 'NONE':
+      notes.push(
+        `Reciprocity: State ${rules.stateCode} does not provide credit for tax paid in ${origin.stateCode}`
+      );
       break;
 
-    case "CREDIT_UP_TO_STATE_RATE":
+    case 'CREDIT_UP_TO_STATE_RATE':
       // Cap credit at base tax for this state
       credit = Math.min(origin.amount, baseTax);
       notes.push(
@@ -132,11 +134,9 @@ function applyReciprocity(
       );
       break;
 
-    case "CREDIT_FULL":
+    case 'CREDIT_FULL':
       // Full credit, but typically capped at baseTax unless state allows carryover
-      credit = rec.capAtThisStatesTax
-        ? Math.min(origin.amount, baseTax)
-        : origin.amount;
+      credit = rec.capAtThisStatesTax ? Math.min(origin.amount, baseTax) : origin.amount;
 
       if (credit > baseTax) {
         notes.push(
@@ -149,7 +149,7 @@ function applyReciprocity(
       }
       break;
 
-    case "HOME_STATE_ONLY":
+    case 'HOME_STATE_ONLY':
       // Advanced behavior: In future, might recompute tax using homeState rules
       // For now, credit up to baseTax if tax already paid
       credit = Math.min(origin.amount, baseTax);
@@ -212,17 +212,12 @@ function calculateRetailTax(
 
   // 5. Apply rebate rules (using interpreter)
   if (input.rebateManufacturer > 0) {
-    if (isRebateTaxable("MANUFACTURER", rules)) {
+    if (isRebateTaxable('MANUFACTURER', rules)) {
       appliedRebatesTaxable += input.rebateManufacturer;
-      notes.push(
-        `Manufacturer rebate (taxable): $${input.rebateManufacturer.toFixed(2)}`
-      );
+      notes.push(`Manufacturer rebate (taxable): $${input.rebateManufacturer.toFixed(2)}`);
     } else {
       appliedRebatesNonTaxable += input.rebateManufacturer;
-      taxableVehicleBase = Math.max(
-        0,
-        taxableVehicleBase - input.rebateManufacturer
-      );
+      taxableVehicleBase = Math.max(0, taxableVehicleBase - input.rebateManufacturer);
       notes.push(
         `Manufacturer rebate (non-taxable, reduces base): $${input.rebateManufacturer.toFixed(2)}`
       );
@@ -230,44 +225,37 @@ function calculateRetailTax(
   }
 
   if (input.rebateDealer > 0) {
-    if (isRebateTaxable("DEALER", rules)) {
+    if (isRebateTaxable('DEALER', rules)) {
       appliedRebatesTaxable += input.rebateDealer;
       notes.push(`Dealer rebate (taxable): $${input.rebateDealer.toFixed(2)}`);
     } else {
       appliedRebatesNonTaxable += input.rebateDealer;
       taxableVehicleBase = Math.max(0, taxableVehicleBase - input.rebateDealer);
-      notes.push(
-        `Dealer rebate (non-taxable, reduces base): $${input.rebateDealer.toFixed(2)}`
-      );
+      notes.push(`Dealer rebate (non-taxable, reduces base): $${input.rebateDealer.toFixed(2)}`);
     }
   }
 
   // 6. Calculate taxable fees (using interpreter)
-  const taxableDocFee = isDocFeeTaxable("RETAIL", rules) ? input.docFee : 0;
+  const taxableDocFee = isDocFeeTaxable('RETAIL', rules) ? input.docFee : 0;
   const taxableFees: { code: string; amount: number }[] = [];
 
   for (const fee of input.otherFees) {
-    if (isFeeTaxable(fee.code, "RETAIL", rules)) {
+    if (isFeeTaxable(fee.code, 'RETAIL', rules)) {
       taxableFees.push(fee);
     }
   }
 
-  const feesBase =
-    taxableDocFee + taxableFees.reduce((sum, f) => sum + f.amount, 0);
+  const feesBase = taxableDocFee + taxableFees.reduce((sum, f) => sum + f.amount, 0);
   notes.push(`Taxable doc fee: $${taxableDocFee.toFixed(2)}`);
   notes.push(
     `Other taxable fees: $${taxableFees.reduce((sum, f) => sum + f.amount, 0).toFixed(2)}`
   );
 
   // 7. Calculate taxable products (F&I)
-  const taxableServiceContracts = rules.taxOnServiceContracts
-    ? input.serviceContracts
-    : 0;
+  const taxableServiceContracts = rules.taxOnServiceContracts ? input.serviceContracts : 0;
   const taxableGap = rules.taxOnGap ? input.gap : 0;
   const productsBase = taxableServiceContracts + taxableGap;
-  notes.push(
-    `Taxable service contracts: $${taxableServiceContracts.toFixed(2)}`
-  );
+  notes.push(`Taxable service contracts: $${taxableServiceContracts.toFixed(2)}`);
   notes.push(`Taxable GAP: $${taxableGap.toFixed(2)}`);
 
   // 8. Build final bases
@@ -275,8 +263,7 @@ function calculateRetailTax(
     vehicleBase: Math.max(0, taxableVehicleBase),
     feesBase,
     productsBase,
-    totalTaxableBase:
-      Math.max(0, taxableVehicleBase) + feesBase + productsBase,
+    totalTaxableBase: Math.max(0, taxableVehicleBase) + feesBase + productsBase,
   };
 
   notes.push(`Total taxable base: $${bases.totalTaxableBase.toFixed(2)}`);
@@ -293,12 +280,7 @@ function calculateRetailTax(
   notes.push(`Base tax (before reciprocity): $${baseTaxes.totalTax.toFixed(2)}`);
 
   // 10. Apply reciprocity credit (cross-state tax credit)
-  const { finalTax, reciprocityCredit } = applyReciprocity(
-    baseTaxes.totalTax,
-    input,
-    rules,
-    notes
-  );
+  const { finalTax, reciprocityCredit } = applyReciprocity(baseTaxes.totalTax, input, rules, notes);
 
   // Adjust component taxes proportionally if reciprocity was applied
   const taxScale = baseTaxes.totalTax === 0 ? 0 : finalTax / baseTaxes.totalTax;
@@ -328,7 +310,7 @@ function calculateRetailTax(
   };
 
   return {
-    mode: "RETAIL",
+    mode: 'RETAIL',
     bases,
     taxes,
     debug,
@@ -357,67 +339,56 @@ function calculateLeaseTax(
 
   // 2. Handle trade-in credit on leases
   switch (leaseRules.tradeInCredit) {
-    case "NONE":
+    case 'NONE':
       appliedTradeIn = 0;
-      notes.push("Lease: No trade-in credit");
+      notes.push('Lease: No trade-in credit');
       break;
-    case "FULL":
+    case 'FULL':
       appliedTradeIn = input.capReductionTradeIn || input.tradeInValue;
       leaseTaxableBase = Math.max(0, leaseTaxableBase - appliedTradeIn);
       notes.push(`Lease trade-in credit (full): $${appliedTradeIn.toFixed(2)}`);
       break;
-    case "CAP_COST_ONLY":
+    case 'CAP_COST_ONLY':
       appliedTradeIn = input.capReductionTradeIn || input.tradeInValue;
       leaseTaxableBase = Math.max(0, leaseTaxableBase - appliedTradeIn);
-      notes.push(
-        `Lease trade-in (reduces cap cost only): $${appliedTradeIn.toFixed(2)}`
-      );
+      notes.push(`Lease trade-in (reduces cap cost only): $${appliedTradeIn.toFixed(2)}`);
       break;
-    case "APPLIED_TO_PAYMENT":
+    case 'APPLIED_TO_PAYMENT':
       appliedTradeIn = input.capReductionTradeIn || input.tradeInValue;
-      notes.push(
-        `Lease trade-in (applied to payment): $${appliedTradeIn.toFixed(2)}`
-      );
+      notes.push(`Lease trade-in (applied to payment): $${appliedTradeIn.toFixed(2)}`);
       break;
-    case "FOLLOW_RETAIL_RULE":
+    case 'FOLLOW_RETAIL_RULE':
       // Apply same logic as retail trade-in policy
       switch (rules.tradeInPolicy.type) {
-        case "NONE":
+        case 'NONE':
           appliedTradeIn = 0;
           break;
-        case "FULL":
+        case 'FULL':
           appliedTradeIn = input.capReductionTradeIn || input.tradeInValue;
           leaseTaxableBase = Math.max(0, leaseTaxableBase - appliedTradeIn);
           break;
-        case "CAPPED":
+        case 'CAPPED':
           appliedTradeIn = Math.min(
             input.capReductionTradeIn || input.tradeInValue,
             rules.tradeInPolicy.capAmount
           );
           leaseTaxableBase = Math.max(0, leaseTaxableBase - appliedTradeIn);
           break;
-        case "PERCENT":
+        case 'PERCENT':
           appliedTradeIn =
-            (input.capReductionTradeIn || input.tradeInValue) *
-            rules.tradeInPolicy.percent;
+            (input.capReductionTradeIn || input.tradeInValue) * rules.tradeInPolicy.percent;
           leaseTaxableBase = Math.max(0, leaseTaxableBase - appliedTradeIn);
           break;
       }
-      notes.push(
-        `Lease trade-in (following retail rule): $${appliedTradeIn.toFixed(2)}`
-      );
+      notes.push(`Lease trade-in (following retail rule): $${appliedTradeIn.toFixed(2)}`);
       break;
   }
 
   // 3. Handle rebates on leases
-  if (leaseRules.rebateBehavior === "FOLLOW_RETAIL_RULE") {
+  if (leaseRules.rebateBehavior === 'FOLLOW_RETAIL_RULE') {
     for (const rebateRule of rules.rebates) {
-      if (
-        rebateRule.appliesTo === "MANUFACTURER" ||
-        rebateRule.appliesTo === "ANY"
-      ) {
-        const rebateAmount =
-          input.capReductionRebateManufacturer || input.rebateManufacturer;
+      if (rebateRule.appliesTo === 'MANUFACTURER' || rebateRule.appliesTo === 'ANY') {
+        const rebateAmount = input.capReductionRebateManufacturer || input.rebateManufacturer;
         if (rebateRule.taxable) {
           appliedRebatesTaxable += rebateAmount;
         } else {
@@ -425,10 +396,7 @@ function calculateLeaseTax(
           leaseTaxableBase = Math.max(0, leaseTaxableBase - rebateAmount);
         }
       }
-      if (
-        rebateRule.appliesTo === "DEALER" ||
-        rebateRule.appliesTo === "ANY"
-      ) {
+      if (rebateRule.appliesTo === 'DEALER' || rebateRule.appliesTo === 'ANY') {
         const rebateAmount = input.capReductionRebateDealer || input.rebateDealer;
         if (rebateRule.taxable) {
           appliedRebatesTaxable += rebateAmount;
@@ -438,17 +406,17 @@ function calculateLeaseTax(
         }
       }
     }
-  } else if (leaseRules.rebateBehavior === "ALWAYS_TAXABLE") {
+  } else if (leaseRules.rebateBehavior === 'ALWAYS_TAXABLE') {
     appliedRebatesTaxable +=
       (input.capReductionRebateManufacturer || input.rebateManufacturer) +
       (input.capReductionRebateDealer || input.rebateDealer);
-    notes.push("Lease rebates: Always taxable");
+    notes.push('Lease rebates: Always taxable');
   } else {
     appliedRebatesNonTaxable +=
       (input.capReductionRebateManufacturer || input.rebateManufacturer) +
       (input.capReductionRebateDealer || input.rebateDealer);
     leaseTaxableBase = Math.max(0, leaseTaxableBase - appliedRebatesNonTaxable);
-    notes.push("Lease rebates: Non-taxable");
+    notes.push('Lease rebates: Non-taxable');
   }
 
   // 4. Handle negative equity on leases
@@ -460,16 +428,16 @@ function calculateLeaseTax(
   // 5. Calculate upfront taxable fees (doc fee + other fees)
   let taxableDocFee = 0;
   switch (leaseRules.docFeeTaxability) {
-    case "ALWAYS":
+    case 'ALWAYS':
       taxableDocFee = input.docFee;
       break;
-    case "FOLLOW_RETAIL_RULE":
+    case 'FOLLOW_RETAIL_RULE':
       taxableDocFee = rules.docFeeTaxable ? input.docFee : 0;
       break;
-    case "NEVER":
+    case 'NEVER':
       taxableDocFee = 0;
       break;
-    case "ONLY_UPFRONT":
+    case 'ONLY_UPFRONT':
       taxableDocFee = input.docFee;
       break;
   }
@@ -492,14 +460,11 @@ function calculateLeaseTax(
   notes.push(`Lease upfront taxable fees: $${upfrontFeeBase.toFixed(2)}`);
 
   // 6. Handle products (service contracts, GAP) on leases
-  const taxableServiceContracts =
-    leaseRules.feeTaxRules.find((r) => r.code === "SERVICE_CONTRACT")?.taxable
-      ? input.serviceContracts
-      : 0;
-  const taxableGap =
-    leaseRules.feeTaxRules.find((r) => r.code === "GAP")?.taxable
-      ? input.gap
-      : 0;
+  const taxableServiceContracts = leaseRules.feeTaxRules.find((r) => r.code === 'SERVICE_CONTRACT')
+    ?.taxable
+    ? input.serviceContracts
+    : 0;
+  const taxableGap = leaseRules.feeTaxRules.find((r) => r.code === 'GAP')?.taxable ? input.gap : 0;
 
   // 6.5. Apply lease special scheme interpreter
   const leaseSchemeAdjustment = interpretLeaseSpecialScheme(
@@ -511,9 +476,9 @@ function calculateLeaseTax(
   );
   notes.push(...leaseSchemeAdjustment.notes);
 
-  // Apply scheme adjustments
-  const upfrontBaseWithScheme = upfrontFeeBase + leaseSchemeAdjustment.upfrontBaseAdjustment;
-  const monthlyBaseWithScheme = leaseSchemeAdjustment.monthlyBaseAdjustment;
+  // Apply scheme adjustments (stored for potential detailed breakdown)
+  const _upfrontBaseWithScheme = upfrontFeeBase + leaseSchemeAdjustment.upfrontBaseAdjustment;
+  const _monthlyBaseWithScheme = leaseSchemeAdjustment.monthlyBaseAdjustment;
 
   // Add special fees to upfront fees
   for (const specialFee of leaseSchemeAdjustment.specialFees) {
@@ -524,53 +489,34 @@ function calculateLeaseTax(
   // 7. Calculate lease tax based on method
   let leaseBreakdown: LeaseTaxBreakdown;
 
+  const leaseTaxParams: LeaseTaxParams = {
+    input,
+    leaseTaxableBase,
+    upfrontFeeBase,
+    taxableServiceContracts,
+    taxableGap,
+    notes,
+  };
+
   switch (leaseRules.method) {
-    case "MONTHLY":
+    case 'MONTHLY':
       // Tax on each payment
-      leaseBreakdown = calculateMonthlyLeaseTax(
-        input,
-        leaseTaxableBase,
-        upfrontFeeBase,
-        taxableServiceContracts,
-        taxableGap,
-        notes
-      );
+      leaseBreakdown = calculateMonthlyLeaseTax(leaseTaxParams);
       break;
 
-    case "FULL_UPFRONT":
+    case 'FULL_UPFRONT':
       // Tax whole base upfront
-      leaseBreakdown = calculateUpfrontLeaseTax(
-        input,
-        leaseTaxableBase,
-        upfrontFeeBase,
-        taxableServiceContracts,
-        taxableGap,
-        notes
-      );
+      leaseBreakdown = calculateUpfrontLeaseTax(leaseTaxParams);
       break;
 
-    case "HYBRID":
+    case 'HYBRID':
       // Partial upfront + monthly
-      leaseBreakdown = calculateHybridLeaseTax(
-        input,
-        leaseTaxableBase,
-        upfrontFeeBase,
-        taxableServiceContracts,
-        taxableGap,
-        notes
-      );
+      leaseBreakdown = calculateHybridLeaseTax(leaseTaxParams);
       break;
 
     default:
       // Default to monthly if unknown method
-      leaseBreakdown = calculateMonthlyLeaseTax(
-        input,
-        leaseTaxableBase,
-        upfrontFeeBase,
-        taxableServiceContracts,
-        taxableGap,
-        notes
-      );
+      leaseBreakdown = calculateMonthlyLeaseTax(leaseTaxParams);
       break;
   }
 
@@ -579,8 +525,7 @@ function calculateLeaseTax(
     vehicleBase: leaseTaxableBase,
     feesBase: upfrontFeeBase,
     productsBase: taxableServiceContracts + taxableGap,
-    totalTaxableBase:
-      leaseTaxableBase + upfrontFeeBase + taxableServiceContracts + taxableGap,
+    totalTaxableBase: leaseTaxableBase + upfrontFeeBase + taxableServiceContracts + taxableGap,
   };
 
   // 9. Apply reciprocity (typically to upfront taxes for leases)
@@ -596,12 +541,10 @@ function calculateLeaseTax(
     leaseBreakdown.upfrontTaxes.totalTax === 0
       ? 0
       : finalUpfrontTax / leaseBreakdown.upfrontTaxes.totalTax;
-  const adjustedUpfrontComponentTaxes = leaseBreakdown.upfrontTaxes.componentTaxes.map(
-    (c) => ({
-      ...c,
-      amount: c.amount * upfrontTaxScale,
-    })
-  );
+  const adjustedUpfrontComponentTaxes = leaseBreakdown.upfrontTaxes.componentTaxes.map((c) => ({
+    ...c,
+    amount: c.amount * upfrontTaxScale,
+  }));
 
   const adjustedUpfrontTaxes: TaxAmountBreakdown = {
     componentTaxes: adjustedUpfrontComponentTaxes,
@@ -634,7 +577,7 @@ function calculateLeaseTax(
   };
 
   return {
-    mode: "LEASE",
+    mode: 'LEASE',
     bases,
     taxes: adjustedUpfrontTaxes,
     leaseBreakdown: adjustedLeaseBreakdown,
@@ -642,17 +585,20 @@ function calculateLeaseTax(
   };
 }
 
+interface LeaseTaxParams {
+  input: TaxCalculationInput & LeaseFields;
+  leaseTaxableBase: number;
+  upfrontFeeBase: number;
+  taxableServiceContracts: number;
+  taxableGap: number;
+  notes: string[];
+}
+
 /**
  * MONTHLY LEASE TAX (Indiana-style)
  */
-function calculateMonthlyLeaseTax(
-  input: TaxCalculationInput & LeaseFields,
-  leaseTaxableBase: number,
-  upfrontFeeBase: number,
-  taxableServiceContracts: number,
-  taxableGap: number,
-  notes: string[]
-): LeaseTaxBreakdown {
+function calculateMonthlyLeaseTax(params: LeaseTaxParams): LeaseTaxBreakdown {
+  const { input, upfrontFeeBase, notes } = params;
   // Upfront tax (fees only)
   const upfrontTaxableBase = upfrontFeeBase;
   const upfrontTaxes = applyTaxRates(upfrontTaxableBase, input.rates);
@@ -660,17 +606,13 @@ function calculateMonthlyLeaseTax(
 
   // Monthly tax (on payment)
   const paymentTaxableBasePerPeriod = input.basePayment;
-  const paymentTaxesPerPeriod = applyTaxRates(
-    paymentTaxableBasePerPeriod,
-    input.rates
-  );
+  const paymentTaxesPerPeriod = applyTaxRates(paymentTaxableBasePerPeriod, input.rates);
   notes.push(
     `Tax per payment: $${paymentTaxesPerPeriod.totalTax.toFixed(2)} (on base payment $${input.basePayment.toFixed(2)})`
   );
 
   const totalTaxOverTerm =
-    upfrontTaxes.totalTax +
-    paymentTaxesPerPeriod.totalTax * input.paymentCount;
+    upfrontTaxes.totalTax + paymentTaxesPerPeriod.totalTax * input.paymentCount;
   notes.push(
     `Total lease tax over term: $${totalTaxOverTerm.toFixed(2)} (${input.paymentCount} payments)`
   );
@@ -687,20 +629,11 @@ function calculateMonthlyLeaseTax(
 /**
  * FULL UPFRONT LEASE TAX (NY/NJ-style)
  */
-function calculateUpfrontLeaseTax(
-  input: TaxCalculationInput & LeaseFields,
-  leaseTaxableBase: number,
-  upfrontFeeBase: number,
-  taxableServiceContracts: number,
-  taxableGap: number,
-  notes: string[]
-): LeaseTaxBreakdown {
+function calculateUpfrontLeaseTax(params: LeaseTaxParams): LeaseTaxBreakdown {
+  const { input, leaseTaxableBase, upfrontFeeBase, taxableServiceContracts, taxableGap, notes } =
+    params;
   // Tax whole base upfront
-  const totalUpfrontBase =
-    leaseTaxableBase +
-    upfrontFeeBase +
-    taxableServiceContracts +
-    taxableGap;
+  const totalUpfrontBase = leaseTaxableBase + upfrontFeeBase + taxableServiceContracts + taxableGap;
   const upfrontTaxes = applyTaxRates(totalUpfrontBase, input.rates);
   notes.push(
     `Upfront tax (full): $${upfrontTaxes.totalTax.toFixed(2)} on base $${totalUpfrontBase.toFixed(2)}`
@@ -718,34 +651,19 @@ function calculateUpfrontLeaseTax(
 /**
  * HYBRID LEASE TAX (Partial upfront + monthly)
  */
-function calculateHybridLeaseTax(
-  input: TaxCalculationInput & LeaseFields,
-  leaseTaxableBase: number,
-  upfrontFeeBase: number,
-  taxableServiceContracts: number,
-  taxableGap: number,
-  notes: string[]
-): LeaseTaxBreakdown {
+function calculateHybridLeaseTax(params: LeaseTaxParams): LeaseTaxBreakdown {
+  const { input, upfrontFeeBase, taxableServiceContracts, taxableGap, notes } = params;
   // Split: fees + products upfront, payments monthly
-  const upfrontTaxableBase =
-    upfrontFeeBase + taxableServiceContracts + taxableGap;
+  const upfrontTaxableBase = upfrontFeeBase + taxableServiceContracts + taxableGap;
   const upfrontTaxes = applyTaxRates(upfrontTaxableBase, input.rates);
-  notes.push(
-    `Hybrid upfront tax: $${upfrontTaxes.totalTax.toFixed(2)} on fees/products`
-  );
+  notes.push(`Hybrid upfront tax: $${upfrontTaxes.totalTax.toFixed(2)} on fees/products`);
 
   const paymentTaxableBasePerPeriod = input.basePayment;
-  const paymentTaxesPerPeriod = applyTaxRates(
-    paymentTaxableBasePerPeriod,
-    input.rates
-  );
-  notes.push(
-    `Hybrid monthly tax: $${paymentTaxesPerPeriod.totalTax.toFixed(2)} per payment`
-  );
+  const paymentTaxesPerPeriod = applyTaxRates(paymentTaxableBasePerPeriod, input.rates);
+  notes.push(`Hybrid monthly tax: $${paymentTaxesPerPeriod.totalTax.toFixed(2)} per payment`);
 
   const totalTaxOverTerm =
-    upfrontTaxes.totalTax +
-    paymentTaxesPerPeriod.totalTax * input.paymentCount;
+    upfrontTaxes.totalTax + paymentTaxesPerPeriod.totalTax * input.paymentCount;
 
   return {
     upfrontTaxableBase,

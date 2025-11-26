@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
@@ -73,19 +72,7 @@ type UserResponse struct {
 // register handles user registration
 func (s *Server) register(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid request body")
-		return
-	}
-
-	// Validate required fields
-	if req.Email == "" || req.Password == "" {
-		respondError(w, http.StatusBadRequest, "Email and password are required")
-		return
-	}
-
-	if len(req.Password) < 8 {
-		respondError(w, http.StatusBadRequest, "Password must be at least 8 characters")
+	if !decodeAndValidate(r, w, &req) {
 		return
 	}
 
@@ -160,13 +147,7 @@ func (s *Server) register(w http.ResponseWriter, r *http.Request) {
 // login handles user authentication
 func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid request body")
-		return
-	}
-
-	if req.Email == "" || req.Password == "" {
-		respondError(w, http.StatusBadRequest, "Email and password are required")
+	if !decodeAndValidate(r, w, &req) {
 		return
 	}
 
@@ -272,13 +253,7 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 // refresh handles token refresh
 func (s *Server) refresh(w http.ResponseWriter, r *http.Request) {
 	var req RefreshRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid request body")
-		return
-	}
-
-	if req.RefreshToken == "" {
-		respondError(w, http.StatusBadRequest, "Refresh token is required")
+	if !decodeAndValidate(r, w, &req) {
 		return
 	}
 
@@ -417,18 +392,7 @@ func (s *Server) changePassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req ChangePasswordRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid request body")
-		return
-	}
-
-	if req.CurrentPassword == "" || req.NewPassword == "" {
-		respondError(w, http.StatusBadRequest, "Current password and new password are required")
-		return
-	}
-
-	if len(req.NewPassword) < 8 {
-		respondError(w, http.StatusBadRequest, "New password must be at least 8 characters")
+	if !decodeAndValidate(r, w, &req) {
 		return
 	}
 
@@ -464,13 +428,7 @@ func (s *Server) changePassword(w http.ResponseWriter, r *http.Request) {
 // forgotPassword initiates password reset
 func (s *Server) forgotPassword(w http.ResponseWriter, r *http.Request) {
 	var req ForgotPasswordRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid request body")
-		return
-	}
-
-	if req.Email == "" {
-		respondError(w, http.StatusBadRequest, "Email is required")
+	if !decodeAndValidate(r, w, &req) {
 		return
 	}
 
@@ -497,18 +455,7 @@ func (s *Server) forgotPassword(w http.ResponseWriter, r *http.Request) {
 // resetPassword handles password reset with token
 func (s *Server) resetPassword(w http.ResponseWriter, r *http.Request) {
 	var req ResetPasswordRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid request body")
-		return
-	}
-
-	if req.Token == "" || req.NewPassword == "" {
-		respondError(w, http.StatusBadRequest, "Token and new password are required")
-		return
-	}
-
-	if len(req.NewPassword) < 8 {
-		respondError(w, http.StatusBadRequest, "Password must be at least 8 characters")
+	if !decodeAndValidate(r, w, &req) {
 		return
 	}
 
@@ -541,13 +488,7 @@ func (s *Server) resetPassword(w http.ResponseWriter, r *http.Request) {
 // verifyEmail handles email verification
 func (s *Server) verifyEmail(w http.ResponseWriter, r *http.Request) {
 	var req VerifyEmailRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid request body")
-		return
-	}
-
-	if req.Token == "" {
-		respondError(w, http.StatusBadRequest, "Token is required")
+	if !decodeAndValidate(r, w, &req) {
 		return
 	}
 

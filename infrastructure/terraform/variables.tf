@@ -79,3 +79,56 @@ variable "redis_node_type" {
     prod    = "cache.r5.large"
   }
 }
+
+# -----------------------------------------------------------------------------
+# Backup and Disaster Recovery Variables
+# -----------------------------------------------------------------------------
+variable "dr_region" {
+  description = "Disaster recovery region for cross-region replication"
+  type        = string
+  default     = "us-west-2"
+}
+
+variable "backup_retention_days" {
+  description = "Number of days to retain backups"
+  type        = map(number)
+  default = {
+    dev     = 7
+    staging = 14
+    prod    = 35
+  }
+}
+
+variable "enable_point_in_time_recovery" {
+  description = "Enable point-in-time recovery for databases"
+  type        = bool
+  default     = true
+}
+
+variable "backup_window" {
+  description = "Preferred backup window (UTC)"
+  type        = string
+  default     = "03:00-04:00"
+}
+
+variable "maintenance_window" {
+  description = "Preferred maintenance window (UTC)"
+  type        = string
+  default     = "sun:04:00-sun:05:00"
+}
+
+variable "alert_email" {
+  description = "Email address for backup alerts"
+  type        = string
+  default     = ""
+}
+
+variable "enable_cross_region_backup" {
+  description = "Enable cross-region backup replication"
+  type        = map(bool)
+  default = {
+    dev     = false
+    staging = false
+    prod    = true
+  }
+}
