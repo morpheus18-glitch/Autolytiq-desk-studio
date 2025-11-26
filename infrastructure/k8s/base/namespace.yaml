@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: autolytiq
+  labels:
+    app.kubernetes.io/name: autolytiq
+    app.kubernetes.io/part-of: autolytiq-desk-studio

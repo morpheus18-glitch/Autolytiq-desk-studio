@@ -1,0 +1,85 @@
+name: PR Check
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  pr-validation:
+    name: PR Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check PR title format
+        run: |
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          # Require conventional commit format: type(scope): description
+          if ! echo "$PR_TITLE" | grep -qE "^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(\(.+\))?: .+"; then
+            echo "❌ PR title must follow conventional commit format"
+            echo "Examples: 'feat(auth): add JWT refresh', 'fix: resolve race condition'"
+            exit 1
+          fi
+          echo "✅ PR title format is valid"
+
+      - name: Check for breaking changes
+        run: |
+          CHANGED_FILES=$(git diff --name-only origin/main...HEAD)
+
+          # Check for database migrations
+          if echo "$CHANGED_FILES" | grep -q "migrations/"; then
+            echo "⚠️ This PR contains database migrations - requires DBA review"
+            echo "migration_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+          # Check for API changes
+          if echo "$CHANGED_FILES" | grep -qE "(api-gateway|\.proto|openapi)"; then
+            echo "⚠️ This PR may contain API changes - verify backwards compatibility"
+            echo "api_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check for secrets in code
+        run: |
+          # Simple check for common secret patterns
+          if git diff origin/main...HEAD | grep -iE "(password|secret|api_key|apikey|token).*=.*['\"][^'\"]+['\"]"; then
+            echo "❌ Potential hardcoded secrets detected!"
+            exit 1
+          fi
+          echo "✅ No obvious secrets detected"
+
+  size-check:
+    name: PR Size Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check PR size
+        run: |
+          ADDITIONS=$(git diff --stat origin/main...HEAD | tail -1 | grep -oE '[0-9]+ insertion' | grep -oE '[0-9]+' || echo 0)
+          DELETIONS=$(git diff --stat origin/main...HEAD | tail -1 | grep -oE '[0-9]+ deletion' | grep -oE '[0-9]+' || echo 0)
+          TOTAL=$((ADDITIONS + DELETIONS))
+
+          if [ $TOTAL -gt 1000 ]; then
+            echo "⚠️ Large PR detected ($TOTAL lines changed)"
+            echo "Consider breaking this into smaller PRs for easier review"
+          elif [ $TOTAL -gt 500 ]; then
+            echo "📝 Medium PR ($TOTAL lines changed)"
+          else
+            echo "✅ Small PR ($TOTAL lines changed)"
+          fi
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v3
+        with:
+          fail-on-severity: high
+          deny-licenses: GPL-3.0, AGPL-3.0

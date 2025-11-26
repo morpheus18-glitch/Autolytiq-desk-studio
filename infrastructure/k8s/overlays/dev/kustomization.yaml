@@ -1,0 +1,45 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: autolytiq-dev
+
+resources:
+  - ../../base
+
+nameSuffix: ''
+
+commonLabels:
+  environment: dev
+
+patches:
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+    target:
+      kind: Deployment
+
+configMapGenerator:
+  - name: autolytiq-config
+    behavior: merge
+    literals:
+      - LOG_LEVEL=debug
+      - ENABLE_SWAGGER=true
+
+images:
+  - name: autolytiq/api-gateway
+    newTag: dev
+  - name: autolytiq/auth-service
+    newTag: dev
+  - name: autolytiq/deal-service
+    newTag: dev
+  - name: autolytiq/customer-service
+    newTag: dev
+  - name: autolytiq/inventory-service
+    newTag: dev
+  - name: autolytiq/email-service
+    newTag: dev
+  - name: autolytiq/user-service
+    newTag: dev
+  - name: autolytiq/config-service
+    newTag: dev

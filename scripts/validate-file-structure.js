@@ -33,6 +33,18 @@ const colors = {
  * Any file outside these patterns is REJECTED.
  */
 const APPROVED_STRUCTURE = {
+  // Infrastructure as Code
+  'infrastructure': {
+    allowed: ['**/*.yaml', '**/*.yml', '**/*.tf', '**/*.tfvars', '**/*.json', '**/*.md'],
+    description: 'Kubernetes manifests, Terraform IaC, and deployment configs',
+  },
+
+  // GitHub Actions workflows
+  '.github': {
+    allowed: ['**/*.yaml', '**/*.yml', '**/*.md'],
+    description: 'GitHub Actions workflows and templates',
+  },
+
   // Rust WASM services
   'services': {
     allowed: ['**/*'],
