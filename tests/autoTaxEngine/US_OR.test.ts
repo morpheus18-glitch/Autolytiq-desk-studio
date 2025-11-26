@@ -237,6 +237,7 @@ describe("Oregon Tax Rules Configuration", () => {
     expect(docFeeCap?.notes).toContain("Integrator");
   });
 
+  // eslint-disable-next-line complexity -- optional chaining counted as branches
   it("should have title fee metadata with current and new rates", () => {
     const rules = getRulesForState("OR");
     const titleFees = rules?.extras?.titleFees;
@@ -258,6 +259,7 @@ describe("Oregon Tax Rules Configuration", () => {
     expect(titleFees?.electric?.new).toBe(331);
   });
 
+  // eslint-disable-next-line complexity -- optional chaining counted as branches
   it("should have registration fee metadata with current and new rates", () => {
     const rules = getRulesForState("OR");
     const regFees = rules?.extras?.registrationFees;
@@ -367,6 +369,7 @@ describe("Oregon Tax Rules Configuration", () => {
   // COMPREHENSIVE VALIDATION
   // ===========================
 
+  // eslint-disable-next-line complexity -- optional chaining counted as branches
   it("should have all required configuration properties", () => {
     const rules = getRulesForState("OR");
 
@@ -411,6 +414,7 @@ describe("Oregon Tax Rules Configuration", () => {
     expect(rules?.extras).toBeDefined();
   });
 
+  // eslint-disable-next-line complexity -- optional chaining counted as branches
   it("should be a fully implemented state (not a stub)", () => {
     const rules = getRulesForState("OR");
 

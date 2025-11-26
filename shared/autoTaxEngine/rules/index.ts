@@ -1,4 +1,4 @@
-import { TaxRulesConfig } from "../types";
+import type { TaxRulesConfig } from "../types";
 
 // Import all state rules
 import AL from "./US_AL";

@@ -1,4 +1,4 @@
-import { TaxRulesConfig } from "../types";
+import type { TaxRulesConfig } from "../types";
 
 /**
  * MINNESOTA TAX RULES

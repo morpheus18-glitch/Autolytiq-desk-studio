@@ -166,6 +166,7 @@ describe("Colorado (CO) Tax Rules Configuration", () => {
       expect(rules?.extras?.homeRuleCityCount).toBe(68);
     });
 
+    // eslint-disable-next-line complexity -- optional chaining counted as branches
     it("should have major jurisdiction rates", () => {
       const rules = getRulesForState("CO");
       expect(rules?.extras?.majorJurisdictions?.Denver).toBeDefined();

@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
-import {
-  calculateTax,
+import type {
   TaxCalculationInput,
-  TaxRulesConfig,
+  TaxRulesConfig} from "../../shared/autoTaxEngine";
+import {
+  calculateTax
 } from "../../shared/autoTaxEngine";
 
 describe("Auto Tax Engine - Lease Calculations", () => {

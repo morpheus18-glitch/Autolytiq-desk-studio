@@ -18,7 +18,7 @@
  * - Georgia DOR Motor Vehicle Division guidance
  */
 
-import {
+import type {
   TaxCalculationInput,
   TaxRulesConfig,
   TaxCalculationResult,

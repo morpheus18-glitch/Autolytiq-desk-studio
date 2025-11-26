@@ -397,6 +397,7 @@ describe("Ohio (OH) Tax Rules Configuration", () => {
       expect(rules?.reciprocity.overrides?.length).toBe(7);
     });
 
+    // eslint-disable-next-line complexity -- optional chaining counted as branches
     it("should document 7 reciprocal collection states", () => {
       const rules = getRulesForState("OH");
       expect(rules?.extras?.reciprocalStates).toHaveLength(7);

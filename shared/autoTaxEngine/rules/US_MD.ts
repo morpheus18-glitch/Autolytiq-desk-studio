@@ -1,4 +1,4 @@
-import { TaxRulesConfig } from "../types";
+import type { TaxRulesConfig } from "../types";
 
 /**
  * MARYLAND (MD) TAX RULES - AI-Researched Implementation

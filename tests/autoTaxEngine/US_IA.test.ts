@@ -341,6 +341,7 @@ describe("Iowa (IA) Tax Rules Configuration", () => {
   });
 
   describe("Iowa Unique Features - Excluded Items", () => {
+    // eslint-disable-next-line complexity -- optional chaining counted as branches
     it("should list items excluded from registration fee base", () => {
       const rules = getRulesForState("IA");
       expect(rules?.extras?.iowaRegistrationFee?.excludedFromBase).toBeDefined();

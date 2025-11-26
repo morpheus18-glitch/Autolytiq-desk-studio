@@ -13,7 +13,7 @@
  * - Local tax rate lookup (for STATE_PLUS_LOCAL)
  */
 
-import {
+import type {
   TaxRulesConfig,
   VehicleTaxScheme,
   LeaseSpecialScheme,

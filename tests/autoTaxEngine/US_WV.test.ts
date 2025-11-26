@@ -153,6 +153,7 @@ describe("West Virginia (WV) Tax Rules Configuration", () => {
       expect(rules?.extras?.wvPrivilege?.baseRate).toBe(0.05);
     });
 
+    // eslint-disable-next-line complexity -- optional chaining counted as branches
     it("should document vehicle class-specific rates", () => {
       const rules = getRulesForState("WV");
       expect(rules?.extras?.wvPrivilege?.vehicleClassRates).toBeDefined();

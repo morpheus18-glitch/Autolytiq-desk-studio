@@ -1,4 +1,4 @@
-import { TaxRulesConfig } from "../types";
+import type { TaxRulesConfig } from "../types";
 
 /**
  * WEST VIRGINIA TAX RULES - PRIVILEGE TAX SYSTEM

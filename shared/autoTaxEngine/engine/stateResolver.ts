@@ -39,7 +39,7 @@
  * - Opus rooftop-based tax perspective system
  */
 
-import { TaxContext, RooftopConfig, DealPartyInfo } from "../types";
+import type { TaxContext, RooftopConfig, DealPartyInfo } from "../types";
 
 /**
  * Resolve Tax Context: Determine which state's rules to apply

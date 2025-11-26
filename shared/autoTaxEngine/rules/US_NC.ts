@@ -1,4 +1,4 @@
-import { TaxRulesConfig } from "../types";
+import type { TaxRulesConfig } from "../types";
 
 /**
  * NORTH CAROLINA TAX RULES - HIGHWAY USE TAX (HUT) SYSTEM

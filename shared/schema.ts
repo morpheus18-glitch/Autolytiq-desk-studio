@@ -9,6 +9,9 @@ import { pgTable, text, uuid, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Password validation constants
+const MIN_PASSWORD_LENGTH = 8;
+
 // ===========================================
 // Core Tables - Minimal Start
 // ===========================================
@@ -92,7 +95,7 @@ export const loginSchema = z.object({
 export const createUserSchema = insertUserSchema.extend({
   password: z
     .string()
-    .min(8, "Password must be at least 8 characters")
+    .min(MIN_PASSWORD_LENGTH, "Password must be at least 8 characters")
     .regex(/[A-Z]/, "Password must contain uppercase letter")
     .regex(/[a-z]/, "Password must contain lowercase letter")
     .regex(/[0-9]/, "Password must contain number"),

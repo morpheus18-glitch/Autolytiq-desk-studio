@@ -6,7 +6,7 @@ import {
   isMultiStateDeal,
   getInvolvedStates,
 } from "../../shared/autoTaxEngine/engine/stateResolver";
-import { RooftopConfig, DealPartyInfo } from "../../shared/autoTaxEngine/types";
+import type { RooftopConfig, DealPartyInfo } from "../../shared/autoTaxEngine/types";
 
 describe("State Resolver", () => {
   // ============================================================================

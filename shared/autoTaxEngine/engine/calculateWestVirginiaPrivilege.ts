@@ -26,7 +26,7 @@
  * - WV State Tax Department guidance
  */
 
-import {
+import type {
   TaxCalculationInput,
   TaxRulesConfig,
   TaxCalculationResult,

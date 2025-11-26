@@ -497,9 +497,9 @@ describe("Louisiana Tax Rules Configuration", () => {
     it("should handle lease tax rate calculation", () => {
       const rules = getRulesForState("LA");
       // Lease tax is 1% + 0.45% = 1.45% state
-      const baseTax = rules?.extras?.leaseTaxRates?.baseLeaseTax || 0;
-      const additionalTax = rules?.extras?.leaseTaxRates?.additionalLeaseTax || 0;
-      const totalStateLeaseTax = rules?.extras?.leaseTaxRates?.state || 0;
+      const baseTax = Number(rules?.extras?.leaseTaxRates?.baseLeaseTax) || 0;
+      const additionalTax = Number(rules?.extras?.leaseTaxRates?.additionalLeaseTax) || 0;
+      const totalStateLeaseTax = Number(rules?.extras?.leaseTaxRates?.state) || 0;
       expect(baseTax + additionalTax).toBeCloseTo(totalStateLeaseTax, 4);
     });
   });

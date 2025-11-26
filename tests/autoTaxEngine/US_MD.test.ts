@@ -466,6 +466,7 @@ describe("Maryland Tax Rules Configuration", () => {
   });
 
   describe("Integration - Complete Rule Set", () => {
+    // eslint-disable-next-line complexity -- optional chaining counted as branches
     it("should have all required top-level fields", () => {
       const rules = getRulesForState("MD");
       expect(rules?.stateCode).toBeDefined();

@@ -189,6 +189,7 @@ describe("Kansas (KS) Tax Rules Configuration", () => {
       expect(rules?.extras?.combinedRateRange?.max).toBe(10.75);
     });
 
+    // eslint-disable-next-line complexity -- optional chaining counted as branches
     it("should have major jurisdiction rates documented", () => {
       const rules = getRulesForState("KS");
       expect(rules?.extras?.majorJurisdictions?.Wichita).toBeDefined();
@@ -577,6 +578,7 @@ describe("Kansas (KS) Tax Rules Configuration", () => {
   // ============================================================================
 
   describe("Realistic Scenario - Wichita Purchase with VSC", () => {
+    // eslint-disable-next-line complexity -- optional chaining counted as branches
     it("should structure data for calculation (7.5% rate)", () => {
       const rules = getRulesForState("KS");
 

@@ -28,7 +28,7 @@ export default [
     languageOptions: {
       parser: tsparser,
       parserOptions: {
-        project: './tsconfig.json',
+        project: './tsconfig.eslint.json',
         ecmaVersion: 'latest',
         sourceType: 'module',
       },
@@ -182,6 +182,9 @@ export default [
       '@typescript-eslint/no-unsafe-call': 'off',
       '@typescript-eslint/no-unsafe-return': 'off',
       '@typescript-eslint/explicit-function-return-type': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+      '@typescript-eslint/no-non-null-assertion': 'off',
+      'no-unused-vars': 'off',
       'no-magic-numbers': 'off',
       'max-lines-per-function': 'off',
       'max-lines': 'off',

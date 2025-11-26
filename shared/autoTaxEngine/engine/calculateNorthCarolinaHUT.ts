@@ -22,7 +22,7 @@
  * - NCDMV Division of Motor Vehicles Tax & Tag Together program
  */
 
-import {
+import type {
   TaxCalculationInput,
   TaxRulesConfig,
   TaxCalculationResult,

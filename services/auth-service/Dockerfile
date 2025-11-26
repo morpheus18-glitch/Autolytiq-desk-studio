@@ -16,7 +16,7 @@ COPY *.go ./
 RUN CGO_ENABLED=0 GOOS=linux go build -o auth-service .
 
 # Final stage
-FROM alpine:latest
+FROM alpine:3.19
 
 WORKDIR /app
 
