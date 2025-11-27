@@ -452,8 +452,8 @@ function CTASection(): JSX.Element {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="relative overflow-hidden rounded-3xl bg-primary px-8 py-16 sm:px-16 sm:py-24">
           {/* Background decoration */}
-          <div className="absolute right-0 top-0 h-64 w-64 -translate-y-1/2 translate-x-1/2 rounded-full bg-white/10 blur-3xl" />
-          <div className="absolute bottom-0 left-0 h-48 w-48 -translate-x-1/2 translate-y-1/2 rounded-full bg-white/10 blur-3xl" />
+          <div className="absolute right-0 top-0 h-64 w-64 -translate-y-1/2 translate-x-1/2 rounded-full bg-primary-foreground/10 blur-3xl" />
+          <div className="absolute bottom-0 left-0 h-48 w-48 -translate-x-1/2 translate-y-1/2 rounded-full bg-primary-foreground/10 blur-3xl" />
 
           <div className="relative mx-auto max-w-2xl text-center">
             <h2 className="text-3xl font-bold tracking-tight text-primary-foreground sm:text-4xl">
@@ -466,13 +466,13 @@ function CTASection(): JSX.Element {
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Link
                 href="/login"
-                className="w-full rounded-xl bg-white px-8 py-4 text-base font-semibold text-primary shadow-lg transition-all hover:bg-white/90 sm:w-auto"
+                className="w-full rounded-xl bg-primary-foreground px-8 py-4 text-base font-semibold text-primary shadow-lg transition-all hover:bg-primary-foreground/90 sm:w-auto"
               >
                 Start your free trial
               </Link>
               <a
                 href="mailto:sales@autolytiq.com"
-                className="w-full rounded-xl border-2 border-white/30 px-8 py-4 text-base font-semibold text-primary-foreground transition-colors hover:bg-white/10 sm:w-auto"
+                className="w-full rounded-xl border-2 border-primary-foreground/30 px-8 py-4 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary-foreground/10 sm:w-auto"
               >
                 Contact sales
               </a>

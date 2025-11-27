@@ -92,7 +92,7 @@ export function Toggle({
     >
       <span
         className={cn(
-          'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition',
+          'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-background shadow-lg ring-0 transition',
           checked ? 'translate-x-5' : 'translate-x-0'
         )}
       />
@@ -293,13 +293,13 @@ interface AppearanceTabProps {
 
 export function AppearanceTab({ appearance, onChange }: AppearanceTabProps): JSX.Element {
   const themeOptions = [
-    { value: 'light', label: 'Light', icon: Sun, preview: 'bg-white border-neutral-200' },
-    { value: 'dark', label: 'Dark', icon: Moon, preview: 'bg-neutral-800 border-neutral-700' },
+    { value: 'light', label: 'Light', icon: Sun, preview: 'bg-card border-border' },
+    { value: 'dark', label: 'Dark', icon: Moon, preview: 'bg-muted border-border' },
     {
       value: 'system',
       label: 'System',
       icon: Monitor,
-      preview: 'bg-gradient-to-b from-white to-neutral-800 border-neutral-400',
+      preview: 'bg-gradient-to-b from-card to-muted border-border',
     },
   ] as const;
 
