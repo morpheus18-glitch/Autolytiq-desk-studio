@@ -1,3 +1,4 @@
+export { HomePage } from './HomePage';
 export { LoginPage } from './Login';
 export { DashboardPage } from './Dashboard';
 export { DealsPage } from './Deals';

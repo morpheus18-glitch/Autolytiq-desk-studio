@@ -107,7 +107,7 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
       setUser(response.user);
 
       // Navigate to dashboard
-      setLocation('/');
+      setLocation('/dashboard');
     },
     [setLocation]
   );
@@ -252,7 +252,7 @@ export function PublicRoute({ children }: PublicRouteProps): JSX.Element {
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      setLocation('/');
+      setLocation('/dashboard');
     }
   }, [isLoading, isAuthenticated, setLocation]);
 
