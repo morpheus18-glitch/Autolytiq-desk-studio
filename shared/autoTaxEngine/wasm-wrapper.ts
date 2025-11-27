@@ -27,8 +27,9 @@ export async function initTaxEngineWasm(): Promise<boolean> {
   }
 
   try {
-    // Dynamically import the WASM module
-    wasmModule = await import('./wasm/tax_engine_rs.js');
+    // Dynamically import the WASM module (path variable prevents TS module resolution)
+    const wasmPath = './wasm/tax_engine_rs.js';
+    wasmModule = await import(/* webpackIgnore: true */ wasmPath);
 
     // Initialize the WASM module
     await wasmModule.default();
