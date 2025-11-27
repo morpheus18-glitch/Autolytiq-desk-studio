@@ -11,6 +11,10 @@ env:
   GO_VERSION: '1.21'
   RUST_VERSION: 'stable'
 
+permissions:
+  contents: read
+  security-events: write
+
 jobs:
   lint-and-typecheck:
     name: Lint & Typecheck
@@ -173,7 +177,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: 'trivy-results.sarif'
