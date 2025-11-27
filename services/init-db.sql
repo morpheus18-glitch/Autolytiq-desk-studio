@@ -410,6 +410,107 @@ VALUES
     ('f2eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', '1HGCM82633A123458', 'STK003', 2024, 'Ford', 'F-150', 'Lariat', 'Velocity Blue', 0, 'NEW', 'AVAILABLE', 58999.00)
 ON CONFLICT DO NOTHING;
 
+-- ===========================================
+-- MESSAGING: Conversations
+-- ===========================================
+CREATE TABLE IF NOT EXISTS messaging_conversations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    dealership_id UUID NOT NULL REFERENCES dealerships(id),
+    type VARCHAR(20) NOT NULL DEFAULT 'DIRECT',
+    name VARCHAR(255),
+    description TEXT,
+    avatar_url VARCHAR(500),
+    is_muted BOOLEAN NOT NULL DEFAULT false,
+    is_pinned BOOLEAN NOT NULL DEFAULT false,
+    is_archived BOOLEAN NOT NULL DEFAULT false,
+    created_by_id UUID REFERENCES auth_users(id),
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_messaging_conversations_dealership ON messaging_conversations(dealership_id);
+CREATE INDEX IF NOT EXISTS idx_messaging_conversations_type ON messaging_conversations(type);
+
+-- ===========================================
+-- MESSAGING: Participants
+-- ===========================================
+CREATE TABLE IF NOT EXISTS messaging_participants (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    conversation_id UUID NOT NULL REFERENCES messaging_conversations(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES auth_users(id),
+    role VARCHAR(20) NOT NULL DEFAULT 'MEMBER',
+    joined_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    last_read_at TIMESTAMP,
+    UNIQUE(conversation_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_messaging_participants_conversation ON messaging_participants(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_messaging_participants_user ON messaging_participants(user_id);
+
+-- ===========================================
+-- MESSAGING: Messages
+-- ===========================================
+CREATE TABLE IF NOT EXISTS messaging_messages (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    conversation_id UUID NOT NULL REFERENCES messaging_conversations(id) ON DELETE CASCADE,
+    sender_id UUID NOT NULL REFERENCES auth_users(id),
+    type VARCHAR(20) NOT NULL DEFAULT 'TEXT',
+    content TEXT NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'SENT',
+    reply_to_id UUID REFERENCES messaging_messages(id),
+    is_edited BOOLEAN NOT NULL DEFAULT false,
+    edited_at TIMESTAMP,
+    is_deleted BOOLEAN NOT NULL DEFAULT false,
+    deleted_at TIMESTAMP,
+    delivered_at TIMESTAMP,
+    read_at TIMESTAMP,
+    is_ephemeral BOOLEAN NOT NULL DEFAULT false,
+    ephemeral_seconds INTEGER,
+    ephemeral_expires_at TIMESTAMP,
+    link_preview JSONB,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_messaging_messages_conversation ON messaging_messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_messaging_messages_sender ON messaging_messages(sender_id);
+CREATE INDEX IF NOT EXISTS idx_messaging_messages_created ON messaging_messages(created_at DESC);
+
+-- ===========================================
+-- MESSAGING: Reactions
+-- ===========================================
+CREATE TABLE IF NOT EXISTS messaging_reactions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    message_id UUID NOT NULL REFERENCES messaging_messages(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES auth_users(id),
+    user_name VARCHAR(255),
+    reaction_type VARCHAR(20) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    UNIQUE(message_id, user_id, reaction_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_messaging_reactions_message ON messaging_reactions(message_id);
+
+-- ===========================================
+-- MESSAGING: Attachments
+-- ===========================================
+CREATE TABLE IF NOT EXISTS messaging_attachments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    message_id UUID NOT NULL REFERENCES messaging_messages(id) ON DELETE CASCADE,
+    type VARCHAR(20) NOT NULL,
+    url VARCHAR(500) NOT NULL,
+    thumbnail_url VARCHAR(500),
+    file_name VARCHAR(255) NOT NULL,
+    file_size BIGINT NOT NULL DEFAULT 0,
+    mime_type VARCHAR(100),
+    width INTEGER,
+    height INTEGER,
+    duration_seconds INTEGER,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_messaging_attachments_message ON messaging_attachments(message_id);
+
 -- Log completion
 DO $$
 BEGIN

@@ -27,7 +27,7 @@ WORKDIR /root/
 COPY --from=builder /app/email-service .
 
 # Expose port
-EXPOSE 8004
+EXPOSE 8084
 
 # Run the service
 CMD ["./email-service"]

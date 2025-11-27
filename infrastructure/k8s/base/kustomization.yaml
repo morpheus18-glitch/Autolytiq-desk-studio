@@ -6,9 +6,9 @@ namespace: autolytiq
 resources:
   - namespace.yaml
   - configmap.yaml
-  - secrets.yaml
-  - postgres.yaml
-  - redis.yaml
+  # secrets.yaml - excluded: using External Secrets Operator with AWS Secrets Manager
+  # postgres.yaml - excluded: using AWS RDS Aurora PostgreSQL
+  # redis.yaml - excluded: using AWS ElastiCache Redis
   - api-gateway.yaml
   - auth-service.yaml
   - deal-service.yaml

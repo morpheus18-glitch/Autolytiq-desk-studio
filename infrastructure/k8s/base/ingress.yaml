@@ -14,12 +14,22 @@ metadata:
     alb.ingress.kubernetes.io/unhealthy-threshold-count: '2'
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
     alb.ingress.kubernetes.io/ssl-redirect: '443'
-    alb.ingress.kubernetes.io/certificate-arn: ${ACM_CERTIFICATE_ARN}
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:730335214557:certificate/162c2896-07a0-4b85-bab1-b4b4e9bd9bf1
     alb.ingress.kubernetes.io/group.name: autolytiq
     alb.ingress.kubernetes.io/group.order: '1'
 spec:
   ingressClassName: alb
   rules:
+    - host: autolytiq.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 8080
     - host: api.autolytiq.com
       http:
         paths:

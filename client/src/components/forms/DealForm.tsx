@@ -2,12 +2,15 @@
  * Deal Form Component
  *
  * Form for creating and editing deals with validation.
+ * Includes VIN decoder integration for trade-in vehicle details.
  */
 
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button, FormInput, FormSelect, FormField } from '@design-system';
+import { VinDecoder, type VinDecodedData } from '@/components/VinDecoder';
 
 const dealSchema = z.object({
   customerId: z.string().min(1, 'Customer is required'),
@@ -17,6 +20,7 @@ const dealSchema = z.object({
   salePrice: z.coerce.number().min(0, 'Sale price must be positive'),
   tradeInValue: z.coerce.number().min(0).optional(),
   tradeInVehicle: z.string().optional(),
+  tradeInVin: z.string().optional(),
   downPayment: z.coerce.number().min(0).optional(),
   financingTerm: z.coerce.number().min(0).max(84).optional(),
   interestRate: z.coerce.number().min(0).max(30).optional(),
@@ -36,6 +40,7 @@ interface DealFormProps {
   salespeople: Array<{ id: string; name: string }>;
 }
 
+// eslint-disable-next-line complexity
 export function DealForm({
   initialData,
   onSubmit,
@@ -45,10 +50,13 @@ export function DealForm({
   vehicles,
   salespeople,
 }: DealFormProps) {
+  const [showTradeInVin, setShowTradeInVin] = useState(!!initialData?.tradeInVin);
+
   const {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<DealFormData>({
     resolver: zodResolver(dealSchema),
@@ -59,6 +67,7 @@ export function DealForm({
       status: 'PENDING',
       salePrice: 0,
       tradeInValue: 0,
+      tradeInVin: '',
       downPayment: 0,
       financingTerm: 60,
       interestRate: 5.9,
@@ -67,6 +76,20 @@ export function DealForm({
   });
 
   const dealType = watch('type');
+  const currentTradeInVin = watch('tradeInVin');
+
+  // Handle VIN decoder auto-fill for trade-in vehicle
+  const handleTradeInVinDecode = (data: VinDecodedData) => {
+    setValue('tradeInVin', data.vin);
+    // Build trade-in vehicle description from decoded data
+    const vehicleDesc = [data.year, data.make, data.model, data.trim].filter(Boolean).join(' ');
+    setValue('tradeInVehicle', vehicleDesc);
+  };
+
+  // Handle trade-in VIN change
+  const handleTradeInVinChange = (vin: string) => {
+    setValue('tradeInVin', vin);
+  };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -153,14 +176,49 @@ export function DealForm({
         </FormField>
       </div>
 
-      {/* Trade-In Vehicle */}
-      <FormField label="Trade-In Vehicle (Year Make Model)" error={errors.tradeInVehicle?.message}>
-        <FormInput
-          {...register('tradeInVehicle')}
-          error={!!errors.tradeInVehicle}
-          placeholder="e.g., 2019 Honda Accord"
-        />
-      </FormField>
+      {/* Trade-In Vehicle Section */}
+      <div className="space-y-4 rounded-lg border border-border bg-muted/20 p-4">
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-medium text-foreground">Trade-In Vehicle</h4>
+          <button
+            type="button"
+            onClick={() => setShowTradeInVin(!showTradeInVin)}
+            className="text-xs text-primary hover:text-primary/80 transition-colors"
+          >
+            {showTradeInVin ? 'Enter manually' : 'Have VIN? Decode it'}
+          </button>
+        </div>
+
+        {showTradeInVin ? (
+          <VinDecoder
+            initialVin={currentTradeInVin || ''}
+            onDecode={handleTradeInVinDecode}
+            onVinChange={handleTradeInVinChange}
+            compact
+            label="Trade-In VIN"
+            placeholder="Enter trade-in vehicle VIN"
+          />
+        ) : (
+          <FormField
+            label="Trade-In Vehicle (Year Make Model)"
+            error={errors.tradeInVehicle?.message}
+          >
+            <FormInput
+              {...register('tradeInVehicle')}
+              error={!!errors.tradeInVehicle}
+              placeholder="e.g., 2019 Honda Accord"
+            />
+          </FormField>
+        )}
+
+        {/* Show trade-in vehicle description if VIN mode but vehicle is decoded */}
+        {showTradeInVin && watch('tradeInVehicle') && (
+          <div className="text-sm text-muted-foreground">
+            <span className="font-medium">Vehicle: </span>
+            {watch('tradeInVehicle')}
+          </div>
+        )}
+      </div>
 
       {/* Financing Details (only for FINANCE and LEASE) */}
       {(dealType === 'FINANCE' || dealType === 'LEASE') && (

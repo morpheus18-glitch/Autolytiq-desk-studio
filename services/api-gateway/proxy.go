@@ -24,23 +24,37 @@ var httpClient = &http.Client{
 	},
 }
 
+// proxyRequestPublic forwards an HTTP request to a target service without requiring JWT context
+// Used for public endpoints like login, register, etc.
+func (s *Server) proxyRequestPublic(w http.ResponseWriter, r *http.Request, targetServiceURL, basePath string) {
+	s.doProxyRequest(w, r, targetServiceURL, basePath, false)
+}
+
 // proxyRequest forwards an HTTP request to a target service
 // It extracts dealership_id from JWT context and adds it as X-Dealership-ID header
 func (s *Server) proxyRequest(w http.ResponseWriter, r *http.Request, targetServiceURL, basePath string) {
+	s.doProxyRequest(w, r, targetServiceURL, basePath, true)
+}
+
+// doProxyRequest is the internal proxy implementation
+func (s *Server) doProxyRequest(w http.ResponseWriter, r *http.Request, targetServiceURL, basePath string, requireAuth bool) {
 	// Get logger with context
 	ctxLogger := s.logger.WithContext(r.Context())
 
-	// Extract dealership ID from JWT context
+	// Extract dealership ID from JWT context (only required for protected routes)
 	dealershipID := GetDealershipIDFromContext(r.Context())
-	if dealershipID == "" {
+	if requireAuth && dealershipID == "" {
 		ctxLogger.Warn("No dealership_id found in JWT context")
 		http.Error(w, `{"error":"Missing dealership context"}`, http.StatusBadRequest)
 		return
 	}
 
-	// Build target URL
-	// Remove the /api/v1 prefix and replace with service base
-	targetURL := fmt.Sprintf("%s%s", targetServiceURL, r.URL.Path)
+	// Build target URL - strip /api/v1 prefix from the path
+	path := r.URL.Path
+	if strings.HasPrefix(path, "/api/v1") {
+		path = strings.TrimPrefix(path, "/api/v1")
+	}
+	targetURL := fmt.Sprintf("%s%s", targetServiceURL, path)
 	if r.URL.RawQuery != "" {
 		targetURL += "?" + r.URL.RawQuery
 	}
@@ -79,10 +93,12 @@ func (s *Server) proxyRequest(w http.ResponseWriter, r *http.Request, targetServ
 	// Propagate logging headers
 	logging.PropagateHeadersFromContext(r.Context(), proxyReq)
 
-	// Add dealership context header
-	proxyReq.Header.Set("X-Dealership-ID", dealershipID)
+	// Add dealership context header (only if present)
+	if dealershipID != "" {
+		proxyReq.Header.Set("X-Dealership-ID", dealershipID)
+	}
 
-	// Also add user context for audit trails
+	// Also add user context for audit trails (only if present)
 	if userID := GetUserIDFromContext(r.Context()); userID != "" {
 		proxyReq.Header.Set("X-User-ID", userID)
 	}

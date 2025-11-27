@@ -11,3 +11,4 @@ export * from './useShowroom';
 export * from './useShowroomWebSocket';
 export * from './useMessaging';
 export * from './useMessagingWebSocket';
+export * from './useVinDecoder';

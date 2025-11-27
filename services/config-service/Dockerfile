@@ -31,7 +31,7 @@ WORKDIR /root/
 COPY --from=builder /app/config-service .
 
 # Expose port
-EXPOSE 8083
+EXPOSE 8086
 
 # Run the service
 CMD ["./config-service"]

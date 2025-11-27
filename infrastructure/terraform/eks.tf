@@ -100,7 +100,7 @@ module "eks" {
   }
 }
 
-data "aws_caller_identity" "current" {}
+# data "aws_caller_identity" "current" {} # Defined in backup.tf
 
 module "vpc_cni_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"

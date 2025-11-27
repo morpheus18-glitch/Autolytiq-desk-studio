@@ -6,8 +6,8 @@
  */
 
 import { type ReactNode, type JSX } from 'react';
-import { Car } from 'lucide-react';
 import { ThemeToggle } from '@design-system';
+import { AutolytiqLogo } from '@/assets/icons/autolytiq';
 
 interface AuthLayoutProps {
   children: ReactNode;
@@ -29,7 +29,7 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps): JSX.
           {/* Logo and branding */}
           <div className="mb-8 text-center">
             <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-primary">
-              <Car className="h-8 w-8 text-primary-foreground" />
+              <AutolytiqLogo size={32} className="text-primary-foreground" />
             </div>
             <h1 className="mt-4 text-3xl font-bold text-foreground">Autolytiq</h1>
             <p className="mt-1 text-muted-foreground">Dealership Management Studio</p>

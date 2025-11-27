@@ -25,14 +25,14 @@ spec:
         sidecar.istio.io/proxyMemory: '64Mi'
         sidecar.istio.io/proxyMemoryLimit: '128Mi'
         prometheus.io/scrape: 'true'
-        prometheus.io/port: '8086'
+        prometheus.io/port: '8085'
         prometheus.io/path: '/metrics'
     spec:
       containers:
         - name: user-service
           image: autolytiq/user-service:latest
           ports:
-            - containerPort: 8086
+            - containerPort: 8085
               name: http
           env:
             - name: PORT
@@ -45,6 +45,17 @@ spec:
                 secretKeyRef:
                   name: autolytiq-secrets
                   key: DATABASE_URL
+            # Legacy variables for backwards compatibility with current code
+            - name: DB_HOST
+              value: 'autolytiq-prod.cluster-cj0mc26mutcf.us-east-1.rds.amazonaws.com'
+            - name: DB_PORT
+              value: '5432'
+            - name: DB_USER
+              value: 'autolytiq_admin'
+            - name: DB_PASSWORD
+              value: 'MzWbvgV8oU8xrfDYBg8GqsyzjzvxwcHS'
+            - name: DB_NAME
+              value: 'autolytiq'
           resources:
             requests:
               memory: '64Mi'
@@ -55,13 +66,13 @@ spec:
           livenessProbe:
             httpGet:
               path: /health
-              port: 8086
+              port: 8085
             initialDelaySeconds: 10
             periodSeconds: 10
           readinessProbe:
             httpGet:
               path: /health
-              port: 8086
+              port: 8085
             initialDelaySeconds: 5
             periodSeconds: 5
 ---
@@ -75,8 +86,8 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - port: 8086
-      targetPort: 8086
+    - port: 8085
+      targetPort: 8085
       protocol: TCP
       name: http
   selector:

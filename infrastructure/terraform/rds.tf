@@ -56,7 +56,7 @@ resource "aws_rds_cluster" "main" {
   cluster_identifier = local.name
 
   engine         = "aurora-postgresql"
-  engine_version = "15.4"
+  engine_version = "15.6"
   engine_mode    = "provisioned"
 
   database_name   = "autolytiq"
