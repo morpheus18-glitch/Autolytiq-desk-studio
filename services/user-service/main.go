@@ -83,6 +83,17 @@ func main() {
 	// Email validation
 	router.HandleFunc("/users/validate-email", validateEmailHandler).Methods("POST")
 
+	// RBAC - Roles & Permissions
+	router.HandleFunc("/rbac/check", checkPermissionHandler).Methods("POST")
+	router.HandleFunc("/rbac/roles", listRolesHandler).Methods("GET")
+	router.HandleFunc("/rbac/roles/{name}", getRoleHandler).Methods("GET")
+	router.HandleFunc("/rbac/permissions", listPermissionsHandler).Methods("GET")
+	router.HandleFunc("/users/{id}/permissions", getUserPermissionsHandler).Methods("GET")
+
+	// Settings RBAC
+	router.HandleFunc("/rbac/settings", getSettingsRBACHandler).Methods("GET")
+	router.HandleFunc("/rbac/settings/check", checkSettingAccessHandler).Methods("POST")
+
 	// Start server
 	port := getEnv("PORT", "8080")
 	logger.Infof("User service listening on port %s", port)

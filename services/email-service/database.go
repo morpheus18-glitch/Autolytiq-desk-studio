@@ -42,6 +42,10 @@ func (p *PostgresEmailDatabase) Close() error {
 // InitSchema initializes the database schema
 func (p *PostgresEmailDatabase) InitSchema() error {
 	schema := `
+		-- =====================================================
+		-- EXISTING TABLES
+		-- =====================================================
+
 		CREATE TABLE IF NOT EXISTS email_templates (
 			id UUID PRIMARY KEY,
 			dealership_id UUID NOT NULL,
@@ -78,6 +82,168 @@ func (p *PostgresEmailDatabase) InitSchema() error {
 			ON email_logs(dealership_id, created_at DESC);
 		CREATE INDEX IF NOT EXISTS idx_email_logs_template
 			ON email_logs(template_id);
+
+		-- =====================================================
+		-- INBOX TABLES - Gmail/Outlook-like functionality
+		-- =====================================================
+
+		-- Email threads for conversation grouping
+		CREATE TABLE IF NOT EXISTS email_threads (
+			id UUID PRIMARY KEY,
+			dealership_id UUID NOT NULL,
+			user_id UUID NOT NULL,
+			subject VARCHAR(500) NOT NULL,
+			snippet TEXT DEFAULT '',
+			participants TEXT[] NOT NULL DEFAULT '{}',
+			message_count INT NOT NULL DEFAULT 0,
+			unread_count INT NOT NULL DEFAULT 0,
+			is_starred BOOLEAN NOT NULL DEFAULT FALSE,
+			is_important BOOLEAN NOT NULL DEFAULT FALSE,
+			has_attachments BOOLEAN NOT NULL DEFAULT FALSE,
+			labels TEXT[] NOT NULL DEFAULT '{}',
+			last_message_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+		);
+
+		CREATE INDEX IF NOT EXISTS idx_email_threads_dealership_user
+			ON email_threads(dealership_id, user_id);
+		CREATE INDEX IF NOT EXISTS idx_email_threads_last_message
+			ON email_threads(dealership_id, user_id, last_message_at DESC);
+
+		-- Main emails table
+		CREATE TABLE IF NOT EXISTS emails (
+			id UUID PRIMARY KEY,
+			dealership_id UUID NOT NULL,
+			user_id UUID NOT NULL,
+			thread_id UUID NOT NULL REFERENCES email_threads(id) ON DELETE CASCADE,
+			message_id VARCHAR(500) UNIQUE,
+			in_reply_to VARCHAR(500),
+			references_header TEXT[] DEFAULT '{}',
+			folder VARCHAR(50) NOT NULL DEFAULT 'inbox',
+			from_email VARCHAR(255) NOT NULL,
+			from_name VARCHAR(255) DEFAULT '',
+			to_emails TEXT[] NOT NULL DEFAULT '{}',
+			to_names TEXT[] DEFAULT '{}',
+			cc_emails TEXT[] DEFAULT '{}',
+			cc_names TEXT[] DEFAULT '{}',
+			bcc_emails TEXT[] DEFAULT '{}',
+			subject VARCHAR(500) NOT NULL,
+			body_html TEXT NOT NULL DEFAULT '',
+			body_text TEXT NOT NULL DEFAULT '',
+			snippet VARCHAR(255) DEFAULT '',
+			is_read BOOLEAN NOT NULL DEFAULT FALSE,
+			is_starred BOOLEAN NOT NULL DEFAULT FALSE,
+			is_important BOOLEAN NOT NULL DEFAULT FALSE,
+			has_attachments BOOLEAN NOT NULL DEFAULT FALSE,
+			labels TEXT[] NOT NULL DEFAULT '{}',
+			received_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			sent_at TIMESTAMP,
+			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+		);
+
+		CREATE INDEX IF NOT EXISTS idx_emails_dealership_user
+			ON emails(dealership_id, user_id);
+		CREATE INDEX IF NOT EXISTS idx_emails_folder
+			ON emails(dealership_id, user_id, folder);
+		CREATE INDEX IF NOT EXISTS idx_emails_thread
+			ON emails(thread_id);
+		CREATE INDEX IF NOT EXISTS idx_emails_received
+			ON emails(dealership_id, user_id, received_at DESC);
+		CREATE INDEX IF NOT EXISTS idx_emails_unread
+			ON emails(dealership_id, user_id, is_read) WHERE NOT is_read;
+		CREATE INDEX IF NOT EXISTS idx_emails_starred
+			ON emails(dealership_id, user_id, is_starred) WHERE is_starred;
+		CREATE INDEX IF NOT EXISTS idx_emails_message_id
+			ON emails(message_id);
+		CREATE INDEX IF NOT EXISTS idx_emails_in_reply_to
+			ON emails(in_reply_to);
+
+		-- Full-text search index for emails
+		CREATE INDEX IF NOT EXISTS idx_emails_search
+			ON emails USING gin(to_tsvector('english', subject || ' ' || body_text));
+
+		-- Email drafts
+		CREATE TABLE IF NOT EXISTS email_drafts (
+			id UUID PRIMARY KEY,
+			dealership_id UUID NOT NULL,
+			user_id UUID NOT NULL,
+			thread_id UUID REFERENCES email_threads(id),
+			in_reply_to VARCHAR(500),
+			to_emails TEXT[] DEFAULT '{}',
+			to_names TEXT[] DEFAULT '{}',
+			cc_emails TEXT[] DEFAULT '{}',
+			cc_names TEXT[] DEFAULT '{}',
+			bcc_emails TEXT[] DEFAULT '{}',
+			bcc_names TEXT[] DEFAULT '{}',
+			subject VARCHAR(500) DEFAULT '',
+			body_html TEXT DEFAULT '',
+			body_text TEXT DEFAULT '',
+			attachments TEXT[] DEFAULT '{}',
+			scheduled_for TIMESTAMP,
+			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+		);
+
+		CREATE INDEX IF NOT EXISTS idx_email_drafts_dealership_user
+			ON email_drafts(dealership_id, user_id);
+		CREATE INDEX IF NOT EXISTS idx_email_drafts_updated
+			ON email_drafts(dealership_id, user_id, updated_at DESC);
+
+		-- Email attachments
+		CREATE TABLE IF NOT EXISTS email_attachments (
+			id UUID PRIMARY KEY,
+			email_id UUID REFERENCES emails(id) ON DELETE CASCADE,
+			draft_id UUID REFERENCES email_drafts(id) ON DELETE CASCADE,
+			dealership_id UUID NOT NULL,
+			filename VARCHAR(255) NOT NULL,
+			content_type VARCHAR(100) NOT NULL,
+			size BIGINT NOT NULL,
+			s3_key VARCHAR(500) NOT NULL,
+			s3_bucket VARCHAR(100) NOT NULL,
+			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			CONSTRAINT attachment_parent CHECK (
+				(email_id IS NOT NULL AND draft_id IS NULL) OR
+				(email_id IS NULL AND draft_id IS NOT NULL) OR
+				(email_id IS NULL AND draft_id IS NULL)
+			)
+		);
+
+		CREATE INDEX IF NOT EXISTS idx_email_attachments_email
+			ON email_attachments(email_id);
+		CREATE INDEX IF NOT EXISTS idx_email_attachments_draft
+			ON email_attachments(draft_id);
+
+		-- Custom email labels
+		CREATE TABLE IF NOT EXISTS email_labels (
+			id UUID PRIMARY KEY,
+			dealership_id UUID NOT NULL,
+			user_id UUID NOT NULL,
+			name VARCHAR(100) NOT NULL,
+			color VARCHAR(7) NOT NULL DEFAULT '#6366f1',
+			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			UNIQUE(dealership_id, user_id, name)
+		);
+
+		CREATE INDEX IF NOT EXISTS idx_email_labels_dealership_user
+			ON email_labels(dealership_id, user_id);
+
+		-- Email signatures
+		CREATE TABLE IF NOT EXISTS email_signatures (
+			id UUID PRIMARY KEY,
+			dealership_id UUID NOT NULL,
+			user_id UUID NOT NULL,
+			name VARCHAR(100) NOT NULL,
+			signature_html TEXT NOT NULL DEFAULT '',
+			is_default BOOLEAN NOT NULL DEFAULT FALSE,
+			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+		);
+
+		CREATE INDEX IF NOT EXISTS idx_email_signatures_dealership_user
+			ON email_signatures(dealership_id, user_id);
 	`
 
 	_, err := p.db.Exec(schema)

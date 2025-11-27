@@ -47,8 +47,8 @@ func GetRolePermissions(role string) []string {
 	return permissions
 }
 
-// HasPermission checks if a role has a specific permission
-func HasPermission(role, permission string) bool {
+// RoleHasPermission checks if a role has a specific permission (simple check)
+func RoleHasPermission(role, permission string) bool {
 	permissions := GetRolePermissions(role)
 	for _, p := range permissions {
 		if p == permission {
@@ -87,7 +87,7 @@ func CanAccessResource(userRole string, resourceOwnerID, userID string, requires
 		if requiresEdit {
 			return resourceOwnerID == userID
 		}
-		return HasPermission(userRole, PermissionViewAll)
+		return RoleHasPermission(userRole, PermissionViewAll)
 	}
 
 	// Salesperson can only access their own resources

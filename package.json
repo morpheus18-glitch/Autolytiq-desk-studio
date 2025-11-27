@@ -4,6 +4,12 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
+    "autolytiq": "bash scripts/autolytiq.sh",
+    "autolytiq:build": "bash scripts/autolytiq.sh build",
+    "autolytiq:deploy": "bash scripts/autolytiq.sh deploy",
+    "autolytiq:start": "bash scripts/autolytiq.sh start",
+    "autolytiq:stop": "bash scripts/autolytiq.sh stop",
+    "autolytiq:status": "bash scripts/autolytiq.sh status",
     "dev": "NODE_ENV=development tsx server/index.ts",
     "build": "npm run build:tax-engine && vite build",
     "build:full": "npm run build:tax-engine && vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
