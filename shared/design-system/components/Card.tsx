@@ -154,7 +154,7 @@ export interface CardHeaderProps extends HTMLAttributes<HTMLDivElement> {
 export const CardHeader = forwardRef<HTMLDivElement, CardHeaderProps>(
   ({ className = '', children, ...props }, ref) => {
     return (
-      <div ref={ref} className={`flex flex-col space-y-1.5 p-6 ${className}`} {...props}>
+      <div ref={ref} className={`flex flex-col space-y-1 p-4 ${className}`} {...props}>
         {children}
       </div>
     );
@@ -179,7 +179,7 @@ export const CardTitle = forwardRef<HTMLHeadingElement, CardTitleProps>(
     return (
       <h3
         ref={ref}
-        className={`text-xl font-semibold leading-none tracking-tight text-foreground ${className}`}
+        className={`text-base font-semibold leading-none tracking-tight text-foreground ${className}`}
         {...props}
       >
         {children}
@@ -227,7 +227,7 @@ export interface CardContentProps extends HTMLAttributes<HTMLDivElement> {
 export const CardContent = forwardRef<HTMLDivElement, CardContentProps>(
   ({ className = '', children, ...props }, ref) => {
     return (
-      <div ref={ref} className={`p-6 pt-0 ${className}`} {...props}>
+      <div ref={ref} className={`p-4 pt-0 ${className}`} {...props}>
         {children}
       </div>
     );
@@ -250,7 +250,7 @@ export interface CardFooterProps extends HTMLAttributes<HTMLDivElement> {
 export const CardFooter = forwardRef<HTMLDivElement, CardFooterProps>(
   ({ className = '', children, ...props }, ref) => {
     return (
-      <div ref={ref} className={`flex items-center p-6 pt-0 ${className}`} {...props}>
+      <div ref={ref} className={`flex items-center p-4 pt-0 ${className}`} {...props}>
         {children}
       </div>
     );
@@ -358,13 +358,13 @@ export function CardStats({
 
   return (
     <Card variant={variant} className={className}>
-      <CardContent className="p-6">
+      <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex-1">
-            <p className="text-sm font-medium text-muted-foreground">{label}</p>
-            <p className="mt-2 text-3xl font-bold text-foreground">{value}</p>
+            <p className="text-xs font-medium text-muted-foreground">{label}</p>
+            <p className="mt-1.5 text-xl font-semibold text-foreground">{value}</p>
             {change && (
-              <p className={`mt-2 text-sm ${trendColors[change.trend]}`}>
+              <p className={`mt-1.5 text-xs ${trendColors[change.trend]}`}>
                 <span className="font-medium">
                   {trendIcons[change.trend]} {Math.abs(change.value)}%
                 </span>
@@ -372,7 +372,7 @@ export function CardStats({
             )}
           </div>
           {icon && (
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
               {icon}
             </div>
           )}

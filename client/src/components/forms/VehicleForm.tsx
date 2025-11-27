@@ -2,12 +2,14 @@
  * Vehicle Form Component
  *
  * Form for creating and editing vehicles with validation.
+ * Includes VIN decoder integration for auto-filling vehicle details.
  */
 
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button, FormInput, FormSelect, FormField } from '@design-system';
+import { VinDecoder, type VinDecodedData } from '@/components/VinDecoder';
 
 const vehicleSchema = z.object({
   vin: z.string().length(17, 'VIN must be exactly 17 characters'),
@@ -55,6 +57,8 @@ export function VehicleForm({
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<VehicleFormData>({
     resolver: zodResolver(vehicleSchema),
@@ -79,18 +83,34 @@ export function VehicleForm({
     },
   });
 
+  const currentVin = watch('vin');
+
+  // Handle VIN decoder auto-fill
+  const handleVinDecode = (data: VinDecodedData) => {
+    setValue('vin', data.vin, { shouldValidate: true });
+    if (data.year) setValue('year', data.year, { shouldValidate: true });
+    if (data.make) setValue('make', data.make, { shouldValidate: true });
+    if (data.model) setValue('model', data.model, { shouldValidate: true });
+    if (data.trim) setValue('trim', data.trim);
+  };
+
+  // Handle VIN input change from decoder
+  const handleVinChange = (vin: string) => {
+    setValue('vin', vin, { shouldValidate: vin.length === 17 });
+  };
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      {/* VIN and Stock Number */}
+      {/* VIN Decoder and Stock Number */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <FormField label="VIN" error={errors.vin?.message} required>
-          <FormInput
-            {...register('vin')}
-            error={!!errors.vin}
-            placeholder="1HGCM82633A123456"
-            maxLength={17}
-          />
-        </FormField>
+        <VinDecoder
+          initialVin={currentVin}
+          onDecode={handleVinDecode}
+          onVinChange={handleVinChange}
+          error={errors.vin?.message}
+          compact
+          required
+        />
         <FormField label="Stock Number" error={errors.stockNumber?.message}>
           <FormInput
             {...register('stockNumber')}

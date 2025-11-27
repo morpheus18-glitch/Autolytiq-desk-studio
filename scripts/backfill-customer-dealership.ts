@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, no-unused-vars, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
-import { db } from '../server/db';
-import { customers, deals } from '@shared/schema';
-import { sql } from 'drizzle-orm';
+import { db } from "../server/db";
+import { customers, deals } from "@shared/schema";
+import { sql } from "drizzle-orm";
 
 async function backfillCustomerDealershipIds() {
-  console.log('Starting backfill of customer dealershipIds based on deal relationships...');
-
+  console.log("Starting backfill of customer dealershipIds based on deal relationships...");
+  
   // Update customers to match their associated deal's dealership
   const result = await db.execute(sql`
     UPDATE customers c
@@ -15,9 +15,9 @@ async function backfillCustomerDealershipIds() {
       AND d.customer_id IS NOT NULL
       AND c.dealership_id != d.dealership_id
   `);
-
+  
   console.log(`Updated ${result.rowCount} customers to match their deal's dealership`);
-
+  
   // Verify the results
   const stats = await db.execute(sql`
     SELECT 
@@ -25,18 +25,18 @@ async function backfillCustomerDealershipIds() {
       COUNT(*) as total_customers
     FROM customers c
   `);
-
-  console.log('Backfill complete!');
+  
+  console.log("Backfill complete!");
   console.log(`Total customers: ${stats.rows[0]?.total_customers || 0}`);
   console.log(`Unique dealerships: ${stats.rows[0]?.unique_dealerships || 0}`);
 }
 
 backfillCustomerDealershipIds()
   .then(() => {
-    console.log('Success!');
+    console.log("Success!");
     process.exit(0);
   })
   .catch((error) => {
-    console.error('Error during backfill:', error);
+    console.error("Error during backfill:", error);
     process.exit(1);
   });

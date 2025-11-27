@@ -45,18 +45,18 @@ interface StatCardProps {
 function StatCard({ title, value, change, icon, iconBg, isLoading }: StatCardProps): JSX.Element {
   return (
     <Card>
-      <CardContent className="p-6">
+      <CardContent className="p-4">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-sm font-medium text-muted-foreground">{title}</p>
+            <p className="text-xs font-medium text-muted-foreground">{title}</p>
             {isLoading ? (
-              <div className="mt-2 h-9 w-24 animate-pulse rounded bg-muted" />
+              <div className="mt-1.5 h-7 w-20 animate-pulse rounded bg-muted" />
             ) : (
-              <p className="mt-2 text-3xl font-bold text-foreground">{value}</p>
+              <p className="mt-1.5 text-xl font-semibold text-foreground">{value}</p>
             )}
             {change && !isLoading && <StatCardChange change={change} />}
           </div>
-          <div className={cn('flex h-12 w-12 items-center justify-center rounded-lg', iconBg)}>
+          <div className={cn('flex h-9 w-9 items-center justify-center rounded-lg', iconBg)}>
             {icon}
           </div>
         </div>
@@ -77,15 +77,15 @@ interface StatCardChangeProps {
 
 function StatCardChange({ change }: StatCardChangeProps): JSX.Element {
   return (
-    <div className="mt-2 flex items-center gap-1">
+    <div className="mt-1.5 flex items-center gap-1">
       {change.trend === 'up' ? (
-        <TrendingUp className="h-4 w-4 text-success" />
+        <TrendingUp className="h-3 w-3 text-success" />
       ) : change.trend === 'down' ? (
-        <TrendingDown className="h-4 w-4 text-destructive" />
+        <TrendingDown className="h-3 w-3 text-destructive" />
       ) : null}
       <span
         className={cn(
-          'text-sm font-medium',
+          'text-xs font-medium',
           change.trend === 'up'
             ? 'text-success'
             : change.trend === 'down'
@@ -96,7 +96,7 @@ function StatCardChange({ change }: StatCardChangeProps): JSX.Element {
         {change.trend === 'up' ? '+' : ''}
         {change.value}%
       </span>
-      <span className="text-sm text-muted-foreground">vs last month</span>
+      <span className="text-xs text-muted-foreground">vs last month</span>
     </div>
   );
 }
@@ -143,19 +143,19 @@ function RecentDealRow({ deal }: { deal: RecentDeal }): JSX.Element {
     .join('');
 
   return (
-    <div className="flex items-center justify-between rounded-lg border border-border p-4 transition-colors hover:bg-muted/50">
-      <div className="flex items-center gap-4">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-sm font-medium text-primary">
+    <div className="flex items-center justify-between rounded-lg border border-border p-3 transition-colors hover:bg-muted/50">
+      <div className="flex items-center gap-3">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
           {initials}
         </div>
         <div>
-          <p className="font-medium text-foreground">{deal.customer_name}</p>
-          <p className="text-sm text-muted-foreground">{deal.vehicle_name}</p>
+          <p className="text-sm font-medium text-foreground">{deal.customer_name}</p>
+          <p className="text-xs text-muted-foreground">{deal.vehicle_name}</p>
         </div>
       </div>
       <div className="text-right">
-        <p className="font-medium text-foreground">{formatCurrency(deal.amount)}</p>
-        <div className="mt-1 flex items-center justify-end gap-2">
+        <p className="text-sm font-medium text-foreground">{formatCurrency(deal.amount)}</p>
+        <div className="mt-0.5 flex items-center justify-end gap-2">
           <StatusBadge status={deal.status} />
           <span className="text-xs text-muted-foreground">
             {formatRelativeTime(new Date(deal.created_at))}
@@ -171,17 +171,17 @@ function RecentDealRow({ deal }: { deal: RecentDeal }): JSX.Element {
  */
 function DealSkeleton(): JSX.Element {
   return (
-    <div className="flex items-center justify-between rounded-lg border border-border p-4">
-      <div className="flex items-center gap-4">
-        <div className="h-10 w-10 animate-pulse rounded-full bg-muted" />
+    <div className="flex items-center justify-between rounded-lg border border-border p-3">
+      <div className="flex items-center gap-3">
+        <div className="h-8 w-8 animate-pulse rounded-full bg-muted" />
         <div>
-          <div className="h-4 w-24 animate-pulse rounded bg-muted" />
-          <div className="mt-2 h-3 w-32 animate-pulse rounded bg-muted" />
+          <div className="h-3.5 w-24 animate-pulse rounded bg-muted" />
+          <div className="mt-1.5 h-3 w-32 animate-pulse rounded bg-muted" />
         </div>
       </div>
       <div className="text-right">
-        <div className="h-4 w-20 animate-pulse rounded bg-muted" />
-        <div className="mt-2 h-3 w-16 animate-pulse rounded bg-muted" />
+        <div className="h-3.5 w-20 animate-pulse rounded bg-muted" />
+        <div className="mt-1.5 h-3 w-16 animate-pulse rounded bg-muted" />
       </div>
     </div>
   );
@@ -212,7 +212,7 @@ function DashboardStatsGrid({ stats, isLoading }: DashboardStatsGridProps): JSX.
         title="Total Revenue"
         value={formatCurrency(stats?.revenue?.total || 0)}
         change={createChange(stats?.revenue?.change)}
-        icon={<DollarSign className="h-6 w-6 text-success" />}
+        icon={<DollarSign className="h-4 w-4 text-success" />}
         iconBg="bg-success/10"
         isLoading={isLoading}
       />
@@ -220,7 +220,7 @@ function DashboardStatsGrid({ stats, isLoading }: DashboardStatsGridProps): JSX.
         title="Active Deals"
         value={String(stats?.deals?.total || 0)}
         change={createChange(stats?.deals?.change)}
-        icon={<Handshake className="h-6 w-6 text-primary" />}
+        icon={<Handshake className="h-4 w-4 text-primary" />}
         iconBg="bg-primary/10"
         isLoading={isLoading}
       />
@@ -228,7 +228,7 @@ function DashboardStatsGrid({ stats, isLoading }: DashboardStatsGridProps): JSX.
         title="Available Inventory"
         value={String(stats?.inventory?.available || 0)}
         change={undefined}
-        icon={<Car className="h-6 w-6 text-accent" />}
+        icon={<Car className="h-4 w-4 text-accent" />}
         iconBg="bg-accent/10"
         isLoading={isLoading}
       />
@@ -236,7 +236,7 @@ function DashboardStatsGrid({ stats, isLoading }: DashboardStatsGridProps): JSX.
         title="New Leads"
         value={String(stats?.leads?.new || 0)}
         change={createChange(stats?.leads?.change)}
-        icon={<Users className="h-6 w-6 text-info" />}
+        icon={<Users className="h-4 w-4 text-info" />}
         iconBg="bg-info/10"
         isLoading={isLoading}
       />
@@ -352,7 +352,7 @@ function RecentDealsCard({ deals, isLoading, error }: RecentDealsCardProps): JSX
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-2">
             <RecentDealsList deals={deals} isLoading={isLoading} error={error} />
           </div>
         </CardContent>
@@ -381,12 +381,12 @@ function QuickActionButton({
 }: QuickActionButtonProps): JSX.Element {
   return (
     <Link href={href} className="block no-underline">
-      <button className="flex w-full items-center gap-3 rounded-lg border border-border p-3 text-left transition-colors hover:bg-muted">
-        <div className={cn('flex h-10 w-10 items-center justify-center rounded-lg', iconBg)}>
+      <button className="flex w-full items-center gap-2.5 rounded-lg border border-border p-2.5 text-left transition-colors hover:bg-muted">
+        <div className={cn('flex h-8 w-8 items-center justify-center rounded-md', iconBg)}>
           {icon}
         </div>
         <div>
-          <p className="font-medium text-foreground">{title}</p>
+          <p className="text-sm font-medium text-foreground">{title}</p>
           <p className="text-xs text-muted-foreground">{description}</p>
         </div>
       </button>
@@ -407,21 +407,21 @@ function QuickActionsCard(): JSX.Element {
         <div className="space-y-2">
           <QuickActionButton
             href="/deals"
-            icon={<Handshake className="h-5 w-5 text-primary" />}
+            icon={<Handshake className="h-4 w-4 text-primary" />}
             iconBg="bg-primary/10"
             title="Create New Deal"
             description="Start a new sales process"
           />
           <QuickActionButton
             href="/customers"
-            icon={<Users className="h-5 w-5 text-info" />}
+            icon={<Users className="h-4 w-4 text-info" />}
             iconBg="bg-info/10"
             title="Add Customer"
             description="Register a new customer"
           />
           <QuickActionButton
             href="/inventory"
-            icon={<Car className="h-5 w-5 text-accent" />}
+            icon={<Car className="h-4 w-4 text-accent" />}
             iconBg="bg-accent/10"
             title="Add Vehicle"
             description="Add to inventory"
@@ -445,13 +445,13 @@ interface ProgressBarProps {
 function ProgressBar({ label, value, percentage, color }: ProgressBarProps): JSX.Element {
   return (
     <div>
-      <div className="flex items-center justify-between text-sm">
+      <div className="flex items-center justify-between text-xs">
         <span className="text-muted-foreground">{label}</span>
         <span className="font-medium text-foreground">{value}</span>
       </div>
-      <div className="mt-2 h-2 w-full rounded-full bg-muted">
+      <div className="mt-1.5 h-1.5 w-full rounded-full bg-muted">
         <div
-          className={cn('h-2 rounded-full transition-all', color)}
+          className={cn('h-1.5 rounded-full transition-all', color)}
           style={{ width: `${percentage}%` }}
         />
       </div>
@@ -504,7 +504,7 @@ function MonthlyProgressContent({ stats }: MonthlyProgressContentProps): JSX.Ele
   const totalDealsForProgress = totalDeals + completed;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <ProgressBar
         label="Deals Closed"
         value={`${completed} / ${totalDealsForProgress}`}
@@ -537,7 +537,7 @@ interface MonthlyProgressCardProps {
 
 function MonthlyProgressCard({ stats, isLoading }: MonthlyProgressCardProps): JSX.Element {
   return (
-    <Card className="mt-6">
+    <Card className="mt-4">
       <CardHeader>
         <CardTitle>This Month</CardTitle>
       </CardHeader>
@@ -584,7 +584,7 @@ export function DashboardPage(): JSX.Element {
         showBorder={false}
       />
 
-      <div className="px-4 pb-8 sm:px-6 lg:px-8">
+      <div className="px-4 pb-6 sm:px-6 lg:px-8">
         {/* Stats grid */}
         <DashboardStatsGrid stats={stats} isLoading={statsLoading} />
 
@@ -592,7 +592,7 @@ export function DashboardPage(): JSX.Element {
         <StatsErrorState error={statsError} />
 
         {/* Recent deals and quick actions */}
-        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
           {/* Recent deals */}
           <RecentDealsCard deals={recentDeals} isLoading={dealsLoading} error={dealsError} />
 

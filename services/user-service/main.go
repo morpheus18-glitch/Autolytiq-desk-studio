@@ -23,14 +23,17 @@ func main() {
 	})
 
 	// Get database connection string from environment
-	dbHost := getEnv("DB_HOST", "localhost")
-	dbPort := getEnv("DB_PORT", "5432")
-	dbUser := getEnv("DB_USER", "postgres")
-	dbPassword := getEnv("DB_PASSWORD", "postgres")
-	dbName := getEnv("DB_NAME", "autolytiq_users")
-
-	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		dbHost, dbPort, dbUser, dbPassword, dbName)
+	// Support both DATABASE_URL (preferred) and individual DB_* variables for backwards compatibility
+	connStr := getEnv("DATABASE_URL", "")
+	if connStr == "" {
+		dbHost := getEnv("DB_HOST", "localhost")
+		dbPort := getEnv("DB_PORT", "5432")
+		dbUser := getEnv("DB_USER", "postgres")
+		dbPassword := getEnv("DB_PASSWORD", "postgres")
+		dbName := getEnv("DB_NAME", "autolytiq_users")
+		connStr = fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+			dbHost, dbPort, dbUser, dbPassword, dbName)
+	}
 
 	// Initialize database
 	var err error
@@ -79,6 +82,17 @@ func main() {
 
 	// Email validation
 	router.HandleFunc("/users/validate-email", validateEmailHandler).Methods("POST")
+
+	// RBAC - Roles & Permissions
+	router.HandleFunc("/rbac/check", checkPermissionHandler).Methods("POST")
+	router.HandleFunc("/rbac/roles", listRolesHandler).Methods("GET")
+	router.HandleFunc("/rbac/roles/{name}", getRoleHandler).Methods("GET")
+	router.HandleFunc("/rbac/permissions", listPermissionsHandler).Methods("GET")
+	router.HandleFunc("/users/{id}/permissions", getUserPermissionsHandler).Methods("GET")
+
+	// Settings RBAC
+	router.HandleFunc("/rbac/settings", getSettingsRBACHandler).Methods("GET")
+	router.HandleFunc("/rbac/settings/check", checkSettingAccessHandler).Methods("POST")
 
 	// Start server
 	port := getEnv("PORT", "8080")

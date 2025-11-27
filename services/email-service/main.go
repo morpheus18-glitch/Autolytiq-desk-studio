@@ -119,7 +119,7 @@ func (s *Server) setupRoutes() {
 	// Health check
 	s.router.HandleFunc("/health", s.HealthCheckHandler).Methods("GET")
 
-	// Email sending
+	// Email sending (legacy)
 	s.router.HandleFunc("/email/send", s.SendEmailHandler).Methods("POST")
 	s.router.HandleFunc("/email/send-template", s.SendTemplateEmailHandler).Methods("POST")
 
@@ -133,6 +133,54 @@ func (s *Server) setupRoutes() {
 	// Log management
 	s.router.HandleFunc("/email/logs", s.ListLogsHandler).Methods("GET")
 	s.router.HandleFunc("/email/logs/{id}", s.GetLogHandler).Methods("GET")
+
+	// =====================================================
+	// INBOX API - Gmail/Outlook-like functionality
+	// =====================================================
+
+	// Inbox & Email management
+	s.router.HandleFunc("/email/inbox", s.ListInboxHandler).Methods("GET")
+	s.router.HandleFunc("/email/inbox/search", s.SearchEmailsHandler).Methods("GET")
+	s.router.HandleFunc("/email/inbox/stats", s.GetStatsHandler).Methods("GET")
+	s.router.HandleFunc("/email/inbox/batch", s.BatchActionHandler).Methods("POST")
+	s.router.HandleFunc("/email/inbox/{id}", s.GetEmailHandler).Methods("GET")
+	s.router.HandleFunc("/email/inbox/{id}/star", s.ToggleStarHandler).Methods("POST")
+
+	// Compose & Send
+	s.router.HandleFunc("/email/compose", s.ComposeEmailHandler).Methods("POST")
+
+	// Threads
+	s.router.HandleFunc("/email/threads", s.ListThreadsHandler).Methods("GET")
+	s.router.HandleFunc("/email/threads/{id}", s.GetThreadHandler).Methods("GET")
+
+	// Drafts
+	s.router.HandleFunc("/email/drafts", s.ListDraftsHandler).Methods("GET")
+	s.router.HandleFunc("/email/drafts", s.SaveDraftHandler).Methods("POST")
+	s.router.HandleFunc("/email/drafts/{id}", s.GetDraftHandler).Methods("GET")
+	s.router.HandleFunc("/email/drafts/{id}", s.SaveDraftHandler).Methods("PUT")
+	s.router.HandleFunc("/email/drafts/{id}", s.DeleteDraftHandler).Methods("DELETE")
+	s.router.HandleFunc("/email/drafts/{id}/send", s.SendDraftHandler).Methods("POST")
+
+	// Labels
+	s.router.HandleFunc("/email/labels", s.ListLabelsHandler).Methods("GET")
+	s.router.HandleFunc("/email/labels", s.CreateLabelHandler).Methods("POST")
+	s.router.HandleFunc("/email/labels/{id}", s.UpdateLabelHandler).Methods("PUT")
+	s.router.HandleFunc("/email/labels/{id}", s.DeleteLabelHandler).Methods("DELETE")
+
+	// Signatures
+	s.router.HandleFunc("/email/signatures", s.ListSignaturesHandler).Methods("GET")
+	s.router.HandleFunc("/email/signatures", s.CreateSignatureHandler).Methods("POST")
+	s.router.HandleFunc("/email/signatures/{id}", s.UpdateSignatureHandler).Methods("PUT")
+	s.router.HandleFunc("/email/signatures/{id}", s.DeleteSignatureHandler).Methods("DELETE")
+
+	// Attachments (S3 integration)
+	s.router.HandleFunc("/email/attachments/upload", s.UploadAttachmentHandler).Methods("POST")
+	s.router.HandleFunc("/email/attachments/upload-url", s.GetUploadURLHandler).Methods("GET")
+	s.router.HandleFunc("/email/attachments/{id}", s.GetAttachmentHandler).Methods("GET")
+	s.router.HandleFunc("/email/attachments/{id}/download", s.DownloadAttachmentHandler).Methods("GET")
+	s.router.HandleFunc("/email/attachments/{id}", s.DeleteAttachmentHandler).Methods("DELETE")
+	s.router.HandleFunc("/email/inbox/{email_id}/attachments", s.ListEmailAttachmentsHandler).Methods("GET")
+	s.router.HandleFunc("/email/drafts/{draft_id}/attachments", s.ListDraftAttachmentsHandler).Methods("GET")
 }
 
 // HealthCheckHandler handles health check requests

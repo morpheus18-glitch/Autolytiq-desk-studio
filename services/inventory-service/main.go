@@ -55,6 +55,7 @@ func (s *Server) setupRoutes() {
 	s.router.HandleFunc("/vehicles", s.createVehicle).Methods("POST")
 	s.router.HandleFunc("/vehicles/stats", s.getInventoryStats).Methods("GET")
 	s.router.HandleFunc("/vehicles/validate-vin", s.validateVIN).Methods("POST")
+	s.router.HandleFunc("/vehicles/decode-vin", s.decodeVINHandler).Methods("POST")
 	s.router.HandleFunc("/vehicles/{id}", s.getVehicle).Methods("GET")
 	s.router.HandleFunc("/vehicles/{id}", s.updateVehicle).Methods("PUT")
 	s.router.HandleFunc("/vehicles/{id}", s.deleteVehicle).Methods("DELETE")

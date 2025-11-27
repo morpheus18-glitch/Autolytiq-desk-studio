@@ -328,4 +328,60 @@ export const queryKeys = {
     userSection: (section: string) => [...queryKeys.settings.user(), section] as const,
     dealership: () => [...queryKeys.settings.all, 'dealership'] as const,
   },
+
+  // Email
+  email: {
+    all: ['email'] as const,
+    logs: {
+      all: () => [...queryKeys.email.all, 'logs'] as const,
+      lists: () => [...queryKeys.email.logs.all(), 'list'] as const,
+      list: (filters: Record<string, unknown>) =>
+        [...queryKeys.email.logs.lists(), filters] as const,
+      details: () => [...queryKeys.email.logs.all(), 'detail'] as const,
+      detail: (id: string) => [...queryKeys.email.logs.details(), id] as const,
+    },
+    templates: {
+      all: () => [...queryKeys.email.all, 'templates'] as const,
+      lists: () => [...queryKeys.email.templates.all(), 'list'] as const,
+      list: (filters: Record<string, unknown>) =>
+        [...queryKeys.email.templates.lists(), filters] as const,
+      details: () => [...queryKeys.email.templates.all(), 'detail'] as const,
+      detail: (id: string) => [...queryKeys.email.templates.details(), id] as const,
+    },
+    inbox: {
+      all: () => [...queryKeys.email.all, 'inbox'] as const,
+      lists: () => [...queryKeys.email.inbox.all(), 'list'] as const,
+      list: (filters: Record<string, unknown>) =>
+        [...queryKeys.email.inbox.lists(), filters] as const,
+      details: () => [...queryKeys.email.inbox.all(), 'detail'] as const,
+      detail: (id: string) => [...queryKeys.email.inbox.details(), id] as const,
+    },
+    drafts: {
+      all: () => [...queryKeys.email.all, 'drafts'] as const,
+      lists: () => [...queryKeys.email.drafts.all(), 'list'] as const,
+      list: (filters: Record<string, unknown>) =>
+        [...queryKeys.email.drafts.lists(), filters] as const,
+      details: () => [...queryKeys.email.drafts.all(), 'detail'] as const,
+      detail: (id: string) => [...queryKeys.email.drafts.details(), id] as const,
+    },
+    labels: {
+      all: () => [...queryKeys.email.all, 'labels'] as const,
+      lists: () => [...queryKeys.email.labels.all(), 'list'] as const,
+      list: (filters: Record<string, unknown>) =>
+        [...queryKeys.email.labels.lists(), filters] as const,
+    },
+    signatures: {
+      all: () => [...queryKeys.email.all, 'signatures'] as const,
+      lists: () => [...queryKeys.email.signatures.all(), 'list'] as const,
+      list: (filters: Record<string, unknown>) =>
+        [...queryKeys.email.signatures.lists(), filters] as const,
+    },
+    attachments: {
+      all: () => [...queryKeys.email.all, 'attachments'] as const,
+      lists: () => [...queryKeys.email.attachments.all(), 'list'] as const,
+      list: (emailId: string) => [...queryKeys.email.attachments.lists(), emailId] as const,
+      details: () => [...queryKeys.email.attachments.all(), 'detail'] as const,
+      detail: (id: string) => [...queryKeys.email.attachments.details(), id] as const,
+    },
+  },
 } as const;

@@ -68,27 +68,27 @@ spec:
                 secretKeyRef:
                   name: autolytiq-secrets
                   key: REDIS_URL
-            # Internal service URLs using Kubernetes DNS
+            # Internal service URLs using Kubernetes short DNS (resolves within same namespace)
             - name: AUTH_SERVICE_URL
-              value: 'http://auth-service.autolytiq.svc.cluster.local:8087'
+              value: 'http://auth-service:8087'
             - name: DEAL_SERVICE_URL
-              value: 'http://deal-service.autolytiq.svc.cluster.local:8081'
+              value: 'http://deal-service:8081'
             - name: CUSTOMER_SERVICE_URL
-              value: 'http://customer-service.autolytiq.svc.cluster.local:8082'
+              value: 'http://customer-service:8082'
             - name: INVENTORY_SERVICE_URL
-              value: 'http://inventory-service.autolytiq.svc.cluster.local:8083'
+              value: 'http://inventory-service:8083'
             - name: EMAIL_SERVICE_URL
-              value: 'http://email-service.autolytiq.svc.cluster.local:8084'
+              value: 'http://email-service:8084'
             - name: USER_SERVICE_URL
-              value: 'http://user-service.autolytiq.svc.cluster.local:8085'
+              value: 'http://user-service:8085'
             - name: CONFIG_SERVICE_URL
-              value: 'http://config-service.autolytiq.svc.cluster.local:8086'
+              value: 'http://config-service:8086'
             - name: SHOWROOM_SERVICE_URL
-              value: 'http://showroom-service.autolytiq.svc.cluster.local:8088'
+              value: 'http://showroom-service:8088'
             - name: MESSAGING_SERVICE_URL
-              value: 'http://messaging-service.autolytiq.svc.cluster.local:8089'
+              value: 'http://messaging-service:8089'
             - name: SETTINGS_SERVICE_URL
-              value: 'http://settings-service.autolytiq.svc.cluster.local:8090'
+              value: 'http://settings-service:8090'
             # Rate limiting configuration
             - name: RATE_LIMIT_ENABLED
               valueFrom:

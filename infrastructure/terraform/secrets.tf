@@ -202,8 +202,7 @@ resource "aws_secretsmanager_secret_rotation" "db_credentials" {
   rotation_lambda_arn = aws_lambda_function.rotate_db_credentials[0].arn
 
   rotation_rules {
-    automatically_after_days = 30
-    schedule_expression      = "rate(30 days)"
+    schedule_expression = "rate(30 days)"
   }
 }
 

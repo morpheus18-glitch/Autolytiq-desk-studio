@@ -11,6 +11,7 @@ import { ThemeProvider } from '@design-system';
 import { AuthProvider, ProtectedRoute, PublicRoute } from '@/contexts/AuthContext';
 import { ToastProvider } from '@/components/ui';
 import {
+  HomePage,
   LoginPage,
   DashboardPage,
   DealsPage,
@@ -64,6 +65,10 @@ function AppRoutes(): JSX.Element {
   return (
     <Switch>
       {/* Public routes */}
+      <Route path="/">
+        <HomePage />
+      </Route>
+
       <Route path="/login">
         <PublicRoute>
           <LoginPage />
@@ -71,7 +76,7 @@ function AppRoutes(): JSX.Element {
       </Route>
 
       {/* Protected routes */}
-      <Route path="/">
+      <Route path="/dashboard">
         <ProtectedRoute>
           <DashboardPage />
         </ProtectedRoute>

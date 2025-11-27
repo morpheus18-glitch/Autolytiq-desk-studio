@@ -117,8 +117,8 @@ output "dr_bucket_name" {
 }
 
 output "dr_rds_cluster_endpoint" {
-  description = "DR RDS cluster endpoint (prod only)"
-  value       = var.environment == "prod" ? aws_rds_cluster.dr_replica[0].endpoint : null
+  description = "DR RDS cluster endpoint (prod only) - currently disabled"
+  value       = null  # DR RDS replica disabled - requires Global Database migration
 }
 
 output "dr_backup_vault_arn" {

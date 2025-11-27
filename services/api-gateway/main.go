@@ -92,6 +92,7 @@ func (s *Server) setupRoutes() {
 
 	// Public routes (no authentication required, rate limited by IP)
 	s.router.HandleFunc("/health", s.healthCheck).Methods("GET")
+
 	s.router.HandleFunc("/ready", s.readinessCheck).Methods("GET")
 	s.router.HandleFunc("/live", s.livenessCheck).Methods("GET")
 	s.router.HandleFunc("/api/v1/version", s.version).Methods("GET")
@@ -99,12 +100,12 @@ func (s *Server) setupRoutes() {
 	// Auth routes (public - no JWT required, rate limited by IP)
 	authPublic := s.router.PathPrefix("/api/v1/auth").Subrouter()
 	authPublic.Use(RateLimitMiddleware(s.rateLimiter, s.logger))
-	authPublic.HandleFunc("/register", s.proxyToAuthService).Methods("POST")
-	authPublic.HandleFunc("/login", s.proxyToAuthService).Methods("POST")
-	authPublic.HandleFunc("/refresh", s.proxyToAuthService).Methods("POST")
-	authPublic.HandleFunc("/forgot-password", s.proxyToAuthService).Methods("POST")
-	authPublic.HandleFunc("/reset-password", s.proxyToAuthService).Methods("POST")
-	authPublic.HandleFunc("/verify-email", s.proxyToAuthService).Methods("POST")
+	authPublic.HandleFunc("/register", s.proxyToAuthServicePublic).Methods("POST")
+	authPublic.HandleFunc("/login", s.proxyToAuthServicePublic).Methods("POST")
+	authPublic.HandleFunc("/refresh", s.proxyToAuthServicePublic).Methods("POST")
+	authPublic.HandleFunc("/forgot-password", s.proxyToAuthServicePublic).Methods("POST")
+	authPublic.HandleFunc("/reset-password", s.proxyToAuthServicePublic).Methods("POST")
+	authPublic.HandleFunc("/verify-email", s.proxyToAuthServicePublic).Methods("POST")
 
 	// Auth routes (protected - requires JWT)
 	authProtected := s.router.PathPrefix("/api/v1/auth").Subrouter()
@@ -131,6 +132,7 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/inventory/vehicles", s.proxyToInventoryService).Methods("GET", "POST")
 	api.HandleFunc("/inventory/vehicles/{id}", s.proxyToInventoryService).Methods("GET", "PUT", "DELETE")
 	api.HandleFunc("/inventory/vehicles/validate-vin", s.proxyToInventoryService).Methods("POST")
+	api.HandleFunc("/inventory/vehicles/decode-vin", s.proxyToInventoryService).Methods("POST")
 	api.HandleFunc("/inventory/stats", s.proxyToInventoryService).Methods("GET")
 
 	// Email Service routes
@@ -218,6 +220,23 @@ func (s *Server) setupRoutes() {
 	// Audit Log routes
 	api.HandleFunc("/audit/logs", s.proxyToDataRetentionService).Methods("GET")
 	api.HandleFunc("/audit/logs/{id}", s.proxyToDataRetentionService).Methods("GET")
+
+	// Serve static frontend files (MUST be last - catch-all for SPA)
+	staticDir := "./static"
+	if _, err := os.Stat(staticDir); err == nil {
+		// Serve static assets
+		s.router.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir(staticDir+"/assets"))))
+		s.router.HandleFunc("/favicon.svg", func(w http.ResponseWriter, r *http.Request) {
+			http.ServeFile(w, r, staticDir+"/favicon.svg")
+		})
+		s.router.HandleFunc("/favicon.png", func(w http.ResponseWriter, r *http.Request) {
+			http.ServeFile(w, r, staticDir+"/favicon.png")
+		})
+		// Serve index.html for all non-API routes (SPA catch-all)
+		s.router.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.ServeFile(w, r, staticDir+"/index.html")
+		})
+	}
 }
 
 // healthCheck handler
@@ -278,9 +297,14 @@ func (s *Server) proxyToConfigService(w http.ResponseWriter, r *http.Request) {
 	s.proxyRequest(w, r, s.config.ConfigServiceURL, "/config")
 }
 
-// proxyToAuthService proxies requests to auth-service
+// proxyToAuthService proxies requests to auth-service (protected routes)
 func (s *Server) proxyToAuthService(w http.ResponseWriter, r *http.Request) {
 	s.proxyRequest(w, r, s.config.AuthServiceURL, "/auth")
+}
+
+// proxyToAuthServicePublic proxies requests to auth-service (public routes, no JWT required)
+func (s *Server) proxyToAuthServicePublic(w http.ResponseWriter, r *http.Request) {
+	s.proxyRequestPublic(w, r, s.config.AuthServiceURL, "/auth")
 }
 
 // proxyToShowroomService proxies requests to showroom-service

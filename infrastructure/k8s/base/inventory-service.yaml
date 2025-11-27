@@ -25,14 +25,14 @@ spec:
         sidecar.istio.io/proxyMemory: '64Mi'
         sidecar.istio.io/proxyMemoryLimit: '128Mi'
         prometheus.io/scrape: 'true'
-        prometheus.io/port: '8084'
+        prometheus.io/port: '8083'
         prometheus.io/path: '/metrics'
     spec:
       containers:
         - name: inventory-service
           image: autolytiq/inventory-service:latest
           ports:
-            - containerPort: 8084
+            - containerPort: 8083
               name: http
           env:
             - name: PORT
@@ -55,13 +55,13 @@ spec:
           livenessProbe:
             httpGet:
               path: /health
-              port: 8084
+              port: 8083
             initialDelaySeconds: 10
             periodSeconds: 10
           readinessProbe:
             httpGet:
               path: /health
-              port: 8084
+              port: 8083
             initialDelaySeconds: 5
             periodSeconds: 5
 ---
@@ -75,8 +75,8 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - port: 8084
-      targetPort: 8084
+    - port: 8083
+      targetPort: 8083
       protocol: TCP
       name: http
   selector:

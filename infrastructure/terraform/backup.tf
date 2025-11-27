@@ -138,6 +138,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "backup" {
     id     = "backup-lifecycle"
     status = "Enabled"
 
+    filter {
+      prefix = ""
+    }
+
     transition {
       days          = 30
       storage_class = "STANDARD_IA"
@@ -415,20 +419,35 @@ resource "aws_s3_bucket_replication_configuration" "backup" {
 }
 
 # -----------------------------------------------------------------------------
-# RDS Cross-Region Read Replica (Production Only)
+# RDS Cross-Region DR (Production Only)
+# Note: Aurora PostgreSQL Global Database setup requires cluster recreation.
+# For now, DR is handled via S3 cross-region backup replication.
+# TODO: Implement Global Database for real-time cross-region replication
 # -----------------------------------------------------------------------------
+
+# Disabled: Aurora PostgreSQL requires Global Database for cross-region replication
+# The existing cluster would need to be recreated to support this feature.
+# Cross-region DR is currently provided via S3 backup replication above.
+
+# resource "aws_rds_global_cluster" "main" {
+#   count = local.enable_cross_region ? 1 : 0
+#   global_cluster_identifier = "${local.name}-global"
+#   engine                    = "aurora-postgresql"
+#   engine_version            = "15.6"
+#   database_name             = "autolytiq"
+#   storage_encrypted         = true
+# }
+
 resource "aws_rds_cluster" "dr_replica" {
-  count = local.enable_cross_region ? 1 : 0
+  # Disabled until Global Database migration is performed
+  count = 0  # Was: local.enable_cross_region ? 1 : 0
 
   provider           = aws.dr
   cluster_identifier = "${local.name}-dr"
 
   engine         = "aurora-postgresql"
-  engine_version = "15.4"
+  engine_version = "15.6"
   engine_mode    = "provisioned"
-
-  # Enable global database replication
-  replication_source_identifier = aws_rds_cluster.main.arn
 
   db_subnet_group_name   = aws_db_subnet_group.dr[0].name
   vpc_security_group_ids = [aws_security_group.rds_dr[0].id]
@@ -436,14 +455,9 @@ resource "aws_rds_cluster" "dr_replica" {
   storage_encrypted = true
   kms_key_id        = aws_kms_key.backup_dr[0].arn
 
-  # DR cluster should have deletion protection
   deletion_protection = true
   skip_final_snapshot = false
   final_snapshot_identifier = "${local.name}-dr-final-snapshot"
-
-  backup_retention_period      = 7
-  preferred_backup_window      = "03:00-04:00"
-  preferred_maintenance_window = "sun:04:00-sun:05:00"
 
   enabled_cloudwatch_logs_exports = ["postgresql"]
 
@@ -456,14 +470,11 @@ resource "aws_rds_cluster" "dr_replica" {
     Name    = "${local.name}-dr"
     Purpose = "disaster-recovery"
   }
-
-  lifecycle {
-    ignore_changes = [replication_source_identifier]
-  }
 }
 
 resource "aws_rds_cluster_instance" "dr_replica" {
-  count = local.enable_cross_region ? 1 : 0
+  # Disabled until Global Database migration is performed
+  count = 0  # Was: local.enable_cross_region ? 1 : 0
 
   provider           = aws.dr
   identifier         = "${local.name}-dr-1"
@@ -706,7 +717,7 @@ resource "aws_backup_plan" "continuous" {
   rule {
     rule_name         = "continuous-backup"
     target_vault_name = aws_backup_vault.main.name
-    schedule          = "cron(0/15 * * * ? *)"  # Every 15 minutes
+    schedule          = "cron(0 * * * ? *)"  # Every hour (AWS minimum interval is 60 minutes)
 
     lifecycle {
       delete_after = 35  # 35 days retention
@@ -726,7 +737,7 @@ resource "aws_backup_plan" "continuous" {
     backup_options = {
       WindowsVSS = "disabled"
     }
-    resource_type = "RDS"
+    resource_type = "EC2"
   }
 
   tags = {
@@ -921,7 +932,7 @@ resource "aws_backup_vault_notifications" "main" {
     "RESTORE_JOB_COMPLETED",
     "RESTORE_JOB_FAILED",
     "COPY_JOB_STARTED",
-    "COPY_JOB_COMPLETED",
+    "COPY_JOB_SUCCESSFUL",
     "COPY_JOB_FAILED"
   ]
 }

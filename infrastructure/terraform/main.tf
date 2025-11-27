@@ -17,11 +17,11 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "autolytiq-terraform-state"
+    bucket         = "autolytiq-terraform-state-prod"
     key            = "infrastructure/terraform.tfstate"
     region         = "us-east-1"
     encrypt        = true
-    dynamodb_table = "autolytiq-terraform-lock"
+    dynamodb_table = "autolytiq-terraform-locks"
   }
 }
 
@@ -33,6 +33,7 @@ provider "aws" {
       Project     = "autolytiq"
       Environment = var.environment
       ManagedBy   = "terraform"
+      AQ          = "true"
     }
   }
 }
@@ -48,6 +49,7 @@ provider "aws" {
       Environment = var.environment
       ManagedBy   = "terraform"
       Purpose     = "disaster-recovery"
+      AQ          = "true"
     }
   }
 }

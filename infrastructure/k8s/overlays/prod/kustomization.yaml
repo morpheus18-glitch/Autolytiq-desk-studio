@@ -33,28 +33,47 @@ patches:
         value: "1000m"
     target:
       kind: Deployment
-
-configMapGenerator:
-  - name: autolytiq-config
-    behavior: merge
-    literals:
-      - LOG_LEVEL=warn
-      - ENABLE_SWAGGER=false
+  # Update LOG_LEVEL in configmap for prod
+  - patch: |-
+      - op: replace
+        path: /data/LOG_LEVEL
+        value: "warn"
+      - op: add
+        path: /data/ENABLE_SWAGGER
+        value: "false"
+    target:
+      kind: ConfigMap
+      name: autolytiq-config
+  # Disable Istio sidecar injection for now (can be enabled later)
+  - patch: |-
+      - op: replace
+        path: /spec/template/metadata/annotations/sidecar.istio.io~1inject
+        value: "false"
+    target:
+      kind: Deployment
 
 images:
   - name: autolytiq/api-gateway
-    newTag: prod
+    newName: 730335214557.dkr.ecr.us-east-1.amazonaws.com/autolytiq/api-gateway
+    newTag: v1.0.4
   - name: autolytiq/auth-service
-    newTag: prod
+    newName: 730335214557.dkr.ecr.us-east-1.amazonaws.com/autolytiq/auth-service
+    newTag: v1.0.1
   - name: autolytiq/deal-service
-    newTag: prod
+    newName: 730335214557.dkr.ecr.us-east-1.amazonaws.com/autolytiq/deal-service
+    newTag: v1.0.1
   - name: autolytiq/customer-service
-    newTag: prod
+    newName: 730335214557.dkr.ecr.us-east-1.amazonaws.com/autolytiq/customer-service
+    newTag: v1.0.1
   - name: autolytiq/inventory-service
-    newTag: prod
+    newName: 730335214557.dkr.ecr.us-east-1.amazonaws.com/autolytiq/inventory-service
+    newTag: v1.0.1
   - name: autolytiq/email-service
-    newTag: prod
+    newName: 730335214557.dkr.ecr.us-east-1.amazonaws.com/autolytiq/email-service
+    newTag: v1.0.1
   - name: autolytiq/user-service
-    newTag: prod
+    newName: 730335214557.dkr.ecr.us-east-1.amazonaws.com/autolytiq/user-service
+    newTag: v1.0.1
   - name: autolytiq/config-service
-    newTag: prod
+    newName: 730335214557.dkr.ecr.us-east-1.amazonaws.com/autolytiq/config-service
+    newTag: v1.0.1

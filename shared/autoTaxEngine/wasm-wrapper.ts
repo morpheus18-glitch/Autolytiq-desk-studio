@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/consistent-type-imports, no-console, no-undef */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, no-console */
 /**
  * WASM Tax Engine Wrapper
  *
@@ -9,8 +9,12 @@
 import type { TaxRulesConfig, TaxCalculationInput, TaxCalculationResult } from './types.js';
 import { calculateTax } from './engine/calculateTax.js';
 
+// Declare performance for non-browser environments
+declare const performance: { now: () => number };
+
 // WASM module will be imported dynamically when available
-let wasmModule: typeof import('./wasm/tax_engine_rs.js') | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let wasmModule: any = null;
 let wasmInitialized = false;
 
 /**
@@ -23,8 +27,9 @@ export async function initTaxEngineWasm(): Promise<boolean> {
   }
 
   try {
-    // Dynamically import the WASM module
-    wasmModule = await import('./wasm/tax_engine_rs.js');
+    // Dynamically import the WASM module (path variable prevents TS module resolution)
+    const wasmPath = './wasm/tax_engine_rs.js';
+    wasmModule = await import(/* webpackIgnore: true */ wasmPath);
 
     // Initialize the WASM module
     await wasmModule.default();

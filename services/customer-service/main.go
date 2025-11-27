@@ -9,7 +9,7 @@ import (
 
 	"autolytiq/shared/logging"
 
-	"autolytiq/services/shared/encryption"
+	"autolytiq/shared/encryption"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"

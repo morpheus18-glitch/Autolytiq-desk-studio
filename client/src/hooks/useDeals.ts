@@ -20,6 +20,7 @@ export interface Deal {
   sale_price: number;
   trade_in_value?: number;
   trade_in_vehicle?: string;
+  trade_in_vin?: string;
   down_payment?: number;
   financing_term?: number;
   interest_rate?: number;
@@ -83,6 +84,7 @@ export function useCreateDeal() {
         sale_price: data.salePrice,
         trade_in_value: data.tradeInValue,
         trade_in_vehicle: data.tradeInVehicle,
+        trade_in_vin: data.tradeInVin,
         down_payment: data.downPayment,
         financing_term: data.financingTerm,
         interest_rate: data.interestRate,

@@ -25,6 +25,8 @@ export interface Customer {
   notes?: string;
   total_deals?: number;
   total_spent?: number;
+  monthly_income?: number;
+  credit_score?: number;
   created_at: string;
   updated_at: string;
 }
@@ -129,6 +131,25 @@ export function useDeleteCustomer() {
     mutationFn: (id: string) => api.delete(`/customers/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
+    },
+  });
+}
+
+/**
+ * Hook to update customer monthly income
+ * Provides a dedicated mutation for income calculator updates
+ */
+export function useUpdateCustomerIncome() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, monthlyIncome }: { id: string; monthlyIncome: number }) =>
+      api.put<Customer>(`/customers/${id}`, {
+        monthly_income: monthlyIncome,
+      }),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.customers.detail(id) });
     },
   });
 }

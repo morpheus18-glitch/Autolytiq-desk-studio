@@ -27,9 +27,11 @@ import {
   useCreateCustomer,
   useUpdateCustomer,
   useDeleteCustomer,
+  useUpdateCustomerIncome,
   getCustomerName,
   type Customer,
 } from '@/hooks/useCustomers';
+import { MonthlyIncomeCalculator } from '@/components/MonthlyIncomeCalculator';
 import { formatDate, getInitials } from '@/lib/utils';
 
 /**
@@ -514,15 +516,35 @@ function Pagination({
 }
 
 /**
+ * Format currency helper
+ */
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
+/**
  * View modal content component
  */
 interface ViewModalContentProps {
   customer: Customer;
   onClose: () => void;
   onEdit: () => void;
+  onSaveIncome: (monthlyIncome: number) => Promise<void>;
+  isSavingIncome: boolean;
 }
 
-function ViewModalContent({ customer, onClose, onEdit }: ViewModalContentProps): JSX.Element {
+function ViewModalContent({
+  customer,
+  onClose,
+  onEdit,
+  onSaveIncome,
+  isSavingIncome,
+}: ViewModalContentProps): JSX.Element {
   const customerName = getCustomerName(customer);
 
   return (
@@ -566,6 +588,22 @@ function ViewModalContent({ customer, onClose, onEdit }: ViewModalContentProps):
         </div>
       )}
 
+      {/* Financial Info */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <p className="text-sm text-muted-foreground">Monthly Income</p>
+          <p className="font-semibold text-lg text-primary">
+            {customer.monthly_income ? formatCurrency(customer.monthly_income) : 'Not set'}
+          </p>
+        </div>
+        {customer.credit_score && (
+          <div>
+            <p className="text-sm text-muted-foreground">Credit Score</p>
+            <p className="font-medium">{customer.credit_score}</p>
+          </div>
+        )}
+      </div>
+
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -595,6 +633,13 @@ function ViewModalContent({ customer, onClose, onEdit }: ViewModalContentProps):
           <p className="mt-1 text-foreground">{customer.notes}</p>
         </div>
       )}
+
+      {/* Monthly Income Calculator */}
+      <MonthlyIncomeCalculator
+        currentMonthlyIncome={customer.monthly_income}
+        onSave={onSaveIncome}
+        isSaving={isSavingIncome}
+      />
 
       {/* Actions */}
       <div className="flex justify-end gap-3 pt-4 border-t border-border">
@@ -642,6 +687,7 @@ export function CustomersPage(): JSX.Element {
   const createCustomer = useCreateCustomer();
   const updateCustomer = useUpdateCustomer();
   const deleteCustomer = useDeleteCustomer();
+  const updateCustomerIncome = useUpdateCustomerIncome();
 
   const customers = customersData?.customers || [];
   const total = customersData?.total || 0;
@@ -703,6 +749,24 @@ export function CustomersPage(): JSX.Element {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to delete customer';
       toast.error('Error', message);
+    }
+  };
+
+  const handleSaveIncome = async (monthlyIncome: number) => {
+    if (!selectedCustomer) return;
+
+    try {
+      await updateCustomerIncome.mutateAsync({
+        id: selectedCustomer.id,
+        monthlyIncome,
+      });
+      // Update the selected customer with the new income for immediate UI update
+      setSelectedCustomer((prev) => (prev ? { ...prev, monthly_income: monthlyIncome } : null));
+      toast.success('Income updated', 'Monthly income has been saved to the customer profile.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update income';
+      toast.error('Error', message);
+      throw err; // Re-throw to let the calculator component handle the error state
     }
   };
 
@@ -835,13 +899,15 @@ export function CustomersPage(): JSX.Element {
         isOpen={modalMode === 'view'}
         onClose={handleCloseModal}
         title="Customer Profile"
-        size="lg"
+        size="xl"
       >
         {selectedCustomer && (
           <ViewModalContent
             customer={selectedCustomer}
             onClose={handleCloseModal}
             onEdit={() => setModalMode('edit')}
+            onSaveIncome={handleSaveIncome}
+            isSavingIncome={updateCustomerIncome.isPending}
           />
         )}
       </Modal>

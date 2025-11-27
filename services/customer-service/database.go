@@ -10,7 +10,7 @@ import (
 
 	_ "github.com/lib/pq"
 
-	"autolytiq/services/shared/encryption"
+	"autolytiq/shared/encryption"
 )
 
 // Database wraps the SQL database connection

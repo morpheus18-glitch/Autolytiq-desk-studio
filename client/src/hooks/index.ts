@@ -11,3 +11,7 @@ export * from './useShowroom';
 export * from './useShowroomWebSocket';
 export * from './useMessaging';
 export * from './useMessagingWebSocket';
+export * from './useVinDecoder';
+export * from './useEmail';
+export * from './useRBAC';
+export * from './useDealCalculator';

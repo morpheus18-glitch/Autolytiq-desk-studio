@@ -25,14 +25,14 @@ spec:
         sidecar.istio.io/proxyMemory: '64Mi'
         sidecar.istio.io/proxyMemoryLimit: '128Mi'
         prometheus.io/scrape: 'true'
-        prometheus.io/port: '8085'
+        prometheus.io/port: '8084'
         prometheus.io/path: '/metrics'
     spec:
       containers:
         - name: email-service
           image: autolytiq/email-service:latest
           ports:
-            - containerPort: 8085
+            - containerPort: 8084
               name: http
           env:
             - name: PORT
@@ -75,13 +75,13 @@ spec:
           livenessProbe:
             httpGet:
               path: /health
-              port: 8085
+              port: 8084
             initialDelaySeconds: 10
             periodSeconds: 10
           readinessProbe:
             httpGet:
               path: /health
-              port: 8085
+              port: 8084
             initialDelaySeconds: 5
             periodSeconds: 5
 ---
@@ -95,8 +95,8 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - port: 8085
-      targetPort: 8085
+    - port: 8084
+      targetPort: 8084
       protocol: TCP
       name: http
   selector:

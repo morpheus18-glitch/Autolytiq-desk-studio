@@ -2,6 +2,9 @@
  * Deals Page
  *
  * Manage sales deals and track deal progress with real API integration.
+ * Features a streamlined two-step deal creation flow:
+ * 1. Select customer and vehicle
+ * 2. Configure deal details on the worksheet
  */
 
 import { useState, type JSX } from 'react';
@@ -19,11 +22,11 @@ import {
 import { MainLayout } from '@/layouts';
 import { PageHeader, Card, CardContent, Button } from '@design-system';
 import { Modal, ConfirmDialog, useToast } from '@/components/ui';
-import { DealForm, type DealFormData } from '@/components/forms/DealForm';
+import { DealSetup, type DealSetupData } from '@/pages/deals/DealSetup';
+import { DealWorksheet, type WorksheetFormData } from '@/pages/deals/DealWorksheet';
 import { useDeals, useCreateDeal, useUpdateDeal, useDeleteDeal, type Deal } from '@/hooks/useDeals';
-import { useCustomers, getCustomerName } from '@/hooks/useCustomers';
-import { useVehicles, getVehicleName } from '@/hooks/useInventory';
-import { useUsers } from '@/hooks/useUsers';
+import { useCustomer } from '@/hooks/useCustomers';
+import { useVehicle } from '@/hooks/useInventory';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 
 /**
@@ -54,9 +57,9 @@ function StatusBadge({ status }: { status: string }): JSX.Element {
 }
 
 /**
- * Modal modes
+ * Modal modes for the new deal flow
  */
-type ModalMode = 'create' | 'edit' | 'view' | null;
+type ModalMode = 'setup' | 'worksheet' | 'edit' | 'view' | null;
 
 /**
  * Search bar component
@@ -499,13 +502,6 @@ function ViewModalContent({ deal, onClose, onEdit }: ViewModalContentProps): JSX
 }
 
 /**
- * Helper to check if a user can be a salesperson
- */
-function canBeSalesperson(role: string): boolean {
-  return role === 'SALESPERSON' || role === 'MANAGER';
-}
-
-/**
  * Helper to extract error message
  */
 function getErrorMessage(err: unknown, fallback: string): string {
@@ -520,37 +516,60 @@ function toggleMenuState(currentId: string | null, targetId: string): string | n
 }
 
 /**
- * Helper to compute modal title based on create mode
+ * Edit worksheet wrapper - fetches customer/vehicle data
  */
-function computeModalTitle(isCreateMode: boolean): string {
-  return isCreateMode ? 'Create New Deal' : 'Edit Deal';
+interface EditWorksheetWrapperProps {
+  deal: Deal;
+  onSubmit: (data: WorksheetFormData) => Promise<void>;
+  onCancel: () => void;
+  isLoading: boolean;
 }
 
-/**
- * Helper to compute modal description based on create mode
- */
-function computeModalDescription(isCreateMode: boolean): string {
-  return isCreateMode ? 'Enter the details for the new deal.' : 'Update the deal information.';
-}
+function EditWorksheetWrapper({
+  deal,
+  onSubmit,
+  onCancel,
+  isLoading,
+}: EditWorksheetWrapperProps): JSX.Element {
+  const { data: customer, isLoading: isLoadingCustomer } = useCustomer(deal.customer_id);
+  const { data: vehicle, isLoading: isLoadingVehicle } = useVehicle(deal.vehicle_id);
 
-/**
- * Convert Deal to form data for editing
- */
-function getInitialFormData(deal: Deal): Partial<DealFormData> {
-  return {
-    customerId: deal.customer_id,
-    vehicleId: deal.vehicle_id,
+  if (isLoadingCustomer || isLoadingVehicle || !customer || !vehicle) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const initialData: Partial<WorksheetFormData> = {
     type: deal.type,
     status: deal.status,
     salePrice: deal.sale_price,
-    tradeInValue: deal.trade_in_value,
-    tradeInVehicle: deal.trade_in_vehicle,
-    downPayment: deal.down_payment,
-    financingTerm: deal.financing_term,
-    interestRate: deal.interest_rate,
+    msrp: vehicle.list_price,
+    invoice: vehicle.invoice_price,
+    tradeAllowance: deal.trade_in_value ?? 0,
+    tradeVehicle: deal.trade_in_vehicle ?? '',
+    cashDown: deal.down_payment ?? 0,
+    term: deal.financing_term ?? 60,
+    apr: deal.interest_rate ?? 5.9,
+    stateCode: 'IN',
     salespersonId: deal.salesperson_id,
     notes: deal.notes,
   };
+
+  return (
+    <DealWorksheet
+      customer={customer}
+      vehicle={vehicle}
+      initialData={initialData}
+      onSubmit={onSubmit}
+      onBack={onCancel}
+      onCancel={onCancel}
+      isLoading={isLoading}
+      mode="edit"
+    />
+  );
 }
 
 export function DealsPage(): JSX.Element {
@@ -569,6 +588,9 @@ export function DealsPage(): JSX.Element {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [dealToDelete, setDealToDelete] = useState<Deal | null>(null);
 
+  // New deal creation flow state
+  const [dealSetupData, setDealSetupData] = useState<DealSetupData | null>(null);
+
   // Data fetching
   const statusParam = activeFilter === 'all' ? undefined : activeFilter;
   const searchParam = searchQuery || undefined;
@@ -577,10 +599,6 @@ export function DealsPage(): JSX.Element {
     isLoading,
     error,
   } = useDeals({ page, limit, status: statusParam, search: searchParam });
-
-  const { data: customersData } = useCustomers({ limit: 100 });
-  const { data: vehiclesData } = useVehicles({ limit: 100 });
-  const { data: usersData } = useUsers();
 
   // Mutations
   const createDeal = useCreateDeal();
@@ -591,55 +609,94 @@ export function DealsPage(): JSX.Element {
   const total = dealsData?.total ?? 0;
   const totalPages = Math.ceil(total / limit);
 
-  // Prepare options for the form
-  const customerOptions = (customersData?.customers ?? []).map((c) => ({
-    id: c.id,
-    name: getCustomerName(c),
-  }));
-  const vehicleOptions = (vehiclesData?.vehicles ?? []).map((v) => ({
-    id: v.id,
-    name: getVehicleName(v),
-  }));
-  const salespersonOptions = (usersData?.users ?? [])
-    .filter((u) => canBeSalesperson(u.role))
-    .map((u) => ({ id: u.id, name: `${u.first_name} ${u.last_name}`.trim() || u.email }));
-
-  // Modal handlers
-  const openCreateModal = () => {
+  // Modal handlers - new flow
+  const openNewDealFlow = () => {
+    setDealSetupData(null);
     setSelectedDeal(null);
-    setModalMode('create');
+    setModalMode('setup');
   };
+
+  const handleSetupComplete = (data: DealSetupData) => {
+    setDealSetupData(data);
+    setModalMode('worksheet');
+  };
+
+  const handleBackToSetup = () => {
+    setModalMode('setup');
+  };
+
   const openEditModal = (deal: Deal) => {
     setSelectedDeal(deal);
     setModalMode('edit');
     setOpenMenuId(null);
   };
+
   const openViewModal = (deal: Deal) => {
     setSelectedDeal(deal);
     setModalMode('view');
     setOpenMenuId(null);
   };
+
   const openDeleteDialog = (deal: Deal) => {
     setDealToDelete(deal);
     setDeleteConfirmOpen(true);
     setOpenMenuId(null);
   };
+
   const closeModal = () => {
     setModalMode(null);
     setSelectedDeal(null);
+    setDealSetupData(null);
   };
 
   // Form handlers
-  const handleSubmit = async (data: DealFormData) => {
-    const isEdit = modalMode === 'edit' && selectedDeal;
+  const handleCreateDeal = async (data: WorksheetFormData) => {
+    if (!dealSetupData) return;
+
     try {
-      if (isEdit) {
-        await updateDeal.mutateAsync({ id: selectedDeal.id, data });
-        toast.success('Deal updated', 'The deal has been updated successfully.');
-      } else {
-        await createDeal.mutateAsync(data);
-        toast.success('Deal created', 'The new deal has been created successfully.');
-      }
+      await createDeal.mutateAsync({
+        customerId: dealSetupData.customerId,
+        vehicleId: dealSetupData.vehicleId,
+        type: data.type,
+        status: data.status,
+        salePrice: data.salePrice,
+        tradeInValue: data.tradeAllowance,
+        tradeInVehicle: data.tradeVehicle,
+        downPayment: data.cashDown,
+        financingTerm: data.term,
+        interestRate: data.apr,
+        salespersonId: data.salespersonId,
+        notes: data.notes,
+      });
+      toast.success('Deal created', 'The new deal has been created successfully.');
+      closeModal();
+    } catch (err) {
+      toast.error('Error', getErrorMessage(err, 'An error occurred'));
+    }
+  };
+
+  const handleUpdateDeal = async (data: WorksheetFormData) => {
+    if (!selectedDeal) return;
+
+    try {
+      await updateDeal.mutateAsync({
+        id: selectedDeal.id,
+        data: {
+          customerId: selectedDeal.customer_id,
+          vehicleId: selectedDeal.vehicle_id,
+          type: data.type,
+          status: data.status,
+          salePrice: data.salePrice,
+          tradeInValue: data.tradeAllowance,
+          tradeInVehicle: data.tradeVehicle,
+          downPayment: data.cashDown,
+          financingTerm: data.term,
+          interestRate: data.apr,
+          salespersonId: data.salespersonId,
+          notes: data.notes,
+        },
+      });
+      toast.success('Deal updated', 'The deal has been updated successfully.');
       closeModal();
     } catch (err) {
       toast.error('Error', getErrorMessage(err, 'An error occurred'));
@@ -691,13 +748,39 @@ export function DealsPage(): JSX.Element {
 
   // Computed values
   const showTable = !isLoading && !error;
-  const isFormModalOpen = modalMode === 'create' || modalMode === 'edit';
+  const isSetupModalOpen = modalMode === 'setup';
+  const isWorksheetModalOpen = modalMode === 'worksheet';
+  const isEditModalOpen = modalMode === 'edit';
   const isViewModalOpen = modalMode === 'view';
-  const isCreateMode = modalMode === 'create';
-  const modalTitle = computeModalTitle(isCreateMode);
-  const modalDescription = computeModalDescription(isCreateMode);
-  const formInitialData = selectedDeal ? getInitialFormData(selectedDeal) : undefined;
-  const isFormLoading = createDeal.isPending || updateDeal.isPending;
+
+  // Modal titles
+  const getModalTitle = () => {
+    switch (modalMode) {
+      case 'setup':
+        return 'Start New Deal';
+      case 'worksheet':
+        return 'Deal Worksheet';
+      case 'edit':
+        return 'Edit Deal';
+      case 'view':
+        return 'Deal Details';
+      default:
+        return '';
+    }
+  };
+
+  const getModalDescription = () => {
+    switch (modalMode) {
+      case 'setup':
+        return 'Select a customer and vehicle to begin.';
+      case 'worksheet':
+        return 'Configure pricing, financing, and other deal details.';
+      case 'edit':
+        return 'Update the deal information.';
+      default:
+        return undefined;
+    }
+  };
 
   return (
     <MainLayout>
@@ -706,7 +789,7 @@ export function DealsPage(): JSX.Element {
         subtitle="Manage your sales deals and track progress through the pipeline."
         breadcrumbs={[{ label: 'Home', href: '/' }, { label: 'Deals' }]}
         actions={
-          <Button icon={<Plus className="h-4 w-4" />} onClick={openCreateModal}>
+          <Button icon={<Plus className="h-4 w-4" />} onClick={openNewDealFlow}>
             New Deal
           </Button>
         }
@@ -750,23 +833,54 @@ export function DealsPage(): JSX.Element {
         />
       </div>
 
-      {/* Create/Edit Modal */}
+      {/* New Deal - Step 1: Setup */}
       <Modal
-        isOpen={isFormModalOpen}
+        isOpen={isSetupModalOpen}
         onClose={closeModal}
-        title={modalTitle}
-        description={modalDescription}
-        size="xl"
+        title={getModalTitle()}
+        description={getModalDescription()}
+        size="full"
       >
-        <DealForm
-          initialData={formInitialData}
-          onSubmit={handleSubmit}
-          onCancel={closeModal}
-          isLoading={isFormLoading}
-          customers={customerOptions}
-          vehicles={vehicleOptions}
-          salespeople={salespersonOptions}
-        />
+        <DealSetup onContinue={handleSetupComplete} onCancel={closeModal} />
+      </Modal>
+
+      {/* New Deal - Step 2: Worksheet */}
+      <Modal
+        isOpen={isWorksheetModalOpen}
+        onClose={closeModal}
+        title={getModalTitle()}
+        description={getModalDescription()}
+        size="full"
+      >
+        {dealSetupData && (
+          <DealWorksheet
+            customer={dealSetupData.customer}
+            vehicle={dealSetupData.vehicle}
+            onSubmit={handleCreateDeal}
+            onBack={handleBackToSetup}
+            onCancel={closeModal}
+            isLoading={createDeal.isPending}
+            mode="create"
+          />
+        )}
+      </Modal>
+
+      {/* Edit Deal Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={closeModal}
+        title={getModalTitle()}
+        description={getModalDescription()}
+        size="full"
+      >
+        {selectedDeal && (
+          <EditWorksheetWrapper
+            deal={selectedDeal}
+            onSubmit={handleUpdateDeal}
+            onCancel={closeModal}
+            isLoading={updateDeal.isPending}
+          />
+        )}
       </Modal>
 
       {/* View Modal */}

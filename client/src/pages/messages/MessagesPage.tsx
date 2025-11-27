@@ -42,6 +42,7 @@ import {
   MessageInput,
   EmptyState,
 } from './components';
+import { NewConversationModal } from './NewConversationModal';
 
 // eslint-disable-next-line complexity
 export function MessagesPage(): JSX.Element {
@@ -54,6 +55,7 @@ export function MessagesPage(): JSX.Element {
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [screenshotProtectionEnabled, setScreenshotProtectionEnabled] = useState(true);
+  const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
 
   // Screenshot protection
   const isProtected = useScreenshotProtection(screenshotProtectionEnabled);
@@ -238,7 +240,11 @@ export function MessagesPage(): JSX.Element {
             </div>
 
             <div className="p-4 border-t border-border">
-              <Button variant="primary" className="w-full">
+              <Button
+                variant="primary"
+                className="w-full"
+                onClick={() => setIsNewConversationModalOpen(true)}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 New Conversation
               </Button>
@@ -349,6 +355,16 @@ export function MessagesPage(): JSX.Element {
           </div>
         </div>
       </div>
+
+      {/* New Conversation Modal */}
+      <NewConversationModal
+        isOpen={isNewConversationModalOpen}
+        onClose={() => setIsNewConversationModalOpen(false)}
+        currentUserId={userId}
+        onConversationCreated={(conversationId) => {
+          setSelectedConversationId(conversationId);
+        }}
+      />
     </MainLayout>
   );
 }
