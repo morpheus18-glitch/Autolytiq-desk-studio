@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, no-console */
 /**
  * WASM Tax Engine Wrapper
  *
@@ -5,15 +6,15 @@
  * Falls back to TypeScript implementation if WASM is not available.
  */
 
-import type {
-  TaxRulesConfig,
-  TaxCalculationInput,
-  TaxCalculationResult,
-} from './types.js';
+import type { TaxRulesConfig, TaxCalculationInput, TaxCalculationResult } from './types.js';
 import { calculateTax } from './engine/calculateTax.js';
 
+// Declare performance for non-browser environments
+declare const performance: { now: () => number };
+
 // WASM module will be imported dynamically when available
-let wasmModule: typeof import('./wasm/tax_engine_rs.js') | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let wasmModule: any = null;
 let wasmInitialized = false;
 
 /**
