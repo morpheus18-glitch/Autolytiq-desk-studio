@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/consistent-type-imports, no-console, no-undef */
 /**
  * WASM Tax Engine Wrapper
  *
@@ -5,11 +6,7 @@
  * Falls back to TypeScript implementation if WASM is not available.
  */
 
-import type {
-  TaxRulesConfig,
-  TaxCalculationInput,
-  TaxCalculationResult,
-} from './types.js';
+import type { TaxRulesConfig, TaxCalculationInput, TaxCalculationResult } from './types.js';
 import { calculateTax } from './engine/calculateTax.js';
 
 // WASM module will be imported dynamically when available
