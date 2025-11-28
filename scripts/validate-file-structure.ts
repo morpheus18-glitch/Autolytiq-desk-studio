@@ -241,6 +241,8 @@ const APPROVED_STRUCTURE: Record<string, DirectoryConfig> = {
       '.prettierrc.json',
       '.lintstagedrc.json',
       '.gitignore',
+      '.dockerignore',
+      'Dockerfile',
       'README.md',
       'CLAUDE.md',
       'ARCHITECTURE.md',
