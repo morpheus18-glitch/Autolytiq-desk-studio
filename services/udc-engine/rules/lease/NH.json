@@ -1,0 +1,43 @@
+{
+  "state_code": "NH",
+  "mode": "lease",
+  "tax_type": "none",
+  "rates": {
+    "state_rate": 0.0,
+    "local_behavior": "none",
+    "max_local_rate": 0.0,
+    "special_formula": null
+  },
+  "base_rules": {
+    "allow_trade_in_credit": false,
+    "trade_notes": "No sales tax - trade-in credit not applicable",
+    "rebate_reduces_base": false,
+    "manufacturer_rebate_taxable": false,
+    "dealer_discount_reduces_base": false,
+    "doc_fee_taxable": false,
+    "title_fee_taxable": false,
+    "registration_fee_taxable": false
+  },
+  "ancillaries": {
+    "vsc": { "in_vehicle_base": false, "tax_regime": "none" },
+    "gap": { "in_vehicle_base": false, "tax_regime": "insurance" },
+    "other_products_default": { "in_vehicle_base": false, "tax_regime": "none" }
+  },
+  "reciprocity": {
+    "enabled": false,
+    "mode": "none",
+    "notes": "No sales tax"
+  },
+  "lease_tax_mode": {
+    "type": "none",
+    "description": "No sales tax on leases",
+    "upfront_tax": false,
+    "notes": "New Hampshire has no sales tax - only registration fees apply"
+  },
+  "meta": {
+    "schema_version": "1.0",
+    "state_profile_version": "1.0",
+    "last_verified": "2025-11-27",
+    "status": "draft"
+  }
+}

@@ -224,16 +224,25 @@ func (s *Server) setupRoutes() {
 	// Serve static frontend files (MUST be last - catch-all for SPA)
 	staticDir := "./static"
 	if _, err := os.Stat(staticDir); err == nil {
-		// Serve static assets
-		s.router.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir(staticDir+"/assets"))))
+		// Serve static assets with long cache (files have content hashes)
+		assetsHandler := http.StripPrefix("/assets/", http.FileServer(http.Dir(staticDir+"/assets")))
+		s.router.PathPrefix("/assets/").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+			assetsHandler.ServeHTTP(w, r)
+		}))
 		s.router.HandleFunc("/favicon.svg", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Cache-Control", "public, max-age=86400")
 			http.ServeFile(w, r, staticDir+"/favicon.svg")
 		})
 		s.router.HandleFunc("/favicon.png", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Cache-Control", "public, max-age=86400")
 			http.ServeFile(w, r, staticDir+"/favicon.png")
 		})
-		// Serve index.html for all non-API routes (SPA catch-all)
+		// Serve index.html for all non-API routes (SPA catch-all) - NO cache
 		s.router.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+			w.Header().Set("Pragma", "no-cache")
+			w.Header().Set("Expires", "0")
 			http.ServeFile(w, r, staticDir+"/index.html")
 		})
 	}

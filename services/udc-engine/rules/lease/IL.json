@@ -1,0 +1,44 @@
+{
+  "state_code": "IL",
+  "mode": "lease",
+  "tax_type": "sales",
+  "rates": {
+    "state_rate": 0.0625,
+    "local_behavior": "additive",
+    "max_local_rate": 0.0475,
+    "special_formula": null
+  },
+  "base_rules": {
+    "allow_trade_in_credit": true,
+    "trade_notes": "Trade-in credit reduces capitalized cost",
+    "rebate_reduces_base": false,
+    "manufacturer_rebate_taxable": true,
+    "dealer_discount_reduces_base": true,
+    "doc_fee_taxable": true,
+    "title_fee_taxable": false,
+    "registration_fee_taxable": false
+  },
+  "ancillaries": {
+    "vsc": { "in_vehicle_base": false, "tax_regime": "general_sales" },
+    "gap": { "in_vehicle_base": false, "tax_regime": "insurance" },
+    "other_products_default": { "in_vehicle_base": false, "tax_regime": "general_sales" }
+  },
+  "reciprocity": {
+    "enabled": true,
+    "mode": "full_credit",
+    "notes": "Credit for sales tax paid in other states"
+  },
+  "lease_tax_mode": {
+    "type": "upfront_full",
+    "description": "Tax on selling price paid upfront at lease inception",
+    "upfront_tax": true,
+    "tax_base": "selling_price",
+    "notes": "Illinois requires upfront tax on full selling price for leases"
+  },
+  "meta": {
+    "schema_version": "1.0",
+    "state_profile_version": "1.0",
+    "last_verified": "2025-11-27",
+    "status": "draft"
+  }
+}

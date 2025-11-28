@@ -1,0 +1,74 @@
+[package]
+name = "udc-engine"
+version = "0.1.0"
+edition = "2021"
+authors = ["Autolytiq <engineering@autolytiq.com>"]
+description = "Unified Deal Cipher (UDC) Engine - Pure Rust calculation engine for automotive deal structuring"
+license = "Proprietary"
+repository = "https://github.com/autolytiq/desk-studio"
+keywords = ["automotive", "finance", "lease", "deal-structuring", "wasm"]
+categories = ["finance", "wasm"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = ["std"]
+std = []
+wasm = ["wasm-bindgen", "console_error_panic_hook", "wee_alloc"]
+audit_trace = []
+strict_validation = []
+
+[dependencies]
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Precise decimal arithmetic (no floating point for money)
+rust_decimal = { version = "1.33", features = ["serde", "serde-with-str"] }
+rust_decimal_macros = "1.33"
+
+# Date/time handling
+chrono = { version = "0.4", features = ["serde", "clock"], default-features = false }
+
+# Error handling
+thiserror = "1.0"
+
+# Enum utilities
+strum = { version = "0.26", features = ["derive"] }
+
+# UUID for identifiers
+uuid = { version = "1.6", features = ["v4", "serde", "js"] }
+
+# WASM support (optional)
+wasm-bindgen = { version = "0.2", optional = true }
+console_error_panic_hook = { version = "0.1", optional = true }
+wee_alloc = { version = "0.4", optional = true }
+
+# Logging
+log = "0.4"
+
+[dev-dependencies]
+# Testing
+pretty_assertions = "1.4"
+proptest = "1.4"
+test-case = "3.3"
+criterion = "0.5"
+
+# Uncomment when benchmarks are added:
+# [[bench]]
+# name = "udc_benchmarks"
+# harness = false
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.2", features = ["js"] }
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[profile.release-wasm]
+inherits = "release"
+opt-level = "z"

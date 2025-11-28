@@ -5,7 +5,7 @@
  * All API calls should go through this client.
  */
 
-const API_BASE_URL = '/api';
+const API_BASE_URL = '/api/v1';
 
 /**
  * Standard API error response

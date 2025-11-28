@@ -1,0 +1,52 @@
+{
+  "state_code": "CA",
+  "mode": "lease",
+  "tax_type": "sales",
+  "rates": {
+    "state_rate": 0.0725,
+    "local_behavior": "district_based",
+    "max_local_rate": 0.0325,
+    "special_formula": "base_rate + district_taxes"
+  },
+  "base_rules": {
+    "allow_trade_in_credit": true,
+    "trade_notes": "Trade-in credit for same-type vehicle reduces cap cost",
+    "rebate_reduces_base": false,
+    "manufacturer_rebate_taxable": true,
+    "dealer_discount_reduces_base": true,
+    "doc_fee_taxable": true,
+    "title_fee_taxable": false,
+    "registration_fee_taxable": false
+  },
+  "ancillaries": {
+    "vsc": { "in_vehicle_base": false, "tax_regime": "general_sales" },
+    "gap": { "in_vehicle_base": false, "tax_regime": "insurance" },
+    "other_products_default": { "in_vehicle_base": false, "tax_regime": "general_sales" }
+  },
+  "reciprocity": {
+    "enabled": true,
+    "mode": "full_credit",
+    "notes": "Credit for sales/use tax paid to another state"
+  },
+  "lease_tax_mode": {
+    "type": "upfront_full",
+    "description": "Tax on full capitalized cost paid upfront at lease signing",
+    "upfront_tax": true,
+    "tax_base": "gross_cap_cost",
+    "notes": "California requires upfront tax on total lease value"
+  },
+  "additional_fees": {
+    "vlf": {
+      "description": "Vehicle License Fee",
+      "rate": 0.0065,
+      "base": "market_value",
+      "notes": "Assessed annually during lease term"
+    }
+  },
+  "meta": {
+    "schema_version": "1.0",
+    "state_profile_version": "1.0",
+    "last_verified": "2025-11-27",
+    "status": "draft"
+  }
+}

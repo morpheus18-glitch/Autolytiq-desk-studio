@@ -38,7 +38,7 @@
     "test:e2e:ui": "playwright test --ui",
     "validate:types": "tsc --noEmit",
     "validate:lint": "eslint . --ext .ts,.tsx",
-    "validate:structure": "node scripts/validate-file-structure.js",
+    "validate:structure": "tsx scripts/validate-file-structure.ts",
     "validate:openapi": "swagger-cli validate shared/contracts/*.yaml || echo 'No OpenAPI specs yet'",
     "validate:all": "npm run validate:structure && npm run validate:types && npm run validate:lint && npm test",
     "typecheck": "tsc --noEmit && cd client && npx tsc --noEmit",

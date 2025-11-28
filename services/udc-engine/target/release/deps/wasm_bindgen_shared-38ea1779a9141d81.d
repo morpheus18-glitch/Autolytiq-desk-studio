@@ -1,0 +1,12 @@
+/root/autolytiq-desk-studio/services/udc-engine/target/release/deps/wasm_bindgen_shared-38ea1779a9141d81.d: /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasm-bindgen-shared-0.2.105/src/lib.rs /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasm-bindgen-shared-0.2.105/src/identifier.rs /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasm-bindgen-shared-0.2.105/src/tys.rs
+
+/root/autolytiq-desk-studio/services/udc-engine/target/release/deps/libwasm_bindgen_shared-38ea1779a9141d81.rlib: /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasm-bindgen-shared-0.2.105/src/lib.rs /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasm-bindgen-shared-0.2.105/src/identifier.rs /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasm-bindgen-shared-0.2.105/src/tys.rs
+
+/root/autolytiq-desk-studio/services/udc-engine/target/release/deps/libwasm_bindgen_shared-38ea1779a9141d81.rmeta: /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasm-bindgen-shared-0.2.105/src/lib.rs /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasm-bindgen-shared-0.2.105/src/identifier.rs /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasm-bindgen-shared-0.2.105/src/tys.rs
+
+/root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasm-bindgen-shared-0.2.105/src/lib.rs:
+/root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasm-bindgen-shared-0.2.105/src/identifier.rs:
+/root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasm-bindgen-shared-0.2.105/src/tys.rs:
+
+# env-dep:CARGO_PKG_VERSION=0.2.105
+# env-dep:WBG_VERSION

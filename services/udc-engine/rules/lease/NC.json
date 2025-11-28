@@ -1,0 +1,50 @@
+{
+  "state_code": "NC",
+  "mode": "lease",
+  "tax_type": "highway_use_tax",
+  "rates": {
+    "state_rate": 0.0,
+    "local_behavior": "none",
+    "max_local_rate": 0.0,
+    "special_formula": "highway_use_tax"
+  },
+  "base_rules": {
+    "allow_trade_in_credit": false,
+    "trade_notes": "No trade-in credit for Highway Use Tax",
+    "rebate_reduces_base": true,
+    "manufacturer_rebate_taxable": false,
+    "dealer_discount_reduces_base": true,
+    "doc_fee_taxable": false,
+    "title_fee_taxable": false,
+    "registration_fee_taxable": false
+  },
+  "ancillaries": {
+    "vsc": { "in_vehicle_base": false, "tax_regime": "none" },
+    "gap": { "in_vehicle_base": false, "tax_regime": "insurance" },
+    "other_products_default": { "in_vehicle_base": false, "tax_regime": "none" }
+  },
+  "reciprocity": {
+    "enabled": false,
+    "mode": "none",
+    "notes": "HUT is separate from sales tax"
+  },
+  "lease_tax_mode": {
+    "type": "hut_upfront",
+    "description": "Highway Use Tax paid upfront on vehicle value",
+    "upfront_tax": true,
+    "tax_base": "vehicle_value"
+  },
+  "highway_use_tax": {
+    "description": "Highway Use Tax for leased vehicles",
+    "rate": 0.03,
+    "cap": 250.0,
+    "base": "vehicle_value",
+    "notes": "3% HUT capped at $250 - paid at lease inception"
+  },
+  "meta": {
+    "schema_version": "1.0",
+    "state_profile_version": "1.0",
+    "last_verified": "2025-11-27",
+    "status": "draft"
+  }
+}

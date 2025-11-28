@@ -8,7 +8,9 @@
  * This script is idempotent - safe to run multiple times.
  */
 
-import { Pool, type PoolClient } from 'pg';
+import pg from 'pg';
+const { Pool } = pg;
+type PoolClient = pg.PoolClient;
 import * as bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 

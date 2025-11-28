@@ -1,0 +1,50 @@
+{
+  "state_code": "CA",
+  "mode": "finance",
+  "tax_type": "sales",
+  "rates": {
+    "state_rate": 0.0725,
+    "local_behavior": "district_based",
+    "max_local_rate": 0.0325,
+    "special_formula": "base_rate + district_taxes"
+  },
+  "base_rules": {
+    "allow_trade_in_credit": true,
+    "trade_notes": "Trade-in credit only for same-type vehicle (vehicle for vehicle)",
+    "rebate_reduces_base": false,
+    "manufacturer_rebate_taxable": true,
+    "dealer_discount_reduces_base": true,
+    "doc_fee_taxable": true,
+    "title_fee_taxable": false,
+    "registration_fee_taxable": false
+  },
+  "ancillaries": {
+    "vsc": { "in_vehicle_base": false, "tax_regime": "general_sales" },
+    "gap": { "in_vehicle_base": false, "tax_regime": "insurance" },
+    "other_products_default": { "in_vehicle_base": false, "tax_regime": "general_sales" }
+  },
+  "reciprocity": {
+    "enabled": true,
+    "mode": "full_credit",
+    "notes": "Credit for sales/use tax paid to another state"
+  },
+  "lease_tax_mode": null,
+  "additional_fees": {
+    "vlf": {
+      "description": "Vehicle License Fee",
+      "rate": 0.0065,
+      "base": "market_value",
+      "notes": "Separate from sales tax - assessed annually"
+    },
+    "tire_fee": {
+      "description": "California Tire Fee",
+      "amount_per_tire": 1.75
+    }
+  },
+  "meta": {
+    "schema_version": "1.0",
+    "state_profile_version": "1.0",
+    "last_verified": "2025-11-27",
+    "status": "draft"
+  }
+}

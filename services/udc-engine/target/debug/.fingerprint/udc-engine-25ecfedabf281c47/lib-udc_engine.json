@@ -1,0 +1,30 @@
+{
+  "rustc": 4826714390000139368,
+  "features": "[\"default\", \"std\"]",
+  "declared_features": "[\"audit_trace\", \"console_error_panic_hook\", \"default\", \"std\", \"strict_validation\", \"wasm\", \"wasm-bindgen\", \"wee_alloc\"]",
+  "target": 18308007081532481817,
+  "profile": 17672942494452627365,
+  "path": 10763286916239946207,
+  "deps": [
+    [503842845364652431, "chrono", false, 11350152929673169673],
+    [3302295501534065768, "strum", false, 14886696618690898193],
+    [4953148488018033546, "rust_decimal_macros", false, 3352575224965022419],
+    [8008191657135824715, "thiserror", false, 15511896792271032310],
+    [12832915883349295919, "serde_json", false, 12673124334842937173],
+    [12993239694182086161, "rust_decimal", false, 16840798826627728184],
+    [13066042571740262168, "log", false, 9493012802307336544],
+    [13548984313718623784, "serde", false, 8778416288475672916],
+    [15267671913832104935, "uuid", false, 9683136027029567789]
+  ],
+  "local": [
+    {
+      "CheckDepInfo": {
+        "dep_info": "debug/.fingerprint/udc-engine-25ecfedabf281c47/dep-lib-udc_engine",
+        "checksum": false
+      }
+    }
+  ],
+  "rustflags": [],
+  "config": 2069994364910194474,
+  "compile_kind": 0
+}

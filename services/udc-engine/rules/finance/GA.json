@@ -1,0 +1,46 @@
+{
+  "state_code": "GA",
+  "mode": "finance",
+  "tax_type": "tavt",
+  "rates": {
+    "state_rate": 0.0,
+    "local_behavior": "none",
+    "max_local_rate": 0.0,
+    "special_formula": "tavt_calculation"
+  },
+  "base_rules": {
+    "allow_trade_in_credit": true,
+    "trade_notes": "Trade-in credit applies to TAVT base - reduces fair market value",
+    "rebate_reduces_base": true,
+    "manufacturer_rebate_taxable": false,
+    "dealer_discount_reduces_base": true,
+    "doc_fee_taxable": false,
+    "title_fee_taxable": false,
+    "registration_fee_taxable": false
+  },
+  "ancillaries": {
+    "vsc": { "in_vehicle_base": false, "tax_regime": "none" },
+    "gap": { "in_vehicle_base": false, "tax_regime": "insurance" },
+    "other_products_default": { "in_vehicle_base": false, "tax_regime": "none" }
+  },
+  "reciprocity": {
+    "enabled": false,
+    "mode": "none",
+    "notes": "TAVT replaces sales tax - no reciprocity credits apply"
+  },
+  "lease_tax_mode": null,
+  "tavt": {
+    "description": "Title Ad Valorem Tax - one-time tax replacing sales tax and annual property tax",
+    "new_resident_rate": 0.07,
+    "existing_resident_rate": 0.03,
+    "base": "fair_market_value_minus_trade",
+    "notes": "7% for new GA residents or first-time vehicle registration; 3% for existing residents transferring title from another GA vehicle",
+    "annual_property_tax_exempt": true
+  },
+  "meta": {
+    "schema_version": "1.0",
+    "state_profile_version": "1.0",
+    "last_verified": "2025-11-27",
+    "status": "draft"
+  }
+}

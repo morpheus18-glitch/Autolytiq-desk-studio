@@ -1,0 +1,44 @@
+{
+  "state_code": "HI",
+  "mode": "finance",
+  "tax_type": "get",
+  "rates": {
+    "state_rate": 0.04,
+    "local_behavior": "county_surcharge",
+    "max_local_rate": 0.005,
+    "special_formula": "get_calculation"
+  },
+  "base_rules": {
+    "allow_trade_in_credit": false,
+    "trade_notes": "No trade-in credit - GET applies to gross receipts",
+    "rebate_reduces_base": false,
+    "manufacturer_rebate_taxable": true,
+    "dealer_discount_reduces_base": true,
+    "doc_fee_taxable": true,
+    "title_fee_taxable": false,
+    "registration_fee_taxable": false
+  },
+  "ancillaries": {
+    "vsc": { "in_vehicle_base": false, "tax_regime": "get" },
+    "gap": { "in_vehicle_base": false, "tax_regime": "insurance" },
+    "other_products_default": { "in_vehicle_base": false, "tax_regime": "get" }
+  },
+  "reciprocity": {
+    "enabled": true,
+    "mode": "partial_credit",
+    "notes": "Credit for equivalent taxes paid - complex calculation"
+  },
+  "lease_tax_mode": null,
+  "get": {
+    "description": "General Excise Tax - applies to gross receipts",
+    "base_rate": 0.04,
+    "oahu_surcharge": 0.005,
+    "notes": "GET is a gross receipts tax that dealers typically pass to buyers"
+  },
+  "meta": {
+    "schema_version": "1.0",
+    "state_profile_version": "1.0",
+    "last_verified": "2025-11-27",
+    "status": "needs_verification"
+  }
+}

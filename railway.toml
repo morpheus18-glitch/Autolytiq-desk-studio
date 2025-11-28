@@ -1,0 +1,9 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "services/api-gateway/Dockerfile"
+
+[deploy]
+startCommand = "./api-gateway"
+healthcheckPath = "/health"
+healthcheckTimeout = 100
+restartPolicyType = "on_failure"

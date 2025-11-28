@@ -1,0 +1,20 @@
+{
+  "rustc": 4826714390000139368,
+  "features": "[\"default\", \"derive\", \"std\", \"strum_macros\"]",
+  "declared_features": "[\"default\", \"derive\", \"phf\", \"std\", \"strum_macros\"]",
+  "target": 15186898899594918116,
+  "profile": 7962184651741261273,
+  "path": 7221207662970353814,
+  "deps": [[519668612969056153, "strum_macros", false, 18323135415451142641]],
+  "local": [
+    {
+      "CheckDepInfo": {
+        "dep_info": "wasm32-unknown-unknown/release/.fingerprint/strum-acb0900282b4d42f/dep-lib-strum",
+        "checksum": false
+      }
+    }
+  ],
+  "rustflags": [],
+  "config": 2069994364910194474,
+  "compile_kind": 14682669768258224367
+}
