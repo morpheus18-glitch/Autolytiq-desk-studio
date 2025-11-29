@@ -4,9 +4,9 @@
  * Imports design system globals and adds any app-specific styles.
  */
 
-@import '../node_modules/tailwindcss/base.css';
-@import '../node_modules/tailwindcss/components.css';
-@import '../node_modules/tailwindcss/utilities.css';
+@import base;
+@import components;
+@import utilities;
 
 @layer base {
   /* Base font smoothing */
