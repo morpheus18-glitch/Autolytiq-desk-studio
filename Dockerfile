@@ -8,10 +8,10 @@ WORKDIR /app
 COPY package*.json ./
 COPY client/package*.json ./client/
 
-# Install dependencies
-RUN npm install
+# Install dependencies (including devDependencies for build)
+RUN npm ci --include=dev || npm install
 
-# Copy frontend source
+# Copy frontend source and shared code
 COPY client ./client
 COPY shared ./shared
 COPY tsconfig.json ./
@@ -19,9 +19,10 @@ COPY vite.config.ts ./
 COPY tailwind.config.ts* ./
 COPY tailwind.config.js* ./
 COPY postcss.config.js* ./
+COPY postcss.config.cjs* ./
 
-# Build frontend
-RUN npm run build
+# Build frontend (using vite build directly)
+RUN npx vite build
 
 # Stage 2: Build Go API Gateway
 FROM golang:1.21-alpine AS go-builder
