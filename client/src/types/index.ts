@@ -6,6 +6,7 @@ export * from './auth';
 export * from './showroom';
 export * from './messaging';
 export * from './settings';
+export * from './plugins';
 
 /**
  * Pagination
