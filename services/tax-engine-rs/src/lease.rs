@@ -422,7 +422,7 @@ pub struct LeaseVsBuyComparison {
 /// Compare leasing vs buying
 pub fn compare_lease_vs_buy(
     msrp: f64,
-    selling_price: f64,
+    _selling_price: f64,
     lease_payment: f64,
     lease_term: u16,
     residual_value: f64,

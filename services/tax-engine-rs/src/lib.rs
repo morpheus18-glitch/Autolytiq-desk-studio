@@ -1,28 +1,68 @@
-//! Autolytiq Deal Calculator Engine - Rust WASM Implementation
+//! Autolytiq Tax Intelligence Engine (ATIE) - Rust WASM Implementation
 //!
 //! High-performance automotive deal calculation engine compiled to WebAssembly.
 //! Provides comprehensive calculations for:
 //! - Cash deals
 //! - Finance deals (retail installment)
 //! - Lease deals
-//! - Tax calculations (all 50 states)
+//! - Tax calculations (all 50 states + 10,000+ local jurisdictions)
+//! - Cross-state reciprocity with 51×51 bilateral matrix
+//!
+//! # Architecture
+//!
+//! The engine uses a 3-stage DAG (Directed Acyclic Graph) pipeline:
+//!
+//! ```text
+//! Stage 1: BASE_COMPUTE   → Stage 2: RECIP_RESOLVE → Stage 3: PAYMENT_CALC
+//! (B_T, B_H, tax_raw)        (R(H,T,G), κ, credit)    (PMT, totals)
+//! ```
+//!
+//! # Key Components
+//!
+//! - **Bilateral Matrix**: O(1) reciprocity lookup with entangled state pairs
+//! - **Glyph System**: Compact symbolic encoding of tax rules
+//! - **Chunk Composition**: Atomic, versioned rule components
+//! - **Swarm Resolver**: Parallel multi-jurisdiction tax resolution
 //!
 //! Designed to match/exceed Reynolds, CDK, VinSolutions functionality.
 
-// Core modules
-mod calculator;
-mod state_rules;
-mod types;
+// Core modules - made public for native Rust usage
+pub mod calculator;
+pub mod state_rules;
+pub mod types;
 
-// Deal calculation modules
-mod deal_calculator;
-mod deal_types;
-mod finance;
-mod lease;
+// Deal calculation modules - made public for native Rust usage
+pub mod deal_calculator;
+pub mod deal_types;
+pub mod finance;
+pub mod lease;
+
+// ============================================================================
+// TAX INTELLIGENCE ENGINE MODULES (ATIE)
+// ============================================================================
+
+/// Bilateral reciprocity matrix with entangled state pairs
+pub mod bilateral;
+
+/// Glyph encoding/decoding system for compact rule representation
+pub mod glyphs;
+
+/// DAG computation pipeline for deterministic 3-stage calculation
+pub mod dag;
+
+/// Chunk composition system for atomic, versioned rule components
+pub mod chunks;
+
+/// Swarm jurisdiction resolver for parallel multi-jurisdiction processing
+pub mod swarm;
 
 use wasm_bindgen::prelude::*;
 pub use types::*;
 pub use deal_types::*;
+
+// Re-export key functions for ergonomic native Rust usage
+pub use deal_calculator::calculate_deal as calculate_deal_native;
+pub use state_rules::load_all_state_rules;
 
 /// Initialize the WASM module
 #[wasm_bindgen(start)]
@@ -191,6 +231,192 @@ pub fn get_state_tax_rate(state_code: &str) -> f64 {
         "DC" => 0.06,
         _ => 0.07, // Default
     }
+}
+
+// ============================================================================
+// WASM Exported Functions - Tax Intelligence Engine (ATIE)
+// ============================================================================
+
+/// Execute the DAG pipeline for a deal with reciprocity
+///
+/// This is the main entry point for the new Tax Intelligence Engine.
+/// Uses the 3-stage DAG pipeline: BASE_COMPUTE → RECIP_RESOLVE → PAYMENT_CALC
+///
+/// # Input JSON Format
+/// ```json
+/// {
+///   "vehicle_price": 30000.0,
+///   "trade_value": 5000.0,
+///   "trade_payoff": 3000.0,
+///   "rebates": 1500.0,
+///   "doc_fee": 299.0,
+///   "other_fees": 150.0,
+///   "down_payment": 2000.0,
+///   "apr": 5.9,
+///   "term_months": 60,
+///   "transaction_state": "TX",
+///   "home_state": "IN",
+///   "deal_type": "RETAIL"
+/// }
+/// ```
+#[wasm_bindgen]
+pub fn calculate_deal_with_reciprocity(input_json: &str) -> Result<String, JsValue> {
+    let input: dag::DagInput = serde_json::from_str(input_json)
+        .map_err(|e| JsValue::from_str(&format!("Failed to parse DAG input: {}", e)))?;
+
+    let tax_dag = dag::TaxDag::new();
+    let result = tax_dag.execute(&input)
+        .map_err(|e| JsValue::from_str(&e))?;
+
+    serde_json::to_string(&result)
+        .map_err(|e| JsValue::from_str(&format!("Failed to serialize result: {}", e)))
+}
+
+/// Resolve reciprocity between two states
+///
+/// Returns the reciprocity regime and kappa factor for a state pair.
+///
+/// # Arguments
+/// * `home_state` - Where vehicle will be registered (H)
+/// * `transaction_state` - Where deal closes (T)
+/// * `garaging_state` - Where vehicle will be kept (G, optional - defaults to home)
+/// * `deal_type` - "RETAIL" or "LEASE"
+#[wasm_bindgen]
+pub fn resolve_state_reciprocity(
+    home_state: &str,
+    transaction_state: &str,
+    garaging_state: &str,
+    deal_type: &str,
+) -> Result<String, JsValue> {
+    let matrix = bilateral::BilateralMatrix::load_default();
+
+    let dt = match deal_type.to_uppercase().as_str() {
+        "LEASE" => bilateral::DealTypeRecip::Lease,
+        _ => bilateral::DealTypeRecip::Retail,
+    };
+
+    let garaging = if garaging_state.is_empty() { home_state } else { garaging_state };
+
+    let (regime, kappa) = bilateral::resolve_reciprocity(
+        &matrix,
+        home_state,
+        transaction_state,
+        garaging,
+        dt,
+    );
+
+    let result = serde_json::json!({
+        "regime": regime,
+        "kappa": kappa,
+        "home_state": home_state.to_uppercase(),
+        "transaction_state": transaction_state.to_uppercase(),
+        "garaging_state": garaging.to_uppercase(),
+        "deal_type": deal_type.to_uppercase(),
+    });
+
+    serde_json::to_string(&result)
+        .map_err(|e| JsValue::from_str(&format!("Failed to serialize: {}", e)))
+}
+
+/// Get entangled pair for two states (both directions)
+///
+/// Returns reciprocity info for both A→B and B→A directions.
+#[wasm_bindgen]
+pub fn get_entangled_pair(state_a: &str, state_b: &str) -> Result<String, JsValue> {
+    let matrix = bilateral::BilateralMatrix::load_default();
+    let pair = matrix.lookup_entangled(state_a, state_b);
+
+    serde_json::to_string(&pair)
+        .map_err(|e| JsValue::from_str(&format!("Failed to serialize: {}", e)))
+}
+
+/// Resolve jurisdictions for a location and calculate tax
+///
+/// Uses the swarm resolver for parallel multi-jurisdiction processing.
+///
+/// # Input JSON Format
+/// ```json
+/// {
+///   "state_code": "TX",
+///   "taxable_amount": 30000.0,
+///   "jurisdiction_codes": ["TX_DALLAS"],
+///   "address": {
+///     "city": "Dallas",
+///     "state": "TX",
+///     "zip": "75201"
+///   }
+/// }
+/// ```
+#[wasm_bindgen]
+pub fn resolve_jurisdictions(input_json: &str) -> Result<String, JsValue> {
+    let input: swarm::SwarmInput = serde_json::from_str(input_json)
+        .map_err(|e| JsValue::from_str(&format!("Failed to parse swarm input: {}", e)))?;
+
+    let coordinator = swarm::SwarmCoordinator::new();
+    let result = coordinator.resolve(&input);
+
+    serde_json::to_string(&result)
+        .map_err(|e| JsValue::from_str(&format!("Failed to serialize: {}", e)))
+}
+
+/// Get state glyph representation
+///
+/// Returns the compact glyph encoding for a state's tax rules.
+///
+/// Example output: "IN_v3 = ◆●○○▼★"
+#[wasm_bindgen]
+pub fn get_state_glyph(state_code: &str) -> Result<String, JsValue> {
+    let registry = glyphs::GlyphRegistry::load_default();
+
+    match registry.get_state(state_code) {
+        Some(glyph) => Ok(glyph.to_symbol_string()),
+        None => Err(JsValue::from_str(&format!("No glyph found for state: {}", state_code)))
+    }
+}
+
+/// Get all state glyphs as a formatted string
+#[wasm_bindgen]
+pub fn get_all_state_glyphs() -> String {
+    let registry = glyphs::GlyphRegistry::load_default();
+    registry.to_glyph_file()
+}
+
+/// Get composed state rule from chunks
+///
+/// Returns the full state rule composed from atomic chunks.
+#[wasm_bindgen]
+pub fn get_composed_state_rule(state_code: &str) -> Result<String, JsValue> {
+    let registry = chunks::ChunkRegistry::load_default();
+
+    match registry.get_state(state_code) {
+        Some(rule) => serde_json::to_string(rule)
+            .map_err(|e| JsValue::from_str(&format!("Failed to serialize: {}", e))),
+        None => Err(JsValue::from_str(&format!("No rule found for state: {}", state_code)))
+    }
+}
+
+/// Get bilateral matrix statistics
+#[wasm_bindgen]
+pub fn get_bilateral_matrix_stats() -> String {
+    let matrix = bilateral::BilateralMatrix::load_default();
+    let stats = matrix.stats();
+
+    serde_json::to_string(&stats).unwrap_or_else(|_| "{}".to_string())
+}
+
+/// Get DAG statistics
+#[wasm_bindgen]
+pub fn get_dag_stats() -> String {
+    let dag = dag::TaxDag::new();
+    let stats = dag.stats();
+
+    serde_json::to_string(&stats).unwrap_or_else(|_| "{}".to_string())
+}
+
+/// Get Tax Intelligence Engine version
+#[wasm_bindgen]
+pub fn get_atie_version() -> String {
+    "1.0.0-alpha".to_string()
 }
 
 // ============================================================================

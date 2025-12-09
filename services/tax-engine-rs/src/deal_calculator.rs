@@ -9,7 +9,6 @@
 use crate::deal_types::*;
 use crate::finance;
 use crate::lease::{self, LeaseTaxMethod};
-use crate::calculator;
 use crate::types::*;
 
 // ============================================================================
@@ -344,7 +343,7 @@ fn calculate_lease_deal(
     price.capitalized_fees = cap_fees;
 
     // Profit analysis
-    let mut profit = calculate_profit_analysis(input, &price);
+    let profit = calculate_profit_analysis(input, &price);
     // Add lease-specific profit calculations here
 
     let totals = DealTotals {
