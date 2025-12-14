@@ -27,6 +27,7 @@ type Config struct {
 	MessagingServiceURL     string
 	SettingsServiceURL      string
 	DataRetentionServiceURL string
+	TaxServiceURL           string
 	AllowedOrigins          string
 	JWTSecret               string
 	JWTIssuer               string
@@ -221,6 +222,13 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/audit/logs", s.proxyToDataRetentionService).Methods("GET")
 	api.HandleFunc("/audit/logs/{id}", s.proxyToDataRetentionService).Methods("GET")
 
+	// Tax Service routes
+	api.HandleFunc("/tax/calculate", s.proxyToTaxService).Methods("POST")
+	api.HandleFunc("/tax/jurisdiction", s.proxyToTaxService).Methods("POST")
+	api.HandleFunc("/tax/states", s.proxyToTaxService).Methods("GET")
+	api.HandleFunc("/tax/states/{code}", s.proxyToTaxService).Methods("GET")
+	api.HandleFunc("/tax/reciprocity/{home}/{transaction}", s.proxyToTaxService).Methods("GET")
+
 	// Serve static frontend files (MUST be last - catch-all for SPA)
 	staticDir := "./static"
 	if _, err := os.Stat(staticDir); err == nil {
@@ -352,6 +360,11 @@ func (s *Server) proxyToDataRetentionService(w http.ResponseWriter, r *http.Requ
 	s.proxyRequest(w, r, s.config.DataRetentionServiceURL, prefix)
 }
 
+// proxyToTaxService proxies requests to tax-service
+func (s *Server) proxyToTaxService(w http.ResponseWriter, r *http.Request) {
+	s.proxyRequest(w, r, s.config.TaxServiceURL, "/tax")
+}
+
 // corsMiddleware adds CORS headers
 func corsMiddleware(allowedOrigins string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -411,8 +424,9 @@ func loadConfig(logger *logging.Logger) *Config {
 		ConfigServiceURL:        getEnv("CONFIG_SERVICE_URL", "http://localhost:8086"),
 		ShowroomServiceURL:      getEnv("SHOWROOM_SERVICE_URL", "http://localhost:8088"),
 		MessagingServiceURL:     getEnv("MESSAGING_SERVICE_URL", "http://localhost:8089"),
-		SettingsServiceURL:      getEnv("SETTINGS_SERVICE_URL", "http://localhost:8090"),
-		DataRetentionServiceURL: getEnv("DATA_RETENTION_SERVICE_URL", "http://localhost:8091"),
+		SettingsServiceURL:      getEnv("SETTINGS_SERVICE_URL", "http://localhost:8091"),
+		DataRetentionServiceURL: getEnv("DATA_RETENTION_SERVICE_URL", "http://localhost:8092"),
+		TaxServiceURL:           getEnv("TAX_SERVICE_URL", "http://localhost:8090"),
 		AllowedOrigins:          getEnv("ALLOWED_ORIGINS", "http://localhost:5173"),
 		JWTSecret:               jwtSecret,
 		JWTIssuer:               getEnv("JWT_ISSUER", "autolytiq"),

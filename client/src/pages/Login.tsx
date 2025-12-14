@@ -1,17 +1,17 @@
 /**
- * Login Page
+ * Login Page - Obsidian Velocity Design
  *
- * Authentication page for user sign-in.
+ * Premium authentication page with sophisticated form styling
+ * and smooth micro-interactions.
  */
 
 import { useState, type JSX } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2, ArrowRight, Sparkles } from 'lucide-react';
 import { AuthLayout } from '@/layouts';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@design-system';
 import { ApiRequestError } from '@/lib/api';
 
 /**
@@ -57,17 +57,23 @@ export function LoginPage(): JSX.Element {
 
   return (
     <AuthLayout title="Welcome back" subtitle="Sign in to your account to continue">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         {/* Error message */}
         {error && (
-          <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-            {error}
+          <div className="animate-velocity-up rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-destructive" />
+              {error}
+            </div>
           </div>
         )}
 
         {/* Email field */}
-        <div className="space-y-2">
-          <label htmlFor="email" className="text-sm font-medium text-foreground">
+        <div
+          className="space-y-2 opacity-0 animate-velocity-up"
+          style={{ animationDelay: '250ms' }}
+        >
+          <label htmlFor="email" className="block text-sm font-medium text-foreground">
             Email address
           </label>
           <input
@@ -75,19 +81,27 @@ export function LoginPage(): JSX.Element {
             id="email"
             type="email"
             autoComplete="email"
-            placeholder="you@example.com"
-            className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            placeholder="you@company.com"
+            className="input-obsidian"
           />
-          {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+          {errors.email && (
+            <p className="flex items-center gap-1.5 text-xs text-destructive">
+              <span className="h-1 w-1 rounded-full bg-destructive" />
+              {errors.email.message}
+            </p>
+          )}
         </div>
 
         {/* Password field */}
-        <div className="space-y-2">
+        <div
+          className="space-y-2 opacity-0 animate-velocity-up"
+          style={{ animationDelay: '300ms' }}
+        >
           <div className="flex items-center justify-between">
-            <label htmlFor="password" className="text-sm font-medium text-foreground">
+            <label htmlFor="password" className="block text-sm font-medium text-foreground">
               Password
             </label>
-            <a href="#" className="text-xs text-primary hover:underline">
+            <a href="#" className="link-obsidian text-xs font-medium">
               Forgot password?
             </a>
           </div>
@@ -98,51 +112,92 @@ export function LoginPage(): JSX.Element {
               type={showPassword ? 'text' : 'password'}
               autoComplete="current-password"
               placeholder="Enter your password"
-              className="w-full rounded-lg border border-input bg-background px-3 py-2.5 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="input-obsidian pr-12"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
             >
-              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
           </div>
-          {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+          {errors.password && (
+            <p className="flex items-center gap-1.5 text-xs text-destructive">
+              <span className="h-1 w-1 rounded-full bg-destructive" />
+              {errors.password.message}
+            </p>
+          )}
         </div>
 
         {/* Remember me */}
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="remember"
-            className="h-4 w-4 rounded border-input text-primary focus:ring-primary/20"
-          />
+        <div
+          className="flex items-center gap-3 opacity-0 animate-velocity-up"
+          style={{ animationDelay: '350ms' }}
+        >
+          <input type="checkbox" id="remember" className="checkbox-obsidian" />
           <label htmlFor="remember" className="text-sm text-muted-foreground">
             Remember me for 30 days
           </label>
         </div>
 
         {/* Submit button */}
-        <Button type="submit" fullWidth loading={isSubmitting} disabled={isSubmitting}>
-          {isSubmitting ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Signing in...
-            </>
-          ) : (
-            'Sign in'
-          )}
-        </Button>
+        <div className="opacity-0 animate-velocity-up" style={{ animationDelay: '400ms' }}>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="btn-obsidian-primary w-full flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span>Signing in...</span>
+              </>
+            ) : (
+              <>
+                <span>Sign in</span>
+                <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Divider */}
+        <div className="relative opacity-0 animate-velocity-up" style={{ animationDelay: '450ms' }}>
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-border" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-card px-3 text-muted-foreground">Quick access</span>
+          </div>
+        </div>
 
         {/* Demo credentials hint */}
-        <div className="mt-4 rounded-lg bg-muted/50 p-3 text-center text-xs text-muted-foreground">
-          <p className="font-medium">Demo Credentials</p>
-          <p className="mt-1">
-            Email: demo@autolytiq.com
-            <br />
-            Password: demo123
-          </p>
+        <div className="opacity-0 animate-velocity-up" style={{ animationDelay: '500ms' }}>
+          <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10 p-5">
+            {/* Decorative element */}
+            <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-primary/10 blur-2xl" />
+
+            <div className="relative">
+              <div className="mb-3 flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/20">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                </div>
+                <span className="font-display font-semibold text-foreground">Demo Account</span>
+              </div>
+
+              <div className="space-y-2 rounded-xl bg-background/50 p-3 font-mono text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Email:</span>
+                  <span className="text-foreground">demo@autolytiq.com</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Password:</span>
+                  <span className="text-foreground">demo123</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </form>
     </AuthLayout>

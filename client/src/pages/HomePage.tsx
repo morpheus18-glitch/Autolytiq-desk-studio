@@ -1,8 +1,8 @@
 /**
- * Home Page (Marketing Landing Page)
+ * Home Page - Obsidian Velocity Design
  *
- * A high-quality marketing landing page for Autolytiq that showcases
- * the platform's features and drives users to sign up or log in.
+ * Premium marketing landing page with bold typography,
+ * dramatic animations, and automotive-inspired aesthetics.
  */
 
 import { type JSX } from 'react';
@@ -16,26 +16,87 @@ import {
   InventoryIcon,
   FinanceIcon,
 } from '@/assets/icons/autolytiq';
+import {
+  ArrowRight,
+  Play,
+  ChevronRight,
+  Sparkles,
+  Zap,
+  Shield,
+  TrendingUp,
+  Star,
+} from 'lucide-react';
 
 /**
- * Feature card component
+ * Animated background component
+ */
+function AnimatedHeroBackground(): JSX.Element {
+  return (
+    <div className="absolute inset-0 overflow-hidden">
+      {/* Gradient mesh */}
+      <div className="absolute inset-0 bg-obsidian-gradient" />
+
+      {/* Aurora effects */}
+      <div className="absolute -left-1/4 top-0 h-[800px] w-[800px] rounded-full bg-primary/10 blur-[150px] animate-aurora" />
+      <div
+        className="absolute -right-1/4 bottom-0 h-[600px] w-[600px] rounded-full bg-accent/8 blur-[120px] animate-aurora"
+        style={{ animationDelay: '-7s' }}
+      />
+      <div
+        className="absolute left-1/2 top-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-info/5 blur-[100px] animate-aurora"
+        style={{ animationDelay: '-14s' }}
+      />
+
+      {/* Grid pattern */}
+      <div
+        className="absolute inset-0 opacity-[0.015]"
+        style={{
+          backgroundImage: `
+            linear-gradient(hsl(var(--foreground) / 0.1) 1px, transparent 1px),
+            linear-gradient(90deg, hsl(var(--foreground) / 0.1) 1px, transparent 1px)
+          `,
+          backgroundSize: '80px 80px',
+        }}
+      />
+
+      {/* Noise texture */}
+      <div className="grain-overlay absolute inset-0" />
+    </div>
+  );
+}
+
+/**
+ * Feature card component with hover effects
  */
 interface FeatureCardProps {
   icon: JSX.Element;
   title: string;
   description: string;
+  delay: string;
 }
 
-function FeatureCard({ icon, title, description }: FeatureCardProps): JSX.Element {
+function FeatureCard({ icon, title, description, delay }: FeatureCardProps): JSX.Element {
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-border bg-card p-8 transition-all duration-300 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5">
-      <div className="absolute right-0 top-0 h-24 w-24 translate-x-8 translate-y-[-2rem] rounded-full bg-primary/5 transition-transform duration-300 group-hover:scale-150" />
-      <div className="relative">
-        <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          {icon}
-        </div>
-        <h3 className="mb-2 text-lg font-semibold text-foreground">{title}</h3>
-        <p className="text-sm leading-relaxed text-muted-foreground">{description}</p>
+    <div
+      className="group relative overflow-hidden rounded-3xl border border-border/50 bg-card/50 p-8 backdrop-blur-sm transition-all duration-500 hover:border-primary/30 hover:bg-card/80 hover:shadow-premium-lg opacity-0 animate-velocity-up"
+      style={{ animationDelay: delay }}
+    >
+      {/* Hover glow effect */}
+      <div className="absolute -right-20 -top-20 h-40 w-40 rounded-full bg-primary/0 blur-3xl transition-all duration-500 group-hover:bg-primary/10" />
+
+      {/* Icon */}
+      <div className="relative mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary ring-1 ring-primary/20 transition-transform duration-300 group-hover:scale-110">
+        {icon}
+      </div>
+
+      {/* Content */}
+      <h3 className="mb-3 font-display text-xl font-bold text-foreground">{title}</h3>
+      <p className="text-muted-foreground leading-relaxed">{description}</p>
+
+      {/* Learn more link */}
+      <div className="mt-6 flex items-center gap-2 text-sm font-medium text-primary opacity-0 transition-all duration-300 group-hover:opacity-100">
+        <span>Learn more</span>
+        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
       </div>
     </div>
   );
@@ -49,19 +110,31 @@ interface TestimonialProps {
   author: string;
   role: string;
   dealership: string;
+  avatar: string;
+  delay: string;
 }
 
-function Testimonial({ quote, author, role, dealership }: TestimonialProps): JSX.Element {
+function Testimonial({ quote, author, role, dealership, delay }: TestimonialProps): JSX.Element {
   return (
-    <div className="rounded-2xl border border-border bg-card p-8">
-      <div className="mb-4 text-2xl text-primary">&ldquo;</div>
-      <blockquote className="mb-6 text-lg italic text-foreground">{quote}</blockquote>
+    <div
+      className="relative overflow-hidden rounded-3xl border border-border/50 bg-card/50 p-8 backdrop-blur-sm opacity-0 animate-velocity-up"
+      style={{ animationDelay: delay }}
+    >
+      {/* Stars */}
+      <div className="mb-4 flex gap-1">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <Star key={i} className="h-5 w-5 fill-amber-400 text-amber-400" />
+        ))}
+      </div>
+
+      <blockquote className="mb-6 text-lg leading-relaxed text-foreground">"{quote}"</blockquote>
+
       <div className="flex items-center gap-4">
-        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary to-primary/60" />
+        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary via-accent to-info" />
         <div>
-          <div className="font-semibold text-foreground">{author}</div>
+          <div className="font-display font-semibold text-foreground">{author}</div>
           <div className="text-sm text-muted-foreground">
-            {role} at {dealership}
+            {role} · {dealership}
           </div>
         </div>
       </div>
@@ -75,13 +148,21 @@ function Testimonial({ quote, author, role, dealership }: TestimonialProps): JSX
 interface StatCardProps {
   value: string;
   label: string;
+  icon: JSX.Element;
+  delay: string;
 }
 
-function StatCard({ value, label }: StatCardProps): JSX.Element {
+function StatCard({ value, label, icon, delay }: StatCardProps): JSX.Element {
   return (
-    <div className="text-center">
-      <div className="text-4xl font-bold text-primary md:text-5xl">{value}</div>
-      <div className="mt-2 text-sm text-muted-foreground">{label}</div>
+    <div
+      className="relative text-center opacity-0 animate-velocity-up"
+      style={{ animationDelay: delay }}
+    >
+      <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+        {icon}
+      </div>
+      <div className="font-display text-5xl font-bold text-foreground">{value}</div>
+      <div className="mt-2 text-muted-foreground">{label}</div>
     </div>
   );
 }
@@ -91,52 +172,60 @@ function StatCard({ value, label }: StatCardProps): JSX.Element {
  */
 function Navigation(): JSX.Element {
   return (
-    <header className="fixed left-0 right-0 top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-lg">
-      <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+    <header className="fixed left-0 right-0 top-0 z-50 border-b border-border/30 bg-background/60 backdrop-blur-2xl">
+      <nav className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6 lg:px-8">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-            <AutolytiqLogo size={20} className="text-primary-foreground" />
+        <Link
+          href="/"
+          className="flex items-center gap-3 no-underline opacity-0 animate-velocity-right"
+          style={{ animationDelay: '100ms' }}
+        >
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary shadow-lg shadow-primary/25">
+            <AutolytiqLogo size={22} className="text-primary-foreground" />
           </div>
-          <span className="text-xl font-bold text-foreground">Autolytiq</span>
+          <span className="font-display text-2xl font-bold text-foreground">Autolytiq</span>
         </Link>
 
         {/* Desktop nav links */}
-        <div className="hidden items-center gap-8 md:flex">
+        <div
+          className="hidden items-center gap-10 lg:flex opacity-0 animate-velocity-fade"
+          style={{ animationDelay: '200ms' }}
+        >
           <a
             href="#features"
-            className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             Features
           </a>
           <a
             href="#testimonials"
-            className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             Testimonials
           </a>
           <a
             href="#pricing"
-            className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             Pricing
           </a>
         </div>
 
         {/* CTA buttons */}
-        <div className="flex items-center gap-3">
+        <div
+          className="flex items-center gap-4 opacity-0 animate-velocity-right"
+          style={{ animationDelay: '300ms' }}
+        >
           <ThemeToggle />
           <Link
             href="/login"
-            className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:block"
+            className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground lg:block"
           >
             Log in
           </Link>
-          <Link
-            href="/login"
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Get Started
+          <Link href="/login" className="btn-obsidian-primary flex items-center gap-2 !py-3 !px-5">
+            <span>Get Started</span>
+            <ChevronRight className="h-4 w-4" />
           </Link>
         </div>
       </nav>
@@ -149,86 +238,114 @@ function Navigation(): JSX.Element {
  */
 function HeroSection(): JSX.Element {
   return (
-    <section className="relative overflow-hidden pb-20 pt-32 sm:pb-32 sm:pt-40">
-      {/* Background decorations */}
-      <div className="absolute inset-0 -z-10">
-        <div className="absolute left-1/2 top-0 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/5 blur-3xl" />
-        <div className="absolute bottom-0 right-0 h-[400px] w-[400px] translate-x-1/2 translate-y-1/2 rounded-full bg-primary/10 blur-3xl" />
-      </div>
+    <section className="relative min-h-screen overflow-hidden pt-20">
+      <AnimatedHeroBackground />
 
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-3xl text-center">
+      <div className="relative mx-auto max-w-7xl px-6 py-24 lg:px-8 lg:py-32">
+        <div className="mx-auto max-w-4xl text-center">
           {/* Badge */}
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-primary"></span>
+          <div
+            className="mb-8 inline-flex items-center gap-3 rounded-full border border-primary/30 bg-primary/10 px-5 py-2 opacity-0 animate-velocity-up"
+            style={{ animationDelay: '400ms' }}
+          >
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary" />
             </span>
-            <span className="text-sm font-medium text-primary">Now with AI-powered insights</span>
+            <span className="font-medium text-primary">Now with AI-powered insights</span>
+            <Sparkles className="h-4 w-4 text-primary" />
           </div>
 
           {/* Headline */}
-          <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl md:text-6xl">
+          <h1
+            className="font-display text-5xl font-bold tracking-tight text-foreground sm:text-6xl lg:text-7xl opacity-0 animate-velocity-up"
+            style={{ animationDelay: '500ms' }}
+          >
             The complete platform for{' '}
-            <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-              modern dealerships
+            <span className="relative">
+              <span className="bg-gradient-to-r from-primary via-info to-accent bg-clip-text text-transparent">
+                modern dealerships
+              </span>
+              {/* Underline decoration */}
+              <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 300 12" fill="none">
+                <path
+                  d="M2 10C50 4 100 2 150 6C200 10 250 8 298 4"
+                  stroke="url(#underline-gradient)"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  className="opacity-60"
+                />
+                <defs>
+                  <linearGradient id="underline-gradient" x1="0" y1="0" x2="300" y2="0">
+                    <stop offset="0%" stopColor="hsl(217 91% 60%)" />
+                    <stop offset="50%" stopColor="hsl(199 89% 48%)" />
+                    <stop offset="100%" stopColor="hsl(38 92% 50%)" />
+                  </linearGradient>
+                </defs>
+              </svg>
             </span>
           </h1>
 
           {/* Subheadline */}
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground sm:text-xl">
-            Streamline your sales, manage inventory, and close more deals with Autolytiq&apos;s
+          <p
+            className="mx-auto mt-8 max-w-2xl text-xl leading-relaxed text-muted-foreground opacity-0 animate-velocity-up"
+            style={{ animationDelay: '600ms' }}
+          >
+            Streamline your sales, manage inventory, and close more deals with Autolytiq's
             all-in-one dealership management platform. Built for the way you work.
           </p>
 
           {/* CTA buttons */}
-          <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+          <div
+            className="mt-12 flex flex-col items-center justify-center gap-5 sm:flex-row opacity-0 animate-velocity-up"
+            style={{ animationDelay: '700ms' }}
+          >
             <Link
               href="/login"
-              className="w-full rounded-xl bg-primary px-8 py-4 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/30 sm:w-auto"
+              className="btn-obsidian-primary flex w-full items-center justify-center gap-3 !py-4 !px-8 text-lg sm:w-auto"
             >
-              Start free trial
+              <span>Start free trial</span>
+              <ArrowRight className="h-5 w-5" />
             </Link>
             <a
               href="#features"
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-border px-8 py-4 text-base font-semibold text-foreground transition-colors hover:bg-muted sm:w-auto"
+              className="group flex w-full items-center justify-center gap-3 rounded-xl border-2 border-border bg-background/50 px-8 py-4 text-lg font-semibold text-foreground backdrop-blur-sm transition-all hover:border-primary/50 hover:bg-background sm:w-auto"
             >
-              <span>See how it works</span>
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
+              <Play className="h-5 w-5 text-primary" />
+              <span>Watch demo</span>
             </a>
           </div>
 
           {/* Social proof */}
-          <div className="mt-12 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-            <div className="flex -space-x-2">
-              {[1, 2, 3, 4, 5].map((i) => (
+          <div
+            className="mt-16 flex flex-col items-center gap-6 sm:flex-row sm:justify-center opacity-0 animate-velocity-up"
+            style={{ animationDelay: '800ms' }}
+          >
+            {/* Avatars */}
+            <div className="flex -space-x-3">
+              {[
+                'from-primary to-info',
+                'from-accent to-warning',
+                'from-info to-success',
+                'from-success to-primary',
+                'from-warning to-destructive',
+              ].map((gradient, i) => (
                 <div
                   key={i}
-                  className="h-10 w-10 rounded-full border-2 border-background bg-gradient-to-br from-muted to-muted-foreground/20"
+                  className={`h-12 w-12 rounded-full border-3 border-background bg-gradient-to-br ${gradient}`}
                 />
               ))}
             </div>
+
+            {/* Stats */}
             <div className="text-center sm:text-left">
               <div className="flex items-center justify-center gap-1 sm:justify-start">
                 {[1, 2, 3, 4, 5].map((i) => (
-                  <svg
-                    key={i}
-                    className="h-4 w-4 text-yellow-500"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
+                  <Star key={i} className="h-5 w-5 fill-amber-400 text-amber-400" />
                 ))}
+                <span className="ml-2 font-semibold text-foreground">4.9/5</span>
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="mt-1 text-muted-foreground">
                 Trusted by <span className="font-semibold text-foreground">500+</span> dealerships
               </p>
             </div>
@@ -236,50 +353,79 @@ function HeroSection(): JSX.Element {
         </div>
 
         {/* Hero image/dashboard preview */}
-        <div className="relative mt-16 sm:mt-24">
-          <div className="relative mx-auto max-w-5xl overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+        <div
+          className="relative mt-20 opacity-0 animate-velocity-up"
+          style={{ animationDelay: '900ms' }}
+        >
+          <div className="relative mx-auto max-w-6xl overflow-hidden rounded-3xl border border-border/50 bg-card/80 shadow-premium-xl backdrop-blur-sm">
             {/* Browser chrome */}
-            <div className="flex items-center gap-2 border-b border-border bg-muted/50 px-4 py-3">
-              <div className="flex gap-1.5">
-                <div className="h-3 w-3 rounded-full bg-red-500/80" />
-                <div className="h-3 w-3 rounded-full bg-yellow-500/80" />
-                <div className="h-3 w-3 rounded-full bg-green-500/80" />
+            <div className="flex items-center gap-3 border-b border-border/50 bg-muted/30 px-5 py-4">
+              <div className="flex gap-2">
+                <div className="h-3.5 w-3.5 rounded-full bg-destructive/80" />
+                <div className="h-3.5 w-3.5 rounded-full bg-warning/80" />
+                <div className="h-3.5 w-3.5 rounded-full bg-success/80" />
               </div>
-              <div className="mx-auto flex h-7 w-96 items-center justify-center rounded-md bg-background px-3 text-xs text-muted-foreground">
+              <div className="mx-auto flex h-8 w-96 items-center justify-center rounded-lg bg-background px-4 text-sm text-muted-foreground">
+                <Shield className="mr-2 h-4 w-4 text-success" />
                 app.autolytiq.com/dashboard
               </div>
             </div>
+
             {/* Dashboard mockup */}
-            <div className="aspect-[16/9] bg-gradient-to-br from-background to-muted p-8">
-              <div className="grid h-full grid-cols-4 gap-4">
+            <div className="aspect-[16/9] bg-gradient-to-br from-background via-background to-muted/30 p-8">
+              <div className="grid h-full grid-cols-4 gap-6">
                 {/* Sidebar mockup */}
-                <div className="rounded-lg bg-card/50 p-4">
-                  <div className="mb-6 h-8 w-24 rounded bg-muted" />
+                <div className="rounded-2xl bg-card/60 p-5 backdrop-blur-sm border border-border/30">
+                  <div className="mb-8 h-10 w-28 rounded-xl bg-gradient-to-r from-primary/20 to-primary/5" />
                   <div className="space-y-3">
                     {[1, 2, 3, 4, 5].map((i) => (
                       <div
                         key={i}
-                        className={`h-8 rounded ${i === 1 ? 'bg-primary/20' : 'bg-muted'}`}
+                        className={`h-10 rounded-xl ${i === 1 ? 'bg-primary/20 border border-primary/30' : 'bg-muted/50'}`}
                       />
                     ))}
                   </div>
                 </div>
+
                 {/* Main content mockup */}
-                <div className="col-span-3 space-y-4">
-                  <div className="h-12 w-48 rounded bg-muted" />
-                  <div className="grid grid-cols-3 gap-4">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="h-24 rounded-lg bg-card/50 p-4">
-                        <div className="h-4 w-16 rounded bg-muted" />
-                        <div className="mt-4 h-8 w-24 rounded bg-primary/20" />
+                <div className="col-span-3 space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div className="h-10 w-56 rounded-xl bg-muted/50" />
+                    <div className="h-10 w-32 rounded-xl bg-primary/20" />
+                  </div>
+
+                  {/* Stats row */}
+                  <div className="grid grid-cols-4 gap-4">
+                    {[
+                      { color: 'primary', value: '$2.4M' },
+                      { color: 'success', value: '147' },
+                      { color: 'info', value: '89%' },
+                      { color: 'accent', value: '23' },
+                    ].map((stat, i) => (
+                      <div key={i} className="rounded-2xl bg-card/60 p-5 border border-border/30">
+                        <div className="h-3 w-16 rounded bg-muted/50" />
+                        <div className={`mt-3 h-8 w-24 rounded-lg bg-${stat.color}/20`} />
                       </div>
                     ))}
                   </div>
-                  <div className="h-64 rounded-lg bg-card/50 p-4">
-                    <div className="h-4 w-32 rounded bg-muted" />
-                    <div className="mt-4 grid grid-cols-5 gap-2">
-                      {Array.from({ length: 20 }).map((_, i) => (
-                        <div key={i} className="h-8 rounded bg-muted/50" />
+
+                  {/* Chart area */}
+                  <div className="h-52 rounded-2xl bg-card/60 p-5 border border-border/30">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="h-4 w-32 rounded bg-muted/50" />
+                      <div className="flex gap-2">
+                        {[1, 2, 3].map((i) => (
+                          <div key={i} className="h-6 w-16 rounded-lg bg-muted/30" />
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex items-end justify-between h-32 pt-4">
+                      {[40, 65, 45, 80, 55, 90, 70, 85, 60, 75, 95, 80].map((h, i) => (
+                        <div
+                          key={i}
+                          className="w-6 rounded-t-lg bg-gradient-to-t from-primary/60 to-primary/20"
+                          style={{ height: `${h}%` }}
+                        />
                       ))}
                     </div>
                   </div>
@@ -287,8 +433,9 @@ function HeroSection(): JSX.Element {
               </div>
             </div>
           </div>
-          {/* Gradient overlay at bottom */}
-          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-background to-transparent" />
+
+          {/* Gradient fade at bottom */}
+          <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background to-transparent" />
         </div>
       </div>
     </section>
@@ -301,46 +448,37 @@ function HeroSection(): JSX.Element {
 function FeaturesSection(): JSX.Element {
   const features = [
     {
-      icon: <DealIcon size={24} />,
+      icon: <DealIcon size={28} />,
       title: 'Deal Management',
       description:
         'Track every deal from first contact to final signature. Automated workflows keep your team aligned and deals moving forward.',
     },
     {
-      icon: <InventoryIcon size={24} />,
+      icon: <InventoryIcon size={28} />,
       title: 'Inventory Control',
       description:
         'Real-time inventory tracking with VIN decoding, pricing tools, and automatic syncing across all your platforms.',
     },
     {
-      icon: <CustomerIcon size={24} />,
+      icon: <CustomerIcon size={28} />,
       title: 'Customer CRM',
       description:
         'Build lasting relationships with a CRM designed for automotive. Track preferences, service history, and follow-ups.',
     },
     {
-      icon: <FinanceIcon size={24} />,
+      icon: <FinanceIcon size={28} />,
       title: 'F&I Tools',
       description:
         'Streamlined financing workflows with lender integrations, payment calculators, and compliance built in.',
     },
     {
-      icon: <VehicleIcon size={24} />,
+      icon: <VehicleIcon size={28} />,
       title: 'Digital Showroom',
       description:
         'Create stunning vehicle presentations with 360-degree views, feature highlights, and instant sharing.',
     },
     {
-      icon: (
-        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-          />
-        </svg>
-      ),
+      icon: <TrendingUp size={28} />,
       title: 'Analytics & Insights',
       description:
         'Make data-driven decisions with real-time dashboards, sales forecasting, and performance tracking.',
@@ -348,24 +486,36 @@ function FeaturesSection(): JSX.Element {
   ];
 
   return (
-    <section id="features" className="py-24 sm:py-32">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <section id="features" className="relative py-32">
+      <div className="mx-auto max-w-7xl px-6 lg:px-8">
         {/* Section header */}
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-widest text-primary">Features</p>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+          <div
+            className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 opacity-0 animate-velocity-up"
+            style={{ animationDelay: '100ms' }}
+          >
+            <Zap className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium text-primary">Features</span>
+          </div>
+          <h2
+            className="font-display text-4xl font-bold tracking-tight text-foreground sm:text-5xl opacity-0 animate-velocity-up"
+            style={{ animationDelay: '200ms' }}
+          >
             Everything you need to run your dealership
           </h2>
-          <p className="mt-4 text-lg text-muted-foreground">
+          <p
+            className="mt-6 text-lg text-muted-foreground opacity-0 animate-velocity-up"
+            style={{ animationDelay: '300ms' }}
+          >
             One platform, unlimited possibilities. Autolytiq brings together all the tools your team
             needs.
           </p>
         </div>
 
         {/* Features grid */}
-        <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-20 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((feature, index) => (
-            <FeatureCard key={index} {...feature} />
+            <FeatureCard key={index} {...feature} delay={`${400 + index * 100}ms`} />
           ))}
         </div>
       </div>
@@ -378,13 +528,28 @@ function FeaturesSection(): JSX.Element {
  */
 function StatsSection(): JSX.Element {
   return (
-    <section className="border-y border-border bg-muted/30 py-16">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
-          <StatCard value="500+" label="Dealerships" />
-          <StatCard value="2.5M" label="Deals Closed" />
-          <StatCard value="$18B" label="Sales Volume" />
-          <StatCard value="99.9%" label="Uptime" />
+    <section className="relative border-y border-border/50 bg-muted/20 py-24">
+      <div className="mx-auto max-w-7xl px-6 lg:px-8">
+        <div className="grid grid-cols-2 gap-12 md:grid-cols-4">
+          <StatCard
+            value="500+"
+            label="Dealerships"
+            icon={<Shield className="h-8 w-8" />}
+            delay="100ms"
+          />
+          <StatCard
+            value="2.5M"
+            label="Deals Closed"
+            icon={<TrendingUp className="h-8 w-8" />}
+            delay="200ms"
+          />
+          <StatCard
+            value="$18B"
+            label="Sales Volume"
+            icon={<Sparkles className="h-8 w-8" />}
+            delay="300ms"
+          />
+          <StatCard value="99.9%" label="Uptime" icon={<Zap className="h-8 w-8" />} delay="400ms" />
         </div>
       </div>
     </section>
@@ -402,6 +567,7 @@ function TestimonialsSection(): JSX.Element {
       author: 'Michael Chen',
       role: 'General Manager',
       dealership: 'Premier Auto Group',
+      avatar: 'MC',
     },
     {
       quote:
@@ -409,6 +575,7 @@ function TestimonialsSection(): JSX.Element {
       author: 'Sarah Williams',
       role: 'F&I Director',
       dealership: 'Westside Motors',
+      avatar: 'SW',
     },
     {
       quote:
@@ -416,18 +583,28 @@ function TestimonialsSection(): JSX.Element {
       author: 'David Rodriguez',
       role: 'Owner',
       dealership: 'Rodriguez Family Auto',
+      avatar: 'DR',
     },
   ];
 
   return (
-    <section id="testimonials" className="py-24 sm:py-32">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <section id="testimonials" className="py-32">
+      <div className="mx-auto max-w-7xl px-6 lg:px-8">
         {/* Section header */}
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-widest text-primary">
-            Testimonials
-          </p>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+          <div
+            className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-1.5 opacity-0 animate-velocity-up"
+            style={{ animationDelay: '100ms' }}
+          >
+            <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
+            <span className="text-sm font-medium text-amber-600 dark:text-amber-400">
+              Testimonials
+            </span>
+          </div>
+          <h2
+            className="font-display text-4xl font-bold tracking-tight text-foreground sm:text-5xl opacity-0 animate-velocity-up"
+            style={{ animationDelay: '200ms' }}
+          >
             Loved by dealerships everywhere
           </h2>
         </div>
@@ -435,7 +612,7 @@ function TestimonialsSection(): JSX.Element {
         {/* Testimonials grid */}
         <div className="mt-16 grid gap-8 md:grid-cols-3">
           {testimonials.map((testimonial, index) => (
-            <Testimonial key={index} {...testimonial} />
+            <Testimonial key={index} {...testimonial} delay={`${300 + index * 100}ms`} />
           ))}
         </div>
       </div>
@@ -448,37 +625,39 @@ function TestimonialsSection(): JSX.Element {
  */
 function CTASection(): JSX.Element {
   return (
-    <section className="py-24 sm:py-32">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="relative overflow-hidden rounded-3xl bg-primary px-8 py-16 sm:px-16 sm:py-24">
-          {/* Background decoration */}
-          <div className="absolute right-0 top-0 h-64 w-64 -translate-y-1/2 translate-x-1/2 rounded-full bg-primary-foreground/10 blur-3xl" />
-          <div className="absolute bottom-0 left-0 h-48 w-48 -translate-x-1/2 translate-y-1/2 rounded-full bg-primary-foreground/10 blur-3xl" />
+    <section className="py-32">
+      <div className="mx-auto max-w-7xl px-6 lg:px-8">
+        <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-primary via-primary to-info px-8 py-20 sm:px-16 sm:py-28">
+          {/* Background decorations */}
+          <div className="absolute right-0 top-0 h-80 w-80 -translate-y-1/3 translate-x-1/3 rounded-full bg-white/10 blur-3xl" />
+          <div className="absolute bottom-0 left-0 h-60 w-60 -translate-x-1/3 translate-y-1/3 rounded-full bg-white/10 blur-3xl" />
+          <div className="grain-overlay absolute inset-0 opacity-10" />
 
           <div className="relative mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-primary-foreground sm:text-4xl">
+            <h2 className="font-display text-4xl font-bold tracking-tight text-white sm:text-5xl">
               Ready to transform your dealership?
             </h2>
-            <p className="mt-4 text-lg text-primary-foreground/80">
+            <p className="mt-6 text-xl text-white/80">
               Join hundreds of dealerships already using Autolytiq to close more deals and grow
               their business.
             </p>
-            <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <div className="mt-12 flex flex-col items-center justify-center gap-5 sm:flex-row">
               <Link
                 href="/login"
-                className="w-full rounded-xl bg-primary-foreground px-8 py-4 text-base font-semibold text-primary shadow-lg transition-all hover:bg-primary-foreground/90 sm:w-auto"
+                className="group flex w-full items-center justify-center gap-3 rounded-xl bg-white px-8 py-4 text-lg font-semibold text-primary shadow-xl transition-all hover:bg-white/90 hover:shadow-2xl sm:w-auto"
               >
-                Start your free trial
+                <span>Start your free trial</span>
+                <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
               </Link>
               <a
                 href="mailto:sales@autolytiq.com"
-                className="w-full rounded-xl border-2 border-primary-foreground/30 px-8 py-4 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary-foreground/10 sm:w-auto"
+                className="w-full rounded-xl border-2 border-white/30 px-8 py-4 text-lg font-semibold text-white transition-all hover:border-white/50 hover:bg-white/10 sm:w-auto"
               >
                 Contact sales
               </a>
             </div>
-            <p className="mt-6 text-sm text-primary-foreground/60">
-              No credit card required &bull; 14-day free trial &bull; Cancel anytime
+            <p className="mt-8 text-sm text-white/60">
+              No credit card required · 14-day free trial · Cancel anytime
             </p>
           </div>
         </div>
@@ -492,29 +671,32 @@ function CTASection(): JSX.Element {
  */
 function Footer(): JSX.Element {
   return (
-    <footer className="border-t border-border bg-muted/30 py-12">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
+    <footer className="border-t border-border/50 bg-muted/20 py-16">
+      <div className="mx-auto max-w-7xl px-6 lg:px-8">
+        <div className="flex flex-col items-center justify-between gap-8 md:flex-row">
           {/* Logo */}
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <AutolytiqLogo size={16} className="text-primary-foreground" />
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary shadow-lg shadow-primary/25">
+              <AutolytiqLogo size={18} className="text-primary-foreground" />
             </div>
-            <span className="text-lg font-bold text-foreground">Autolytiq</span>
+            <span className="font-display text-xl font-bold text-foreground">Autolytiq</span>
           </div>
 
           {/* Links */}
-          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
-            <a href="#features" className="hover:text-foreground">
+          <div className="flex flex-wrap items-center justify-center gap-8 text-sm text-muted-foreground">
+            <a href="#features" className="transition-colors hover:text-foreground">
               Features
             </a>
-            <a href="#pricing" className="hover:text-foreground">
+            <a href="#pricing" className="transition-colors hover:text-foreground">
               Pricing
             </a>
-            <a href="#testimonials" className="hover:text-foreground">
+            <a href="#testimonials" className="transition-colors hover:text-foreground">
               Testimonials
             </a>
-            <a href="mailto:support@autolytiq.com" className="hover:text-foreground">
+            <a
+              href="mailto:support@autolytiq.com"
+              className="transition-colors hover:text-foreground"
+            >
               Support
             </a>
           </div>

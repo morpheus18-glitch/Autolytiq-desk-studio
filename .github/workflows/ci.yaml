@@ -1,10 +1,12 @@
-name: CI
+# DEPRECATED: Use smart-ci.yml instead
+# This workflow is kept for backwards compatibility but will be removed soon
+# New workflow: .github/workflows/smart-ci.yml
+
+name: CI (Legacy - Deprecated)
 
 on:
-  push:
-    branches: [main, develop, 'feat/*']
-  pull_request:
-    branches: [main, develop]
+  # Disabled - use smart-ci.yml
+  workflow_dispatch:
 
 env:
   NODE_VERSION: '20'

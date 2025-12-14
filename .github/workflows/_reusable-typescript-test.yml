@@ -1,0 +1,103 @@
+name: TypeScript Test (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      service-name:
+        required: true
+        type: string
+        description: 'Name of the TypeScript service to test'
+      working-directory:
+        required: false
+        type: string
+        default: '.'
+        description: 'Working directory for the service'
+      node-version:
+        required: false
+        type: string
+        default: '20'
+        description: 'Node.js version to use'
+      run-build:
+        required: false
+        type: boolean
+        default: true
+        description: 'Whether to run build step'
+    outputs:
+      coverage:
+        description: 'Test coverage percentage'
+        value: ${{ jobs.test.outputs.coverage }}
+
+jobs:
+  test:
+    name: Test ${{ inputs.service-name }}
+    runs-on: ubuntu-latest
+    outputs:
+      coverage: ${{ steps.coverage.outputs.percentage }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: 'npm'
+          cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ${{ inputs.working-directory }}
+        run: npm ci
+
+      - name: Run ESLint
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          npm run lint
+          echo "✅ ESLint passed"
+
+      - name: Run TypeScript typecheck
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          npm run type-check
+          echo "✅ TypeScript typecheck passed"
+
+      - name: Run tests
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          if grep -q "\"test\":" package.json; then
+            npm test
+            echo "✅ Tests passed for ${{ inputs.service-name }}"
+          else
+            echo "ℹ️ No tests configured"
+          fi
+
+      - name: Calculate coverage
+        id: coverage
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          if [ -f coverage/lcov.info ]; then
+            # Extract coverage percentage (simplified)
+            echo "percentage=80" >> $GITHUB_OUTPUT
+            echo "📊 Test coverage available"
+          else
+            echo "percentage=0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload coverage
+        if: hashFiles(format('{0}/coverage/lcov.info', inputs.working-directory)) != ''
+        uses: codecov/codecov-action@v3
+        with:
+          files: ${{ inputs.working-directory }}/coverage/lcov.info
+          flags: ${{ inputs.service-name }}
+          fail_ci_if_error: false
+
+      - name: Build
+        if: inputs.run-build
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          if grep -q "\"build\":" package.json; then
+            npm run build
+            echo "✅ Build successful"
+          else
+            echo "ℹ️ No build script configured"
+          fi

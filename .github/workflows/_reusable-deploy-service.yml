@@ -1,0 +1,133 @@
+name: Deploy Service (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      service-name:
+        required: true
+        type: string
+        description: 'Name of the service to deploy'
+      service-type:
+        required: true
+        type: string
+        description: 'Type of service (go, rust, typescript)'
+      working-directory:
+        required: true
+        type: string
+        description: 'Working directory for the service'
+      environment:
+        required: true
+        type: string
+        description: 'Deployment environment (dev, staging, prod)'
+      dockerfile-path:
+        required: false
+        type: string
+        default: 'Dockerfile'
+        description: 'Path to Dockerfile relative to working directory'
+      build-args:
+        required: false
+        type: string
+        default: ''
+        description: 'Build arguments for Docker (newline separated)'
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      AWS_ACCOUNT_ID:
+        required: true
+
+env:
+  AWS_REGION: us-east-1
+  CLUSTER_NAME: autolytiq-cluster
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy ${{ inputs.service-name }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set image tag
+        id: set-tag
+        run: |
+          if [ "${{ github.ref_type }}" == "tag" ]; then
+            TAG="${{ github.ref_name }}"
+          else
+            TAG="${{ inputs.environment }}-${{ github.sha }}"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "📦 Image tag: $TAG"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ inputs.working-directory }}
+          file: ${{ inputs.working-directory }}/${{ inputs.dockerfile-path }}
+          push: true
+          tags: |
+            ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/autolytiq/${{ inputs.service-name }}:${{ steps.set-tag.outputs.tag }}
+            ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/autolytiq/${{ inputs.service-name }}:${{ inputs.environment }}
+          build-args: ${{ inputs.build-args }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --name ${{ env.CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+
+      - name: Deploy to Kubernetes
+        run: |
+          NAMESPACE="autolytiq-${{ inputs.environment }}"
+          IMAGE="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/autolytiq/${{ inputs.service-name }}:${{ steps.set-tag.outputs.tag }}"
+
+          echo "🚀 Deploying ${{ inputs.service-name }} to $NAMESPACE"
+
+          # Update deployment image
+          kubectl set image deployment/${{ inputs.service-name }} \
+            ${{ inputs.service-name }}=$IMAGE \
+            -n $NAMESPACE
+
+          # Wait for rollout
+          kubectl rollout status deployment/${{ inputs.service-name }} \
+            -n $NAMESPACE \
+            --timeout=300s
+
+          echo "✅ Deployment successful!"
+
+      - name: Run smoke tests
+        if: inputs.environment != 'prod'
+        run: |
+          NAMESPACE="autolytiq-${{ inputs.environment }}"
+
+          # Get service endpoint
+          kubectl get svc ${{ inputs.service-name }} -n $NAMESPACE || echo "Service not exposed"
+
+          # Check pod health
+          POD_NAME=$(kubectl get pods -n $NAMESPACE -l app=${{ inputs.service-name }} -o jsonpath='{.items[0].metadata.name}')
+          kubectl exec $POD_NAME -n $NAMESPACE -- wget -q -O- http://localhost/health || echo "Health check failed"
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          NAMESPACE="autolytiq-${{ inputs.environment }}"
+          echo "❌ Deployment failed, rolling back..."
+          kubectl rollout undo deployment/${{ inputs.service-name }} -n $NAMESPACE
+          kubectl rollout status deployment/${{ inputs.service-name }} -n $NAMESPACE

@@ -1,0 +1,57 @@
+name: Deploy API Gateway
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'services/api-gateway/**'
+      - '.github/workflows/deploy-api-gateway.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+jobs:
+  # Test API Gateway (this will also check dependent services via smart-ci)
+  test:
+    name: Test API Gateway
+    uses: ./.github/workflows/_reusable-go-test.yml
+    with:
+      service-name: api-gateway
+      working-directory: services/api-gateway
+      run-integration-tests: true
+
+  # Deploy to appropriate environment
+  deploy:
+    name: Deploy to ${{ github.event.inputs.environment || 'staging' }}
+    needs: test
+    uses: ./.github/workflows/_reusable-deploy-service.yml
+    with:
+      service-name: api-gateway
+      service-type: go
+      working-directory: services/api-gateway
+      environment: ${{ github.event.inputs.environment || 'staging' }}
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+
+  # Notify dependent services (optional - for future)
+  notify:
+    name: Notify Dependent Services
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: success()
+    steps:
+      - name: Trigger dependent workflows
+        run: |
+          echo "✅ API Gateway deployed successfully"
+          echo "📢 Client and other dependent services may need redeployment"
+          # Future: Trigger client rebuild/redeploy if needed

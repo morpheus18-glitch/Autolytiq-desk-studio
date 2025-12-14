@@ -41,6 +41,15 @@ pub mod lease;
 // TAX INTELLIGENCE ENGINE MODULES (ATIE)
 // ============================================================================
 
+/// Address normalization and parsing (USPS standard)
+pub mod address;
+
+/// Geocoding and jurisdiction resolution (county FIPS, ZIP mapping)
+pub mod geocoding;
+
+/// Jurisdiction resolver for address-driven tax schema
+pub mod jurisdiction_resolver;
+
 /// Bilateral reciprocity matrix with entangled state pairs
 pub mod bilateral;
 
@@ -56,6 +65,9 @@ pub mod chunks;
 /// Swarm jurisdiction resolver for parallel multi-jurisdiction processing
 pub mod swarm;
 
+/// Special tax scheme calculators (GA TAVT, NC HUT, WV Privilege, SC Cap)
+pub mod special_schemes;
+
 use wasm_bindgen::prelude::*;
 pub use types::*;
 pub use deal_types::*;
@@ -63,6 +75,7 @@ pub use deal_types::*;
 // Re-export key functions for ergonomic native Rust usage
 pub use deal_calculator::calculate_deal as calculate_deal_native;
 pub use state_rules::load_all_state_rules;
+pub use jurisdiction_resolver::{JurisdictionResolver, JurisdictionResult, CustomerAddress};
 
 /// Initialize the WASM module
 #[wasm_bindgen(start)]
@@ -430,49 +443,66 @@ mod tests {
     #[test]
     fn test_wasm_interface() {
         let rules_json = r#"{
-            "state_code": "IN",
+            "stateCode": "IN",
             "version": 1,
-            "trade_in_policy": {"type": "FULL"},
+            "tradeInPolicy": {"type": "FULL"},
             "rebates": [],
-            "doc_fee_taxable": false,
-            "fee_tax_rules": [],
-            "tax_on_accessories": true,
-            "tax_on_negative_equity": false,
-            "tax_on_service_contracts": false,
-            "tax_on_gap": false,
-            "vehicle_tax_scheme": "STATE_ONLY",
-            "vehicle_uses_local_sales_tax": false,
-            "lease_rules": {
+            "docFeeTaxable": false,
+            "feeTaxRules": [],
+            "taxOnAccessories": true,
+            "taxOnNegativeEquity": false,
+            "taxOnServiceContracts": false,
+            "taxOnGap": false,
+            "vehicleTaxScheme": "STATE_ONLY",
+            "vehicleUsesLocalSalesTax": false,
+            "leaseRules": {
                 "method": "MONTHLY",
-                "tax_cap_reduction": false,
-                "rebate_behavior": "FOLLOW_RETAIL_RULE",
-                "doc_fee_taxability": "FOLLOW_RETAIL_RULE",
-                "trade_in_credit": "FOLLOW_RETAIL_RULE",
-                "negative_equity_taxable": false,
-                "fee_tax_rules": [],
-                "title_fee_rules": [],
-                "tax_fees_upfront": true
+                "taxCapReduction": false,
+                "rebateBehavior": "FOLLOW_RETAIL_RULE",
+                "docFeeTaxability": "FOLLOW_RETAIL_RULE",
+                "tradeInCredit": "FOLLOW_RETAIL_RULE",
+                "negativeEquityTaxable": false,
+                "feeTaxRules": [],
+                "titleFeeRules": [],
+                "taxFeesUpfront": true,
+                "specialScheme": "NONE",
+                "notes": null
             },
             "reciprocity": {
                 "enabled": false,
                 "scope": "NONE",
-                "home_state_behavior": "NONE",
-                "require_proof_of_tax_paid": false,
+                "homeStateBehavior": "NONE",
+                "requireProofOfTaxPaid": false,
                 "basis": "TAX_PAID",
-                "cap_at_this_states_tax": true,
-                "has_lease_exception": false
+                "capAtThisStatesTax": true,
+                "hasLeaseException": false,
+                "overrides": null,
+                "exemptStates": null,
+                "nonReciprocalStates": null,
+                "notes": null
             }
         }"#;
 
         let input_json = r#"{
-            "state_code": "IN",
-            "deal_type": "RETAIL",
-            "vehicle_price": 30000.0,
-            "trade_allowance": 5000.0
+            "stateCode": "IN",
+            "asOfDate": "2025-01-01",
+            "dealType": "RETAIL",
+            "vehiclePrice": 30000.0,
+            "accessoriesAmount": 0.0,
+            "tradeInValue": 5000.0,
+            "rebateManufacturer": 0.0,
+            "rebateDealer": 0.0,
+            "docFee": 0.0,
+            "otherFees": [],
+            "serviceContracts": 0.0,
+            "gap": 0.0,
+            "negativeEquity": 0.0,
+            "taxAlreadyCollected": 0.0,
+            "rates": [{"label": "STATE", "rate": 0.07}]
         }"#;
 
         let result_json = calculate_vehicle_tax(rules_json, input_json).unwrap();
-        assert!(result_json.contains("total_tax"));
+        assert!(result_json.contains("totalTax") || result_json.contains("total_tax"));
     }
 
     #[test]

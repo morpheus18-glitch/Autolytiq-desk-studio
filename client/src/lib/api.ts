@@ -384,4 +384,15 @@ export const queryKeys = {
       detail: (id: string) => [...queryKeys.email.attachments.details(), id] as const,
     },
   },
+
+  // Tax
+  tax: {
+    all: ['tax'] as const,
+    states: () => [...queryKeys.tax.all, 'states'] as const,
+    stateRules: (code: string) => [...queryKeys.tax.all, 'rules', code] as const,
+    jurisdiction: (address: Record<string, unknown>) =>
+      [...queryKeys.tax.all, 'jurisdiction', address] as const,
+    reciprocity: (home: string, transaction: string) =>
+      [...queryKeys.tax.all, 'reciprocity', home, transaction] as const,
+  },
 } as const;

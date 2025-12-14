@@ -1,374 +1,140 @@
 # Autolytiq Desk Studio
 
-**Enterprise Automotive Deal Management Platform**
+A dealership management platform built for automotive retail finance operations. Handles deal structuring, multi-state tax calculations, customer lifecycle management, and inventory tracking.
 
-Autolytiq is a comprehensive dealership management system designed for automotive retail, providing tools for deal structuring, tax calculations, customer management, inventory tracking, and AI-assisted closing.
+## Overview
 
----
+Autolytiq serves as the operational backbone for automotive dealerships, replacing legacy DMS (Dealer Management System) workflows with a modern, multi-tenant architecture. The system emphasizes calculation accuracy—particularly for the notoriously complex domain of state-by-state vehicle taxation—while maintaining the flexibility required by diverse dealership operations.
 
-## 🏗️ Project Status: Clean Rebuild in Progress
+The platform currently supports:
 
-**Branch:** `feat/unbreakable-architecture`
-**Status:** Foundation phase - building enterprise-grade architecture from scratch
-**Last Updated:** November 23, 2025
+- **Deal Structuring**: Cash, finance (retail installment), and lease transactions with real-time payment calculations
+- **Tax Calculation Engine**: All 50 states plus DC, including special schemes (GA TAVT, NC Highway Use Tax, WV Privilege Tax)
+- **Customer Management**: Profiles, credit applications, address validation
+- **Inventory**: VIN decoding, pricing, multi-location support
+- **Operational Runbooks**: Database, deployment, incident response, scaling
 
-We are currently executing a systematic rebuild with:
-- ✅ Enterprise observability (structured logging, OpenTelemetry)
-- ✅ Unbreakable architecture rules (ESLint enforced boundaries)
-- ✅ Type safety (TypeScript strict mode, generated types)
-- ✅ Comprehensive testing (TDD, >80% coverage target)
-- 🚧 Microservices migration (Go, Rust/WASM, Python)
-
----
-
-## 🎯 Core Features
-
-### Deal Management
-- Multi-scenario deal structuring (cash, finance, lease)
-- Real-time payment calculations
-- State-specific tax and fee calculations
-- Trade-in valuation
-- Deal worksheet generation
-
-### Financial Calculations
-- **Tax Engine**: 50-state tax calculation with county/local lookup
-- **Cash Deals**: Total cost, fees, taxes
-- **Finance**: APR, monthly payment, amortization schedules
-- **Leasing**: Money factor, residual value, lease payments
-- State-specific calculation rules
-
-### Customer Management
-- Customer profiles with credit applications
-- Address validation (Google Places API)
-- Contact management
-- Deal history tracking
-
-### Inventory Management
-- Vehicle inventory with VIN decoding
-- Pricing management
-- Availability tracking
-- Multi-location support
-
-### AI Assistant
-- In-app chat interface for deal assistance
-- Context-aware help (inventory, tax, desking)
-- RAG-powered knowledge base
-- Integration with deal workflows
-
-### ML Pipeline
-- Customer clustering (WHACO engine)
-- Deal optimization (Prime Engine)
-- Team coordination (Oscillator Network)
-
----
-
-## 🏛️ Architecture
-
-### Target Architecture (In Development)
+## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Frontend Layer                        │
-│  Next.js 14 + React + TypeScript (Pure UI)             │
-└──────────────────┬──────────────────────────────────────┘
-                   │
-┌──────────────────▼──────────────────────────────────────┐
-│                 API Gateway (Node.js)                    │
-│  Authentication, Rate Limiting, Request Logging         │
-└──────────────────┬──────────────────────────────────────┘
-                   │
-    ┌──────────────┼──────────────┬──────────────┐
-    ▼              ▼              ▼              ▼
-┌─────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐
-│ auth-go │  │ deal-go  │  │customer-go│  │admin-go │
-│         │  │          │  │          │  │         │
-│ Login   │  │ CRUD     │  │ CRUD     │  │ Users   │
-│ MFA     │  │ Pricing  │  │ Address  │  │ Config  │
-│ Sessions│  │ Scenarios│  │ Credit   │  │ Roles   │
-└─────────┘  └──────────┘  └──────────┘  └──────────┘
+Frontend (React/Vite)
+        │
+        ▼
+API Gateway (Go) ──────► Auth Service (Go)
+        │
+        ├──► Deal Service (Go)
+        ├──► Customer Service (Go)
+        ├──► Inventory Service (Go)
+        ├──► Tax Service (Go + WASM)
+        │           │
+        │           └──► Tax Engine (Rust → WASM)
+        │                    └──► 51 jurisdiction rules
+        │                    └──► Bilateral reciprocity matrix
+        │                    └──► Special scheme calculators
+        │
+        └──► Email Service (Go)
 
-┌──────────┐  ┌──────────────┐  ┌────────────────┐
-│inventory-│  │ calc-rs      │  │ ai-agent-py    │
-│go        │  │ (Rust/WASM)  │  │                │
-│          │  │              │  │ Chat UI        │
-│ Vehicles │  │ Tax calc     │  │ RAG            │
-│ VIN      │  │ Finance calc │  │ LLM            │
-│ Pricing  │  │ Lease calc   │  │ Service calls  │
-└──────────┘  └──────────────┘  └────────────────┘
-
-                ┌─────────────────┐
-                │ ml-pipeline-py  │
-                │                 │
-                │ WHACO engine    │
-                │ Prime engine    │
-                │ Oscillator      │
-                └─────────────────┘
-
-                ┌─────────────────┐
-                │ PostgreSQL 16   │
-                │ + pgvector      │
-                │ Multi-tenant    │
-                └─────────────────┘
+PostgreSQL 16 (multi-tenant, row-level security)
 ```
 
-### Tech Stack
+The tax calculation engine warrants specific mention. Rather than maintaining brittle lookup tables, the system implements a domain-specific language for expressing tax rules, compiled to WebAssembly for portable, high-performance execution. This approach emerged from the observation that automotive tax law varies not just by rate but by fundamental structure—trade-in credit policies, rebate taxability, lease taxation methods—requiring expressive rather than tabular configuration.
 
-**Frontend:**
-- Next.js 14 (React 18, TypeScript)
-- TailwindCSS + shadcn/ui
-- React Query (data fetching)
-- React Hook Form + Zod (validation)
+## Technology
 
-**Backend Services:**
-- Go (auth, deal, customer, inventory, admin)
-- Rust → WASM (calculation engine)
-- Python (AI agent, ML pipeline)
-- Node.js (API gateway)
+| Layer       | Stack                                                   |
+| ----------- | ------------------------------------------------------- |
+| Frontend    | React 18, TypeScript, Vite, TailwindCSS, React Query    |
+| API Gateway | Go 1.21+, gorilla/mux, JWT                              |
+| Services    | Go (CRUD), Rust (calculations), Python (planned: AI/ML) |
+| Tax Engine  | Rust compiled to WebAssembly, wazero runtime            |
+| Database    | PostgreSQL 16, Drizzle ORM, row-level security          |
+| Caching     | Redis                                                   |
 
-**Database:**
-- PostgreSQL 16 with pgvector
-- Row-level security (RLS)
-- Multi-tenant architecture
+## Getting Started
 
-**Infrastructure:**
-- Redis (caching, sessions)
-- OpenTelemetry (observability)
-- Kubernetes (orchestration)
+Prerequisites:
 
----
-
-## 📚 Documentation
-
-### Quick Start
-- [Quick Start Guide](docs/guides/QUICK_START_GUIDE.md)
-- [Architecture Index](docs/ARCHITECTURE_INDEX.md)
-
-### Architecture
-- [Architecture Rules (MANDATORY)](ARCHITECTURE_RULES.md) - Unbreakable rules for all code
-- [Agent Workflow Guide](AGENT_WORKFLOW_GUIDE.md) - AI agent discipline
-- [Updated Architecture](docs/UPDATED_ARCHITECTURE.md) - Complete system design
-- [Architecture Summary](docs/ARCHITECTURE_SUMMARY_AND_DECISIONS.md) - Executive overview
-
-### Services
-- [Calculation Engine Design](docs/CALC_ENGINE_DESIGN.md) - Rust/WASM financial engine
-- [AI Agent Architecture](docs/AI_AGENT_ARCHITECTURE.md) - Python AI assistant
-- [Service Specifications](docs/SERVICE_SPECIFICATIONS.md) - All services quick-start
-
-### Features
-- [Tax System](docs/features/tax/)
-- [Email System](docs/features/email/)
-- [ML Pipeline](docs/features/ml/)
-
-### Development
-- [Testing Guide](docs/testing/TESTING_README.md)
-- [Design Guidelines](docs/design/design_guidelines.md)
-- [Security & PII](docs/security/SECURITY_PII_HANDLING.md)
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
 - Node.js 18+
+- Go 1.21+
+- Rust 1.75+ (for tax engine development)
 - PostgreSQL 16+
 - Redis
-- Go 1.21+ (for backend services)
-- Rust 1.75+ (for calculation engine)
-- Python 3.11+ (for AI/ML services)
-
-### Installation
 
 ```bash
-# Clone the repository
 git clone https://github.com/your-org/autolytiq-desk-studio.git
 cd autolytiq-desk-studio
-
-# Switch to the rebuild branch
-git checkout feat/unbreakable-architecture
-
-# Install dependencies
 npm install
-
-# Set up environment
 cp .env.example .env
-# Edit .env with your configuration
-
-# Set up database
 npm run db:push
-
-# Run development server
 npm run dev
 ```
 
-### Development Scripts
+For backend services:
 
 ```bash
-npm run dev          # Start dev server
-npm run build        # Build for production
-npm run start        # Start production server
-npm run typecheck    # TypeScript type checking
-npm run lint         # ESLint code quality
-npm run test         # Run tests
-npm run test:watch   # Watch mode
-npm run test:coverage # Coverage report
-npm run db:studio    # Database UI
+cd services/api-gateway && go run .
+cd services/tax-service && go run .
 ```
 
----
-
-## 🛡️ Quality Gates
-
-All code MUST pass these gates before committing:
+For tax engine development:
 
 ```bash
-npm run typecheck    # ✅ Zero TypeScript errors
-npm run lint         # ✅ Zero ESLint violations
-npm run test         # ✅ All tests passing
-npm run build        # ✅ Successful build
+cd services/tax-engine-rs
+cargo test
+cargo build --target wasm32-unknown-unknown --release
 ```
 
-Pre-commit hooks automatically enforce these standards.
+## Project Structure
 
----
+```
+autolytiq-desk-studio/
+├── client/                 # React frontend
+├── services/
+│   ├── api-gateway/        # Request routing, auth
+│   ├── auth-service/       # Authentication
+│   ├── deal-service/       # Deal CRUD
+│   ├── customer-service/   # Customer management
+│   ├── inventory-service/  # Vehicle inventory
+│   ├── tax-service/        # Tax API (Go + WASM bridge)
+│   └── tax-engine-rs/      # Tax calculation engine (Rust)
+├── shared/
+│   ├── autoTaxEngine/      # TypeScript tax engine (legacy)
+│   └── design-system/      # UI components
+├── docs/                   # Architecture, runbooks, security
+└── infrastructure/         # Terraform, Kubernetes
+```
 
-## 📐 Architecture Principles
+## Documentation
 
-### 1. Separation of Concerns
-- **Frontend:** UI rendering, user input, API calls ONLY
-- **Services:** ALL business logic, calculations, data operations
-- **Gateway:** Authentication, routing, orchestration
+Core documentation lives in `/docs`:
 
-### 2. Type Safety
-- TypeScript strict mode everywhere
-- API contracts defined once (OpenAPI)
-- Types generated from schemas
-- No `any` types without justification
+- `SERVICE_SPECIFICATIONS.md` - API contracts for all services
+- `DATABASE_INFRASTRUCTURE.md` - Schema, migrations, multi-tenancy
+- `GDPR_COMPLIANCE.md` - Data handling requirements
+- `runbooks/` - Operational procedures (deployment, incidents, scaling)
+- `features/tax/TAX_API_DOCUMENTATION.md` - Tax service API reference
 
-### 3. Observable
-- Structured logging (Pino) on every operation
-- Request/response logging on all endpoints
-- Performance monitoring for slow operations (>1s)
-- Full error context for debugging
+The tax engine has its own documentation in `services/tax-engine-rs/README.md`, covering the DSL design and state rule configuration.
 
-### 4. Testable
-- Test-Driven Development (TDD)
-- Unit tests for all business logic
-- Integration tests for all API endpoints
-- E2E tests for critical user journeys
-- >80% code coverage target
+## Development
 
-### 5. Secure
-- Multi-tenant with row-level security
-- RBAC (role-based access control)
-- PII handling standards
-- No secrets in code
-- MFA/2FA support
+Quality gates enforced via pre-commit hooks:
 
----
+```bash
+npm run typecheck    # TypeScript
+npm run lint         # ESLint
+npm run test         # Jest
+cargo test           # Rust (in tax-engine-rs/)
+```
 
-## 🤝 Contributing
-
-### Workflow
-
-1. Read [ARCHITECTURE_RULES.md](ARCHITECTURE_RULES.md) - MANDATORY
-2. Read [AGENT_WORKFLOW_GUIDE.md](AGENT_WORKFLOW_GUIDE.md) - MANDATORY
-3. Create feature branch from `feat/unbreakable-architecture`
-4. Write tests first (TDD)
-5. Implement feature
-6. Ensure quality gates pass
-7. Create PR with proper description
-8. Wait for review
-
-### Commit Convention
+Commits follow conventional format:
 
 ```
 <type>(<scope>): <subject>
-
-<body>
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
-**Types:** feat, fix, refactor, test, docs, build, ci, perf, style, chore
+Where type is one of: feat, fix, refactor, test, docs, build, ci, perf, style, chore.
 
-### Code Review
-
-- All PRs require review
-- Critical paths require CODEOWNERS approval
-- CI/CD must pass
-- Test coverage must not decrease
-
----
-
-## 📊 Project Metrics
-
-### Current Status
-- **Type Safety:** TypeScript strict mode enabled
-- **Test Coverage:** Building towards >80%
-- **Code Quality:** ESLint enforced boundaries
-- **Build Time:** <30s target
-- **Bundle Size:** Monitoring in progress
-
-### Performance Targets
-- API endpoints: <500ms p95
-- Page load: <2s
-- Tax calculation: <10ms (Rust/WASM)
-- Deal calculation: <50ms
-
----
-
-## 🔐 Environment Variables
-
-```bash
-# Database
-DATABASE_URL="postgresql://..."
-DIRECT_DATABASE_URL="postgresql://..."
-
-# Authentication
-JWT_SECRET="..."
-SESSION_SECRET="..."
-
-# External APIs
-GOOGLE_MAPS_API_KEY="..."
-OPENAI_API_KEY="..."
-
-# Email
-RESEND_API_KEY="..."
-
-# Observability
-LOG_LEVEL="info"
-ENABLE_TELEMETRY="true"
-```
-
----
-
-## 📞 Support
-
-- **Documentation:** [docs/ARCHITECTURE_INDEX.md](docs/ARCHITECTURE_INDEX.md)
-- **Issues:** GitHub Issues
-- **Architecture Questions:** See ARCHITECTURE_RULES.md
-- **Agent Workflow:** See AGENT_WORKFLOW_GUIDE.md
-
----
-
-## 📜 License
+## License
 
 MIT
-
----
-
-## 🙏 Acknowledgments
-
-Built with:
-- Next.js, React, TypeScript
-- PostgreSQL, Drizzle ORM
-- Go, Rust, Python
-- shadcn/ui, TailwindCSS
-- Pino, OpenTelemetry
-
----
-
-**Status:** Active development on `feat/unbreakable-architecture`
-**Last Updated:** November 23, 2025

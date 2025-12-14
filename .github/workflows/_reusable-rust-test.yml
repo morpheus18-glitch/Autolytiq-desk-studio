@@ -1,0 +1,85 @@
+name: Rust Service Test (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      service-name:
+        required: true
+        type: string
+        description: 'Name of the Rust service to test'
+      working-directory:
+        required: true
+        type: string
+        description: 'Working directory for the service'
+      rust-version:
+        required: false
+        type: string
+        default: 'stable'
+        description: 'Rust version to use'
+      build-wasm:
+        required: false
+        type: boolean
+        default: false
+        description: 'Whether to build WASM target'
+    outputs:
+      success:
+        description: 'Whether tests passed'
+        value: ${{ jobs.test.outputs.success }}
+
+jobs:
+  test:
+    name: Test ${{ inputs.service-name }}
+    runs-on: ubuntu-latest
+    outputs:
+      success: ${{ steps.test.outputs.success }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ inputs.rust-version }}
+          targets: ${{ inputs.build-wasm && 'wasm32-unknown-unknown' || '' }}
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ${{ inputs.working-directory }}
+
+      - name: Check formatting
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          cargo fmt --check
+          echo "✅ Formatting check passed"
+
+      - name: Run clippy
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          cargo clippy -- -D warnings
+          echo "✅ Clippy passed"
+
+      - name: Run tests
+        id: test
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          cargo test --verbose
+          echo "success=true" >> $GITHUB_OUTPUT
+          echo "✅ Tests passed for ${{ inputs.service-name }}"
+
+      - name: Build WASM
+        if: inputs.build-wasm
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          cargo install wasm-pack
+          wasm-pack build --target web
+          echo "✅ WASM build successful"
+
+      - name: Upload WASM artifact
+        if: inputs.build-wasm
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.service-name }}-wasm
+          path: ${{ inputs.working-directory }}/pkg/
+          retention-days: 7

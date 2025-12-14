@@ -8,6 +8,19 @@
 @import '../node_modules/tailwindcss/components.css';
 @import '../node_modules/tailwindcss/utilities.css';
 
+/* ============================================================================
+ * Obsidian Velocity Design System - Premium Fonts
+ * ============================================================================ */
+
+/* Display font: Outfit - geometric, modern, automotive feel */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+
+/* Body font: Plus Jakarta Sans - clean, professional, distinctive */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500&display=swap');
+
+/* Accent font: JetBrains Mono for numbers/data */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 @layer base {
   /* Base font smoothing */
   * {
@@ -689,4 +702,343 @@
   background: linear-gradient(90deg, transparent 0%, hsl(var(--muted) / 0.5) 50%, transparent 100%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
+}
+
+/* ============================================================================
+ * Obsidian Velocity - Premium Auth & Landing Page Styles
+ * ============================================================================ */
+
+/* Dramatic entrance animations */
+@keyframes velocity-slide-up {
+  0% {
+    opacity: 0;
+    transform: translateY(40px) scale(0.96);
+    filter: blur(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes velocity-slide-right {
+  0% {
+    opacity: 0;
+    transform: translateX(-60px);
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes velocity-fade-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes velocity-glow-pulse {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes velocity-float {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-10px) rotate(1deg);
+  }
+  75% {
+    transform: translateY(10px) rotate(-1deg);
+  }
+}
+
+@keyframes velocity-road-lines {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes velocity-speedometer {
+  0% {
+    transform: rotate(-90deg);
+  }
+  100% {
+    transform: rotate(45deg);
+  }
+}
+
+@keyframes aurora-drift {
+  0%, 100% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 0.5;
+  }
+  25% {
+    transform: translate(5%, -3%) rotate(5deg);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translate(-3%, 5%) rotate(-3deg);
+    opacity: 0.4;
+  }
+  75% {
+    transform: translate(3%, 3%) rotate(3deg);
+    opacity: 0.6;
+  }
+}
+
+@keyframes grain-shift {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-5%, -10%); }
+  30% { transform: translate(3%, -15%); }
+  50% { transform: translate(12%, 9%); }
+  70% { transform: translate(9%, 4%); }
+  90% { transform: translate(-1%, 7%); }
+}
+
+/* Animation utility classes */
+.animate-velocity-up {
+  animation: velocity-slide-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-velocity-right {
+  animation: velocity-slide-right 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-velocity-fade {
+  animation: velocity-fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-velocity-glow {
+  animation: velocity-glow-pulse 4s ease-in-out infinite;
+}
+
+.animate-velocity-float {
+  animation: velocity-float 12s ease-in-out infinite;
+}
+
+.animate-aurora {
+  animation: aurora-drift 20s ease-in-out infinite;
+}
+
+/* Staggered animation delays */
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
+.delay-600 { animation-delay: 600ms; }
+.delay-700 { animation-delay: 700ms; }
+
+/* Noise/grain texture overlay */
+.grain-overlay::before {
+  content: '';
+  position: absolute;
+  inset: -200%;
+  width: 400%;
+  height: 400%;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  opacity: 0.03;
+  pointer-events: none;
+  animation: grain-shift 8s steps(10) infinite;
+}
+
+.dark .grain-overlay::before {
+  opacity: 0.05;
+}
+
+/* Premium input styling */
+.input-obsidian {
+  @apply w-full rounded-xl border-2 border-transparent bg-muted/50 px-4 py-3.5 text-base text-foreground placeholder:text-muted-foreground/60 transition-all duration-300;
+  background-clip: padding-box;
+  backdrop-filter: blur(8px);
+}
+
+.input-obsidian:hover {
+  @apply bg-muted/70 border-muted-foreground/10;
+}
+
+.input-obsidian:focus {
+  @apply outline-none bg-background border-primary/50;
+  box-shadow:
+    0 0 0 4px hsl(var(--primary) / 0.1),
+    0 8px 24px -8px hsl(var(--primary) / 0.2);
+}
+
+/* Premium button styling */
+.btn-obsidian-primary {
+  @apply relative overflow-hidden rounded-xl bg-primary px-6 py-3.5 font-display font-semibold text-primary-foreground transition-all duration-300;
+  box-shadow:
+    0 4px 12px -2px hsl(var(--primary) / 0.4),
+    0 8px 24px -4px hsl(var(--primary) / 0.2),
+    inset 0 1px 0 hsl(0 0% 100% / 0.1);
+}
+
+.btn-obsidian-primary:hover {
+  @apply -translate-y-0.5;
+  box-shadow:
+    0 8px 20px -4px hsl(var(--primary) / 0.5),
+    0 16px 40px -8px hsl(var(--primary) / 0.3),
+    inset 0 1px 0 hsl(0 0% 100% / 0.15);
+}
+
+.btn-obsidian-primary:active {
+  @apply translate-y-0;
+  box-shadow:
+    0 2px 8px -2px hsl(var(--primary) / 0.4),
+    0 4px 12px -4px hsl(var(--primary) / 0.2),
+    inset 0 1px 0 hsl(0 0% 100% / 0.1);
+}
+
+/* Shimmer effect on button */
+.btn-obsidian-primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    hsl(0 0% 100% / 0.2) 45%,
+    hsl(0 0% 100% / 0.4) 50%,
+    hsl(0 0% 100% / 0.2) 55%,
+    transparent 60%
+  );
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+}
+
+.btn-obsidian-primary:hover::after {
+  transform: translateX(100%);
+}
+
+/* Glassmorphism card for auth */
+.card-obsidian {
+  @apply relative rounded-3xl border border-white/10 p-8;
+  background: hsl(var(--card) / 0.8);
+  backdrop-filter: blur(24px);
+  box-shadow:
+    0 0 0 1px hsl(var(--border) / 0.5),
+    0 8px 24px -8px hsl(0 0% 0% / 0.1),
+    0 24px 48px -16px hsl(0 0% 0% / 0.15);
+}
+
+.dark .card-obsidian {
+  background: hsl(var(--card) / 0.6);
+  border-color: hsl(0 0% 100% / 0.08);
+  box-shadow:
+    0 0 0 1px hsl(0 0% 100% / 0.05),
+    0 8px 24px -8px hsl(0 0% 0% / 0.4),
+    0 24px 48px -16px hsl(0 0% 0% / 0.5);
+}
+
+/* Automotive-inspired decorative elements */
+.velocity-lines {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.velocity-lines::before,
+.velocity-lines::after {
+  content: '';
+  position: absolute;
+  width: 2px;
+  height: 60px;
+  background: linear-gradient(to bottom, transparent, hsl(var(--primary) / 0.5), transparent);
+  animation: velocity-road-lines 2s linear infinite;
+}
+
+.velocity-lines::before {
+  left: 30%;
+  animation-delay: 0s;
+}
+
+.velocity-lines::after {
+  left: 70%;
+  animation-delay: 1s;
+}
+
+/* Hero gradient backgrounds */
+.bg-obsidian-gradient {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, hsl(var(--primary) / 0.15), transparent),
+    radial-gradient(ellipse 60% 40% at 80% 80%, hsl(var(--accent) / 0.1), transparent),
+    radial-gradient(ellipse 40% 60% at 20% 60%, hsl(var(--info) / 0.08), transparent),
+    hsl(var(--background));
+}
+
+.bg-obsidian-dark {
+  background:
+    radial-gradient(ellipse 100% 80% at 50% 0%, hsl(217 91% 15% / 0.8), transparent),
+    radial-gradient(ellipse 80% 60% at 100% 100%, hsl(var(--primary) / 0.15), transparent),
+    linear-gradient(180deg, hsl(222 47% 8%) 0%, hsl(222 47% 5%) 100%);
+}
+
+/* Typography utilities */
+.font-display {
+  font-family: 'Outfit', system-ui, sans-serif;
+}
+
+.text-display {
+  @apply font-display tracking-tight;
+}
+
+/* Number/data styling */
+.text-data {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Premium link styling */
+.link-obsidian {
+  @apply relative text-primary transition-colors duration-200;
+}
+
+.link-obsidian::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: currentColor;
+  transition: width 0.3s ease;
+}
+
+.link-obsidian:hover::after {
+  width: 100%;
+}
+
+/* Checkbox styling */
+.checkbox-obsidian {
+  @apply h-5 w-5 rounded-md border-2 border-muted-foreground/30 bg-transparent transition-all duration-200;
+}
+
+.checkbox-obsidian:checked {
+  @apply border-primary bg-primary;
+}
+
+.checkbox-obsidian:focus {
+  @apply outline-none ring-2 ring-primary/30 ring-offset-2 ring-offset-background;
 }

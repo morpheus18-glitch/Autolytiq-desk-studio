@@ -1,0 +1,44 @@
+name: Deploy Auth Service
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'services/auth-service/**'
+      - '.github/workflows/deploy-auth-service.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+jobs:
+  # Run tests first
+  test:
+    name: Test Auth Service
+    uses: ./.github/workflows/_reusable-go-test.yml
+    with:
+      service-name: auth-service
+      working-directory: services/auth-service
+      run-integration-tests: true
+
+  # Deploy to appropriate environment
+  deploy:
+    name: Deploy to ${{ github.event.inputs.environment || 'staging' }}
+    needs: test
+    uses: ./.github/workflows/_reusable-deploy-service.yml
+    with:
+      service-name: auth-service
+      service-type: go
+      working-directory: services/auth-service
+      environment: ${{ github.event.inputs.environment || 'staging' }}
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}

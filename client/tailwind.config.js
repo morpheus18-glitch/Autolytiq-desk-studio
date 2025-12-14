@@ -126,20 +126,29 @@ export default {
         sm: '0.25rem', // 4px
       },
 
-      // Font families
+      // Font families - Obsidian Velocity Design System
       fontFamily: {
+        // Display font for headings - geometric, automotive feel
+        display: [
+          'Outfit',
+          'system-ui',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'sans-serif',
+        ],
+        // Body font - clean, professional, distinctive
         sans: [
-          'Inter',
+          '"Plus Jakarta Sans"',
           'system-ui',
           '-apple-system',
           'BlinkMacSystemFont',
           '"Segoe UI"',
-          'Roboto',
           'sans-serif',
         ],
         serif: ['Georgia', 'serif'],
+        // Mono font for data/numbers
         mono: [
-          'JetBrains Mono',
+          '"JetBrains Mono"',
           '"SF Mono"',
           'Monaco',
           '"Cascadia Code"',

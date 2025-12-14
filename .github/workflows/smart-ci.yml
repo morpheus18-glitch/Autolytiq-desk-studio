@@ -1,0 +1,436 @@
+name: Smart CI (Dependency-Aware Testing)
+
+on:
+  push:
+    branches: [main, develop, 'feat/*', 'fix/*']
+  pull_request:
+    branches: [main, develop]
+
+env:
+  GO_VERSION: '1.21'
+  NODE_VERSION: '20'
+  RUST_VERSION: 'stable'
+
+jobs:
+  # Detect which services changed
+  detect-changes:
+    name: Detect Changed Services
+    runs-on: ubuntu-latest
+    outputs:
+      # Individual service changes
+      client: ${{ steps.filter.outputs.client }}
+      api-gateway: ${{ steps.filter.outputs.api-gateway }}
+      auth-service: ${{ steps.filter.outputs.auth-service }}
+      deal-service: ${{ steps.filter.outputs.deal-service }}
+      customer-service: ${{ steps.filter.outputs.customer-service }}
+      inventory-service: ${{ steps.filter.outputs.inventory-service }}
+      email-service: ${{ steps.filter.outputs.email-service }}
+      user-service: ${{ steps.filter.outputs.user-service }}
+      config-service: ${{ steps.filter.outputs.config-service }}
+      showroom-service: ${{ steps.filter.outputs.showroom-service }}
+      messaging-service: ${{ steps.filter.outputs.messaging-service }}
+      settings-service: ${{ steps.filter.outputs.settings-service }}
+      data-retention-service: ${{ steps.filter.outputs.data-retention-service }}
+      tax-engine-rs: ${{ steps.filter.outputs.tax-engine-rs }}
+      udc-engine: ${{ steps.filter.outputs.udc-engine }}
+      shared: ${{ steps.filter.outputs.shared }}
+      # Aggregated flags
+      any-go-service: ${{ steps.aggregate.outputs.any-go-service }}
+      any-rust-service: ${{ steps.aggregate.outputs.any-rust-service }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for changed files
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            client:
+              - 'client/**'
+            api-gateway:
+              - 'services/api-gateway/**'
+            auth-service:
+              - 'services/auth-service/**'
+            deal-service:
+              - 'services/deal-service/**'
+            customer-service:
+              - 'services/customer-service/**'
+            inventory-service:
+              - 'services/inventory-service/**'
+            email-service:
+              - 'services/email-service/**'
+            user-service:
+              - 'services/user-service/**'
+            config-service:
+              - 'services/config-service/**'
+            showroom-service:
+              - 'services/showroom-service/**'
+            messaging-service:
+              - 'services/messaging-service/**'
+            settings-service:
+              - 'services/settings-service/**'
+            data-retention-service:
+              - 'services/data-retention-service/**'
+            tax-engine-rs:
+              - 'services/tax-engine-rs/**'
+            udc-engine:
+              - 'services/udc-engine/**'
+            shared:
+              - 'shared/**'
+              - '.github/**'
+
+      - name: Aggregate changes
+        id: aggregate
+        run: |
+          ANY_GO_SERVICE="false"
+          ANY_RUST_SERVICE="false"
+
+          # Check if any Go service changed
+          if [[ "${{ steps.filter.outputs.api-gateway }}" == "true" ]] || \
+             [[ "${{ steps.filter.outputs.auth-service }}" == "true" ]] || \
+             [[ "${{ steps.filter.outputs.deal-service }}" == "true" ]] || \
+             [[ "${{ steps.filter.outputs.customer-service }}" == "true" ]] || \
+             [[ "${{ steps.filter.outputs.inventory-service }}" == "true" ]] || \
+             [[ "${{ steps.filter.outputs.email-service }}" == "true" ]] || \
+             [[ "${{ steps.filter.outputs.user-service }}" == "true" ]] || \
+             [[ "${{ steps.filter.outputs.config-service }}" == "true" ]] || \
+             [[ "${{ steps.filter.outputs.showroom-service }}" == "true" ]] || \
+             [[ "${{ steps.filter.outputs.messaging-service }}" == "true" ]] || \
+             [[ "${{ steps.filter.outputs.settings-service }}" == "true" ]] || \
+             [[ "${{ steps.filter.outputs.data-retention-service }}" == "true" ]]; then
+            ANY_GO_SERVICE="true"
+          fi
+
+          # Check if any Rust service changed
+          if [[ "${{ steps.filter.outputs.tax-engine-rs }}" == "true" ]] || \
+             [[ "${{ steps.filter.outputs.udc-engine }}" == "true" ]]; then
+            ANY_RUST_SERVICE="true"
+          fi
+
+          echo "any-go-service=$ANY_GO_SERVICE" >> $GITHUB_OUTPUT
+          echo "any-rust-service=$ANY_RUST_SERVICE" >> $GITHUB_OUTPUT
+
+          echo "🔍 Change Detection Results:"
+          echo "  Go services changed: $ANY_GO_SERVICE"
+          echo "  Rust services changed: $ANY_RUST_SERVICE"
+          echo "  Client changed: ${{ steps.filter.outputs.client }}"
+          echo "  Shared code changed: ${{ steps.filter.outputs.shared }}"
+
+  # ===========================================
+  # INDEPENDENT GO SERVICES (Run in parallel)
+  # ===========================================
+
+  test-auth-service:
+    name: Auth Service
+    needs: detect-changes
+    if: needs.detect-changes.outputs.auth-service == 'true' || needs.detect-changes.outputs.shared == 'true'
+    uses: ./.github/workflows/_reusable-go-test.yml
+    with:
+      service-name: auth-service
+      working-directory: services/auth-service
+      go-version: '1.21'
+
+  test-deal-service:
+    name: Deal Service
+    needs: detect-changes
+    if: needs.detect-changes.outputs.deal-service == 'true' || needs.detect-changes.outputs.shared == 'true'
+    uses: ./.github/workflows/_reusable-go-test.yml
+    with:
+      service-name: deal-service
+      working-directory: services/deal-service
+
+  test-customer-service:
+    name: Customer Service
+    needs: detect-changes
+    if: needs.detect-changes.outputs.customer-service == 'true' || needs.detect-changes.outputs.shared == 'true'
+    uses: ./.github/workflows/_reusable-go-test.yml
+    with:
+      service-name: customer-service
+      working-directory: services/customer-service
+
+  test-inventory-service:
+    name: Inventory Service
+    needs: detect-changes
+    if: needs.detect-changes.outputs.inventory-service == 'true' || needs.detect-changes.outputs.shared == 'true'
+    uses: ./.github/workflows/_reusable-go-test.yml
+    with:
+      service-name: inventory-service
+      working-directory: services/inventory-service
+
+  test-email-service:
+    name: Email Service
+    needs: detect-changes
+    if: needs.detect-changes.outputs.email-service == 'true' || needs.detect-changes.outputs.shared == 'true'
+    uses: ./.github/workflows/_reusable-go-test.yml
+    with:
+      service-name: email-service
+      working-directory: services/email-service
+
+  test-user-service:
+    name: User Service
+    needs: detect-changes
+    if: needs.detect-changes.outputs.user-service == 'true' || needs.detect-changes.outputs.shared == 'true'
+    uses: ./.github/workflows/_reusable-go-test.yml
+    with:
+      service-name: user-service
+      working-directory: services/user-service
+
+  test-config-service:
+    name: Config Service
+    needs: detect-changes
+    if: needs.detect-changes.outputs.config-service == 'true' || needs.detect-changes.outputs.shared == 'true'
+    uses: ./.github/workflows/_reusable-go-test.yml
+    with:
+      service-name: config-service
+      working-directory: services/config-service
+
+  test-showroom-service:
+    name: Showroom Service
+    needs: detect-changes
+    if: needs.detect-changes.outputs.showroom-service == 'true' || needs.detect-changes.outputs.shared == 'true'
+    uses: ./.github/workflows/_reusable-go-test.yml
+    with:
+      service-name: showroom-service
+      working-directory: services/showroom-service
+
+  test-messaging-service:
+    name: Messaging Service
+    needs: detect-changes
+    if: needs.detect-changes.outputs.messaging-service == 'true' || needs.detect-changes.outputs.shared == 'true'
+    uses: ./.github/workflows/_reusable-go-test.yml
+    with:
+      service-name: messaging-service
+      working-directory: services/messaging-service
+
+  test-settings-service:
+    name: Settings Service
+    needs: detect-changes
+    if: needs.detect-changes.outputs.settings-service == 'true' || needs.detect-changes.outputs.shared == 'true'
+    uses: ./.github/workflows/_reusable-go-test.yml
+    with:
+      service-name: settings-service
+      working-directory: services/settings-service
+
+  # ===========================================
+  # DEPENDENT GO SERVICES (Test after dependencies)
+  # ===========================================
+
+  test-data-retention-service:
+    name: Data Retention Service
+    needs:
+      - detect-changes
+      - test-customer-service
+      - test-deal-service
+      - test-email-service
+    # Run if: (service changed OR shared changed) AND dependencies passed
+    if: |
+      always() &&
+      (needs.detect-changes.outputs.data-retention-service == 'true' ||
+       needs.detect-changes.outputs.shared == 'true' ||
+       needs.detect-changes.outputs.customer-service == 'true' ||
+       needs.detect-changes.outputs.deal-service == 'true' ||
+       needs.detect-changes.outputs.email-service == 'true') &&
+      (needs.test-customer-service.result == 'success' || needs.test-customer-service.result == 'skipped') &&
+      (needs.test-deal-service.result == 'success' || needs.test-deal-service.result == 'skipped') &&
+      (needs.test-email-service.result == 'success' || needs.test-email-service.result == 'skipped')
+    uses: ./.github/workflows/_reusable-go-test.yml
+    with:
+      service-name: data-retention-service
+      working-directory: services/data-retention-service
+
+  test-api-gateway:
+    name: API Gateway
+    needs:
+      - detect-changes
+      - test-auth-service
+      - test-deal-service
+      - test-customer-service
+      - test-inventory-service
+      - test-email-service
+      - test-user-service
+      - test-config-service
+      - test-showroom-service
+      - test-messaging-service
+      - test-settings-service
+      - test-data-retention-service
+    # Run if: (gateway changed OR any backend service changed) AND all dependencies passed
+    if: |
+      always() &&
+      (needs.detect-changes.outputs.api-gateway == 'true' ||
+       needs.detect-changes.outputs.shared == 'true' ||
+       needs.detect-changes.outputs.any-go-service == 'true') &&
+      (needs.test-auth-service.result == 'success' || needs.test-auth-service.result == 'skipped') &&
+      (needs.test-deal-service.result == 'success' || needs.test-deal-service.result == 'skipped') &&
+      (needs.test-customer-service.result == 'success' || needs.test-customer-service.result == 'skipped') &&
+      (needs.test-inventory-service.result == 'success' || needs.test-inventory-service.result == 'skipped') &&
+      (needs.test-email-service.result == 'success' || needs.test-email-service.result == 'skipped') &&
+      (needs.test-user-service.result == 'success' || needs.test-user-service.result == 'skipped') &&
+      (needs.test-config-service.result == 'success' || needs.test-config-service.result == 'skipped') &&
+      (needs.test-showroom-service.result == 'success' || needs.test-showroom-service.result == 'skipped') &&
+      (needs.test-messaging-service.result == 'success' || needs.test-messaging-service.result == 'skipped') &&
+      (needs.test-settings-service.result == 'success' || needs.test-settings-service.result == 'skipped') &&
+      (needs.test-data-retention-service.result == 'success' || needs.test-data-retention-service.result == 'skipped')
+    uses: ./.github/workflows/_reusable-go-test.yml
+    with:
+      service-name: api-gateway
+      working-directory: services/api-gateway
+
+  # ===========================================
+  # RUST SERVICES (Independent, run in parallel)
+  # ===========================================
+
+  test-tax-engine-rs:
+    name: Tax Engine (Rust/WASM)
+    needs: detect-changes
+    if: needs.detect-changes.outputs.tax-engine-rs == 'true' || needs.detect-changes.outputs.shared == 'true'
+    uses: ./.github/workflows/_reusable-rust-test.yml
+    with:
+      service-name: tax-engine-rs
+      working-directory: services/tax-engine-rs
+      build-wasm: true
+
+  test-udc-engine:
+    name: UDC Engine (Rust)
+    needs: detect-changes
+    if: needs.detect-changes.outputs.udc-engine == 'true' || needs.detect-changes.outputs.shared == 'true'
+    uses: ./.github/workflows/_reusable-rust-test.yml
+    with:
+      service-name: udc-engine
+      working-directory: services/udc-engine
+      build-wasm: false
+
+  # ===========================================
+  # FRONTEND (Depends on api-gateway)
+  # ===========================================
+
+  test-client:
+    name: Client (Frontend)
+    needs:
+      - detect-changes
+      - test-api-gateway
+    if: |
+      always() &&
+      (needs.detect-changes.outputs.client == 'true' ||
+       needs.detect-changes.outputs.api-gateway == 'true' ||
+       needs.detect-changes.outputs.shared == 'true') &&
+      (needs.test-api-gateway.result == 'success' || needs.test-api-gateway.result == 'skipped')
+    uses: ./.github/workflows/_reusable-typescript-test.yml
+    with:
+      service-name: client
+      working-directory: client
+      run-build: true
+
+  # ===========================================
+  # ROOT TYPESCRIPT/TESTS
+  # ===========================================
+
+  test-root-typescript:
+    name: Root TypeScript Tests
+    needs: detect-changes
+    if: needs.detect-changes.outputs.shared == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run typecheck
+        run: npm run typecheck
+
+      - name: Run tests
+        run: npm run test:ci
+        continue-on-error: true
+
+  # ===========================================
+  # SECURITY SCAN (Always run)
+  # ===========================================
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # ===========================================
+  # SUMMARY
+  # ===========================================
+
+  ci-summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs:
+      - detect-changes
+      - test-auth-service
+      - test-deal-service
+      - test-customer-service
+      - test-inventory-service
+      - test-email-service
+      - test-user-service
+      - test-config-service
+      - test-showroom-service
+      - test-messaging-service
+      - test-settings-service
+      - test-data-retention-service
+      - test-api-gateway
+      - test-tax-engine-rs
+      - test-udc-engine
+      - test-client
+      - test-root-typescript
+      - security-scan
+    if: always()
+    steps:
+      - name: Print summary
+        run: |
+          echo "## 🎯 Smart CI Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Services Tested:" >> $GITHUB_STEP_SUMMARY
+          echo "- Auth Service: ${{ needs.test-auth-service.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Deal Service: ${{ needs.test-deal-service.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Customer Service: ${{ needs.test-customer-service.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Inventory Service: ${{ needs.test-inventory-service.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Email Service: ${{ needs.test-email-service.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- User Service: ${{ needs.test-user-service.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Config Service: ${{ needs.test-config-service.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Showroom Service: ${{ needs.test-showroom-service.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Messaging Service: ${{ needs.test-messaging-service.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Settings Service: ${{ needs.test-settings-service.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Data Retention Service: ${{ needs.test-data-retention-service.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- API Gateway: ${{ needs.test-api-gateway.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Tax Engine (Rust): ${{ needs.test-tax-engine-rs.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- UDC Engine (Rust): ${{ needs.test-udc-engine.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Client (Frontend): ${{ needs.test-client.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Security:" >> $GITHUB_STEP_SUMMARY
+          echo "- Security Scan: ${{ needs.security-scan.result }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check for failures
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
+            echo "❌ One or more jobs failed"
+            exit 1
+          fi
+          echo "✅ All jobs passed or were skipped"

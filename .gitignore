@@ -104,3 +104,6 @@ services/auth-service/auth-service
 services/messaging-service/messaging-service
 services/settings-service/settings-service
 services/showroom-service/showroom-service
+shared/schema-lender.ts
+scripts/seed-lenders.ts
+services/fi-agent-rs/

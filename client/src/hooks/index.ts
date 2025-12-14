@@ -15,3 +15,4 @@ export * from './useVinDecoder';
 export * from './useEmail';
 export * from './useRBAC';
 export * from './useDealCalculator';
+export * from './useTaxCalculation';
