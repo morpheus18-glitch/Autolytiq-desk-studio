@@ -3,11 +3,65 @@
  *
  * Starting minimal - will build up properly during Week 2+
  * Reference old schema when porting logic, but this is clean slate
+ *
+ * PII ENCRYPTION:
+ * Fields marked with PII comments are encrypted at rest using
+ * post-quantum cryptography (ML-KEM/Kyber + ChaCha20-Poly1305).
+ * See /shared/crypto for encryption utilities.
  */
 
 import { pgTable, text, uuid, timestamp, boolean, decimal, integer } from 'drizzle-orm/pg-core';
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { z } from 'zod';
+
+// ===========================================
+// PII Field Markers & Encryption Config
+// ===========================================
+
+/**
+ * PII_FIELDS: Fields requiring encryption at rest
+ *
+ * These fields contain Personally Identifiable Information and
+ * MUST be encrypted before storage and decrypted after retrieval.
+ *
+ * Encryption format: pqc:v1:kyber1024-x25519-chacha20poly1305:<base64_ciphertext>
+ */
+export const PII_FIELDS = {
+  customers: [
+    'firstName',
+    'lastName',
+    'email',
+    'phone',
+    'ssn',
+    'driversLicense',
+    'dateOfBirth',
+    'addressStreet',
+  ],
+  users: ['email', 'name', 'mfaSecret'],
+  creditProfiles: ['ssn', 'creditScore', 'monthlyIncome', 'totalDebt'],
+  deals: ['customerSSN', 'coSignerSSN'],
+} as const;
+
+/**
+ * Type for PII table names
+ */
+export type PIITableName = keyof typeof PII_FIELDS;
+
+/**
+ * Check if a field requires PII encryption
+ */
+export function isPIIField(table: string, field: string): boolean {
+  const tableFields = PII_FIELDS[table as PIITableName];
+  if (!tableFields) return false;
+  return (tableFields as readonly string[]).includes(field);
+}
+
+/**
+ * Get all PII fields for a table
+ */
+export function getPIIFields(table: string): readonly string[] {
+  return PII_FIELDS[table as PIITableName] || [];
+}
 
 // Password validation constants
 const MIN_PASSWORD_LENGTH = 8;
@@ -79,12 +133,17 @@ export const customers = pgTable('customers', {
     .references(() => dealerships.id, { onDelete: 'cascade' }),
 
   // Basic Customer Info
-  firstName: text('first_name').notNull(),
-  lastName: text('last_name').notNull(),
-  email: text('email'),
-  phone: text('phone'),
+  firstName: text('first_name').notNull(), // PII: Encrypted
+  lastName: text('last_name').notNull(), // PII: Encrypted
+  email: text('email'), // PII: Encrypted
+  phone: text('phone'), // PII: Encrypted
   source: text('source'), // lead source (walk-in, web, referral, etc.)
   notes: text('notes'),
+
+  // Sensitive PII (Always Encrypted)
+  ssn: text('ssn'), // PII: SSN - Heavily encrypted
+  driversLicense: text('drivers_license'), // PII: Encrypted
+  dateOfBirth: text('date_of_birth'), // PII: Encrypted (stored as ISO string)
 
   // ===========================================
   // ADDRESS - This determines the Tax Schema
@@ -306,6 +365,59 @@ export const deals = pgTable('deals', {
 });
 
 // ===========================================
+// Credit Profiles - For Financing Decisions
+// ===========================================
+
+/**
+ * Credit Profiles Table
+ *
+ * Stores credit check results and financial data for customers.
+ * ALL fields containing financial PII are encrypted at rest.
+ */
+export const creditProfiles = pgTable('credit_profiles', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  customerId: uuid('customer_id')
+    .notNull()
+    .references(() => customers.id, { onDelete: 'cascade' }),
+
+  // Credit Bureau Data (PII: All encrypted)
+  ssn: text('ssn'), // PII: SSN - Encrypted (same as customer, for verification)
+  creditScore: text('credit_score'), // PII: Encrypted (stored as text for encryption)
+  creditBureau: text('credit_bureau', {
+    enum: ['equifax', 'experian', 'transunion'],
+  }),
+
+  // Financial Profile (PII: All encrypted)
+  monthlyIncome: text('monthly_income'), // PII: Encrypted
+  monthlyExpenses: text('monthly_expenses'), // PII: Encrypted
+  totalDebt: text('total_debt'), // PII: Encrypted
+  bankruptcyHistory: boolean('bankruptcy_history').default(false),
+  foreclosureHistory: boolean('foreclosure_history').default(false),
+
+  // Employment Info
+  employerName: text('employer_name'),
+  employmentYears: integer('employment_years'),
+  employmentMonths: integer('employment_months'),
+
+  // Calculated/Derived (Not PII)
+  debtToIncomeRatio: decimal('debt_to_income_ratio', { precision: 5, scale: 2 }),
+  recommendedAPR: decimal('recommended_apr', { precision: 5, scale: 3 }),
+  maxLoanAmount: decimal('max_loan_amount', { precision: 12, scale: 2 }),
+  riskTier: text('risk_tier', {
+    enum: ['excellent', 'good', 'fair', 'poor', 'subprime'],
+  }),
+
+  // Audit Trail
+  pulledAt: timestamp('pulled_at').notNull().defaultNow(),
+  expiresAt: timestamp('expires_at'), // Credit pulls are typically valid 30 days
+  pulledBy: uuid('pulled_by').references(() => users.id, { onDelete: 'set null' }),
+
+  // Timestamps
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+// ===========================================
 // Zod Schemas (Auto-generated from Drizzle)
 // ===========================================
 
@@ -399,6 +511,23 @@ export const insertDealSchema = createInsertSchema(deals).omit({
 
 export const selectDealSchema = createSelectSchema(deals);
 
+// Credit Profiles
+export const insertCreditProfileSchema = createInsertSchema(creditProfiles).omit({
+  id: true,
+  // Auto-populated fields
+  debtToIncomeRatio: true,
+  recommendedAPR: true,
+  maxLoanAmount: true,
+  riskTier: true,
+  pulledAt: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const selectCreditProfileSchema = createSelectSchema(creditProfiles).omit({
+  ssn: true, // Never expose raw SSN - use masked version
+});
+
 // ===========================================
 // TypeScript Types (Inferred from schema)
 // ===========================================
@@ -419,6 +548,9 @@ export type InsertVehicle = z.infer<typeof insertVehicleSchema>;
 
 export type Deal = typeof deals.$inferSelect;
 export type InsertDeal = z.infer<typeof insertDealSchema>;
+
+export type CreditProfile = typeof creditProfiles.$inferSelect;
+export type InsertCreditProfile = z.infer<typeof insertCreditProfileSchema>;
 
 // ===========================================
 // Tax Context Types
@@ -459,3 +591,48 @@ export type DeliveryMethod = 'drive_off' | 'shipped' | 'customer_pickup' | 'deal
  * Deal Type Enum
  */
 export type DealType = 'cash' | 'finance' | 'lease';
+
+/**
+ * Credit Risk Tier Enum
+ */
+export type CreditRiskTier = 'excellent' | 'good' | 'fair' | 'poor' | 'subprime';
+
+/**
+ * Credit Bureau Enum
+ */
+export type CreditBureau = 'equifax' | 'experian' | 'transunion';
+
+// ===========================================
+// PII Encryption Helpers
+// ===========================================
+
+/**
+ * Mask SSN for display (XXX-XX-1234)
+ */
+export function maskSSN(ssn: string | null | undefined): string {
+  if (!ssn) return '';
+  // Handle already-masked SSNs
+  if (ssn.includes('X') || ssn.includes('*')) return ssn;
+  // Get last 4 digits
+  const cleaned = ssn.replace(/\D/g, '');
+  if (cleaned.length < 4) return '***-**-****';
+  const last4 = cleaned.slice(-4);
+  return `***-**-${last4}`;
+}
+
+/**
+ * Validate SSN format (XXX-XX-XXXX or XXXXXXXXX)
+ */
+export function isValidSSN(ssn: string): boolean {
+  const cleaned = ssn.replace(/\D/g, '');
+  return cleaned.length === 9 && /^\d{9}$/.test(cleaned);
+}
+
+/**
+ * Format SSN for display (XXX-XX-XXXX)
+ */
+export function formatSSN(ssn: string): string {
+  const cleaned = ssn.replace(/\D/g, '');
+  if (cleaned.length !== 9) return ssn;
+  return `${cleaned.slice(0, 3)}-${cleaned.slice(3, 5)}-${cleaned.slice(5)}`;
+}

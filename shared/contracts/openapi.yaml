@@ -1,0 +1,641 @@
+openapi: 3.0.0
+info:
+  title: Autolytiq Desk Studio API
+  version: 1.0.0
+  description: |
+    Complete API documentation for Autolytiq Desk Studio - a comprehensive
+    automotive dealership management platform.
+
+    ## Services
+
+    Autolytiq is composed of multiple microservices:
+
+    | Service | Description | Port |
+    |---------|-------------|------|
+    | Auth Service | Authentication, authorization, MFA | 8080 |
+    | Deal Service | Deal management and calculations | 8081 |
+    | Customer Service | Customer CRM and PII management | 8082 |
+    | Tax Engine (WASM) | High-performance tax calculations | N/A |
+    | API Gateway | Unified entry point | 5000 |
+
+    ## Authentication
+
+    All API endpoints (except auth endpoints) require JWT bearer authentication.
+    Obtain tokens from the Auth Service `/auth/login` endpoint.
+
+    ## Security
+
+    - **PII Encryption**: All personally identifiable information is encrypted
+      at rest using post-quantum cryptography (ML-KEM/Kyber-1024).
+    - **HTTPS Required**: All production traffic must use HTTPS.
+    - **Rate Limiting**: APIs are rate-limited to prevent abuse.
+
+    ## Service Specifications
+
+    Each service has its own detailed OpenAPI specification:
+
+    - [Auth Service](./auth-service.yaml)
+    - [Deal Service](./deal-service.yaml)
+    - [Customer Service](./customer-service.yaml)
+    - [Tax Service](./tax-service.yaml)
+
+  contact:
+    name: Autolytiq Engineering
+    email: engineering@autolytiq.com
+  license:
+    name: Proprietary
+    url: https://autolytiq.com/terms
+
+servers:
+  - url: http://localhost:5000
+    description: Development (API Gateway)
+  - url: https://api.autolytiq.com
+    description: Production
+
+tags:
+  - name: Authentication
+    description: User authentication and session management
+  - name: Deals
+    description: Deal management and payment calculations
+  - name: Customers
+    description: Customer CRM operations
+  - name: Tax
+    description: Tax calculations and jurisdiction resolution
+  - name: Health
+    description: Service health checks
+
+paths:
+  # ============================================================================
+  # Health Endpoints
+  # ============================================================================
+  /health:
+    get:
+      tags:
+        - Health
+      summary: API Gateway health check
+      description: Returns health status of the API Gateway and downstream services.
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Gateway healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy, degraded, unhealthy]
+                  services:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        status:
+                          type: string
+                        latency_ms:
+                          type: number
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  # ============================================================================
+  # Auth Endpoints (proxied to auth-service)
+  # ============================================================================
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: |
+        Authenticate a user with email and password.
+        Returns JWT tokens for API access.
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+                mfa_code:
+                  type: string
+                  description: TOTP code if MFA is enabled
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+        '403':
+          description: MFA required
+
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: User logout
+      description: Invalidate the current session and refresh tokens.
+      operationId: logout
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Logout successful
+
+  /auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh tokens
+      description: Get new access and refresh tokens using a valid refresh token.
+      operationId: refreshTokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refresh_token
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: Tokens refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  # ============================================================================
+  # Deal Endpoints (proxied to deal-service)
+  # ============================================================================
+  /api/deals:
+    get:
+      tags:
+        - Deals
+      summary: List deals
+      description: Get paginated list of deals for the current dealership.
+      operationId: listDeals
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, pending, approved, funded, delivered, cancelled]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: List of deals
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DealListResponse'
+
+    post:
+      tags:
+        - Deals
+      summary: Create deal
+      description: Create a new deal in draft status.
+      operationId: createDeal
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDealRequest'
+      responses:
+        '201':
+          description: Deal created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deal'
+
+  /api/deals/{id}:
+    get:
+      tags:
+        - Deals
+      summary: Get deal
+      description: Get a single deal by ID with full details.
+      operationId: getDeal
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+      responses:
+        '200':
+          description: Deal details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deal'
+        '404':
+          description: Deal not found
+
+  /api/deals/{id}/calculate:
+    post:
+      tags:
+        - Deals
+      summary: Calculate deal payments
+      description: |
+        Calculate monthly payment, total interest, and other values.
+        Does not persist changes.
+      operationId: calculateDeal
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalculationRequest'
+      responses:
+        '200':
+          description: Calculation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalculationResponse'
+
+  # ============================================================================
+  # Customer Endpoints (proxied to customer-service)
+  # ============================================================================
+  /api/customers:
+    get:
+      tags:
+        - Customers
+      summary: List customers
+      description: Get list of customers for the current dealership.
+      operationId: listCustomers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          description: Search by name or email
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of customers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CustomerSummary'
+
+    post:
+      tags:
+        - Customers
+      summary: Create customer
+      description: Create a new customer record. PII fields are encrypted.
+      operationId: createCustomer
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCustomerRequest'
+      responses:
+        '201':
+          description: Customer created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+
+  /api/customers/{id}:
+    get:
+      tags:
+        - Customers
+      summary: Get customer
+      description: Get a single customer with decrypted PII.
+      operationId: getCustomer
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+      responses:
+        '200':
+          description: Customer details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '404':
+          description: Customer not found
+
+components:
+  schemas:
+    AuthResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        token_type:
+          type: string
+          default: Bearer
+        expires_in:
+          type: integer
+          description: Seconds until access token expires
+        user:
+          $ref: '#/components/schemas/User'
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        first_name:
+          type: string
+        last_name:
+          type: string
+        role:
+          type: string
+          enum: [admin, manager, salesperson]
+        dealership_id:
+          type: string
+          format: uuid
+
+    Deal:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        dealership_id:
+          type: string
+          format: uuid
+        customer_id:
+          type: string
+          format: uuid
+        deal_type:
+          type: string
+          enum: [cash, finance, lease]
+        status:
+          type: string
+          enum: [draft, pending, approved, funded, delivered, cancelled]
+        vehicle_price:
+          type: integer
+          description: Price in cents
+        down_payment:
+          type: integer
+        apr:
+          type: number
+        term_months:
+          type: integer
+        monthly_payment:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    DealListResponse:
+      type: object
+      properties:
+        deals:
+          type: array
+          items:
+            $ref: '#/components/schemas/Deal'
+        pagination:
+          type: object
+          properties:
+            page:
+              type: integer
+            limit:
+              type: integer
+            total:
+              type: integer
+            total_pages:
+              type: integer
+
+    CreateDealRequest:
+      type: object
+      required:
+        - customer_id
+        - deal_type
+        - vehicle_price
+      properties:
+        customer_id:
+          type: string
+          format: uuid
+        deal_type:
+          type: string
+          enum: [cash, finance, lease]
+        vehicle_price:
+          type: integer
+        down_payment:
+          type: integer
+        apr:
+          type: number
+        term_months:
+          type: integer
+
+    CalculationRequest:
+      type: object
+      required:
+        - vehicle_price
+        - deal_type
+      properties:
+        vehicle_price:
+          type: integer
+        trade_in_value:
+          type: integer
+        trade_in_payoff:
+          type: integer
+        down_payment:
+          type: integer
+        rebates:
+          type: integer
+        apr:
+          type: number
+        term_months:
+          type: integer
+        tax_rate:
+          type: number
+        deal_type:
+          type: string
+          enum: [cash, finance, lease]
+
+    CalculationResponse:
+      type: object
+      properties:
+        amount_financed:
+          type: integer
+        monthly_payment:
+          type: integer
+        total_of_payments:
+          type: integer
+        total_interest:
+          type: integer
+        tax_amount:
+          type: integer
+
+    Customer:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        dealership_id:
+          type: string
+          format: uuid
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        zip_code:
+          type: string
+        credit_score:
+          type: integer
+          description: PII - encrypted at rest
+        created_at:
+          type: string
+          format: date-time
+
+    CustomerSummary:
+      type: object
+      description: Customer without sensitive PII
+      properties:
+        id:
+          type: string
+          format: uuid
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+
+    CreateCustomerRequest:
+      type: object
+      required:
+        - first_name
+        - last_name
+      properties:
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        zip_code:
+          type: string
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+        details:
+          type: object
+
+  parameters:
+    DealId:
+      name: id
+      in: path
+      required: true
+      description: Deal ID
+      schema:
+        type: string
+        format: uuid
+
+    CustomerId:
+      name: id
+      in: path
+      required: true
+      description: Customer ID
+      schema:
+        type: string
+        format: uuid
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from /auth/login
+
+security:
+  - bearerAuth: []

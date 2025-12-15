@@ -1,0 +1,1061 @@
+openapi: 3.0.0
+info:
+  title: Autolytiq Tax Intelligence Engine (ATIE) API
+  version: 1.0.0
+  description: |
+    High-performance automotive tax calculation engine compiled to WebAssembly.
+
+    **Key Capabilities:**
+    - Cash, finance, and lease deal calculations
+    - Tax calculations for all 50 US states + DC + territories
+    - 10,000+ local jurisdiction support
+    - Cross-state reciprocity with 51×51 bilateral matrix
+    - Real-time payment matrix generation
+    - Amortization schedule generation
+
+    **Architecture:**
+
+    The engine uses a 3-stage DAG (Directed Acyclic Graph) pipeline:
+    ```
+    Stage 1: BASE_COMPUTE   → Stage 2: RECIP_RESOLVE → Stage 3: PAYMENT_CALC
+    (B_T, B_H, tax_raw)        (R(H,T,G), κ, credit)    (PMT, totals)
+    ```
+
+    **Note:** This is a WASM module. The API specification documents the
+    JavaScript/TypeScript interface for browser and Node.js environments.
+
+servers:
+  - url: wasm://tax-engine
+    description: WebAssembly module (client-side)
+
+tags:
+  - name: Deal Calculations
+    description: Complete deal calculation endpoints
+  - name: Finance
+    description: Finance-specific calculations
+  - name: Lease
+    description: Lease-specific calculations
+  - name: Tax
+    description: Tax calculation and jurisdiction resolution
+  - name: Reciprocity
+    description: Cross-state tax credit calculations
+  - name: Utilities
+    description: Utility functions and metadata
+
+paths:
+  /calculate_deal:
+    post:
+      tags:
+        - Deal Calculations
+      summary: Calculate a complete deal
+      description: |
+        Main entry point for deal calculations. Handles cash, finance, and lease deals.
+        Returns comprehensive payment breakdown, tax calculations, and totals.
+      operationId: calculateDeal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DealInput'
+            example:
+              deal_type: FINANCE
+              state_code: IN
+              selling_price: 38000.0
+              trade_in:
+                gross_allowance: 10000.0
+                payoff_amount: 8000.0
+              cash_down: 2000.0
+              finance_input:
+                apr: 5.9
+                term_months: 60
+      responses:
+        '200':
+          description: Deal calculation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DealResult'
+        '400':
+          $ref: '#/components/responses/CalculationError'
+
+  /calculate_deal_with_reciprocity:
+    post:
+      tags:
+        - Deal Calculations
+        - Reciprocity
+      summary: Calculate deal with cross-state reciprocity
+      description: |
+        Execute the full 3-stage DAG pipeline for deals with cross-state reciprocity.
+        Uses bilateral matrix for O(1) reciprocity lookup.
+
+        **DAG Stages:**
+        1. BASE_COMPUTE: Calculate base taxes for transaction and home states
+        2. RECIP_RESOLVE: Resolve reciprocity regime and credit
+        3. PAYMENT_CALC: Calculate final payment with applied credit
+      operationId: calculateDealWithReciprocity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DagInput'
+            example:
+              vehicle_price: 30000.0
+              trade_value: 5000.0
+              trade_payoff: 3000.0
+              down_payment: 2000.0
+              apr: 5.9
+              term_months: 60
+              transaction_state: TX
+              home_state: IN
+              deal_type: RETAIL
+      responses:
+        '200':
+          description: DAG pipeline result with reciprocity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DagResult'
+        '400':
+          $ref: '#/components/responses/CalculationError'
+
+  /calculate_finance_payment:
+    post:
+      tags:
+        - Finance
+      summary: Calculate monthly payment
+      description: |
+        Quick calculation for monthly payment using standard amortization formula.
+        Does not include tax calculations.
+      operationId: calculateFinancePayment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - principal
+                - apr
+                - term_months
+              properties:
+                principal:
+                  type: number
+                  format: double
+                  description: Amount financed
+                  example: 25000.0
+                apr:
+                  type: number
+                  format: double
+                  description: Annual percentage rate
+                  example: 5.9
+                term_months:
+                  type: integer
+                  description: Loan term in months
+                  example: 60
+      responses:
+        '200':
+          description: Monthly payment amount
+          content:
+            application/json:
+              schema:
+                type: number
+                format: double
+                example: 482.10
+
+  /generate_payment_matrix:
+    post:
+      tags:
+        - Finance
+      summary: Generate payment matrix
+      description: |
+        Generate a matrix of monthly payments for multiple term/rate combinations.
+        Useful for showing customers different financing options.
+      operationId: generatePaymentMatrix
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - amount_financed
+                - base_apr
+                - terms
+              properties:
+                amount_financed:
+                  type: number
+                  format: double
+                  example: 25000.0
+                base_apr:
+                  type: number
+                  format: double
+                  example: 5.9
+                terms:
+                  type: array
+                  items:
+                    type: integer
+                  example: [36, 48, 60, 72]
+      responses:
+        '200':
+          description: Payment matrix with multiple scenarios
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentMatrix'
+
+  /generate_amortization_schedule:
+    post:
+      tags:
+        - Finance
+      summary: Generate amortization schedule
+      description: |
+        Generate a complete amortization schedule showing principal/interest
+        breakdown for each payment over the loan term.
+      operationId: generateAmortizationSchedule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - principal
+                - apr
+                - term_months
+                - start_date
+              properties:
+                principal:
+                  type: number
+                  format: double
+                  example: 25000.0
+                apr:
+                  type: number
+                  format: double
+                  example: 5.9
+                term_months:
+                  type: integer
+                  example: 60
+                start_date:
+                  type: string
+                  format: date
+                  example: "2025-01-15"
+      responses:
+        '200':
+          description: Complete amortization schedule
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AmortizationSchedule'
+
+  /calculate_vehicle_tax:
+    post:
+      tags:
+        - Tax
+      summary: Calculate vehicle tax (legacy)
+      description: |
+        Calculate tax for a vehicle deal using explicit state rules.
+        This is the legacy API - prefer /calculate_deal_with_reciprocity for new integrations.
+      operationId: calculateVehicleTax
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rules
+                - input
+              properties:
+                rules:
+                  $ref: '#/components/schemas/TaxRulesConfig'
+                input:
+                  $ref: '#/components/schemas/TaxCalculationInput'
+      responses:
+        '200':
+          description: Tax calculation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxCalculationResult'
+        '400':
+          $ref: '#/components/responses/CalculationError'
+
+  /resolve_state_reciprocity:
+    post:
+      tags:
+        - Reciprocity
+      summary: Resolve state reciprocity
+      description: |
+        Resolve the reciprocity regime and kappa factor for a state pair.
+        Uses the 51×51 bilateral matrix for O(1) lookup.
+
+        **Reciprocity Regimes:**
+        - NONE: No credit given
+        - FULL: Full credit for tax paid
+        - PARTIAL: Credit up to destination rate
+        - HOME_STATE: Tax determined by home state only
+      operationId: resolveStateReciprocity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - home_state
+                - transaction_state
+                - deal_type
+              properties:
+                home_state:
+                  type: string
+                  description: Where vehicle will be registered (H)
+                  example: IN
+                transaction_state:
+                  type: string
+                  description: Where deal closes (T)
+                  example: TX
+                garaging_state:
+                  type: string
+                  description: Where vehicle will be kept (G, defaults to home)
+                  example: IN
+                deal_type:
+                  type: string
+                  enum: [RETAIL, LEASE]
+                  example: RETAIL
+      responses:
+        '200':
+          description: Reciprocity resolution result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReciprocityResult'
+
+  /resolve_jurisdictions:
+    post:
+      tags:
+        - Tax
+      summary: Resolve tax jurisdictions
+      description: |
+        Resolve all applicable tax jurisdictions for a location and calculate
+        combined tax. Uses swarm resolver for parallel multi-jurisdiction processing.
+      operationId: resolveJurisdictions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SwarmInput'
+      responses:
+        '200':
+          description: Jurisdiction resolution result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SwarmResult'
+
+  /get_state_rules:
+    get:
+      tags:
+        - Tax
+      summary: Get state tax rules
+      description: Get the complete tax rules configuration for a specific state.
+      operationId: getStateRules
+      parameters:
+        - name: state_code
+          in: query
+          required: true
+          description: Two-letter state code
+          schema:
+            type: string
+            pattern: '^[A-Z]{2}$'
+            example: TX
+      responses:
+        '200':
+          description: State tax rules
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxRulesConfig'
+        '404':
+          description: State not found
+
+  /get_state_tax_rate:
+    get:
+      tags:
+        - Tax
+      summary: Get state tax rate
+      description: Get the default combined tax rate for a state (state + average local).
+      operationId: getStateTaxRate
+      parameters:
+        - name: state_code
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: '^[A-Z]{2}$'
+            example: TX
+      responses:
+        '200':
+          description: Tax rate as decimal
+          content:
+            application/json:
+              schema:
+                type: number
+                format: double
+                example: 0.0825
+
+  /get_supported_states:
+    get:
+      tags:
+        - Utilities
+      summary: Get supported states
+      description: Get list of all supported state codes.
+      operationId: getSupportedStates
+      responses:
+        '200':
+          description: List of state codes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                example: ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL"]
+
+  /money_factor_to_apr:
+    get:
+      tags:
+        - Lease
+      summary: Convert money factor to APR
+      description: Convert lease money factor to equivalent APR.
+      operationId: moneyFactorToApr
+      parameters:
+        - name: money_factor
+          in: query
+          required: true
+          schema:
+            type: number
+            format: double
+            example: 0.00125
+      responses:
+        '200':
+          description: APR value
+          content:
+            application/json:
+              schema:
+                type: number
+                format: double
+                example: 3.0
+
+  /apr_to_money_factor:
+    get:
+      tags:
+        - Lease
+      summary: Convert APR to money factor
+      description: Convert APR to lease money factor.
+      operationId: aprToMoneyFactor
+      parameters:
+        - name: apr
+          in: query
+          required: true
+          schema:
+            type: number
+            format: double
+            example: 3.0
+      responses:
+        '200':
+          description: Money factor value
+          content:
+            application/json:
+              schema:
+                type: number
+                format: double
+                example: 0.00125
+
+  /get_version:
+    get:
+      tags:
+        - Utilities
+      summary: Get engine version
+      description: Get the tax engine version string.
+      operationId: getVersion
+      responses:
+        '200':
+          description: Version string
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "1.0.0"
+
+  /get_atie_version:
+    get:
+      tags:
+        - Utilities
+      summary: Get ATIE version
+      description: Get the Tax Intelligence Engine version.
+      operationId: getAtieVersion
+      responses:
+        '200':
+          description: ATIE version string
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "1.0.0-alpha"
+
+components:
+  schemas:
+    DealType:
+      type: string
+      enum: [CASH, FINANCE, LEASE]
+      description: Type of deal
+
+    DealInput:
+      type: object
+      required:
+        - deal_type
+        - state_code
+        - selling_price
+      properties:
+        deal_type:
+          $ref: '#/components/schemas/DealType'
+        state_code:
+          type: string
+          pattern: '^[A-Z]{2}$'
+        local_jurisdiction:
+          type: string
+          nullable: true
+        vehicle_msrp:
+          type: number
+          format: double
+        vehicle_invoice:
+          type: number
+          format: double
+        selling_price:
+          type: number
+          format: double
+        trade_in:
+          $ref: '#/components/schemas/TradeIn'
+        rebates:
+          type: array
+          items:
+            $ref: '#/components/schemas/Rebate'
+        cash_down:
+          type: number
+          format: double
+        fi_products:
+          type: array
+          items:
+            $ref: '#/components/schemas/FIProduct'
+        fees:
+          type: array
+          items:
+            $ref: '#/components/schemas/Fee'
+        finance_input:
+          $ref: '#/components/schemas/FinanceInput'
+        lease_input:
+          $ref: '#/components/schemas/LeaseInput'
+
+    TradeIn:
+      type: object
+      properties:
+        gross_allowance:
+          type: number
+          format: double
+          description: Trade-in value
+        payoff_amount:
+          type: number
+          format: double
+          description: Outstanding loan on trade
+
+    Rebate:
+      type: object
+      properties:
+        rebate_type:
+          type: string
+          enum: [MANUFACTURER, DEALER]
+        amount:
+          type: number
+          format: double
+        description:
+          type: string
+
+    FIProduct:
+      type: object
+      properties:
+        product_type:
+          type: string
+          enum: [SERVICE_CONTRACT, GAP, TIRE_WHEEL, PAINT_FABRIC, OTHER]
+        amount:
+          type: number
+          format: double
+        description:
+          type: string
+
+    Fee:
+      type: object
+      properties:
+        fee_type:
+          type: string
+          enum: [DOC_FEE, TITLE, REGISTRATION, OTHER]
+        amount:
+          type: number
+          format: double
+        taxable:
+          type: boolean
+        description:
+          type: string
+
+    FinanceInput:
+      type: object
+      properties:
+        apr:
+          type: number
+          format: double
+          description: Annual percentage rate
+        term_months:
+          type: integer
+          description: Loan term in months
+        payment_frequency:
+          type: string
+          enum: [MONTHLY, BI_WEEKLY, WEEKLY]
+          default: MONTHLY
+
+    LeaseInput:
+      type: object
+      properties:
+        money_factor:
+          type: number
+          format: double
+        term_months:
+          type: integer
+        residual_percent:
+          type: number
+          format: double
+          description: Residual as percentage of MSRP
+        mileage_allowance:
+          type: integer
+          description: Annual mileage allowance
+
+    DealResult:
+      type: object
+      properties:
+        deal_type:
+          $ref: '#/components/schemas/DealType'
+        vehicle_price:
+          type: number
+          format: double
+        net_trade:
+          type: number
+          format: double
+        total_rebates:
+          type: number
+          format: double
+        taxable_amount:
+          type: number
+          format: double
+        tax_amount:
+          type: number
+          format: double
+        fees_total:
+          type: number
+          format: double
+        fi_products_total:
+          type: number
+          format: double
+        amount_financed:
+          type: number
+          format: double
+        payment:
+          type: number
+          format: double
+        total_of_payments:
+          type: number
+          format: double
+        total_interest:
+          type: number
+          format: double
+        tax_breakdown:
+          $ref: '#/components/schemas/TaxBreakdown'
+
+    DagInput:
+      type: object
+      required:
+        - vehicle_price
+        - transaction_state
+        - home_state
+        - deal_type
+      properties:
+        vehicle_price:
+          type: number
+          format: double
+        trade_value:
+          type: number
+          format: double
+        trade_payoff:
+          type: number
+          format: double
+        rebates:
+          type: number
+          format: double
+        doc_fee:
+          type: number
+          format: double
+        other_fees:
+          type: number
+          format: double
+        down_payment:
+          type: number
+          format: double
+        apr:
+          type: number
+          format: double
+        term_months:
+          type: integer
+        transaction_state:
+          type: string
+          pattern: '^[A-Z]{2}$'
+        home_state:
+          type: string
+          pattern: '^[A-Z]{2}$'
+        garaging_state:
+          type: string
+          pattern: '^[A-Z]{2}$'
+        deal_type:
+          type: string
+          enum: [RETAIL, LEASE]
+
+    DagResult:
+      type: object
+      properties:
+        stage1_base_compute:
+          type: object
+          properties:
+            transaction_state_tax:
+              type: number
+              format: double
+            home_state_tax:
+              type: number
+              format: double
+            raw_taxable_base:
+              type: number
+              format: double
+        stage2_recip_resolve:
+          type: object
+          properties:
+            regime:
+              type: string
+            kappa:
+              type: number
+              format: double
+            credit_amount:
+              type: number
+              format: double
+        stage3_payment_calc:
+          type: object
+          properties:
+            final_tax:
+              type: number
+              format: double
+            amount_financed:
+              type: number
+              format: double
+            monthly_payment:
+              type: number
+              format: double
+            total_of_payments:
+              type: number
+              format: double
+
+    TaxBreakdown:
+      type: object
+      properties:
+        state_tax:
+          type: number
+          format: double
+        local_tax:
+          type: number
+          format: double
+        total_tax:
+          type: number
+          format: double
+        effective_rate:
+          type: number
+          format: double
+        components:
+          type: array
+          items:
+            type: object
+            properties:
+              label:
+                type: string
+              rate:
+                type: number
+                format: double
+              amount:
+                type: number
+                format: double
+
+    PaymentMatrix:
+      type: object
+      properties:
+        amount_financed:
+          type: number
+          format: double
+        scenarios:
+          type: array
+          items:
+            type: object
+            properties:
+              term_months:
+                type: integer
+              apr:
+                type: number
+                format: double
+              monthly_payment:
+                type: number
+                format: double
+              total_interest:
+                type: number
+                format: double
+
+    AmortizationSchedule:
+      type: object
+      properties:
+        principal:
+          type: number
+          format: double
+        apr:
+          type: number
+          format: double
+        term_months:
+          type: integer
+        monthly_payment:
+          type: number
+          format: double
+        payments:
+          type: array
+          items:
+            type: object
+            properties:
+              payment_number:
+                type: integer
+              payment_date:
+                type: string
+                format: date
+              payment_amount:
+                type: number
+                format: double
+              principal_portion:
+                type: number
+                format: double
+              interest_portion:
+                type: number
+                format: double
+              remaining_balance:
+                type: number
+                format: double
+
+    TaxRulesConfig:
+      type: object
+      description: Complete state tax rules configuration
+      properties:
+        stateCode:
+          type: string
+        version:
+          type: integer
+        tradeInPolicy:
+          type: object
+          properties:
+            type:
+              type: string
+              enum: [NONE, FULL, CAPPED, PERCENT]
+            capAmount:
+              type: number
+            percent:
+              type: number
+        docFeeTaxable:
+          type: boolean
+        vehicleTaxScheme:
+          type: string
+          enum: [STATE_ONLY, STATE_PLUS_LOCAL, LOCAL_ONLY, SPECIAL_HUT, SPECIAL_TAVT, DMV_PRIVILEGE_TAX, SPECIAL_CAP]
+        leaseRules:
+          type: object
+          properties:
+            method:
+              type: string
+              enum: [FULL_UPFRONT, MONTHLY, HYBRID, NET_CAP_COST, REDUCED_BASE]
+        reciprocity:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+            scope:
+              type: string
+              enum: [NONE, RETAIL_ONLY, LEASE_ONLY, BOTH]
+
+    TaxCalculationInput:
+      type: object
+      required:
+        - stateCode
+        - dealType
+        - vehiclePrice
+      properties:
+        stateCode:
+          type: string
+        asOfDate:
+          type: string
+          format: date
+        dealType:
+          type: string
+          enum: [RETAIL, LEASE]
+        vehiclePrice:
+          type: number
+          format: double
+        accessoriesAmount:
+          type: number
+          format: double
+        tradeInValue:
+          type: number
+          format: double
+        rebateManufacturer:
+          type: number
+          format: double
+        rebateDealer:
+          type: number
+          format: double
+        docFee:
+          type: number
+          format: double
+        rates:
+          type: array
+          items:
+            type: object
+            properties:
+              label:
+                type: string
+              rate:
+                type: number
+                format: double
+
+    TaxCalculationResult:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [RETAIL, LEASE]
+        bases:
+          type: object
+          properties:
+            vehicleBase:
+              type: number
+              format: double
+            feesBase:
+              type: number
+              format: double
+            totalTaxableBase:
+              type: number
+              format: double
+        taxes:
+          type: object
+          properties:
+            componentTaxes:
+              type: array
+              items:
+                type: object
+                properties:
+                  label:
+                    type: string
+                  rate:
+                    type: number
+                  amount:
+                    type: number
+            totalTax:
+              type: number
+              format: double
+
+    ReciprocityResult:
+      type: object
+      properties:
+        regime:
+          type: string
+          description: Reciprocity regime (NONE, FULL, PARTIAL, HOME_STATE)
+        kappa:
+          type: number
+          format: double
+          description: Credit multiplier (0.0 to 1.0)
+        home_state:
+          type: string
+        transaction_state:
+          type: string
+        garaging_state:
+          type: string
+        deal_type:
+          type: string
+
+    SwarmInput:
+      type: object
+      required:
+        - state_code
+        - taxable_amount
+      properties:
+        state_code:
+          type: string
+        taxable_amount:
+          type: number
+          format: double
+        jurisdiction_codes:
+          type: array
+          items:
+            type: string
+        address:
+          type: object
+          properties:
+            city:
+              type: string
+            state:
+              type: string
+            zip:
+              type: string
+
+    SwarmResult:
+      type: object
+      properties:
+        jurisdictions:
+          type: array
+          items:
+            type: object
+            properties:
+              code:
+                type: string
+              name:
+                type: string
+              rate:
+                type: number
+                format: double
+              tax_amount:
+                type: number
+                format: double
+        total_rate:
+          type: number
+          format: double
+        total_tax:
+          type: number
+          format: double
+
+  responses:
+    CalculationError:
+      description: Calculation error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              code:
+                type: string
+                enum: [INVALID_INPUT, UNSUPPORTED_STATE, CALCULATION_ERROR]

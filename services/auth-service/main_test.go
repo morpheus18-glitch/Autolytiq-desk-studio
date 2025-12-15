@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"autolytiq/shared/logging"
 )
 
 // MockDB implements AuthDatabase for testing
@@ -55,6 +57,50 @@ func (m *MockDB) UpdateLastLogin(userID string) error { return nil }
 func (m *MockDB) IncrementFailedAttempts(userID string) error { return nil }
 
 func (m *MockDB) ResetFailedAttempts(userID string) error { return nil }
+
+// MFA methods
+func (m *MockDB) SetMFASecret(userID, encryptedSecret string) error {
+	if user := m.users[userID]; user != nil {
+		user.MFASecret = encryptedSecret
+	}
+	return nil
+}
+
+func (m *MockDB) EnableMFA(userID string) error {
+	if user := m.users[userID]; user != nil {
+		user.MFAEnabled = true
+	}
+	return nil
+}
+
+func (m *MockDB) DisableMFA(userID string) error {
+	if user := m.users[userID]; user != nil {
+		user.MFAEnabled = false
+		user.MFASecret = ""
+	}
+	return nil
+}
+
+func (m *MockDB) SetMFABackupCodes(userID, encryptedCodes string) error {
+	if user := m.users[userID]; user != nil {
+		user.MFABackupCodes = encryptedCodes
+	}
+	return nil
+}
+
+func (m *MockDB) IncrementMFAFailedAttempts(userID string) error {
+	if user := m.users[userID]; user != nil {
+		user.MFAFailedAttempts++
+	}
+	return nil
+}
+
+func (m *MockDB) ResetMFAFailedAttempts(userID string) error {
+	if user := m.users[userID]; user != nil {
+		user.MFAFailedAttempts = 0
+	}
+	return nil
+}
 
 // MockRedis implements TokenStore for testing
 type MockRedis struct {
@@ -139,7 +185,8 @@ func setupTestServer() *Server {
 	redis := NewMockRedis()
 	jwtService := NewJWTService(config.JWTSecret, config.JWTIssuer, config.AccessTokenTTL, config.RefreshTokenTTL)
 
-	return NewServer(config, db, redis, jwtService)
+	logger := logging.New(logging.Config{Service: "auth-service-test"})
+	return NewServer(config, db, redis, jwtService, logger)
 }
 
 func TestHealthCheck(t *testing.T) {

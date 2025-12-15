@@ -107,3 +107,4 @@ services/showroom-service/showroom-service
 shared/schema-lender.ts
 scripts/seed-lenders.ts
 services/fi-agent-rs/
+.cert/

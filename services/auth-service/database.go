@@ -12,20 +12,27 @@ import (
 
 // User represents a user entity
 type User struct {
-	ID             string
-	Email          string
-	PasswordHash   string
-	FirstName      string
-	LastName       string
-	Role           string
-	DealershipID   string
-	IsActive       bool
-	EmailVerified  bool
-	FailedAttempts int
-	LockedUntil    *time.Time
-	LastLoginAt    *time.Time
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID               string
+	Email            string
+	PasswordHash     string
+	FirstName        string
+	LastName         string
+	Role             string
+	DealershipID     string
+	IsActive         bool
+	EmailVerified    bool
+	FailedAttempts   int
+	LockedUntil      *time.Time
+	LastLoginAt      *time.Time
+	// MFA fields
+	MFAEnabled       bool
+	MFASecret        string     // Encrypted TOTP secret
+	MFAVerifiedAt    *time.Time // When MFA was verified/enabled
+	MFABackupCodes   string     // JSON array of encrypted backup codes
+	MFAFailedAttempts int
+	MFALastAttempt   *time.Time
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 // AuthDatabase defines the interface for auth database operations
@@ -40,6 +47,13 @@ type AuthDatabase interface {
 	UpdateLastLogin(userID string) error
 	IncrementFailedAttempts(userID string) error
 	ResetFailedAttempts(userID string) error
+	// MFA operations
+	SetMFASecret(userID, encryptedSecret string) error
+	EnableMFA(userID string) error
+	DisableMFA(userID string) error
+	SetMFABackupCodes(userID, encryptedCodes string) error
+	IncrementMFAFailedAttempts(userID string) error
+	ResetMFAFailedAttempts(userID string) error
 }
 
 // PostgresDB implements AuthDatabase using PostgreSQL
@@ -91,6 +105,12 @@ func (db *PostgresDB) InitSchema() error {
 		failed_attempts INTEGER NOT NULL DEFAULT 0,
 		locked_until TIMESTAMP,
 		last_login_at TIMESTAMP,
+		mfa_enabled BOOLEAN NOT NULL DEFAULT false,
+		mfa_secret TEXT,
+		mfa_verified_at TIMESTAMP,
+		mfa_backup_codes TEXT,
+		mfa_failed_attempts INTEGER NOT NULL DEFAULT 0,
+		mfa_last_attempt TIMESTAMP,
 		created_at TIMESTAMP NOT NULL DEFAULT NOW(),
 		updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 	);
@@ -99,13 +119,44 @@ func (db *PostgresDB) InitSchema() error {
 	CREATE INDEX IF NOT EXISTS idx_auth_users_dealership ON auth_users(dealership_id);
 	`
 
+	// Migration for existing tables - add MFA columns if they don't exist
+	migrationSQL := `
+	DO $$
+	BEGIN
+		IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='auth_users' AND column_name='mfa_enabled') THEN
+			ALTER TABLE auth_users ADD COLUMN mfa_enabled BOOLEAN NOT NULL DEFAULT false;
+		END IF;
+		IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='auth_users' AND column_name='mfa_secret') THEN
+			ALTER TABLE auth_users ADD COLUMN mfa_secret TEXT;
+		END IF;
+		IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='auth_users' AND column_name='mfa_verified_at') THEN
+			ALTER TABLE auth_users ADD COLUMN mfa_verified_at TIMESTAMP;
+		END IF;
+		IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='auth_users' AND column_name='mfa_backup_codes') THEN
+			ALTER TABLE auth_users ADD COLUMN mfa_backup_codes TEXT;
+		END IF;
+		IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='auth_users' AND column_name='mfa_failed_attempts') THEN
+			ALTER TABLE auth_users ADD COLUMN mfa_failed_attempts INTEGER NOT NULL DEFAULT 0;
+		END IF;
+		IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='auth_users' AND column_name='mfa_last_attempt') THEN
+			ALTER TABLE auth_users ADD COLUMN mfa_last_attempt TIMESTAMP;
+		END IF;
+	END $$;
+	`
+
 	_, err := db.conn.Exec(schema)
 	if err != nil {
 		return fmt.Errorf("failed to create schema: %w", err)
 	}
 
+	// Run migration for existing tables
+	_, err = db.conn.Exec(migrationSQL)
+	if err != nil {
+		return fmt.Errorf("failed to run MFA migration: %w", err)
+	}
+
 	if db.logger != nil {
-		db.logger.Info("Database schema initialized")
+		db.logger.Info("Database schema initialized with MFA support")
 	}
 	return nil
 }
@@ -136,7 +187,9 @@ func (db *PostgresDB) GetUserByID(id string) (*User, error) {
 	query := `
 		SELECT id, email, password_hash, first_name, last_name, role,
 			   dealership_id, is_active, email_verified, failed_attempts,
-			   locked_until, last_login_at, created_at, updated_at
+			   locked_until, last_login_at, mfa_enabled, mfa_secret,
+			   mfa_verified_at, mfa_backup_codes, mfa_failed_attempts,
+			   mfa_last_attempt, created_at, updated_at
 		FROM auth_users
 		WHERE id = $1
 	`
@@ -145,12 +198,15 @@ func (db *PostgresDB) GetUserByID(id string) (*User, error) {
 	var dealershipID sql.NullString
 	var firstName, lastName sql.NullString
 	var lockedUntil, lastLoginAt sql.NullTime
+	var mfaSecret, mfaBackupCodes sql.NullString
+	var mfaVerifiedAt, mfaLastAttempt sql.NullTime
 
 	err := db.conn.QueryRow(query, id).Scan(
 		&user.ID, &user.Email, &user.PasswordHash, &firstName, &lastName,
 		&user.Role, &dealershipID, &user.IsActive, &user.EmailVerified,
-		&user.FailedAttempts, &lockedUntil, &lastLoginAt,
-		&user.CreatedAt, &user.UpdatedAt,
+		&user.FailedAttempts, &lockedUntil, &lastLoginAt, &user.MFAEnabled,
+		&mfaSecret, &mfaVerifiedAt, &mfaBackupCodes, &user.MFAFailedAttempts,
+		&mfaLastAttempt, &user.CreatedAt, &user.UpdatedAt,
 	)
 
 	if err == sql.ErrNoRows {
@@ -174,6 +230,18 @@ func (db *PostgresDB) GetUserByID(id string) (*User, error) {
 	}
 	if lastLoginAt.Valid {
 		user.LastLoginAt = &lastLoginAt.Time
+	}
+	if mfaSecret.Valid {
+		user.MFASecret = mfaSecret.String
+	}
+	if mfaVerifiedAt.Valid {
+		user.MFAVerifiedAt = &mfaVerifiedAt.Time
+	}
+	if mfaBackupCodes.Valid {
+		user.MFABackupCodes = mfaBackupCodes.String
+	}
+	if mfaLastAttempt.Valid {
+		user.MFALastAttempt = &mfaLastAttempt.Time
 	}
 
 	return user, nil
@@ -184,7 +252,9 @@ func (db *PostgresDB) GetUserByEmail(email string) (*User, error) {
 	query := `
 		SELECT id, email, password_hash, first_name, last_name, role,
 			   dealership_id, is_active, email_verified, failed_attempts,
-			   locked_until, last_login_at, created_at, updated_at
+			   locked_until, last_login_at, mfa_enabled, mfa_secret,
+			   mfa_verified_at, mfa_backup_codes, mfa_failed_attempts,
+			   mfa_last_attempt, created_at, updated_at
 		FROM auth_users
 		WHERE email = $1
 	`
@@ -193,12 +263,15 @@ func (db *PostgresDB) GetUserByEmail(email string) (*User, error) {
 	var dealershipID sql.NullString
 	var firstName, lastName sql.NullString
 	var lockedUntil, lastLoginAt sql.NullTime
+	var mfaSecret, mfaBackupCodes sql.NullString
+	var mfaVerifiedAt, mfaLastAttempt sql.NullTime
 
 	err := db.conn.QueryRow(query, email).Scan(
 		&user.ID, &user.Email, &user.PasswordHash, &firstName, &lastName,
 		&user.Role, &dealershipID, &user.IsActive, &user.EmailVerified,
-		&user.FailedAttempts, &lockedUntil, &lastLoginAt,
-		&user.CreatedAt, &user.UpdatedAt,
+		&user.FailedAttempts, &lockedUntil, &lastLoginAt, &user.MFAEnabled,
+		&mfaSecret, &mfaVerifiedAt, &mfaBackupCodes, &user.MFAFailedAttempts,
+		&mfaLastAttempt, &user.CreatedAt, &user.UpdatedAt,
 	)
 
 	if err == sql.ErrNoRows {
@@ -222,6 +295,18 @@ func (db *PostgresDB) GetUserByEmail(email string) (*User, error) {
 	}
 	if lastLoginAt.Valid {
 		user.LastLoginAt = &lastLoginAt.Time
+	}
+	if mfaSecret.Valid {
+		user.MFASecret = mfaSecret.String
+	}
+	if mfaVerifiedAt.Valid {
+		user.MFAVerifiedAt = &mfaVerifiedAt.Time
+	}
+	if mfaBackupCodes.Valid {
+		user.MFABackupCodes = mfaBackupCodes.String
+	}
+	if mfaLastAttempt.Valid {
+		user.MFALastAttempt = &mfaLastAttempt.Time
 	}
 
 	return user, nil
@@ -307,6 +392,110 @@ func (db *PostgresDB) ResetFailedAttempts(userID string) error {
 	_, err := db.conn.Exec(query, userID)
 	if err != nil {
 		return fmt.Errorf("failed to reset failed attempts: %w", err)
+	}
+
+	return nil
+}
+
+// ============================================================================
+// MFA Database Operations
+// ============================================================================
+
+// SetMFASecret stores the encrypted MFA secret for a user
+func (db *PostgresDB) SetMFASecret(userID, encryptedSecret string) error {
+	query := `
+		UPDATE auth_users
+		SET mfa_secret = $1, updated_at = NOW()
+		WHERE id = $2
+	`
+
+	_, err := db.conn.Exec(query, encryptedSecret, userID)
+	if err != nil {
+		return fmt.Errorf("failed to set MFA secret: %w", err)
+	}
+
+	return nil
+}
+
+// EnableMFA enables MFA for a user and records the verification time
+func (db *PostgresDB) EnableMFA(userID string) error {
+	query := `
+		UPDATE auth_users
+		SET mfa_enabled = true, mfa_verified_at = NOW(), updated_at = NOW()
+		WHERE id = $1
+	`
+
+	_, err := db.conn.Exec(query, userID)
+	if err != nil {
+		return fmt.Errorf("failed to enable MFA: %w", err)
+	}
+
+	return nil
+}
+
+// DisableMFA disables MFA for a user and clears the secret
+func (db *PostgresDB) DisableMFA(userID string) error {
+	query := `
+		UPDATE auth_users
+		SET mfa_enabled = false, mfa_secret = NULL, mfa_verified_at = NULL,
+			mfa_backup_codes = NULL, mfa_failed_attempts = 0, mfa_last_attempt = NULL,
+			updated_at = NOW()
+		WHERE id = $1
+	`
+
+	_, err := db.conn.Exec(query, userID)
+	if err != nil {
+		return fmt.Errorf("failed to disable MFA: %w", err)
+	}
+
+	return nil
+}
+
+// SetMFABackupCodes stores encrypted backup codes for a user
+func (db *PostgresDB) SetMFABackupCodes(userID, encryptedCodes string) error {
+	query := `
+		UPDATE auth_users
+		SET mfa_backup_codes = $1, updated_at = NOW()
+		WHERE id = $2
+	`
+
+	_, err := db.conn.Exec(query, encryptedCodes, userID)
+	if err != nil {
+		return fmt.Errorf("failed to set MFA backup codes: %w", err)
+	}
+
+	return nil
+}
+
+// IncrementMFAFailedAttempts increments the MFA failed attempts counter
+func (db *PostgresDB) IncrementMFAFailedAttempts(userID string) error {
+	query := `
+		UPDATE auth_users
+		SET mfa_failed_attempts = mfa_failed_attempts + 1,
+			mfa_last_attempt = NOW(),
+			updated_at = NOW()
+		WHERE id = $1
+	`
+
+	_, err := db.conn.Exec(query, userID)
+	if err != nil {
+		return fmt.Errorf("failed to increment MFA failed attempts: %w", err)
+	}
+
+	return nil
+}
+
+// ResetMFAFailedAttempts resets the MFA failed attempts counter
+func (db *PostgresDB) ResetMFAFailedAttempts(userID string) error {
+	query := `
+		UPDATE auth_users
+		SET mfa_failed_attempts = 0, mfa_last_attempt = NULL, updated_at = NOW()
+		WHERE id = $1
+	`
+
+	_, err := db.conn.Exec(query, userID)
+	if err != nil {
+		return fmt.Errorf("failed to reset MFA failed attempts: %w", err)
 	}
 
 	return nil

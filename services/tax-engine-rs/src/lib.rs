@@ -65,6 +65,13 @@ pub mod chunks;
 /// Swarm jurisdiction resolver for parallel multi-jurisdiction processing
 pub mod swarm;
 
+/// Rate bundle system for runtime rate loading (no recompilation needed)
+pub mod rate_bundle;
+
+/// Rules bundle system for loading complete state rules from JSON
+/// This enables single-source-of-truth: TypeScript rules → JSON → WASM
+pub mod rules_bundle;
+
 /// Special tax scheme calculators (GA TAVT, NC HUT, WV Privilege, SC Cap)
 pub mod special_schemes;
 
@@ -201,6 +208,107 @@ pub fn get_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
 }
 
+// ============================================================================
+// WASM Exported Functions - Runtime Rate Loading
+// ============================================================================
+
+/// Initialize tax rates from external JSON bundle
+///
+/// This function MUST be called before any tax calculations to load
+/// current rates from the database/API. Without initialization, the
+/// engine falls back to compiled default rates (which may be outdated).
+///
+/// # Arguments
+/// * `bundle_json` - JSON string conforming to RateBundleV1 schema
+///
+/// # Returns
+/// JSON object with initialization status and metadata:
+/// ```json
+/// {
+///   "success": true,
+///   "bundle_id": "...",
+///   "state_count": 51,
+///   "effective_date": "2025-01-01"
+/// }
+/// ```
+///
+/// # Example (JavaScript)
+/// ```javascript
+/// // Fetch rates from your Tax Service API
+/// const response = await fetch('/api/tax/rates/bundle');
+/// const bundleJson = await response.text();
+///
+/// // Initialize the WASM engine
+/// const result = JSON.parse(initialize_rates(bundleJson));
+/// if (result.success) {
+///   console.log(`Loaded ${result.state_count} state rates`);
+/// }
+/// ```
+#[wasm_bindgen]
+pub fn initialize_rates(bundle_json: &str) -> String {
+    match rate_bundle::initialize_rates(bundle_json) {
+        Ok(metadata) => {
+            serde_json::json!({
+                "success": true,
+                "bundle_id": metadata.bundle_id,
+                "state_count": metadata.state_count,
+                "local_jurisdiction_count": metadata.local_jurisdiction_count,
+                "effective_date": metadata.effective_date,
+                "generated_at": metadata.generated_at,
+            }).to_string()
+        }
+        Err(e) => {
+            serde_json::json!({
+                "success": false,
+                "error": e,
+            }).to_string()
+        }
+    }
+}
+
+/// Check if rates have been initialized
+///
+/// Returns true if `initialize_rates` has been called successfully.
+#[wasm_bindgen]
+pub fn rates_loaded() -> bool {
+    rate_bundle::rates_initialized()
+}
+
+/// Clear loaded rates (revert to compiled defaults)
+///
+/// Use this to force the engine to use compiled default rates,
+/// or before re-initializing with a new bundle.
+#[wasm_bindgen]
+pub fn clear_rates() {
+    rate_bundle::clear_rates()
+}
+
+/// Get rate bundle metadata
+///
+/// Returns information about the currently loaded rate bundle.
+#[wasm_bindgen]
+pub fn get_rate_bundle_info() -> String {
+    match rate_bundle::get_bundle_metadata() {
+        Some(metadata) => {
+            serde_json::json!({
+                "loaded": true,
+                "bundle_id": metadata.bundle_id,
+                "state_count": metadata.state_count,
+                "local_jurisdiction_count": metadata.local_jurisdiction_count,
+                "effective_date": metadata.effective_date,
+                "generated_at": metadata.generated_at,
+                "source": metadata.source,
+            }).to_string()
+        }
+        None => {
+            serde_json::json!({
+                "loaded": false,
+                "message": "Using compiled default rates"
+            }).to_string()
+        }
+    }
+}
+
 /// Get tax rules for a specific state (WASM-exported function)
 #[wasm_bindgen]
 pub fn get_state_rules(state_code: &str) -> Result<String, JsValue> {
@@ -227,8 +335,17 @@ pub fn get_supported_states() -> String {
 }
 
 /// Get default tax rate for a state
+///
+/// This function checks for dynamically loaded rates first, then falls back
+/// to compiled defaults. Always call `initialize_rates()` first for current rates.
 #[wasm_bindgen]
 pub fn get_state_tax_rate(state_code: &str) -> f64 {
+    // Check for dynamically loaded rate first
+    if let Some(rate) = rate_bundle::get_loaded_state_rate(state_code) {
+        return rate;
+    }
+
+    // Fallback to compiled defaults (may be outdated)
     // Combined state + average local rate
     match state_code {
         "AL" => 0.06, "AK" => 0.0, "AZ" => 0.076, "AR" => 0.09, "CA" => 0.0825,
@@ -243,6 +360,41 @@ pub fn get_state_tax_rate(state_code: &str) -> f64 {
         "VA" => 0.053, "WA" => 0.095, "WV" => 0.06, "WI" => 0.056, "WY" => 0.06,
         "DC" => 0.06,
         _ => 0.07, // Default
+    }
+}
+
+/// Get state rate info (includes breakdown)
+///
+/// Returns detailed rate information if loaded from bundle, or None if using defaults.
+#[wasm_bindgen]
+pub fn get_state_rate_info(state_code: &str) -> String {
+    match rate_bundle::get_loaded_state_info(state_code) {
+        Some(info) => {
+            serde_json::json!({
+                "found": true,
+                "from_bundle": true,
+                "state_code": info.state_code,
+                "state_rate": info.state_rate,
+                "avg_local_rate": info.avg_local_rate,
+                "max_local_rate": info.max_local_rate,
+                "combined_rate": info.combined_rate,
+                "has_local_vehicle_tax": info.has_local_vehicle_tax,
+                "last_updated": info.last_updated,
+                "source": info.source,
+                "notes": info.notes,
+            }).to_string()
+        }
+        None => {
+            // Return info from compiled defaults
+            let rate = get_state_tax_rate(state_code);
+            serde_json::json!({
+                "found": true,
+                "from_bundle": false,
+                "state_code": state_code,
+                "combined_rate": rate,
+                "note": "Using compiled default rate - may be outdated"
+            }).to_string()
+        }
     }
 }
 
@@ -430,6 +582,132 @@ pub fn get_dag_stats() -> String {
 #[wasm_bindgen]
 pub fn get_atie_version() -> String {
     "1.0.0-alpha".to_string()
+}
+
+// ============================================================================
+// WASM Exported Functions - Rules Bundle (Single Source of Truth)
+// ============================================================================
+
+/// Initialize complete state rules from JSON bundle
+///
+/// This loads the full state tax rules exported from TypeScript.
+/// The TypeScript rules in /shared/autoTaxEngine/rules/ are the SINGLE SOURCE OF TRUTH.
+///
+/// # Arguments
+/// * `bundle_json` - JSON string generated by scripts/export-tax-rules.ts
+///
+/// # Returns
+/// JSON object with initialization status:
+/// ```json
+/// {
+///   "success": true,
+///   "bundle_id": "tax-rules-1234567890",
+///   "state_count": 50,
+///   "generated_at": "2025-01-01T00:00:00Z"
+/// }
+/// ```
+///
+/// # Example (JavaScript)
+/// ```javascript
+/// // Load the pre-generated bundle
+/// const bundleJson = await fetch('/tax-rules-bundle.json').then(r => r.text());
+/// const result = JSON.parse(initialize_state_rules(bundleJson));
+/// if (result.success) {
+///   console.log(`Loaded ${result.state_count} state rules`);
+/// }
+/// ```
+#[wasm_bindgen]
+pub fn initialize_state_rules(bundle_json: &str) -> String {
+    match rules_bundle::initialize_rules(bundle_json) {
+        Ok(metadata) => {
+            serde_json::json!({
+                "success": true,
+                "bundle_id": metadata.bundle_id,
+                "bundle_version": metadata.bundle_version,
+                "state_count": metadata.state_count,
+                "generated_at": metadata.generated_at,
+                "source": metadata.source,
+                "checksum": metadata.checksum,
+            }).to_string()
+        }
+        Err(e) => {
+            serde_json::json!({
+                "success": false,
+                "error": e,
+            }).to_string()
+        }
+    }
+}
+
+/// Check if state rules have been initialized from bundle
+#[wasm_bindgen]
+pub fn state_rules_loaded() -> bool {
+    rules_bundle::rules_initialized()
+}
+
+/// Clear loaded state rules
+#[wasm_bindgen]
+pub fn clear_state_rules() {
+    rules_bundle::clear_rules()
+}
+
+/// Get rules bundle metadata
+#[wasm_bindgen]
+pub fn get_rules_bundle_info() -> String {
+    match rules_bundle::get_rules_bundle_metadata() {
+        Some(metadata) => {
+            serde_json::json!({
+                "loaded": true,
+                "bundle_id": metadata.bundle_id,
+                "bundle_version": metadata.bundle_version,
+                "state_count": metadata.state_count,
+                "generated_at": metadata.generated_at,
+                "source": metadata.source,
+                "checksum": metadata.checksum,
+            }).to_string()
+        }
+        None => {
+            serde_json::json!({
+                "loaded": false,
+                "message": "No rules bundle loaded. Using compiled state_rules.rs defaults."
+            }).to_string()
+        }
+    }
+}
+
+/// Get state rules (prefers JSON bundle, falls back to compiled)
+///
+/// This is the preferred way to get state rules. It will:
+/// 1. Check for rules loaded from JSON bundle (TypeScript source of truth)
+/// 2. Fall back to compiled Rust rules if bundle not loaded
+///
+/// # Arguments
+/// * `state_code` - Two-letter state code (e.g., "IN", "TX")
+///
+/// # Returns
+/// JSON object with full state tax rules
+#[wasm_bindgen]
+pub fn get_state_rules_v2(state_code: &str) -> Result<String, JsValue> {
+    // Try JSON bundle first (single source of truth)
+    if let Some(rules) = rules_bundle::get_loaded_state_rules(state_code) {
+        return serde_json::to_string(&rules)
+            .map_err(|e| JsValue::from_str(&format!("Failed to serialize rules: {}", e)));
+    }
+
+    // Fall back to compiled rules (may be outdated)
+    let all_rules = state_rules::load_all_state_rules();
+    match all_rules.get(state_code) {
+        Some(rules) => serde_json::to_string(rules)
+            .map_err(|e| JsValue::from_str(&format!("Failed to serialize rules: {}", e))),
+        None => Err(JsValue::from_str(&format!("No rules found for state: {}", state_code)))
+    }
+}
+
+/// Get list of states available in the loaded bundle
+#[wasm_bindgen]
+pub fn get_bundle_states() -> String {
+    let states = rules_bundle::get_available_states();
+    serde_json::to_string(&states).unwrap_or_else(|_| "[]".to_string())
 }
 
 // ============================================================================

@@ -313,3 +313,24 @@ export * from "./engine/interpreters";
 
 // State rules management
 export * from "./rules";
+
+// WASM integration and runtime rate loading
+export {
+  initTaxEngineWasm,
+  isWasmAvailable,
+  calculateVehicleTaxWasm,
+  getTaxEngineVersion,
+  compareTaxEnginePerformance,
+  // Rate bundle loading (CRITICAL for production)
+  initializeTaxRates,
+  areRatesLoaded,
+  clearTaxRates,
+  getRateBundleInfo,
+  getStateRateInfo,
+  loadRatesFromUrl,
+  // Types
+  type RateBundleMetadata,
+  type RateInitResult,
+  type RateBundleInfo,
+  type StateRateInfo,
+} from "./wasm-wrapper";

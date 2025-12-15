@@ -115,27 +115,41 @@ function ToastContainer({
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm">
+    <div
+      className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm"
+      aria-label="Notifications"
+    >
       {toasts.map((toast) => {
         const Icon = icons[toast.type];
+        // Use 'alert' for errors/warnings (assertive), 'status' for info/success (polite)
+        const role = toast.type === 'error' || toast.type === 'warning' ? 'alert' : 'status';
+        const ariaLive = toast.type === 'error' || toast.type === 'warning' ? 'assertive' : 'polite';
+
         return (
           <div
             key={toast.id}
+            role={role}
+            aria-live={ariaLive}
+            aria-atomic="true"
             className={cn(
               'flex items-start gap-3 p-4 rounded-lg border shadow-lg animate-slide-in-right',
               styles[toast.type]
             )}
           >
-            <Icon className={cn('h-5 w-5 flex-shrink-0 mt-0.5', iconStyles[toast.type])} />
+            <Icon
+              className={cn('h-5 w-5 flex-shrink-0 mt-0.5', iconStyles[toast.type])}
+              aria-hidden="true"
+            />
             <div className="flex-1 min-w-0">
               <p className="font-medium">{toast.title}</p>
               {toast.message && <p className="text-sm opacity-90 mt-1">{toast.message}</p>}
             </div>
             <button
               onClick={() => removeToast(toast.id)}
-              className="flex-shrink-0 p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+              className="flex-shrink-0 p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-current"
+              aria-label={`Dismiss ${toast.title} notification`}
             >
-              <X className="h-4 w-4" />
+              <X className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
         );

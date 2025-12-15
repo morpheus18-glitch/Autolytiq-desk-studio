@@ -10,6 +10,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '@design-system';
 import { AuthProvider, ProtectedRoute, PublicRoute } from '@/contexts/AuthContext';
 import { ToastProvider } from '@/components/ui';
+import { ErrorBoundary, AppErrorFallback } from '@/components/ErrorBoundary';
+import { SkipLink, LiveRegionProvider } from '@/components/accessibility';
 import {
   HomePage,
   LoginPage,
@@ -128,17 +130,34 @@ function AppRoutes(): JSX.Element {
 
 /**
  * App Component
+ *
+ * Wrapped with ErrorBoundary to catch and gracefully handle
+ * unhandled errors throughout the application.
  */
 export function App(): JSX.Element {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="light" storageKey="autolytiq-theme">
-        <AuthProvider>
-          <ToastProvider>
-            <AppRoutes />
-          </ToastProvider>
-        </AuthProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <ErrorBoundary
+      fallback={<AppErrorFallback error={null} errorInfo={null} />}
+      onError={(error, errorInfo) => {
+        // Future: Send to error tracking service
+        console.error('[App Error]', error, errorInfo);
+      }}
+    >
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider defaultTheme="light" storageKey="autolytiq-theme">
+          <AuthProvider>
+            <LiveRegionProvider>
+              <ToastProvider>
+                {/* Skip Link for keyboard navigation - WCAG 2.4.1 */}
+                <SkipLink targetId="main-content" />
+                <ErrorBoundary>
+                  <AppRoutes />
+                </ErrorBoundary>
+              </ToastProvider>
+            </LiveRegionProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }

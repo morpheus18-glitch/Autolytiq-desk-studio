@@ -1,0 +1,321 @@
+{
+  "version": "1.0",
+  "metadata": {
+    "generated_at": "2025-01-01T00:00:00Z",
+    "bundle_id": "prod-2025-01-001",
+    "source": "autolytiq-tax-service",
+    "effective_date": "2025-01-01",
+    "expires_at": null,
+    "state_count": 51,
+    "local_jurisdiction_count": 100,
+    "checksum": null
+  },
+  "state_rates": {
+    "TX": {
+      "state_code": "TX",
+      "state_rate": 0.0625,
+      "avg_local_rate": 0.02,
+      "max_local_rate": 0.02,
+      "combined_rate": 0.0825,
+      "has_local_vehicle_tax": true,
+      "notes": "6.25% state + up to 2% local",
+      "last_updated": "2025-01-01",
+      "source": "Texas Comptroller"
+    },
+    "IN": {
+      "state_code": "IN",
+      "state_rate": 0.07,
+      "avg_local_rate": 0.0,
+      "max_local_rate": 0.0,
+      "combined_rate": 0.07,
+      "has_local_vehicle_tax": false,
+      "notes": "Flat 7% state-only, no local vehicle tax",
+      "last_updated": "2025-01-01",
+      "source": "Indiana DOR"
+    },
+    "CA": {
+      "state_code": "CA",
+      "state_rate": 0.0725,
+      "avg_local_rate": 0.015,
+      "max_local_rate": 0.035,
+      "combined_rate": 0.0875,
+      "has_local_vehicle_tax": true,
+      "notes": "7.25% state + local varies by jurisdiction (400+ jurisdictions)",
+      "last_updated": "2025-01-01",
+      "source": "California CDTFA"
+    },
+    "GA": {
+      "state_code": "GA",
+      "state_rate": 0.07,
+      "avg_local_rate": 0.0,
+      "max_local_rate": 0.0,
+      "combined_rate": 0.07,
+      "has_local_vehicle_tax": false,
+      "notes": "Uses TAVT (Title Ad Valorem Tax) instead of sales tax",
+      "last_updated": "2025-01-01",
+      "source": "Georgia DOR"
+    },
+    "NC": {
+      "state_code": "NC",
+      "state_rate": 0.03,
+      "avg_local_rate": 0.0,
+      "max_local_rate": 0.0,
+      "combined_rate": 0.03,
+      "has_local_vehicle_tax": false,
+      "notes": "Uses Highway Use Tax (HUT) at 3% instead of sales tax",
+      "last_updated": "2025-01-01",
+      "source": "NC DMV"
+    },
+    "MI": {
+      "state_code": "MI",
+      "state_rate": 0.06,
+      "avg_local_rate": 0.0,
+      "max_local_rate": 0.0,
+      "combined_rate": 0.06,
+      "has_local_vehicle_tax": false,
+      "notes": "6% state-only, trade-in credit capped at $6000 for 2025",
+      "last_updated": "2025-01-01",
+      "source": "Michigan Treasury"
+    },
+    "SC": {
+      "state_code": "SC",
+      "state_rate": 0.05,
+      "avg_local_rate": 0.0,
+      "max_local_rate": 0.0,
+      "combined_rate": 0.05,
+      "has_local_vehicle_tax": false,
+      "notes": "5% with $500 maximum cap on vehicle tax",
+      "last_updated": "2025-01-01",
+      "source": "SC DOR"
+    },
+    "WV": {
+      "state_code": "WV",
+      "state_rate": 0.06,
+      "avg_local_rate": 0.0,
+      "max_local_rate": 0.0,
+      "combined_rate": 0.06,
+      "has_local_vehicle_tax": false,
+      "notes": "Uses DMV Privilege Tax instead of sales tax",
+      "last_updated": "2025-01-01",
+      "source": "WV DMV"
+    },
+    "FL": {
+      "state_code": "FL",
+      "state_rate": 0.06,
+      "avg_local_rate": 0.01,
+      "max_local_rate": 0.015,
+      "combined_rate": 0.07,
+      "has_local_vehicle_tax": true,
+      "notes": "6% state + local discretionary surtax",
+      "last_updated": "2025-01-01",
+      "source": "Florida DOR"
+    },
+    "NY": {
+      "state_code": "NY",
+      "state_rate": 0.04,
+      "avg_local_rate": 0.045,
+      "max_local_rate": 0.04875,
+      "combined_rate": 0.085,
+      "has_local_vehicle_tax": true,
+      "notes": "4% state + local; NYC is 8.875%",
+      "last_updated": "2025-01-01",
+      "source": "NY Tax Dept"
+    },
+    "NH": {
+      "state_code": "NH",
+      "state_rate": 0.0,
+      "avg_local_rate": 0.0,
+      "max_local_rate": 0.0,
+      "combined_rate": 0.0,
+      "has_local_vehicle_tax": false,
+      "notes": "No sales tax",
+      "last_updated": "2025-01-01",
+      "source": "NH DRA"
+    },
+    "OR": {
+      "state_code": "OR",
+      "state_rate": 0.0,
+      "avg_local_rate": 0.0,
+      "max_local_rate": 0.0,
+      "combined_rate": 0.0,
+      "has_local_vehicle_tax": false,
+      "notes": "No sales tax; privilege tax applies",
+      "last_updated": "2025-01-01",
+      "source": "OR DMV"
+    },
+    "MT": {
+      "state_code": "MT",
+      "state_rate": 0.0,
+      "avg_local_rate": 0.0,
+      "max_local_rate": 0.0,
+      "combined_rate": 0.0,
+      "has_local_vehicle_tax": false,
+      "notes": "No sales tax",
+      "last_updated": "2025-01-01",
+      "source": "MT DOR"
+    },
+    "DE": {
+      "state_code": "DE",
+      "state_rate": 0.0,
+      "avg_local_rate": 0.0,
+      "max_local_rate": 0.0,
+      "combined_rate": 0.0,
+      "has_local_vehicle_tax": false,
+      "notes": "No sales tax; 4.25% doc fee applies",
+      "last_updated": "2025-01-01",
+      "source": "DE Division of Revenue"
+    }
+  },
+  "local_rates": {
+    "TX": {
+      "TX_DALLAS": {
+        "jurisdiction_code": "TX_DALLAS",
+        "name": "Dallas, TX",
+        "jurisdiction_type": "CITY",
+        "rate": 0.02,
+        "breakdown": {
+          "county": 0.0,
+          "city": 0.01,
+          "district": 0.01,
+          "transit": 0.0
+        },
+        "zip_codes": ["75201", "75202", "75203", "75204", "75205"],
+        "fips_code": "48113",
+        "last_updated": "2025-01-01"
+      },
+      "TX_HOUSTON": {
+        "jurisdiction_code": "TX_HOUSTON",
+        "name": "Houston, TX",
+        "jurisdiction_type": "CITY",
+        "rate": 0.02,
+        "breakdown": {
+          "county": 0.0,
+          "city": 0.01,
+          "district": 0.0,
+          "transit": 0.01
+        },
+        "zip_codes": ["77001", "77002", "77003", "77004", "77005"],
+        "fips_code": "48201",
+        "last_updated": "2025-01-01"
+      }
+    },
+    "CA": {
+      "CA_LOS_ANGELES": {
+        "jurisdiction_code": "CA_LOS_ANGELES",
+        "name": "Los Angeles, CA",
+        "jurisdiction_type": "CITY",
+        "rate": 0.0225,
+        "breakdown": {
+          "county": 0.0025,
+          "city": 0.0,
+          "district": 0.015,
+          "transit": 0.005
+        },
+        "zip_codes": ["90001", "90002", "90003"],
+        "fips_code": "06037",
+        "last_updated": "2025-01-01"
+      }
+    },
+    "NY": {
+      "NY_NYC": {
+        "jurisdiction_code": "NY_NYC",
+        "name": "New York City, NY",
+        "jurisdiction_type": "CITY",
+        "rate": 0.04875,
+        "breakdown": {
+          "county": 0.0,
+          "city": 0.045,
+          "district": 0.0,
+          "transit": 0.00375
+        },
+        "zip_codes": ["10001", "10002", "10003", "10004", "10005"],
+        "fips_code": "36061",
+        "last_updated": "2025-01-01"
+      }
+    }
+  },
+  "special_schemes": {
+    "GA": {
+      "scheme_type": "GA_TAVT",
+      "rate": 0.07,
+      "cap_amount": null,
+      "allows_trade_in_credit": true,
+      "params": {
+        "use_assessed_value": true,
+        "use_higher_of_price_or_assessed": false
+      },
+      "notes": "Title Ad Valorem Tax replaced sales tax in 2013"
+    },
+    "NC": {
+      "scheme_type": "NC_HUT",
+      "rate": 0.03,
+      "cap_amount": null,
+      "allows_trade_in_credit": true,
+      "params": {
+        "max_reciprocity_age_days": 90
+      },
+      "notes": "Highway Use Tax is 3% on retail price less trade-in"
+    },
+    "SC": {
+      "scheme_type": "SC_CAP",
+      "rate": 0.05,
+      "cap_amount": 500.0,
+      "allows_trade_in_credit": true,
+      "params": {},
+      "notes": "Maximum $500 tax regardless of vehicle price"
+    },
+    "WV": {
+      "scheme_type": "WV_PRIVILEGE",
+      "rate": 0.06,
+      "cap_amount": null,
+      "allows_trade_in_credit": true,
+      "params": {
+        "use_assessed_value": true
+      },
+      "notes": "DMV Privilege Tax at 6% (increased from 5% in 2021)"
+    }
+  },
+  "policy_rules": {
+    "MI": {
+      "state_code": "MI",
+      "trade_in_policy": {
+        "type": "CAPPED",
+        "cap_amount": 6000.0,
+        "effective_year": 2025
+      },
+      "doc_fee_taxable": false,
+      "service_contracts_taxable": false,
+      "gap_taxable": false,
+      "manufacturer_rebate_taxable": false,
+      "dealer_rebate_taxable": true,
+      "effective_date": "2025-01-01",
+      "notes": "Trade-in cap increases $1000/year until fully removed in 2026"
+    },
+    "WA": {
+      "state_code": "WA",
+      "trade_in_policy": {
+        "type": "NONE"
+      },
+      "doc_fee_taxable": true,
+      "service_contracts_taxable": true,
+      "gap_taxable": false,
+      "manufacturer_rebate_taxable": false,
+      "dealer_rebate_taxable": true,
+      "effective_date": "2025-01-01",
+      "notes": "Washington does not allow trade-in credit"
+    },
+    "HI": {
+      "state_code": "HI",
+      "trade_in_policy": {
+        "type": "NONE"
+      },
+      "doc_fee_taxable": true,
+      "service_contracts_taxable": true,
+      "gap_taxable": false,
+      "manufacturer_rebate_taxable": false,
+      "dealer_rebate_taxable": true,
+      "effective_date": "2025-01-01",
+      "notes": "Hawaii GET does not allow trade-in credit"
+    }
+  }
+}

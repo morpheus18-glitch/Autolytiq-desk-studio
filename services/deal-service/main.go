@@ -65,12 +65,18 @@ func (s *Server) setupMiddleware() {
 
 // setupRoutes configures all routes
 func (s *Server) setupRoutes() {
+	// Health check
 	s.router.HandleFunc("/health", s.healthCheck).Methods("GET")
+
+	// CRUD operations
 	s.router.HandleFunc("/deals", s.listDeals).Methods("GET")
 	s.router.HandleFunc("/deals", s.createDeal).Methods("POST")
 	s.router.HandleFunc("/deals/{id}", s.getDeal).Methods("GET")
 	s.router.HandleFunc("/deals/{id}", s.updateDeal).Methods("PUT")
 	s.router.HandleFunc("/deals/{id}", s.deleteDeal).Methods("DELETE")
+
+	// Calculation and workflow routes
+	s.setupCalculationRoutes()
 }
 
 // healthCheck handler

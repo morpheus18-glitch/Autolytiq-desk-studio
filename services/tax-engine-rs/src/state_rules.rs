@@ -1,10 +1,32 @@
-//! State Tax Rules Loader
+//! State Tax Rules Loader (DEPRECATED - USE JSON BUNDLE)
 //!
-//! Loads state-specific tax rules from embedded configurations.
-//! Rules are compiled into the WASM binary for fast access.
+//! ⚠️ DEPRECATION NOTICE ⚠️
 //!
-//! This module will eventually load rules from JSON files, but for now
-//! provides programmatic definitions for each state.
+//! This module contains hardcoded Rust implementations that are DUPLICATES of
+//! the authoritative TypeScript rules. DO NOT modify these rules directly.
+//!
+//! # Single Source of Truth
+//!
+//! The TypeScript rules in `/shared/autoTaxEngine/rules/` are the ONLY source
+//! of truth. This module exists only as a fallback when no JSON bundle is loaded.
+//!
+//! # Correct Workflow
+//!
+//! 1. Edit rules in `/shared/autoTaxEngine/rules/US_*.ts` (TypeScript)
+//! 2. Run `npx tsx scripts/export-tax-rules.ts` to generate JSON bundle
+//! 3. Load the JSON bundle via `initialize_state_rules()` in WASM
+//!
+//! # Production Usage
+//!
+//! Always call `initialize_state_rules(bundleJson)` before any calculations
+//! to load rules from the JSON bundle. Use `get_state_rules_v2()` which
+//! prefers the JSON bundle over these compiled defaults.
+//!
+//! # Why This Module Still Exists
+//!
+//! - Provides fallback for development/testing without bundle
+//! - Maintains backward compatibility with existing code
+//! - Will be removed in future version once all clients use JSON bundle
 
 use crate::types::*;
 use std::collections::HashMap;

@@ -23,6 +23,8 @@ type Config struct {
 	JWTIssuer       string
 	AccessTokenTTL  time.Duration
 	RefreshTokenTTL time.Duration
+	EmailServiceURL string
+	FrontendURL     string
 }
 
 // Server represents the Auth service server
@@ -32,6 +34,7 @@ type Server struct {
 	db         AuthDatabase
 	redis      TokenStore
 	jwtService *JWTService
+	mfaService *MFAService
 	logger     *logging.Logger
 }
 
@@ -132,6 +135,8 @@ func loadConfig(ctx context.Context, logger *logging.Logger) *Config {
 		JWTIssuer:       jwtIssuer,
 		AccessTokenTTL:  parseDuration(getEnv("ACCESS_TOKEN_TTL", "15m")),
 		RefreshTokenTTL: parseDuration(getEnv("REFRESH_TOKEN_TTL", "7d")),
+		EmailServiceURL: getEnv("EMAIL_SERVICE_URL", "http://localhost:8004"),
+		FrontendURL:     getEnv("FRONTEND_URL", "http://localhost:5173"),
 	}
 }
 
@@ -171,6 +176,7 @@ func NewServer(config *Config, db AuthDatabase, redis TokenStore, jwtService *JW
 		db:         db,
 		redis:      redis,
 		jwtService: jwtService,
+		mfaService: NewMFAService(config.JWTIssuer), // Use issuer as MFA issuer
 		logger:     logger,
 	}
 	s.setupMiddleware()
@@ -197,6 +203,13 @@ func (s *Server) setupRoutes() {
 	s.router.HandleFunc("/auth/forgot-password", s.forgotPassword).Methods("POST")
 	s.router.HandleFunc("/auth/reset-password", s.resetPassword).Methods("POST")
 	s.router.HandleFunc("/auth/verify-email", s.verifyEmail).Methods("POST")
+
+	// MFA endpoints
+	s.router.HandleFunc("/auth/mfa/setup", s.setupMFA).Methods("POST")
+	s.router.HandleFunc("/auth/mfa/verify", s.verifyMFA).Methods("POST")
+	s.router.HandleFunc("/auth/mfa/disable", s.disableMFA).Methods("POST")
+	s.router.HandleFunc("/auth/mfa/status", s.getMFAStatus).Methods("GET")
+	s.router.HandleFunc("/auth/mfa/backup-codes", s.regenerateBackupCodes).Methods("POST")
 }
 
 // Response helpers

@@ -1,0 +1,568 @@
+openapi: 3.0.0
+info:
+  title: Customer Service API
+  version: 1.0.0
+  description: |
+    Customer management service for Autolytiq Desk Studio.
+
+    Handles customer lifecycle management including:
+    - Customer CRUD operations
+    - PII data handling with encryption
+    - Credit profile management
+    - Customer search and filtering
+
+    **PII Security**: Sensitive fields (SSN, driver's license, credit score) are
+    encrypted at rest using post-quantum cryptography (ML-KEM/Kyber-1024).
+
+servers:
+  - url: http://localhost:8082
+    description: Development server
+  - url: https://api.autolytiq.com/customers
+    description: Production server
+
+tags:
+  - name: Customers
+    description: Customer CRUD operations
+  - name: Health
+    description: Service health checks
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: Returns service health status
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /customers:
+    get:
+      tags:
+        - Customers
+      summary: List customers
+      description: |
+        Retrieve a list of customers. Can be filtered by dealership.
+        Results are returned without sensitive PII fields in list view.
+      operationId: listCustomers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: dealership_id
+          in: query
+          description: Filter by dealership ID
+          schema:
+            type: string
+            format: uuid
+        - name: search
+          in: query
+          description: Search by name or email
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Page number (1-indexed)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: List of customers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CustomerSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      tags:
+        - Customers
+      summary: Create a new customer
+      description: |
+        Create a new customer record. PII fields are automatically encrypted
+        before storage if encryption is enabled.
+      operationId: createCustomer
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCustomerRequest'
+      responses:
+        '201':
+          description: Customer created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /customers/{id}:
+    get:
+      tags:
+        - Customers
+      summary: Get customer by ID
+      description: |
+        Retrieve a single customer with full details including decrypted PII.
+        Requires appropriate authorization level to view sensitive data.
+      operationId: getCustomer
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+      responses:
+        '200':
+          description: Customer details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    put:
+      tags:
+        - Customers
+      summary: Update customer
+      description: |
+        Update an existing customer. Only provided fields are updated.
+        PII fields are re-encrypted with the current encryption key.
+      operationId: updateCustomer
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCustomerRequest'
+      responses:
+        '200':
+          description: Customer updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      tags:
+        - Customers
+      summary: Delete customer
+      description: |
+        Delete a customer record. This is a soft delete that retains
+        audit history. Associated deals must be cancelled first.
+      operationId: deleteCustomer
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+      responses:
+        '204':
+          description: Customer deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Customer has active deals
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  schemas:
+    Customer:
+      type: object
+      required:
+        - id
+        - dealership_id
+        - first_name
+        - last_name
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique customer identifier
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        dealership_id:
+          type: string
+          format: uuid
+          description: ID of the dealership this customer belongs to
+        first_name:
+          type: string
+          maxLength: 100
+          description: Customer's first name
+          example: "John"
+        last_name:
+          type: string
+          maxLength: 100
+          description: Customer's last name
+          example: "Smith"
+        email:
+          type: string
+          format: email
+          description: Customer's email address
+          example: "john.smith@example.com"
+        phone:
+          type: string
+          description: Customer's phone number
+          pattern: '^(\+1)?[-.\s]?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})$'
+          example: "555-123-4567"
+        address:
+          type: string
+          maxLength: 500
+          description: Street address
+          example: "123 Main Street"
+        city:
+          type: string
+          maxLength: 100
+          description: City
+          example: "Austin"
+        state:
+          type: string
+          minLength: 2
+          maxLength: 2
+          description: US state code
+          example: "TX"
+        zip_code:
+          type: string
+          description: ZIP code (5 or 9 digit format)
+          pattern: '^[0-9]{5}(-[0-9]{4})?$'
+          example: "78701"
+        ssn_last4:
+          type: string
+          description: Last 4 digits of SSN (PII - encrypted at rest)
+          pattern: '^[0-9]{4}$'
+          example: "1234"
+        drivers_license_number:
+          type: string
+          description: Driver's license number (PII - encrypted at rest)
+          pattern: '^[A-Za-z0-9-]{4,20}$'
+          example: "DL12345678"
+        credit_score:
+          type: integer
+          minimum: 300
+          maximum: 850
+          description: Credit score (PII - encrypted at rest)
+          example: 720
+        monthly_income:
+          type: number
+          format: float
+          minimum: 0
+          description: Monthly income in dollars (PII - encrypted at rest)
+          example: 5000.00
+        created_at:
+          type: string
+          format: date-time
+          description: When the customer record was created
+        updated_at:
+          type: string
+          format: date-time
+          description: When the customer record was last updated
+
+    CustomerSummary:
+      type: object
+      description: Customer summary without sensitive PII fields
+      required:
+        - id
+        - dealership_id
+        - first_name
+        - last_name
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        dealership_id:
+          type: string
+          format: uuid
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    CreateCustomerRequest:
+      type: object
+      required:
+        - dealership_id
+        - first_name
+        - last_name
+      properties:
+        dealership_id:
+          type: string
+          format: uuid
+          description: ID of the dealership
+        first_name:
+          type: string
+          maxLength: 100
+          description: Customer's first name
+        last_name:
+          type: string
+          maxLength: 100
+          description: Customer's last name
+        email:
+          type: string
+          format: email
+          description: Email address
+        phone:
+          type: string
+          description: Phone number in US format
+        address:
+          type: string
+          maxLength: 500
+          description: Street address
+        city:
+          type: string
+          maxLength: 100
+          description: City
+        state:
+          type: string
+          minLength: 2
+          maxLength: 2
+          description: US state code (e.g., TX, CA)
+        zip_code:
+          type: string
+          description: ZIP code (5 or 9 digit)
+        ssn_last4:
+          type: string
+          pattern: '^[0-9]{4}$'
+          description: Last 4 digits of Social Security Number
+        drivers_license_number:
+          type: string
+          pattern: '^[A-Za-z0-9-]{4,20}$'
+          description: Driver's license number
+        credit_score:
+          type: integer
+          minimum: 300
+          maximum: 850
+          description: Credit score
+        monthly_income:
+          type: number
+          format: float
+          minimum: 0
+          description: Monthly income in dollars
+
+    UpdateCustomerRequest:
+      type: object
+      description: All fields are optional - only provided fields are updated
+      properties:
+        first_name:
+          type: string
+          maxLength: 100
+        last_name:
+          type: string
+          maxLength: 100
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        address:
+          type: string
+          maxLength: 500
+        city:
+          type: string
+          maxLength: 100
+        state:
+          type: string
+          minLength: 2
+          maxLength: 2
+        zip_code:
+          type: string
+        ssn_last4:
+          type: string
+          pattern: '^[0-9]{4}$'
+        drivers_license_number:
+          type: string
+          pattern: '^[A-Za-z0-9-]{4,20}$'
+        credit_score:
+          type: integer
+          minimum: 300
+          maximum: 850
+        monthly_income:
+          type: number
+          format: float
+          minimum: 0
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+          example: "healthy"
+        service:
+          type: string
+          example: "customer-service"
+        timestamp:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+        code:
+          type: string
+          description: Machine-readable error code
+          enum:
+            - VALIDATION_ERROR
+            - NOT_FOUND
+            - UNAUTHORIZED
+            - FORBIDDEN
+            - INTERNAL_ERROR
+            - CONFLICT
+            - INVALID_JSON
+        details:
+          type: array
+          description: Detailed validation errors
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                description: Field that failed validation
+              message:
+                type: string
+                description: Validation error message
+
+  parameters:
+    CustomerId:
+      name: id
+      in: path
+      required: true
+      description: Customer ID (UUID)
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid input
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Invalid request body"
+            code: "INVALID_JSON"
+
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Authentication required"
+            code: "UNAUTHORIZED"
+
+    NotFound:
+      description: Customer not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Customer not found"
+            code: "NOT_FOUND"
+
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Validation failed"
+            code: "VALIDATION_ERROR"
+            details:
+              - field: "email"
+                message: "Must be a valid email address"
+              - field: "credit_score"
+                message: "Credit score must be between 300 and 850"
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Internal server error"
+            code: "INTERNAL_ERROR"
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token obtained from the Auth Service.
+        Include in Authorization header as: Bearer <token>

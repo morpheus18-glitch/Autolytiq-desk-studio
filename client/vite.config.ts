@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import fs from 'fs';
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -19,7 +20,17 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    https: fs.existsSync('../.cert/key.pem') && fs.existsSync('../.cert/cert.pem') ? {
+      key: fs.readFileSync('../.cert/key.pem'),
+      cert: fs.readFileSync('../.cert/cert.pem'),
+    } : false,
     proxy: {
+      '/api/v1/auth': {
+        target: 'http://localhost:8087',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/v1\/auth/, '/auth'),
+      },
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,

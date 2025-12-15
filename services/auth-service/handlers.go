@@ -441,9 +441,15 @@ func (s *Server) forgotPassword(w http.ResponseWriter, r *http.Request) {
 		// Store reset token in Redis (valid for 1 hour)
 		s.redis.StoreResetToken(user.ID, resetToken, time.Hour)
 
-		// TODO: Send email with reset link
-		// For now, just log it
-		// log.Printf("Password reset token for %s: %s", user.Email, resetToken)
+		// Send password reset email
+		userName := user.FirstName
+		if userName == "" {
+			userName = user.Email
+		}
+		if err := s.SendPasswordResetEmail(user.Email, resetToken, userName); err != nil {
+			s.logger.WithError(err).Error("Failed to send password reset email")
+			// Don't fail the request - user doesn't need to know email failed
+		}
 	}
 
 	// Always return success to prevent email enumeration

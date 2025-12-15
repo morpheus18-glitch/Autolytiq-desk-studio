@@ -1,0 +1,681 @@
+openapi: 3.0.0
+info:
+  title: Deal Service API
+  version: 1.0.0
+  description: |
+    Deal management service for Autolytiq Desk Studio.
+
+    Handles automotive deal lifecycle management including:
+    - Deal CRUD operations
+    - Payment calculations (finance, cash, lease)
+    - Deal workflow state management
+    - Tax integration
+
+servers:
+  - url: http://localhost:5000
+    description: Development server
+  - url: https://api.autolytiq.com
+    description: Production server
+
+tags:
+  - name: Deals
+    description: Deal CRUD operations
+  - name: Calculations
+    description: Payment and tax calculations
+  - name: Workflow
+    description: Deal status workflow
+
+paths:
+  /api/deals:
+    get:
+      tags:
+        - Deals
+      summary: List deals
+      description: |
+        Retrieve a paginated list of deals for the authenticated user's dealership.
+        Supports filtering by status, customer, and date range.
+      operationId: listDeals
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          description: Filter by deal status
+          schema:
+            $ref: '#/components/schemas/DealStatus'
+        - name: customerId
+          in: query
+          description: Filter by customer ID
+          schema:
+            type: string
+            format: uuid
+        - name: salespersonId
+          in: query
+          description: Filter by salesperson ID
+          schema:
+            type: string
+            format: uuid
+        - name: dealType
+          in: query
+          description: Filter by deal type
+          schema:
+            $ref: '#/components/schemas/DealType'
+        - name: startDate
+          in: query
+          description: Filter deals created after this date
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          description: Filter deals created before this date
+          schema:
+            type: string
+            format: date
+        - name: page
+          in: query
+          description: Page number (1-indexed)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: sortBy
+          in: query
+          description: Field to sort by
+          schema:
+            type: string
+            enum: [createdAt, updatedAt, vehiclePrice, status]
+            default: createdAt
+        - name: sortOrder
+          in: query
+          description: Sort direction
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: List of deals
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DealListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      tags:
+        - Deals
+      summary: Create a new deal
+      description: Create a new deal in draft status
+      operationId: createDeal
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDealRequest'
+      responses:
+        '201':
+          description: Deal created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deal'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/deals/{id}:
+    get:
+      tags:
+        - Deals
+      summary: Get deal by ID
+      description: Retrieve a single deal with full details
+      operationId: getDeal
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+      responses:
+        '200':
+          description: Deal details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deal'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    put:
+      tags:
+        - Deals
+      summary: Update deal
+      description: Update an existing deal. Only draft and pending deals can be updated.
+      operationId: updateDeal
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDealRequest'
+      responses:
+        '200':
+          description: Deal updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deal'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Deal cannot be updated in current status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      tags:
+        - Deals
+      summary: Delete deal
+      description: Delete a deal. Only draft deals can be deleted.
+      operationId: deleteDeal
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+      responses:
+        '204':
+          description: Deal deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Deal cannot be deleted in current status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/deals/{id}/calculate:
+    post:
+      tags:
+        - Calculations
+      summary: Calculate deal payments
+      description: |
+        Calculate monthly payment, total interest, and other derived values
+        based on deal parameters. Does not persist changes.
+      operationId: calculateDeal
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalculationRequest'
+      responses:
+        '200':
+          description: Calculation results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalculationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/deals/{id}/status:
+    patch:
+      tags:
+        - Workflow
+      summary: Update deal status
+      description: |
+        Transition deal to a new status. Only valid transitions are allowed.
+
+        Valid transitions:
+        - draft → pending, cancelled
+        - pending → approved, draft, cancelled
+        - approved → funded, cancelled
+        - funded → delivered, cancelled
+        - delivered → (terminal)
+        - cancelled → (terminal)
+      operationId: updateDealStatus
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  $ref: '#/components/schemas/DealStatus'
+                notes:
+                  type: string
+                  description: Optional notes about the status change
+      responses:
+        '200':
+          description: Status updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deal'
+        '400':
+          description: Invalid status transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  schemas:
+    DealType:
+      type: string
+      enum:
+        - cash
+        - finance
+        - lease
+      description: Type of deal
+
+    DealStatus:
+      type: string
+      enum:
+        - draft
+        - pending
+        - approved
+        - funded
+        - delivered
+        - cancelled
+      description: Current status of the deal
+
+    Deal:
+      type: object
+      required:
+        - id
+        - dealershipId
+        - customerId
+        - dealType
+        - status
+        - vehiclePrice
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        dealershipId:
+          type: string
+          format: uuid
+        customerId:
+          type: string
+          format: uuid
+        vehicleId:
+          type: string
+          format: uuid
+          nullable: true
+        salespersonId:
+          type: string
+          format: uuid
+          nullable: true
+        dealType:
+          $ref: '#/components/schemas/DealType'
+        status:
+          $ref: '#/components/schemas/DealStatus'
+        vehiclePrice:
+          type: integer
+          description: Vehicle price in cents
+          example: 3000000
+        tradeInValue:
+          type: integer
+          description: Trade-in value in cents
+          default: 0
+        tradeInPayoff:
+          type: integer
+          description: Trade-in payoff amount in cents
+          default: 0
+        downPayment:
+          type: integer
+          description: Down payment in cents
+          default: 0
+        rebates:
+          type: integer
+          description: Manufacturer rebates in cents
+          default: 0
+        apr:
+          type: number
+          format: float
+          description: Annual percentage rate (e.g., 5.99)
+          default: 0
+        termMonths:
+          type: integer
+          description: Loan term in months
+          default: 60
+        taxRate:
+          type: number
+          format: float
+          description: Tax rate as decimal (e.g., 0.0625)
+          default: 0
+        amountFinanced:
+          type: integer
+          description: Calculated amount financed in cents
+          nullable: true
+        monthlyPayment:
+          type: integer
+          description: Calculated monthly payment in cents
+          nullable: true
+        totalOfPayments:
+          type: integer
+          description: Total of all payments in cents
+          nullable: true
+        totalInterest:
+          type: integer
+          description: Total interest paid in cents
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateDealRequest:
+      type: object
+      required:
+        - customerId
+        - dealType
+        - vehiclePrice
+      properties:
+        customerId:
+          type: string
+          format: uuid
+        vehicleId:
+          type: string
+          format: uuid
+        dealType:
+          $ref: '#/components/schemas/DealType'
+        vehiclePrice:
+          type: integer
+          minimum: 1
+        tradeInValue:
+          type: integer
+          minimum: 0
+        tradeInPayoff:
+          type: integer
+          minimum: 0
+        downPayment:
+          type: integer
+          minimum: 0
+        rebates:
+          type: integer
+          minimum: 0
+        apr:
+          type: number
+          minimum: 0
+          maximum: 30
+        termMonths:
+          type: integer
+          enum: [12, 24, 36, 48, 60, 72, 84]
+        taxRate:
+          type: number
+          minimum: 0
+          maximum: 1
+        notes:
+          type: string
+
+    UpdateDealRequest:
+      type: object
+      properties:
+        customerId:
+          type: string
+          format: uuid
+        vehicleId:
+          type: string
+          format: uuid
+        dealType:
+          $ref: '#/components/schemas/DealType'
+        vehiclePrice:
+          type: integer
+          minimum: 1
+        tradeInValue:
+          type: integer
+          minimum: 0
+        tradeInPayoff:
+          type: integer
+          minimum: 0
+        downPayment:
+          type: integer
+          minimum: 0
+        rebates:
+          type: integer
+          minimum: 0
+        apr:
+          type: number
+          minimum: 0
+          maximum: 30
+        termMonths:
+          type: integer
+          enum: [12, 24, 36, 48, 60, 72, 84]
+        taxRate:
+          type: number
+          minimum: 0
+          maximum: 1
+        notes:
+          type: string
+
+    CalculationRequest:
+      type: object
+      required:
+        - vehiclePrice
+        - dealType
+      properties:
+        vehiclePrice:
+          type: integer
+          minimum: 1
+        tradeInValue:
+          type: integer
+          minimum: 0
+        tradeInPayoff:
+          type: integer
+          minimum: 0
+        downPayment:
+          type: integer
+          minimum: 0
+        rebates:
+          type: integer
+          minimum: 0
+        apr:
+          type: number
+          minimum: 0
+        termMonths:
+          type: integer
+        taxRate:
+          type: number
+          minimum: 0
+          maximum: 1
+        dealType:
+          $ref: '#/components/schemas/DealType'
+
+    CalculationResponse:
+      type: object
+      required:
+        - amountFinanced
+        - monthlyPayment
+        - totalOfPayments
+        - totalInterest
+        - taxAmount
+      properties:
+        amountFinanced:
+          type: integer
+          description: Amount to be financed in cents
+        monthlyPayment:
+          type: integer
+          description: Monthly payment in cents
+        totalOfPayments:
+          type: integer
+          description: Total of all payments in cents
+        totalInterest:
+          type: integer
+          description: Total interest over loan term in cents
+        taxAmount:
+          type: integer
+          description: Sales tax amount in cents
+        breakdown:
+          type: object
+          properties:
+            vehiclePrice:
+              type: integer
+            netTradeIn:
+              type: integer
+            taxableAmount:
+              type: integer
+            salesTax:
+              type: integer
+            downPayment:
+              type: integer
+            rebates:
+              type: integer
+
+    DealListResponse:
+      type: object
+      required:
+        - deals
+        - pagination
+      properties:
+        deals:
+          type: array
+          items:
+            $ref: '#/components/schemas/Deal'
+        pagination:
+          type: object
+          properties:
+            page:
+              type: integer
+            limit:
+              type: integer
+            total:
+              type: integer
+            totalPages:
+              type: integer
+
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+        details:
+          type: object
+
+  parameters:
+    DealId:
+      name: id
+      in: path
+      required: true
+      description: Deal ID
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

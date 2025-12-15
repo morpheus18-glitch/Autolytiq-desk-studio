@@ -100,6 +100,9 @@ func (s *Server) setupRoutes() {
 	s.router.HandleFunc("/customers/{id}", s.getCustomer).Methods("GET")
 	s.router.HandleFunc("/customers/{id}", s.updateCustomer).Methods("PUT")
 	s.router.HandleFunc("/customers/{id}", s.deleteCustomer).Methods("DELETE")
+
+	// Credit check and financing routes
+	s.setupCreditRoutes()
 }
 
 // healthCheck handler

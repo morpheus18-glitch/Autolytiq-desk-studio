@@ -60,9 +60,13 @@ export function LoginPage(): JSX.Element {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         {/* Error message */}
         {error && (
-          <div className="animate-velocity-up rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+          <div
+            role="alert"
+            aria-live="assertive"
+            className="animate-velocity-up rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"
+          >
             <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-destructive" />
+              <div className="h-2 w-2 rounded-full bg-destructive" aria-hidden="true" />
               {error}
             </div>
           </div>
@@ -82,11 +86,13 @@ export function LoginPage(): JSX.Element {
             type="email"
             autoComplete="email"
             placeholder="you@company.com"
+            aria-invalid={errors.email ? 'true' : undefined}
+            aria-describedby={errors.email ? 'email-error' : undefined}
             className="input-obsidian"
           />
           {errors.email && (
-            <p className="flex items-center gap-1.5 text-xs text-destructive">
-              <span className="h-1 w-1 rounded-full bg-destructive" />
+            <p id="email-error" role="alert" className="flex items-center gap-1.5 text-xs text-destructive">
+              <span className="h-1 w-1 rounded-full bg-destructive" aria-hidden="true" />
               {errors.email.message}
             </p>
           )}
@@ -112,19 +118,23 @@ export function LoginPage(): JSX.Element {
               type={showPassword ? 'text' : 'password'}
               autoComplete="current-password"
               placeholder="Enter your password"
+              aria-invalid={errors.password ? 'true' : undefined}
+              aria-describedby={errors.password ? 'password-error' : undefined}
               className="input-obsidian pr-12"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              aria-pressed={showPassword}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded"
             >
-              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              {showPassword ? <EyeOff className="h-5 w-5" aria-hidden="true" /> : <Eye className="h-5 w-5" aria-hidden="true" />}
             </button>
           </div>
           {errors.password && (
-            <p className="flex items-center gap-1.5 text-xs text-destructive">
-              <span className="h-1 w-1 rounded-full bg-destructive" />
+            <p id="password-error" role="alert" className="flex items-center gap-1.5 text-xs text-destructive">
+              <span className="h-1 w-1 rounded-full bg-destructive" aria-hidden="true" />
               {errors.password.message}
             </p>
           )}
