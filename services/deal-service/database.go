@@ -59,14 +59,14 @@ func (db *Database) CreateDeal(deal *Deal) error {
 	query := `
 		INSERT INTO deals (
 			id, dealership_id, salesperson_id, customer_id, vehicle_id,
-			deal_state, created_at, updated_at
+			status, created_at, updated_at
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 	`
 
 	_, err := db.conn.Exec(
 		query,
 		deal.ID, deal.DealershipID, deal.SalespersonID, deal.CustomerID, deal.VehicleID,
-		deal.DealState, deal.CreatedAt, deal.UpdatedAt,
+		deal.Status, deal.CreatedAt, deal.UpdatedAt,
 	)
 
 	if err != nil {
@@ -80,7 +80,7 @@ func (db *Database) CreateDeal(deal *Deal) error {
 func (db *Database) GetDeal(id string) (*Deal, error) {
 	query := `
 		SELECT id, dealership_id, salesperson_id, customer_id, vehicle_id,
-			   deal_state, created_at, updated_at
+			   status, created_at, updated_at
 		FROM deals
 		WHERE id = $1
 	`
@@ -88,7 +88,7 @@ func (db *Database) GetDeal(id string) (*Deal, error) {
 	var deal Deal
 	err := db.conn.QueryRow(query, id).Scan(
 		&deal.ID, &deal.DealershipID, &deal.SalespersonID, &deal.CustomerID, &deal.VehicleID,
-		&deal.DealState, &deal.CreatedAt, &deal.UpdatedAt,
+		&deal.Status, &deal.CreatedAt, &deal.UpdatedAt,
 	)
 
 	if err == sql.ErrNoRows {
@@ -110,7 +110,7 @@ func (db *Database) ListDeals(dealershipID string) ([]*Deal, error) {
 	if dealershipID != "" {
 		query = `
 			SELECT id, dealership_id, salesperson_id, customer_id, vehicle_id,
-				   deal_state, created_at, updated_at
+				   status, created_at, updated_at
 			FROM deals
 			WHERE dealership_id = $1
 			ORDER BY created_at DESC
@@ -119,7 +119,7 @@ func (db *Database) ListDeals(dealershipID string) ([]*Deal, error) {
 	} else {
 		query = `
 			SELECT id, dealership_id, salesperson_id, customer_id, vehicle_id,
-				   deal_state, created_at, updated_at
+				   status, created_at, updated_at
 			FROM deals
 			ORDER BY created_at DESC
 		`
@@ -136,7 +136,7 @@ func (db *Database) ListDeals(dealershipID string) ([]*Deal, error) {
 		var deal Deal
 		err := rows.Scan(
 			&deal.ID, &deal.DealershipID, &deal.SalespersonID, &deal.CustomerID, &deal.VehicleID,
-			&deal.DealState, &deal.CreatedAt, &deal.UpdatedAt,
+			&deal.Status, &deal.CreatedAt, &deal.UpdatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan deal: %w", err)
@@ -153,7 +153,7 @@ func (db *Database) UpdateDeal(deal *Deal) error {
 		UPDATE deals SET
 			customer_id = $2,
 			vehicle_id = $3,
-			deal_state = $4,
+			status = $4,
 			updated_at = $5
 		WHERE id = $1
 	`
@@ -161,7 +161,7 @@ func (db *Database) UpdateDeal(deal *Deal) error {
 	result, err := db.conn.Exec(
 		query,
 		deal.ID, deal.CustomerID, deal.VehicleID,
-		deal.DealState, deal.UpdatedAt,
+		deal.Status, deal.UpdatedAt,
 	)
 
 	if err != nil {

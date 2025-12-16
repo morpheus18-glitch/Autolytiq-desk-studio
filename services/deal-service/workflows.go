@@ -56,7 +56,7 @@ func IsValidTransition(from, to DealStatus) bool {
 
 // CanTransition checks if a deal can transition to a new status
 func CanTransition(deal *Deal, newStatus DealStatus) error {
-	currentStatus := DealStatus(deal.DealState)
+	currentStatus := DealStatus(deal.Status)
 
 	if !IsValidTransition(currentStatus, newStatus) {
 		return fmt.Errorf("invalid transition from %s to %s", currentStatus, newStatus)
@@ -248,7 +248,7 @@ type WorkflowAction struct {
 
 // GetAvailableActions returns actions available for current status
 func GetAvailableActions(deal *Deal) []WorkflowAction {
-	currentStatus := DealStatus(deal.DealState)
+	currentStatus := DealStatus(deal.Status)
 	nextStatuses := validTransitions[currentStatus]
 
 	actions := make([]WorkflowAction, 0, len(nextStatuses))

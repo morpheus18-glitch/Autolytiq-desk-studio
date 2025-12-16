@@ -28,6 +28,14 @@ type Server struct {
 	logger *logging.Logger
 }
 
+// stringPtr returns a pointer to a string, or nil if the string is empty
+func stringPtr(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
 // NewServer creates a new Inventory service server
 func NewServer(config *Config, db VehicleDatabase, logger *logging.Logger) *Server {
 	s := &Server{
@@ -138,21 +146,26 @@ func (s *Server) createVehicle(w http.ResponseWriter, r *http.Request) {
 
 	// Map request to Vehicle
 	vehicle := Vehicle{
-		ID:           uuid.New().String(),
-		DealershipID: req.DealershipID,
-		VIN:          req.VIN,
-		Make:         req.Make,
-		Model:        req.Model,
-		Year:         req.Year,
-		Condition:    req.Condition,
-		Status:       req.Status,
-		Price:        req.Price,
-		Mileage:      req.Mileage,
-		Color:        req.Color,
-		Description:  req.Description,
-		StockNumber:  req.StockNumber,
-		CreatedAt:    time.Now().Format(time.RFC3339),
-		UpdatedAt:    time.Now().Format(time.RFC3339),
+		ID:             uuid.New().String(),
+		DealershipID:   req.DealershipID,
+		VIN:            req.VIN,
+		Make:           req.Make,
+		Model:          req.Model,
+		Year:           req.Year,
+		Condition:      req.Condition,
+		Status:         req.Status,
+		AskingPrice:    req.Price,
+		Mileage:        req.Mileage,
+		ExteriorColor:  stringPtr(req.Color),
+		InteriorColor:  nil,
+		Description:    stringPtr(req.Description),
+		StockNumber:    stringPtr(req.StockNumber),
+		MSRP:           nil,
+		Invoice:        nil,
+		Cost:           nil,
+		InternetPrice:  nil,
+		CreatedAt:      time.Now().Format(time.RFC3339),
+		UpdatedAt:      time.Now().Format(time.RFC3339),
 	}
 
 	// Set defaults
@@ -244,19 +257,19 @@ func (s *Server) updateVehicle(w http.ResponseWriter, r *http.Request) {
 		existingVehicle.Status = req.Status
 	}
 	if req.Price > 0 {
-		existingVehicle.Price = req.Price
+		existingVehicle.AskingPrice = req.Price
 	}
 	if req.Mileage > 0 {
 		existingVehicle.Mileage = req.Mileage
 	}
 	if req.Color != "" {
-		existingVehicle.Color = req.Color
+		existingVehicle.ExteriorColor = stringPtr(req.Color)
 	}
 	if req.Description != "" {
-		existingVehicle.Description = req.Description
+		existingVehicle.Description = stringPtr(req.Description)
 	}
 	if req.StockNumber != "" {
-		existingVehicle.StockNumber = req.StockNumber
+		existingVehicle.StockNumber = stringPtr(req.StockNumber)
 	}
 	existingVehicle.UpdatedAt = time.Now().Format(time.RFC3339)
 

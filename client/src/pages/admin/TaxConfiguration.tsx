@@ -434,14 +434,10 @@ export function TaxConfigurationPage(): JSX.Element {
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Refresh
               </Button>
-              <label htmlFor="bundle-upload">
-                <Button variant="default" size="sm" asChild>
-                  <span>
-                    <Upload className="mr-2 h-4 w-4" />
-                    Upload Bundle
-                  </span>
-                </Button>
-              </label>
+              <Button variant="primary" size="sm" onClick={() => document.getElementById('bundle-upload')?.click()}>
+                <Upload className="mr-2 h-4 w-4" />
+                Upload Bundle
+              </Button>
               <input
                 id="bundle-upload"
                 type="file"

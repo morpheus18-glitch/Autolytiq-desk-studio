@@ -477,8 +477,11 @@ function calculateLeaseTax(
   notes.push(...leaseSchemeAdjustment.notes);
 
   // Apply scheme adjustments (stored for potential detailed breakdown)
-  const _upfrontBaseWithScheme = upfrontFeeBase + leaseSchemeAdjustment.upfrontBaseAdjustment;
-  const _monthlyBaseWithScheme = leaseSchemeAdjustment.monthlyBaseAdjustment;
+  const upfrontBaseWithScheme = upfrontFeeBase + leaseSchemeAdjustment.upfrontBaseAdjustment;
+  const monthlyBaseWithScheme = leaseSchemeAdjustment.monthlyBaseAdjustment;
+  // Reserved for future breakdown details
+  void upfrontBaseWithScheme;
+  void monthlyBaseWithScheme;
 
   // Add special fees to upfront fees
   for (const specialFee of leaseSchemeAdjustment.specialFees) {

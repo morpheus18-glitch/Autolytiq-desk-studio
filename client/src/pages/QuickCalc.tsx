@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { Calculator, DollarSign } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, Button, FormInput, FormField, FormSelect } from '@design-system';
+import { Card, CardContent, CardHeader, CardTitle, FormInput, FormField, FormSelect } from '@design-system';
 import { formatCurrency } from '@/lib/utils';
 
 const US_STATES = [

@@ -153,13 +153,12 @@ export function calculateGeorgiaTAVT(
   // ============================================================================
 
   let finalTavtTax = rawTavtTax;
-  // Stored for potential future use in detailed breakdown
-  let _reciprocityCredit = 0;
 
   if (rules.reciprocity.enabled && input.originTaxInfo && input.originTaxInfo.amount > 0) {
     // Georgia provides credit for tax paid in other states, capped at GA TAVT amount
     const creditAmount = Math.min(input.originTaxInfo.amount, rawTavtTax);
-    _reciprocityCredit = creditAmount;
+    // Stored for potential future use in detailed breakdown
+    void creditAmount; // Reserved for future breakdown details
     finalTavtTax = rawTavtTax - creditAmount;
 
     notes.push(

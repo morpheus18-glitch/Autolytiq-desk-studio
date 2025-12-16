@@ -176,7 +176,7 @@ export function interpretVehicleTaxScheme(
 export function interpretTradeInPolicy(
   policy: TradeInPolicy,
   tradeInValue: number,
-  vehiclePrice: number,
+  _vehiclePrice: number,
   notes: string[]
 ): number {
   switch (policy.type) {
@@ -228,9 +228,9 @@ export interface LeaseSchemeAdjustment {
 export function interpretLeaseSpecialScheme(
   scheme: LeaseSpecialScheme,
   grossCapCost: number,
-  basePayment: number,
-  paymentCount: number,
-  rules: TaxRulesConfig
+  _basePayment: number,
+  _paymentCount: number,
+  _rules: TaxRulesConfig
 ): LeaseSchemeAdjustment {
   const notes: string[] = [];
   const specialFees: { code: string; amount: number }[] = [];

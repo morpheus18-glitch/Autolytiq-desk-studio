@@ -2,29 +2,27 @@ package main
 
 // Vehicle represents a vehicle in inventory
 type Vehicle struct {
-	ID           string  `json:"id"`
-	DealershipID string  `json:"dealership_id"`
-	VIN          string  `json:"vin"`
-	StockNumber  string  `json:"stock_number"`
-	Make         string  `json:"make"`
-	Model        string  `json:"model"`
-	Year         int     `json:"year"`
-	Trim         string  `json:"trim"`
-	Condition    string  `json:"condition"` // new, used, certified
-	Status       string  `json:"status"`    // available, sold, pending
-	Price        float64 `json:"price"`
-	Mileage      int     `json:"mileage"`
-	Color        string  `json:"color"`
-	Transmission string  `json:"transmission"`
-	Engine       string  `json:"engine"`
-	FuelType     string  `json:"fuel_type"`
-	DriveType    string  `json:"drive_type"`
-	BodyStyle    string  `json:"body_style"`
-	ImageURL     string  `json:"image_url"`
-	Description  string  `json:"description"`
-	Features     string  `json:"features"` // JSON array stored as string
-	CreatedAt    string  `json:"created_at"`
-	UpdatedAt    string  `json:"updated_at"`
+	ID             string   `json:"id"`
+	DealershipID   string   `json:"dealership_id"`
+	VIN            string   `json:"vin"`
+	StockNumber    *string  `json:"stock_number,omitempty"`
+	Make           string   `json:"make"`
+	Model          string   `json:"model"`
+	Year           int      `json:"year"`
+	Trim           *string  `json:"trim,omitempty"`
+	ExteriorColor  *string  `json:"exterior_color,omitempty"`
+	InteriorColor  *string  `json:"interior_color,omitempty"`
+	Mileage        int      `json:"mileage"`
+	Condition      string   `json:"condition"` // new, used, certified
+	Status         string   `json:"status"`    // available, sold, pending
+	MSRP           *float64 `json:"msrp,omitempty"`
+	Invoice        *float64 `json:"invoice,omitempty"`
+	Cost           *float64 `json:"cost,omitempty"`
+	AskingPrice    float64  `json:"asking_price"`
+	InternetPrice  *float64 `json:"internet_price,omitempty"`
+	Description    *string  `json:"description,omitempty"`
+	CreatedAt      string   `json:"created_at"`
+	UpdatedAt      string   `json:"updated_at"`
 }
 
 // VehicleDatabase defines the interface for vehicle database operations

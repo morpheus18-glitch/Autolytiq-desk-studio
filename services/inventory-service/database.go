@@ -94,19 +94,19 @@ func (db *Database) CreateVehicle(vehicle *Vehicle) error {
 	query := `
 		INSERT INTO vehicles (
 			id, dealership_id, vin, stock_number, make, model, year, trim,
-			condition, status, price, mileage, color, transmission, engine,
-			fuel_type, drive_type, body_style, image_url, features,
+			exterior_color, interior_color, mileage, condition, status,
+			msrp, invoice, cost, asking_price, internet_price, description,
 			created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
 	`
 
 	_, err := db.conn.Exec(
 		query,
 		vehicle.ID, vehicle.DealershipID, vehicle.VIN, vehicle.StockNumber,
 		vehicle.Make, vehicle.Model, vehicle.Year, vehicle.Trim,
-		vehicle.Condition, vehicle.Status, vehicle.Price, vehicle.Mileage,
-		vehicle.Color, vehicle.Transmission, vehicle.Engine, vehicle.FuelType,
-		vehicle.DriveType, vehicle.BodyStyle, vehicle.ImageURL, vehicle.Features,
+		vehicle.ExteriorColor, vehicle.InteriorColor, vehicle.Mileage,
+		vehicle.Condition, vehicle.Status, vehicle.MSRP, vehicle.Invoice,
+		vehicle.Cost, vehicle.AskingPrice, vehicle.InternetPrice, vehicle.Description,
 		vehicle.CreatedAt, vehicle.UpdatedAt,
 	)
 
@@ -121,8 +121,8 @@ func (db *Database) CreateVehicle(vehicle *Vehicle) error {
 func (db *Database) GetVehicle(id string) (*Vehicle, error) {
 	query := `
 		SELECT id, dealership_id, vin, stock_number, make, model, year, trim,
-			   condition, status, price, mileage, color, transmission, engine,
-			   fuel_type, drive_type, body_style, image_url, features,
+			   exterior_color, interior_color, mileage, condition, status,
+			   msrp, invoice, cost, asking_price, internet_price, description,
 			   created_at, updated_at
 		FROM vehicles
 		WHERE id = $1
@@ -132,9 +132,9 @@ func (db *Database) GetVehicle(id string) (*Vehicle, error) {
 	err := db.conn.QueryRow(query, id).Scan(
 		&vehicle.ID, &vehicle.DealershipID, &vehicle.VIN, &vehicle.StockNumber,
 		&vehicle.Make, &vehicle.Model, &vehicle.Year, &vehicle.Trim,
-		&vehicle.Condition, &vehicle.Status, &vehicle.Price, &vehicle.Mileage,
-		&vehicle.Color, &vehicle.Transmission, &vehicle.Engine, &vehicle.FuelType,
-		&vehicle.DriveType, &vehicle.BodyStyle, &vehicle.ImageURL, &vehicle.Features,
+		&vehicle.ExteriorColor, &vehicle.InteriorColor, &vehicle.Mileage,
+		&vehicle.Condition, &vehicle.Status, &vehicle.MSRP, &vehicle.Invoice,
+		&vehicle.Cost, &vehicle.AskingPrice, &vehicle.InternetPrice, &vehicle.Description,
 		&vehicle.CreatedAt, &vehicle.UpdatedAt,
 	)
 
@@ -152,8 +152,8 @@ func (db *Database) GetVehicle(id string) (*Vehicle, error) {
 func (db *Database) ListVehicles(dealershipID string, filters map[string]interface{}) ([]*Vehicle, error) {
 	query := `
 		SELECT id, dealership_id, vin, stock_number, make, model, year, trim,
-			   condition, status, price, mileage, color, transmission, engine,
-			   fuel_type, drive_type, body_style, image_url, features,
+			   exterior_color, interior_color, mileage, condition, status,
+			   msrp, invoice, cost, asking_price, internet_price, description,
 			   created_at, updated_at
 		FROM vehicles
 		WHERE 1=1
@@ -202,13 +202,13 @@ func (db *Database) ListVehicles(dealershipID string, filters map[string]interfa
 
 	// Price range filter
 	if priceMin, ok := filters["price_min"].(float64); ok && priceMin > 0 {
-		query += fmt.Sprintf(" AND price >= $%d", argIndex)
+		query += fmt.Sprintf(" AND asking_price>= $%d", argIndex)
 		args = append(args, priceMin)
 		argIndex++
 	}
 
 	if priceMax, ok := filters["price_max"].(float64); ok && priceMax > 0 {
-		query += fmt.Sprintf(" AND price <= $%d", argIndex)
+		query += fmt.Sprintf(" AND asking_price<= $%d", argIndex)
 		args = append(args, priceMax)
 		argIndex++
 	}
@@ -227,9 +227,9 @@ func (db *Database) ListVehicles(dealershipID string, filters map[string]interfa
 		err := rows.Scan(
 			&vehicle.ID, &vehicle.DealershipID, &vehicle.VIN, &vehicle.StockNumber,
 			&vehicle.Make, &vehicle.Model, &vehicle.Year, &vehicle.Trim,
-			&vehicle.Condition, &vehicle.Status, &vehicle.Price, &vehicle.Mileage,
-			&vehicle.Color, &vehicle.Transmission, &vehicle.Engine, &vehicle.FuelType,
-			&vehicle.DriveType, &vehicle.BodyStyle, &vehicle.ImageURL, &vehicle.Features,
+			&vehicle.ExteriorColor, &vehicle.InteriorColor, &vehicle.Mileage,
+			&vehicle.Condition, &vehicle.Status, &vehicle.MSRP, &vehicle.Invoice,
+			&vehicle.Cost, &vehicle.AskingPrice, &vehicle.InternetPrice, &vehicle.Description,
 			&vehicle.CreatedAt, &vehicle.UpdatedAt,
 		)
 		if err != nil {
@@ -252,19 +252,18 @@ func (db *Database) UpdateVehicle(vehicle *Vehicle) error {
 			model = $6,
 			year = $7,
 			trim = $8,
-			condition = $9,
-			status = $10,
-			price = $11,
-			mileage = $12,
-			color = $13,
-			transmission = $14,
-			engine = $15,
-			fuel_type = $16,
-			drive_type = $17,
-			body_style = $18,
-			image_url = $19,
-			features = $20,
-			updated_at = $21
+			exterior_color = $9,
+			interior_color = $10,
+			mileage = $11,
+			condition = $12,
+			status = $13,
+			msrp = $14,
+			invoice = $15,
+			cost = $16,
+			asking_price = $17,
+			internet_price = $18,
+			description = $19,
+			updated_at = $20
 		WHERE id = $1
 	`
 
@@ -272,9 +271,9 @@ func (db *Database) UpdateVehicle(vehicle *Vehicle) error {
 		query,
 		vehicle.ID, vehicle.DealershipID, vehicle.VIN, vehicle.StockNumber,
 		vehicle.Make, vehicle.Model, vehicle.Year, vehicle.Trim,
-		vehicle.Condition, vehicle.Status, vehicle.Price, vehicle.Mileage,
-		vehicle.Color, vehicle.Transmission, vehicle.Engine, vehicle.FuelType,
-		vehicle.DriveType, vehicle.BodyStyle, vehicle.ImageURL, vehicle.Features,
+		vehicle.ExteriorColor, vehicle.InteriorColor, vehicle.Mileage,
+		vehicle.Condition, vehicle.Status, vehicle.MSRP, vehicle.Invoice,
+		vehicle.Cost, vehicle.AskingPrice, vehicle.InternetPrice, vehicle.Description,
 		vehicle.UpdatedAt,
 	)
 
@@ -394,7 +393,7 @@ func (db *Database) GetInventoryStats(dealershipID string) (map[string]interface
 	// Average price
 	var avgPrice sql.NullFloat64
 	err = db.conn.QueryRow(`
-		SELECT AVG(price) FROM vehicles WHERE dealership_id = $1
+		SELECT AVG(asking_price) FROM vehicles WHERE dealership_id = $1
 	`, dealershipID).Scan(&avgPrice)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get average price: %w", err)

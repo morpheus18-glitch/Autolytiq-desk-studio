@@ -24,7 +24,7 @@ type Deal struct {
 	CustomerID         *string   `json:"customer_id,omitempty"`
 	VehicleID          *string   `json:"vehicle_id,omitempty"`
 	TradeVehicleID     *string   `json:"trade_vehicle_id,omitempty"`
-	DealState          string    `json:"deal_state"`
+	Status             string    `json:"status"`
 	ActiveScenarioID   *string   `json:"active_scenario_id,omitempty"`
 	LockedBy           *string   `json:"locked_by,omitempty"`
 	CustomerAttachedAt *time.Time `json:"customer_attached_at,omitempty"`
@@ -125,7 +125,7 @@ func (s *Server) createDeal(w http.ResponseWriter, r *http.Request) {
 		ID:            uuid.New().String(),
 		DealershipID:  req.DealershipID,
 		SalespersonID: req.SalespersonID,
-		DealState:     "DRAFT",
+		Status:        "DRAFT",
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
 	}
