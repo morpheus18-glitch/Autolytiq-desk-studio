@@ -85,6 +85,7 @@ replit.md
 *.png
 
 # Go compiled binaries
+bin/
 services/*/api-gateway
 services/*/customer-service
 services/*/deal-service

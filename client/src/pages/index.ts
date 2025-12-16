@@ -7,3 +7,5 @@ export { InventoryPage } from './Inventory';
 export { SettingsPage } from './Settings';
 export { ShowroomPage } from './Showroom';
 export { MessagesPage } from './Messages';
+export { QuickCalcPage } from './QuickCalc';
+export { CalculatorPage } from './Calculator';

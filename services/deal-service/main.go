@@ -13,20 +13,23 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// Deal represents a vehicle deal
+// Deal represents a vehicle deal (matches database schema)
 type Deal struct {
-	ID            string    `json:"id"`
-	DealershipID  string    `json:"dealership_id"`
-	CustomerID    string    `json:"customer_id"`
-	VehiclePrice  float64   `json:"vehicle_price"`
-	TradeInValue  float64   `json:"trade_in_value"`
-	TradeInPayoff float64   `json:"trade_in_payoff"`
-	DownPayment   float64   `json:"down_payment"`
-	TaxAmount     float64   `json:"tax_amount"`
-	TotalAmount   float64   `json:"total_amount"`
-	Status        string    `json:"status"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ID                 string    `json:"id"`
+	DealNumber         *string   `json:"deal_number,omitempty"`
+	DealershipID       string    `json:"dealership_id"`
+	SalespersonID      string    `json:"salesperson_id"`
+	SalesManagerID     *string   `json:"sales_manager_id,omitempty"`
+	FinanceManagerID   *string   `json:"finance_manager_id,omitempty"`
+	CustomerID         *string   `json:"customer_id,omitempty"`
+	VehicleID          *string   `json:"vehicle_id,omitempty"`
+	TradeVehicleID     *string   `json:"trade_vehicle_id,omitempty"`
+	DealState          string    `json:"deal_state"`
+	ActiveScenarioID   *string   `json:"active_scenario_id,omitempty"`
+	LockedBy           *string   `json:"locked_by,omitempty"`
+	CustomerAttachedAt *time.Time `json:"customer_attached_at,omitempty"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
 }
 
 // Config holds application configuration
@@ -117,23 +120,22 @@ func (s *Server) createDeal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Map request to Deal
+	// Map request to Deal (using new schema)
 	deal := Deal{
 		ID:            uuid.New().String(),
 		DealershipID:  req.DealershipID,
-		CustomerID:    req.CustomerID,
-		VehiclePrice:  req.VehiclePrice,
-		TradeInValue:  req.TradeInValue,
-		TradeInPayoff: req.TradeInPayoff,
-		DownPayment:   req.DownPayment,
-		TaxAmount:     req.TaxAmount,
-		Status:        req.Status,
+		SalespersonID: req.SalespersonID,
+		DealState:     "DRAFT",
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
 	}
 
-	if deal.Status == "" {
-		deal.Status = "draft"
+	// Set optional fields
+	if req.CustomerID != "" {
+		deal.CustomerID = &req.CustomerID
+	}
+	if req.VehicleID != "" {
+		deal.VehicleID = &req.VehicleID
 	}
 
 	// Save to database
@@ -197,27 +199,12 @@ func (s *Server) updateDeal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Apply updates
+	// Apply updates (simplified for new schema)
 	if req.CustomerID != "" {
-		existingDeal.CustomerID = req.CustomerID
+		existingDeal.CustomerID = &req.CustomerID
 	}
-	if req.VehiclePrice > 0 {
-		existingDeal.VehiclePrice = req.VehiclePrice
-	}
-	if req.TradeInValue > 0 {
-		existingDeal.TradeInValue = req.TradeInValue
-	}
-	if req.TradeInPayoff > 0 {
-		existingDeal.TradeInPayoff = req.TradeInPayoff
-	}
-	if req.DownPayment > 0 {
-		existingDeal.DownPayment = req.DownPayment
-	}
-	if req.TaxAmount > 0 {
-		existingDeal.TaxAmount = req.TaxAmount
-	}
-	if req.Status != "" {
-		existingDeal.Status = req.Status
+	if req.VehicleID != "" {
+		existingDeal.VehicleID = &req.VehicleID
 	}
 	existingDeal.UpdatedAt = time.Now()
 

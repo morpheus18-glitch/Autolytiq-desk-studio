@@ -55,45 +55,13 @@ func (db *Database) Close() error {
 	return db.conn.Close()
 }
 
-// InitSchema creates the customers table if it doesn't exist
+// InitSchema is now a no-op - schema is managed by migrations in /migrations
+// Database is the single source of truth, managed via Drizzle migrations
 func (db *Database) InitSchema() error {
-	schema := `
-	CREATE TABLE IF NOT EXISTS customers (
-		id VARCHAR(36) PRIMARY KEY,
-		dealership_id VARCHAR(36) NOT NULL,
-		first_name VARCHAR(100) NOT NULL,
-		last_name VARCHAR(100) NOT NULL,
-		email VARCHAR(255),
-		phone VARCHAR(20),
-		address VARCHAR(255),
-		city VARCHAR(100),
-		state VARCHAR(2),
-		zip_code VARCHAR(10),
-		credit_score INTEGER,
-		ssn_last4 TEXT,
-		drivers_license_number TEXT,
-		monthly_income NUMERIC(12, 2),
-		ssn_last4_encrypted TEXT,
-		drivers_license_number_encrypted TEXT,
-		credit_score_encrypted TEXT,
-		monthly_income_encrypted TEXT,
-		pii_encryption_version TEXT,
-		created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-		updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-	);
-
-	CREATE INDEX IF NOT EXISTS idx_customers_dealership ON customers(dealership_id);
-	CREATE INDEX IF NOT EXISTS idx_customers_email ON customers(email);
-	CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(last_name, first_name);
-	CREATE INDEX IF NOT EXISTS idx_customers_pii_encryption_version ON customers(pii_encryption_version) WHERE pii_encryption_version IS NULL;
-	`
-
-	if _, err := db.conn.Exec(schema); err != nil {
-		return fmt.Errorf("failed to initialize schema: %w", err)
-	}
-
+	// Schema creation disabled - tables are created via migrations
+	// This prevents schema drift between services and database
 	if db.logger != nil {
-		db.logger.Info("Database schema initialized")
+		db.logger.Info("Schema initialization skipped - using migration-managed schema")
 	}
 	return nil
 }

@@ -27,29 +27,16 @@ type ValidationErrorResponse struct {
 
 // CreateDealRequest represents a request to create a deal
 type CreateDealRequest struct {
-	DealershipID  string  `json:"dealership_id"`
-	CustomerID    string  `json:"customer_id"`
-	VehicleID     string  `json:"vehicle_id"`
-	SalespersonID string  `json:"salesperson_id"`
-	VehiclePrice  float64 `json:"vehicle_price"`
-	TradeInValue  float64 `json:"trade_in_value"`
-	TradeInPayoff float64 `json:"trade_in_payoff"`
-	DownPayment   float64 `json:"down_payment"`
-	TaxAmount     float64 `json:"tax_amount"`
-	Status        string  `json:"status"`
+	DealershipID  string `json:"dealership_id"`
+	SalespersonID string `json:"salesperson_id"`
+	CustomerID    string `json:"customer_id,omitempty"`
+	VehicleID     string `json:"vehicle_id,omitempty"`
 }
 
 // UpdateDealRequest represents a request to update a deal
 type UpdateDealRequest struct {
-	CustomerID    string  `json:"customer_id,omitempty"`
-	VehicleID     string  `json:"vehicle_id,omitempty"`
-	SalespersonID string  `json:"salesperson_id,omitempty"`
-	VehiclePrice  float64 `json:"vehicle_price,omitempty"`
-	TradeInValue  float64 `json:"trade_in_value,omitempty"`
-	TradeInPayoff float64 `json:"trade_in_payoff,omitempty"`
-	DownPayment   float64 `json:"down_payment,omitempty"`
-	TaxAmount     float64 `json:"tax_amount,omitempty"`
-	Status        string  `json:"status,omitempty"`
+	CustomerID string `json:"customer_id,omitempty"`
+	VehicleID  string `json:"vehicle_id,omitempty"`
 }
 
 var (
@@ -81,6 +68,19 @@ func (r *CreateDealRequest) Validate() *ValidationErrors {
 		})
 	}
 
+	// Salesperson ID validation
+	if r.SalespersonID == "" {
+		errors = append(errors, ValidationError{
+			Field:   "salesperson_id",
+			Message: "Salesperson ID is required",
+		})
+	} else if !uuidRegex.MatchString(r.SalespersonID) {
+		errors = append(errors, ValidationError{
+			Field:   "salesperson_id",
+			Message: "Must be a valid UUID",
+		})
+	}
+
 	// Customer ID validation (optional but if provided, must be valid)
 	if r.CustomerID != "" && !uuidRegex.MatchString(r.CustomerID) {
 		errors = append(errors, ValidationError{
@@ -97,54 +97,6 @@ func (r *CreateDealRequest) Validate() *ValidationErrors {
 		})
 	}
 
-	// Vehicle price validation
-	if r.VehiclePrice < 0 {
-		errors = append(errors, ValidationError{
-			Field:   "vehicle_price",
-			Message: "Vehicle price cannot be negative",
-		})
-	}
-
-	// Trade-in value validation
-	if r.TradeInValue < 0 {
-		errors = append(errors, ValidationError{
-			Field:   "trade_in_value",
-			Message: "Trade-in value cannot be negative",
-		})
-	}
-
-	// Trade-in payoff validation
-	if r.TradeInPayoff < 0 {
-		errors = append(errors, ValidationError{
-			Field:   "trade_in_payoff",
-			Message: "Trade-in payoff cannot be negative",
-		})
-	}
-
-	// Down payment validation
-	if r.DownPayment < 0 {
-		errors = append(errors, ValidationError{
-			Field:   "down_payment",
-			Message: "Down payment cannot be negative",
-		})
-	}
-
-	// Tax amount validation
-	if r.TaxAmount < 0 {
-		errors = append(errors, ValidationError{
-			Field:   "tax_amount",
-			Message: "Tax amount cannot be negative",
-		})
-	}
-
-	// Status validation
-	if r.Status != "" && !validStatuses[strings.ToLower(r.Status)] {
-		errors = append(errors, ValidationError{
-			Field:   "status",
-			Message: "Invalid status. Must be one of: draft, pending, approved, funded, delivered, cancelled",
-		})
-	}
-
 	if len(errors) > 0 {
 		return &ValidationErrors{Errors: errors}
 	}
@@ -157,7 +109,6 @@ func (r *CreateDealRequest) Sanitize() {
 	r.CustomerID = strings.TrimSpace(r.CustomerID)
 	r.VehicleID = strings.TrimSpace(r.VehicleID)
 	r.SalespersonID = strings.TrimSpace(r.SalespersonID)
-	r.Status = strings.TrimSpace(strings.ToLower(r.Status))
 }
 
 // Validate validates UpdateDealRequest
@@ -180,54 +131,6 @@ func (r *UpdateDealRequest) Validate() *ValidationErrors {
 		})
 	}
 
-	// Vehicle price validation
-	if r.VehiclePrice < 0 {
-		errors = append(errors, ValidationError{
-			Field:   "vehicle_price",
-			Message: "Vehicle price cannot be negative",
-		})
-	}
-
-	// Trade-in value validation
-	if r.TradeInValue < 0 {
-		errors = append(errors, ValidationError{
-			Field:   "trade_in_value",
-			Message: "Trade-in value cannot be negative",
-		})
-	}
-
-	// Trade-in payoff validation
-	if r.TradeInPayoff < 0 {
-		errors = append(errors, ValidationError{
-			Field:   "trade_in_payoff",
-			Message: "Trade-in payoff cannot be negative",
-		})
-	}
-
-	// Down payment validation
-	if r.DownPayment < 0 {
-		errors = append(errors, ValidationError{
-			Field:   "down_payment",
-			Message: "Down payment cannot be negative",
-		})
-	}
-
-	// Tax amount validation
-	if r.TaxAmount < 0 {
-		errors = append(errors, ValidationError{
-			Field:   "tax_amount",
-			Message: "Tax amount cannot be negative",
-		})
-	}
-
-	// Status validation
-	if r.Status != "" && !validStatuses[strings.ToLower(r.Status)] {
-		errors = append(errors, ValidationError{
-			Field:   "status",
-			Message: "Invalid status. Must be one of: draft, pending, approved, funded, delivered, cancelled",
-		})
-	}
-
 	if len(errors) > 0 {
 		return &ValidationErrors{Errors: errors}
 	}
@@ -238,8 +141,6 @@ func (r *UpdateDealRequest) Validate() *ValidationErrors {
 func (r *UpdateDealRequest) Sanitize() {
 	r.CustomerID = strings.TrimSpace(r.CustomerID)
 	r.VehicleID = strings.TrimSpace(r.VehicleID)
-	r.SalespersonID = strings.TrimSpace(r.SalespersonID)
-	r.Status = strings.TrimSpace(strings.ToLower(r.Status))
 }
 
 // respondValidationError writes a validation error response

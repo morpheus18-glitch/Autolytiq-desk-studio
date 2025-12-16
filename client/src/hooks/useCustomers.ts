@@ -5,8 +5,9 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, queryKeys } from '@/lib/api';
+import { api, queryKeys, parseJwtPayload, tokenStorage } from '@/lib/api';
 import type { CustomerFormData } from '@/components/forms/CustomerForm';
+import type { JwtPayload } from '@/types';
 
 export interface Customer {
   id: string;
@@ -73,23 +74,30 @@ export function useCreateCustomer() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CustomerFormData) =>
-      api.post<Customer>('/customers', {
+    mutationFn: (data: CustomerFormData) => {
+      // Get dealership_id from JWT token
+      const token = tokenStorage.getToken();
+      const payload = parseJwtPayload<JwtPayload>(token || '');
+      const dealershipId = payload?.dealership_id;
+
+      if (!dealershipId) {
+        throw new Error('Dealership ID not found in authentication token');
+      }
+
+      return api.post<Customer>('/customers', {
+        dealership_id: dealershipId,
         first_name: data.firstName,
         last_name: data.lastName,
         email: data.email,
         phone: data.phone,
-        address: data.address
-          ? {
-              street: data.address.street,
-              city: data.address.city,
-              state: data.address.state,
-              zip_code: data.address.zipCode,
-            }
-          : undefined,
+        address: data.address?.street,
+        city: data.address?.city,
+        state: data.address?.state,
+        zip_code: data.address?.zipCode,
         source: data.source,
         notes: data.notes,
-      }),
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
     },

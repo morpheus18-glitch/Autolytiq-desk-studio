@@ -149,7 +149,7 @@ func (s *Server) transitionStatusHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Update status
-	deal.Status = string(newStatus)
+	deal.DealState = string(newStatus)
 	deal.UpdatedAt = time.Now()
 
 	if err := s.db.UpdateDeal(deal); err != nil {
@@ -163,7 +163,7 @@ func (s *Server) transitionStatusHandler(w http.ResponseWriter, r *http.Request)
 		ID:         uuid.New().String(),
 		DealID:     id,
 		EventType:  EventStatusChange,
-		FromStatus: DealStatus(deal.Status),
+		FromStatus: DealStatus(deal.DealState),
 		ToStatus:   newStatus,
 		UserID:     req.UserID,
 		Notes:      req.Notes,
@@ -200,7 +200,7 @@ func (s *Server) getActionsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	actions := GetAvailableActions(deal)
-	statusInfo := GetStatusInfo(DealStatus(deal.Status))
+	statusInfo := GetStatusInfo(DealStatus(deal.DealState))
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{

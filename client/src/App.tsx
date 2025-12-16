@@ -22,6 +22,8 @@ import {
   SettingsPage,
   ShowroomPage,
   MessagesPage,
+  QuickCalcPage,
+  CalculatorPage,
 } from '@/pages';
 
 /**
@@ -75,6 +77,14 @@ function AppRoutes(): JSX.Element {
         <PublicRoute>
           <LoginPage />
         </PublicRoute>
+      </Route>
+
+      <Route path="/calc">
+        <QuickCalcPage />
+      </Route>
+
+      <Route path="/calculator">
+        <CalculatorPage />
       </Route>
 
       {/* Protected routes */}

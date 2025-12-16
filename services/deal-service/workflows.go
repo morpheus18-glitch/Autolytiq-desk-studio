@@ -56,7 +56,7 @@ func IsValidTransition(from, to DealStatus) bool {
 
 // CanTransition checks if a deal can transition to a new status
 func CanTransition(deal *Deal, newStatus DealStatus) error {
-	currentStatus := DealStatus(deal.Status)
+	currentStatus := DealStatus(deal.DealState)
 
 	if !IsValidTransition(currentStatus, newStatus) {
 		return fmt.Errorf("invalid transition from %s to %s", currentStatus, newStatus)
@@ -82,12 +82,10 @@ func CanTransition(deal *Deal, newStatus DealStatus) error {
 // ============================================================================
 
 func validateForPending(deal *Deal) error {
-	if deal.CustomerID == "" {
+	if deal.CustomerID == nil || *deal.CustomerID == "" {
 		return fmt.Errorf("customer is required to submit deal")
 	}
-	if deal.VehiclePrice <= 0 {
-		return fmt.Errorf("vehicle price must be greater than zero")
-	}
+	// Note: VehiclePrice is stored in scenarios, not on the deal itself
 	return nil
 }
 
@@ -250,7 +248,7 @@ type WorkflowAction struct {
 
 // GetAvailableActions returns actions available for current status
 func GetAvailableActions(deal *Deal) []WorkflowAction {
-	currentStatus := DealStatus(deal.Status)
+	currentStatus := DealStatus(deal.DealState)
 	nextStatuses := validTransitions[currentStatus]
 
 	actions := make([]WorkflowAction, 0, len(nextStatuses))

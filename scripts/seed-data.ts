@@ -317,7 +317,7 @@ async function createMessagingTables(client: PoolClient): Promise<void> {
       is_muted BOOLEAN NOT NULL DEFAULT false,
       is_pinned BOOLEAN NOT NULL DEFAULT false,
       is_archived BOOLEAN NOT NULL DEFAULT false,
-      created_by_id UUID REFERENCES auth_users(id),
+      created_by_id UUID REFERENCES users(id),
       created_at TIMESTAMP NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMP NOT NULL DEFAULT NOW()
     )
@@ -333,7 +333,7 @@ async function createMessagingTables(client: PoolClient): Promise<void> {
     CREATE TABLE IF NOT EXISTS messaging_participants (
       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
       conversation_id UUID NOT NULL REFERENCES messaging_conversations(id) ON DELETE CASCADE,
-      user_id UUID NOT NULL REFERENCES auth_users(id),
+      user_id UUID NOT NULL REFERENCES users(id),
       role VARCHAR(20) NOT NULL DEFAULT 'MEMBER',
       joined_at TIMESTAMP NOT NULL DEFAULT NOW(),
       last_read_at TIMESTAMP,
@@ -356,7 +356,7 @@ async function createMessagingTables(client: PoolClient): Promise<void> {
     CREATE TABLE IF NOT EXISTS messaging_messages (
       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
       conversation_id UUID NOT NULL REFERENCES messaging_conversations(id) ON DELETE CASCADE,
-      sender_id UUID NOT NULL REFERENCES auth_users(id),
+      sender_id UUID NOT NULL REFERENCES users(id),
       type VARCHAR(20) NOT NULL DEFAULT 'TEXT',
       content TEXT NOT NULL,
       status VARCHAR(20) NOT NULL DEFAULT 'SENT',
@@ -396,7 +396,7 @@ async function createMessagingTables(client: PoolClient): Promise<void> {
     CREATE TABLE IF NOT EXISTS messaging_reactions (
       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
       message_id UUID NOT NULL REFERENCES messaging_messages(id) ON DELETE CASCADE,
-      user_id UUID NOT NULL REFERENCES auth_users(id),
+      user_id UUID NOT NULL REFERENCES users(id),
       user_name VARCHAR(255),
       reaction_type VARCHAR(20) NOT NULL,
       created_at TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -438,6 +438,23 @@ async function createMessagingTables(client: PoolClient): Promise<void> {
 // ===========================================
 // Seeding Functions
 // ===========================================
+
+async function seedDealership(client: PoolClient): Promise<void> {
+  log('Seeding dealership...');
+
+  await client.query(
+    `
+    INSERT INTO dealerships (id, name)
+    VALUES ($1, $2)
+    ON CONFLICT (id) DO UPDATE SET
+      name = EXCLUDED.name,
+      updated_at = NOW()
+  `,
+    [DEALERSHIP_ID, 'Autolytiq Demo Dealership']
+  );
+
+  log('Dealership seeded', 'success');
+}
 
 async function seedUsers(client: PoolClient): Promise<void> {
   log('Seeding users...');
@@ -508,11 +525,10 @@ async function seedUsers(client: PoolClient): Promise<void> {
   for (const user of users) {
     await client.query(
       `
-      INSERT INTO auth_users (id, email, password_hash, first_name, last_name, role, dealership_id, is_active, email_verified)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, true, true)
+      INSERT INTO users (id, email, password_hash, name, role, dealership_id)
+      VALUES ($1, $2, $3, $4, $5, $6)
       ON CONFLICT (email) DO UPDATE SET
-        first_name = EXCLUDED.first_name,
-        last_name = EXCLUDED.last_name,
+        name = EXCLUDED.name,
         role = EXCLUDED.role,
         updated_at = NOW()
     `,
@@ -520,8 +536,7 @@ async function seedUsers(client: PoolClient): Promise<void> {
         user.id,
         user.email,
         defaultPassword,
-        user.first_name,
-        user.last_name,
+        `${user.first_name} ${user.last_name}`,
         user.role,
         DEALERSHIP_ID,
       ]
@@ -1083,7 +1098,8 @@ async function main(): Promise<void> {
     // Create messaging tables first
     await createMessagingTables(client);
 
-    // Seed data in order
+    // Seed data in order (dealership must be first due to foreign keys)
+    await seedDealership(client);
     await seedUsers(client);
     await seedCustomers(client);
     await seedVehicles(client);

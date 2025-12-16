@@ -209,6 +209,7 @@ func validatePathParams(r *http.Request) []ValidationError {
 func isKnownSubResource(segment string) bool {
 	knownSubResources := map[string]bool{
 		"validate-vin": true,
+		"decode-vin":   true,
 		"status":       true,
 		"vehicle":      true,
 		"close":        true,

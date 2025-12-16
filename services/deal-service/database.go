@@ -43,35 +43,13 @@ func (db *Database) Close() error {
 	return db.conn.Close()
 }
 
-// InitSchema creates the deals table if it doesn't exist
+// InitSchema is now a no-op - schema is managed by migrations in /migrations
+// Database is the single source of truth, managed via Drizzle migrations
 func (db *Database) InitSchema() error {
-	schema := `
-	CREATE TABLE IF NOT EXISTS deals (
-		id VARCHAR(36) PRIMARY KEY,
-		dealership_id VARCHAR(36) NOT NULL,
-		customer_id VARCHAR(36) NOT NULL,
-		vehicle_price DECIMAL(10, 2) NOT NULL,
-		trade_in_value DECIMAL(10, 2) DEFAULT 0,
-		trade_in_payoff DECIMAL(10, 2) DEFAULT 0,
-		down_payment DECIMAL(10, 2) DEFAULT 0,
-		tax_amount DECIMAL(10, 2) DEFAULT 0,
-		total_amount DECIMAL(10, 2) NOT NULL,
-		status VARCHAR(50) NOT NULL DEFAULT 'draft',
-		created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-		updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-	);
-
-	CREATE INDEX IF NOT EXISTS idx_deals_dealership ON deals(dealership_id);
-	CREATE INDEX IF NOT EXISTS idx_deals_customer ON deals(customer_id);
-	CREATE INDEX IF NOT EXISTS idx_deals_status ON deals(status);
-	`
-
-	if _, err := db.conn.Exec(schema); err != nil {
-		return fmt.Errorf("failed to initialize schema: %w", err)
-	}
-
+	// Schema creation disabled - tables are created via migrations
+	// This prevents schema drift between services and database
 	if db.logger != nil {
-		db.logger.Info("Database schema initialized")
+		db.logger.Info("Schema initialization skipped - using migration-managed schema")
 	}
 	return nil
 }
@@ -80,18 +58,15 @@ func (db *Database) InitSchema() error {
 func (db *Database) CreateDeal(deal *Deal) error {
 	query := `
 		INSERT INTO deals (
-			id, dealership_id, customer_id, vehicle_price,
-			trade_in_value, trade_in_payoff, down_payment,
-			tax_amount, total_amount, status, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+			id, dealership_id, salesperson_id, customer_id, vehicle_id,
+			deal_state, created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 	`
 
 	_, err := db.conn.Exec(
 		query,
-		deal.ID, deal.DealershipID, deal.CustomerID, deal.VehiclePrice,
-		deal.TradeInValue, deal.TradeInPayoff, deal.DownPayment,
-		deal.TaxAmount, deal.TotalAmount, deal.Status,
-		deal.CreatedAt, deal.UpdatedAt,
+		deal.ID, deal.DealershipID, deal.SalespersonID, deal.CustomerID, deal.VehicleID,
+		deal.DealState, deal.CreatedAt, deal.UpdatedAt,
 	)
 
 	if err != nil {
@@ -104,19 +79,16 @@ func (db *Database) CreateDeal(deal *Deal) error {
 // GetDeal retrieves a deal by ID
 func (db *Database) GetDeal(id string) (*Deal, error) {
 	query := `
-		SELECT id, dealership_id, customer_id, vehicle_price,
-			   trade_in_value, trade_in_payoff, down_payment,
-			   tax_amount, total_amount, status, created_at, updated_at
+		SELECT id, dealership_id, salesperson_id, customer_id, vehicle_id,
+			   deal_state, created_at, updated_at
 		FROM deals
 		WHERE id = $1
 	`
 
 	var deal Deal
 	err := db.conn.QueryRow(query, id).Scan(
-		&deal.ID, &deal.DealershipID, &deal.CustomerID, &deal.VehiclePrice,
-		&deal.TradeInValue, &deal.TradeInPayoff, &deal.DownPayment,
-		&deal.TaxAmount, &deal.TotalAmount, &deal.Status,
-		&deal.CreatedAt, &deal.UpdatedAt,
+		&deal.ID, &deal.DealershipID, &deal.SalespersonID, &deal.CustomerID, &deal.VehicleID,
+		&deal.DealState, &deal.CreatedAt, &deal.UpdatedAt,
 	)
 
 	if err == sql.ErrNoRows {
@@ -137,9 +109,8 @@ func (db *Database) ListDeals(dealershipID string) ([]*Deal, error) {
 
 	if dealershipID != "" {
 		query = `
-			SELECT id, dealership_id, customer_id, vehicle_price,
-				   trade_in_value, trade_in_payoff, down_payment,
-				   tax_amount, total_amount, status, created_at, updated_at
+			SELECT id, dealership_id, salesperson_id, customer_id, vehicle_id,
+				   deal_state, created_at, updated_at
 			FROM deals
 			WHERE dealership_id = $1
 			ORDER BY created_at DESC
@@ -147,9 +118,8 @@ func (db *Database) ListDeals(dealershipID string) ([]*Deal, error) {
 		rows, err = db.conn.Query(query, dealershipID)
 	} else {
 		query = `
-			SELECT id, dealership_id, customer_id, vehicle_price,
-				   trade_in_value, trade_in_payoff, down_payment,
-				   tax_amount, total_amount, status, created_at, updated_at
+			SELECT id, dealership_id, salesperson_id, customer_id, vehicle_id,
+				   deal_state, created_at, updated_at
 			FROM deals
 			ORDER BY created_at DESC
 		`
@@ -165,10 +135,8 @@ func (db *Database) ListDeals(dealershipID string) ([]*Deal, error) {
 	for rows.Next() {
 		var deal Deal
 		err := rows.Scan(
-			&deal.ID, &deal.DealershipID, &deal.CustomerID, &deal.VehiclePrice,
-			&deal.TradeInValue, &deal.TradeInPayoff, &deal.DownPayment,
-			&deal.TaxAmount, &deal.TotalAmount, &deal.Status,
-			&deal.CreatedAt, &deal.UpdatedAt,
+			&deal.ID, &deal.DealershipID, &deal.SalespersonID, &deal.CustomerID, &deal.VehicleID,
+			&deal.DealState, &deal.CreatedAt, &deal.UpdatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan deal: %w", err)
@@ -183,24 +151,17 @@ func (db *Database) ListDeals(dealershipID string) ([]*Deal, error) {
 func (db *Database) UpdateDeal(deal *Deal) error {
 	query := `
 		UPDATE deals SET
-			dealership_id = $2,
-			customer_id = $3,
-			vehicle_price = $4,
-			trade_in_value = $5,
-			trade_in_payoff = $6,
-			down_payment = $7,
-			tax_amount = $8,
-			total_amount = $9,
-			status = $10,
-			updated_at = $11
+			customer_id = $2,
+			vehicle_id = $3,
+			deal_state = $4,
+			updated_at = $5
 		WHERE id = $1
 	`
 
 	result, err := db.conn.Exec(
 		query,
-		deal.ID, deal.DealershipID, deal.CustomerID, deal.VehiclePrice,
-		deal.TradeInValue, deal.TradeInPayoff, deal.DownPayment,
-		deal.TaxAmount, deal.TotalAmount, deal.Status, deal.UpdatedAt,
+		deal.ID, deal.CustomerID, deal.VehicleID,
+		deal.DealState, deal.UpdatedAt,
 	)
 
 	if err != nil {
