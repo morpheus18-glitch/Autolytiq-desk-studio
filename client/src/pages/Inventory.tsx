@@ -19,6 +19,7 @@ import {
   getVehicleName,
   type Vehicle,
 } from '@/hooks/useInventory';
+import { getVehicleImageUrl } from '@/hooks/useVehicleImages';
 import { cn, formatCurrency } from '@/lib/utils';
 
 /**
@@ -311,19 +312,27 @@ interface VehicleGridCardProps {
 }
 
 function VehicleGridCard({ vehicle, onView }: VehicleGridCardProps): JSX.Element {
+  // Get image URL from curated images or existing images
+  const imageUrl = getVehicleImageUrl(vehicle.make, vehicle.model, vehicle.images);
+
   return (
     <Card hoverable className="overflow-hidden">
-      {/* Vehicle image placeholder */}
-      <div className="aspect-[16/10] bg-muted flex items-center justify-center">
-        {vehicle.images && vehicle.images.length > 0 ? (
-          <img
-            src={vehicle.images[0]}
-            alt={getVehicleName(vehicle)}
-            className="w-full h-full object-cover"
-          />
-        ) : (
+      {/* Vehicle image */}
+      <div className="aspect-[16/10] bg-muted flex items-center justify-center overflow-hidden">
+        <img
+          src={imageUrl}
+          alt={getVehicleName(vehicle)}
+          className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+          onError={(e) => {
+            // Fallback to placeholder on error
+            const target = e.target as HTMLImageElement;
+            target.style.display = 'none';
+            target.nextElementSibling?.classList.remove('hidden');
+          }}
+        />
+        <div className="hidden">
           <VehicleImagePlaceholder />
-        )}
+        </div>
       </div>
       <CardContent className="p-4">
         <div className="flex items-start justify-between">
