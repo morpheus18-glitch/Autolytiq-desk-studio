@@ -203,7 +203,7 @@ function ActionMenu({
  */
 function CustomersTableHeader(): JSX.Element {
   return (
-    <thead>
+    <thead className="sticky top-0 z-10 bg-card">
       <tr className="border-b border-border bg-muted/50">
         <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
           Customer
@@ -375,7 +375,7 @@ function CustomersTable({
   return (
     <Card>
       <CardContent className="p-0">
-        <div className="overflow-x-auto">
+        <div className="max-h-[calc(100vh-280px)] overflow-auto">
           <table className="w-full">
             <CustomersTableHeader />
             <tbody className="divide-y divide-border">
