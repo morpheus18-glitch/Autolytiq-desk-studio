@@ -27,7 +27,19 @@ interface UsersResponse {
 export function useUsers() {
   return useQuery({
     queryKey: ['users'],
-    queryFn: () => api.get<UsersResponse>('/v1/users'),
+    queryFn: async () => {
+      const response = await api.get<User[] | UsersResponse>('/v1/users');
+
+      // Handle backend returning array instead of paginated response
+      if (Array.isArray(response)) {
+        return {
+          users: response,
+          total: response.length,
+        };
+      }
+
+      return response;
+    },
   });
 }
 

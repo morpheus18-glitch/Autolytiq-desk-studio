@@ -30,13 +30,13 @@ import { cn, formatCurrency } from '@/lib/utils';
 import { useToast } from '@/components/ui';
 
 export interface DealSetupData {
-  customerId: string;
-  customerName: string;
-  vehicleId: string;
-  vehicleName: string;
-  vehiclePrice: number;
-  customer: Customer;
-  vehicle: Vehicle;
+  customerId?: string;
+  customerName?: string;
+  vehicleId?: string;
+  vehicleName?: string;
+  vehiclePrice?: number;
+  customer?: Customer;
+  vehicle?: Vehicle;
 }
 
 interface DealSetupProps {
@@ -309,20 +309,19 @@ export function DealSetup({ onContinue, onCancel }: DealSetupProps): JSX.Element
   };
 
   const handleContinue = () => {
-    if (!selectedCustomer || !selectedVehicle) return;
-
     onContinue({
-      customerId: selectedCustomer.id,
-      customerName: getCustomerName(selectedCustomer),
-      vehicleId: selectedVehicle.id,
-      vehicleName: getVehicleName(selectedVehicle),
-      vehiclePrice: selectedVehicle.list_price,
-      customer: selectedCustomer,
-      vehicle: selectedVehicle,
+      customerId: selectedCustomer?.id,
+      customerName: selectedCustomer ? getCustomerName(selectedCustomer) : undefined,
+      vehicleId: selectedVehicle?.id,
+      vehicleName: selectedVehicle ? getVehicleName(selectedVehicle) : undefined,
+      vehiclePrice: selectedVehicle?.list_price,
+      customer: selectedCustomer || undefined,
+      vehicle: selectedVehicle || undefined,
     });
   };
 
-  const canContinue = selectedCustomer && selectedVehicle;
+  // Allow continuing with at least one selection (customer OR vehicle) or skip both
+  const canContinue = true;
 
   return (
     <div className="space-y-6">

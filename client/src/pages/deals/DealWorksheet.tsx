@@ -51,6 +51,7 @@ import type { Customer } from '@/hooks/useCustomers';
 import { getCustomerName } from '@/hooks/useCustomers';
 import type { Vehicle } from '@/hooks/useInventory';
 import { getVehicleName } from '@/hooks/useInventory';
+import { useJurisdictionResolver } from '@/hooks/useJurisdictionResolver';
 import {
   useDealCalculator,
   type DealInput,
@@ -78,18 +79,18 @@ const worksheetSchema = z.object({
   salespersonId: z.string().optional(),
 
   // Vehicle Pricing
-  msrp: z.coerce.number().min(0, 'MSRP must be positive'),
-  invoice: z.coerce.number().min(0).optional(),
-  salePrice: z.coerce.number().min(0, 'Sale price must be positive'),
+  msrp: z.coerce.number().min(0, 'MSRP must be positive').max(1000000, 'MSRP must be less than $1M'),
+  invoice: z.coerce.number().min(0).max(1000000).optional(),
+  salePrice: z.coerce.number().min(0, 'Sale price must be positive').max(1000000, 'Sale price must be less than $1M'),
 
   // Trade-In
-  tradeAllowance: z.coerce.number().min(0).default(0),
-  tradePayoff: z.coerce.number().min(0).default(0),
-  tradeACV: z.coerce.number().min(0).optional(),
+  tradeAllowance: z.coerce.number().min(0).max(200000, 'Trade allowance too high').default(0),
+  tradePayoff: z.coerce.number().min(0).max(200000, 'Trade payoff too high').default(0),
+  tradeACV: z.coerce.number().min(0).max(200000).optional(),
   tradeVehicle: z.string().optional(),
 
   // Down Payment & Rebates
-  cashDown: z.coerce.number().min(0).default(0),
+  cashDown: z.coerce.number().min(0).max(500000, 'Cash down too high').default(0),
 
   // Finance Options
   apr: z.coerce.number().min(0).max(30).default(5.9),
@@ -100,10 +101,10 @@ const worksheetSchema = z.object({
   moneyFactor: z.coerce.number().min(0).max(0.01).default(0.00125),
   residualPercent: z.coerce.number().min(20).max(90).default(55),
   annualMiles: z.coerce.number().min(5000).max(25000).default(12000),
-  excessMileageRate: z.coerce.number().min(0).default(0.25),
-  acquisitionFee: z.coerce.number().min(0).default(695),
-  dispositionFee: z.coerce.number().min(0).default(395),
-  securityDeposit: z.coerce.number().min(0).default(0),
+  excessMileageRate: z.coerce.number().min(0).max(5).default(0.25),
+  acquisitionFee: z.coerce.number().min(0).max(5000).default(695),
+  dispositionFee: z.coerce.number().min(0).max(5000).default(395),
+  securityDeposit: z.coerce.number().min(0).max(10000).default(0),
   securityDepositWaived: z.boolean().default(true),
   acquisitionFeeCap: z.boolean().default(true),
   firstPaymentAtSigning: z.boolean().default(true),
@@ -119,8 +120,8 @@ export type WorksheetFormData = z.infer<typeof worksheetSchema>;
 // ============================================================================
 
 export interface DealWorksheetProps {
-  customer: Customer;
-  vehicle: Vehicle;
+  customer?: Customer;
+  vehicle?: Vehicle;
   initialData?: Partial<WorksheetFormData>;
   onSubmit: (data: WorksheetFormData & { calculationResult: DealResult }) => Promise<void>;
   onBack: () => void;
@@ -262,57 +263,65 @@ function DealSummaryHeader({
   customer,
   vehicle,
 }: {
-  customer: Customer;
-  vehicle: Vehicle;
-}): JSX.Element {
+  customer?: Customer;
+  vehicle?: Vehicle;
+}): JSX.Element | null {
+  if (!customer && !vehicle) {
+    return null;
+  }
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
       {/* Customer Card */}
-      <div className="flex items-center gap-3 p-3 bg-card border border-border rounded-lg">
-        <div className="p-2 bg-primary/10 rounded-lg text-primary shrink-0">
-          <User className="h-4 w-4" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-            Customer
-          </p>
-          <p className="font-semibold text-sm truncate">{getCustomerName(customer)}</p>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            {customer.email && (
-              <span className="flex items-center gap-1 truncate">
-                <Mail className="h-3 w-3 shrink-0" />
-                <span className="truncate max-w-[120px]">{customer.email}</span>
-              </span>
-            )}
-            {customer.phone && (
-              <span className="flex items-center gap-1 shrink-0">
-                <Phone className="h-3 w-3" />
-                {customer.phone}
-              </span>
-            )}
+      {customer && (
+        <div className="flex items-center gap-3 p-3 bg-card border border-border rounded-lg">
+          <div className="p-2 bg-primary/10 rounded-lg text-primary shrink-0">
+            <User className="h-4 w-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+              Customer
+            </p>
+            <p className="font-semibold text-sm truncate">{getCustomerName(customer)}</p>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              {customer.email && (
+                <span className="flex items-center gap-1 truncate">
+                  <Mail className="h-3 w-3 shrink-0" />
+                  <span className="truncate max-w-[120px]">{customer.email}</span>
+                </span>
+              )}
+              {customer.phone && (
+                <span className="flex items-center gap-1 shrink-0">
+                  <Phone className="h-3 w-3" />
+                  {customer.phone}
+                </span>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Vehicle Card */}
-      <div className="flex items-center gap-3 p-3 bg-card border border-border rounded-lg">
-        <div className="p-2 bg-primary/10 rounded-lg text-primary shrink-0">
-          <VehicleIcon size={16} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-            Vehicle
-          </p>
-          <p className="font-semibold text-sm truncate">{getVehicleName(vehicle)}</p>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>{vehicle.exterior_color}</span>
-            <span>{vehicle.mileage.toLocaleString()} mi</span>
-            <span className="font-medium text-foreground">
-              {formatCurrency(vehicle.list_price)}
-            </span>
+      {vehicle && (
+        <div className="flex items-center gap-3 p-3 bg-card border border-border rounded-lg">
+          <div className="p-2 bg-primary/10 rounded-lg text-primary shrink-0">
+            <VehicleIcon size={16} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+              Vehicle
+            </p>
+            <p className="font-semibold text-sm truncate">{getVehicleName(vehicle)}</p>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>{vehicle.exterior_color}</span>
+              <span>{vehicle.mileage.toLocaleString()} mi</span>
+              <span className="font-medium text-foreground">
+                {formatCurrency(vehicle.list_price)}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -555,9 +564,11 @@ function SectionHeader({
 function DealSummary({
   result,
   dealType,
+  jurisdiction,
 }: {
   result: DealResult | null;
   dealType: DealType;
+  jurisdiction?: { stateCode: string; stateName: string; stateRate: number; localRate: number; combinedRate: number; jurisdictionName: string } | null;
 }): JSX.Element {
   if (!result?.is_valid) {
     return (
@@ -626,11 +637,33 @@ function DealSummary({
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
           Taxes
         </p>
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Tax Rate</span>
-          <span className="font-medium">{(tax.combined_rate * 100).toFixed(2)}%</span>
-        </div>
-        <div className="flex justify-between">
+        {jurisdiction && (
+          <div className="text-xs text-muted-foreground mb-2 p-2 bg-muted/30 rounded">
+            📍 {jurisdiction.jurisdictionName}
+          </div>
+        )}
+        {jurisdiction && jurisdiction.localRate > 0 ? (
+          <>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">State Rate ({jurisdiction.stateCode})</span>
+              <span>{(jurisdiction.stateRate * 100).toFixed(2)}%</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">Local Rate</span>
+              <span>{(jurisdiction.localRate * 100).toFixed(2)}%</span>
+            </div>
+            <div className="flex justify-between font-medium pt-1 border-t border-border/50">
+              <span>Combined Rate</span>
+              <span>{(jurisdiction.combinedRate * 100).toFixed(2)}%</span>
+            </div>
+          </>
+        ) : (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Tax Rate</span>
+            <span className="font-medium">{(tax.combined_rate * 100).toFixed(2)}%</span>
+          </div>
+        )}
+        <div className="flex justify-between font-medium">
           <span className="text-muted-foreground">Total Tax</span>
           <span className="font-medium">{formatCurrency(tax.total_tax)}</span>
         </div>
@@ -760,6 +793,7 @@ export function DealWorksheet({
   // Hooks
   const { data: usersData } = useUsers();
   const { calculateDeal, result, isLoading: isCalculating } = useDealCalculator();
+  const { jurisdiction, resolveJurisdiction, isLoading: isResolvingJurisdiction } = useJurisdictionResolver();
 
   // Local State
   const [fees, setFees] = useState<FeeItem[]>(DEFAULT_FEES);
@@ -781,9 +815,9 @@ export function DealWorksheet({
       type: 'FINANCE',
       status: 'PENDING',
       stateCode: 'IN',
-      msrp: vehicle.list_price,
-      invoice: vehicle.invoice_price,
-      salePrice: vehicle.list_price,
+      msrp: vehicle?.list_price || 0,
+      invoice: vehicle?.invoice_price || 0,
+      salePrice: vehicle?.list_price || 0,
       tradeAllowance: 0,
       tradePayoff: 0,
       cashDown: 0,
@@ -806,6 +840,18 @@ export function DealWorksheet({
 
   const watchedValues = watch();
   const dealType = watchedValues.type;
+
+  // Resolve jurisdiction when customer is available
+  useEffect(() => {
+    if (customer?.address?.state) {
+      resolveJurisdiction({
+        street: customer.address.street,
+        city: customer.address.city,
+        state: customer.address.state,
+        zipCode: customer.address.zip_code,
+      });
+    }
+  }, [customer, resolveJurisdiction]);
 
   // Calculate deal when inputs change
   useEffect(() => {
@@ -926,6 +972,10 @@ export function DealWorksheet({
   };
 
   const updateFee = (id: string, field: keyof FeeItem, value: string | number | boolean) => {
+    // Cap fee amounts at $50k to prevent calculation errors
+    if (field === 'amount' && typeof value === 'number' && value > 50000) {
+      value = 50000;
+    }
     setFees((prev) => prev.map((f) => (f.id === id ? { ...f, [field]: value } : f)));
   };
 
@@ -945,6 +995,13 @@ export function DealWorksheet({
     field: keyof FIProduct,
     value: string | number | boolean
   ) => {
+    // Cap F&I product prices at $50k to prevent calculation errors
+    if (field === 'price' && typeof value === 'number' && value > 50000) {
+      value = 50000;
+    }
+    if (field === 'cost' && typeof value === 'number' && value > 50000) {
+      value = 50000;
+    }
     setFIProducts((prev) => prev.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
   };
 
@@ -967,6 +1024,10 @@ export function DealWorksheet({
   };
 
   const updateRebate = (id: string, field: keyof Rebate, value: string | number | boolean) => {
+    // Cap rebate amounts at $50k to prevent calculation errors
+    if (field === 'amount' && typeof value === 'number' && value > 50000) {
+      value = 50000;
+    }
     setRebates((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
   };
 
@@ -980,10 +1041,14 @@ export function DealWorksheet({
       }));
   }, [usersData]);
 
-  const taxRate = useMemo(
-    () => getStateTaxRate(watchedValues.stateCode),
-    [watchedValues.stateCode]
-  );
+  const taxRate = useMemo(() => {
+    // Use jurisdiction rate if available (from customer address)
+    if (jurisdiction) {
+      return jurisdiction.combinedRate;
+    }
+    // Fall back to hardcoded state rate
+    return getStateTaxRate(watchedValues.stateCode);
+  }, [jurisdiction, watchedValues.stateCode]);
 
   const leaseAprEquivalent = useMemo(
     () => moneyFactorToApr(watchedValues.moneyFactor),
@@ -1657,7 +1722,7 @@ export function DealWorksheet({
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <DealSummary result={result} dealType={dealType} />
+                  <DealSummary result={result} dealType={dealType} jurisdiction={jurisdiction} />
                 </CardContent>
               </Card>
             </div>

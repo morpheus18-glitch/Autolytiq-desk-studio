@@ -58,7 +58,21 @@ export function useCustomers(params: CustomersParams = {}) {
 
   return useQuery({
     queryKey: queryKeys.customers.list({ ...params }),
-    queryFn: () => api.get<CustomersResponse>(endpoint),
+    queryFn: async () => {
+      const response = await api.get<Customer[] | CustomersResponse>(endpoint);
+
+      // Handle backend returning array instead of paginated response
+      if (Array.isArray(response)) {
+        return {
+          customers: response,
+          total: response.length,
+          page: params.page || 1,
+          limit: params.limit || 50,
+        };
+      }
+
+      return response;
+    },
   });
 }
 

@@ -267,18 +267,18 @@ function DealTableRow({
     <tr className="transition-colors hover:bg-muted/30">
       <td className="px-4 py-4">
         <div>
-          <p className="font-medium text-foreground">{deal.customer_name}</p>
-          <p className="text-sm text-muted-foreground capitalize">{deal.type.toLowerCase()}</p>
+          <p className="font-medium text-foreground">{deal.customer_name || 'Unknown Customer'}</p>
+          <p className="text-sm text-muted-foreground capitalize">{deal.type?.toLowerCase() || 'sale'}</p>
         </div>
       </td>
       <td className="px-4 py-4">
-        <p className="text-foreground">{deal.vehicle_name}</p>
+        <p className="text-foreground">{deal.vehicle_name || 'Vehicle'}</p>
       </td>
       <td className="px-4 py-4 text-foreground">{deal.salesperson_name || '-'}</td>
       <td className="px-4 py-4">
         <StatusBadge status={deal.status} />
       </td>
-      <td className="px-4 py-4 font-medium text-foreground">{formatCurrency(deal.sale_price)}</td>
+      <td className="px-4 py-4 font-medium text-foreground">{formatCurrency(deal.sale_price || 0)}</td>
       <td className="px-4 py-4 text-muted-foreground">{formatDate(deal.updated_at)}</td>
       <td className="px-4 py-4">
         <ActionMenu

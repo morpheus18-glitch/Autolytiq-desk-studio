@@ -59,6 +59,16 @@ func (s *Server) setupMiddleware() {
 // setupRoutes configures all routes
 func (s *Server) setupRoutes() {
 	s.router.HandleFunc("/health", s.healthCheck).Methods("GET")
+	// Routes with /inventory prefix (for gateway routing)
+	s.router.HandleFunc("/inventory/vehicles", s.listVehicles).Methods("GET")
+	s.router.HandleFunc("/inventory/vehicles", s.createVehicle).Methods("POST")
+	s.router.HandleFunc("/inventory/stats", s.getInventoryStats).Methods("GET")
+	s.router.HandleFunc("/inventory/vehicles/validate-vin", s.validateVIN).Methods("POST")
+	s.router.HandleFunc("/inventory/vehicles/decode-vin", s.decodeVINHandler).Methods("POST")
+	s.router.HandleFunc("/inventory/vehicles/{id}", s.getVehicle).Methods("GET")
+	s.router.HandleFunc("/inventory/vehicles/{id}", s.updateVehicle).Methods("PUT")
+	s.router.HandleFunc("/inventory/vehicles/{id}", s.deleteVehicle).Methods("DELETE")
+	// Legacy routes without prefix (for backward compatibility)
 	s.router.HandleFunc("/vehicles", s.listVehicles).Methods("GET")
 	s.router.HandleFunc("/vehicles", s.createVehicle).Methods("POST")
 	s.router.HandleFunc("/vehicles/stats", s.getInventoryStats).Methods("GET")

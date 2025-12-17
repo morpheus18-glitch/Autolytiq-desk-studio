@@ -70,7 +70,7 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
     if (payload) {
       // Try to fetch full user data from API
       try {
-        const userData = await api.get<User>('/v1/auth/me');
+        const userData = await api.get<User>('/auth/me');
         setUser(userData);
       } catch {
         // Fallback to token data if API fails
@@ -93,7 +93,7 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
    */
   const login = useCallback(
     async (credentials: LoginCredentials): Promise<void> => {
-      const response = await api.post<LoginResponse>('/v1/auth/login', credentials, {
+      const response = await api.post<LoginResponse>('/auth/login', credentials, {
         skipAuth: true,
       });
 
@@ -126,7 +126,7 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
    */
   const refreshUser = useCallback(async (): Promise<void> => {
     try {
-      const userData = await api.get<User>('/v1/auth/me');
+      const userData = await api.get<User>('/auth/me');
       setUser(userData);
     } catch {
       // If refresh fails, logout

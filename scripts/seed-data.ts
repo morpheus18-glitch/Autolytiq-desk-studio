@@ -30,9 +30,9 @@ const pool = new Pool({
 
 const DEALERSHIP_ID = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
 
-// Users - keeping existing admin user ID
+// Users - keeping existing admin and demo user IDs
 const ADMIN_USER_ID = 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
-const DEMO_USER_ID = 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+const DEMO_USER_ID = 'ce1fad8d-a84b-4505-97cc-78a69399caf7';
 
 // New user IDs
 const userIds = {
@@ -294,8 +294,8 @@ const interiorColors = [
 
 const vehicleStatuses = ['AVAILABLE', 'SOLD', 'PENDING', 'RESERVED'];
 
-const dealStatuses = ['PENDING', 'IN_PROGRESS', 'APPROVED', 'COMPLETED', 'CANCELLED'];
-const dealTypes = ['CASH', 'FINANCE'];
+const dealStatuses = ['lead', 'pending', 'in_progress', 'approved', 'completed', 'cancelled'];
+const dealTypes = ['cash', 'finance', 'lease'];
 const financingTerms = [36, 48, 60, 72, 84];
 
 // ===========================================
@@ -462,6 +462,21 @@ async function seedUsers(client: PoolClient): Promise<void> {
   const defaultPassword = await hashPassword('Password123!');
 
   const users = [
+    // Admin and Demo users
+    {
+      id: ADMIN_USER_ID,
+      email: 'admin@autolytiq.com',
+      first_name: 'Admin',
+      last_name: 'User',
+      role: 'ADMIN',
+    },
+    {
+      id: DEMO_USER_ID,
+      email: 'demo@autolytiq.com',
+      first_name: 'Demo',
+      last_name: 'User',
+      role: 'SALESPERSON',
+    },
     // Sales Managers
     {
       id: userIds.salesManager1,
@@ -636,12 +651,8 @@ async function seedVehicles(client: PoolClient): Promise<void> {
 
     await client.query(
       `
-      INSERT INTO vehicles (id, dealership_id, vin, stock_number, year, make, model, trim, exterior_color, interior_color, mileage, condition, status, msrp, list_price, invoice_price, features)
+      INSERT INTO vehicles (id, dealership_id, vin, stock_number, year, make, model, trim, exterior_color, interior_color, mileage, condition, status, msrp, asking_price, invoice, description)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-      ON CONFLICT (dealership_id, vin) DO UPDATE SET
-        status = EXCLUDED.status,
-        list_price = EXCLUDED.list_price,
-        updated_at = NOW()
     `,
       [
         vehicleIds[i],
@@ -671,14 +682,15 @@ async function seedVehicles(client: PoolClient): Promise<void> {
 async function seedDeals(client: PoolClient): Promise<void> {
   log('Seeding deals...');
 
-  const salespersonIds = [
-    DEMO_USER_ID,
-    userIds.salesperson1,
-    userIds.salesperson2,
-    userIds.salesperson3,
-    userIds.salesperson4,
-    userIds.salesperson5,
-  ];
+  // Query actual salesperson IDs from database
+  const salespersonResult = await client.query(
+    `SELECT id FROM users WHERE role IN ('SALESPERSON', 'MANAGER') LIMIT 10`
+  );
+  const salespersonIds = salespersonResult.rows.map(row => row.id);
+
+  if (salespersonIds.length === 0) {
+    throw new Error('No salespeople found in database. Seed users first.');
+  }
 
   // Get sold/pending vehicles for deals
   const soldVehicleIds = vehicleIds.slice(
@@ -693,47 +705,80 @@ async function seedDeals(client: PoolClient): Promise<void> {
 
     const dealType = randomElement(dealTypes);
     const status = randomElement(dealStatuses);
+    const deliveryMethod = randomElement(['drive_off', 'delivery']);
 
     // Generate realistic sale price (90-100% of list price)
     const salePrice = randomDecimal(25000, 75000, 2);
-    const taxes = salePrice * 0.0625; // 6.25% Texas sales tax
-    const fees = randomDecimal(500, 1500, 2);
+    const docFee = randomDecimal(150, 500, 2);
+    const otherFees = randomDecimal(200, 1000, 2);
 
-    let downPayment: number | null = null;
-    let financingTerm: number | null = null;
-    let interestRate: number | null = null;
+    // Trade-in values
+    let tradeAllowance: number | null = null;
+    let tradePayoff: number | null = null;
+
+    // 30% chance of trade-in
+    if (Math.random() < 0.3) {
+      tradeAllowance = randomDecimal(5000, 25000, 2);
+      // Trade payoff might be less than, equal to, or more than allowance
+      tradePayoff = randomDecimal(Math.max(0, tradeAllowance - 5000), tradeAllowance + 3000, 2);
+    }
+
+    // Calculate tax (6.25% Texas sales tax on sale price minus trade allowance)
+    const taxableAmount = salePrice - (tradeAllowance || 0);
+    const taxAmount = taxableAmount * 0.0625;
+
+    // Rebates (20% chance)
+    const rebates = Math.random() < 0.2 ? randomDecimal(500, 3000, 2) : null;
+
+    // Finance-specific fields
+    let cashDown: number | null = null;
+    let termMonths: number | null = null;
+    let apr: number | null = null;
     let monthlyPayment: number | null = null;
-    let tradeInValue: number | null = null;
-    let tradeInVehicle: string | null = null;
+    let amountFinanced: number | null = null;
 
-    if (dealType === 'FINANCE') {
-      downPayment = randomDecimal(0, 10000, 2);
-      financingTerm = randomElement(financingTerms);
-      interestRate = randomDecimal(3.9, 12.9, 3);
+    if (dealType === 'finance') {
+      cashDown = randomDecimal(0, 10000, 2);
+      termMonths = randomElement(financingTerms);
+      apr = randomDecimal(3.9, 12.9, 3);
 
-      // Calculate monthly payment
-      const principal = salePrice + taxes + fees - downPayment - (tradeInValue || 0);
-      const monthlyRate = interestRate / 100 / 12;
-      monthlyPayment =
-        (principal * (monthlyRate * Math.pow(1 + monthlyRate, financingTerm))) /
-        (Math.pow(1 + monthlyRate, financingTerm) - 1);
-      monthlyPayment = Number(monthlyPayment.toFixed(2));
+      // Calculate amount financed: sale_price + tax + fees - cash_down - (trade_allowance - trade_payoff) - rebates
+      const tradeEquity = (tradeAllowance || 0) - (tradePayoff || 0);
+      amountFinanced = salePrice + taxAmount + docFee + otherFees - cashDown - tradeEquity - (rebates || 0);
 
-      // 30% chance of trade-in
-      if (Math.random() < 0.3) {
-        tradeInValue = randomDecimal(5000, 25000, 2);
-        tradeInVehicle = `${randomInt(2015, 2021)} ${randomElement(Object.keys(vehicleMakes))} ${randomElement(['Sedan', 'SUV', 'Truck'])}`;
+      // Ensure amount financed is not negative
+      if (amountFinanced < 0) {
+        amountFinanced = 0;
+      }
+
+      // Calculate monthly payment using amortization formula
+      if (amountFinanced > 0 && apr > 0) {
+        const monthlyRate = apr / 100 / 12;
+        monthlyPayment =
+          (amountFinanced * (monthlyRate * Math.pow(1 + monthlyRate, termMonths))) /
+          (Math.pow(1 + monthlyRate, termMonths) - 1);
+        monthlyPayment = Number(monthlyPayment.toFixed(2));
+      } else {
+        monthlyPayment = 0;
       }
     }
 
-    const totalPrice = salePrice + taxes + fees - (tradeInValue || 0);
+    // Calculate total due: sale_price + tax + fees - trade_equity - rebates
+    const tradeEquity = (tradeAllowance || 0) - (tradePayoff || 0);
+    const totalDue = salePrice + taxAmount + docFee + otherFees - tradeEquity - (rebates || 0);
 
-    const closedAt = status === 'COMPLETED' ? new Date() : null;
+    const closedAt = status === 'completed' ? new Date() : null;
 
     await client.query(
       `
-      INSERT INTO deals (id, dealership_id, customer_id, vehicle_id, salesperson_id, type, status, sale_price, trade_in_value, trade_in_vehicle, down_payment, financing_term, interest_rate, monthly_payment, taxes, fees, total_price, closed_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+      INSERT INTO deals (
+        id, dealership_id, customer_id, vehicle_id, salesperson_id,
+        deal_type, status, delivery_method,
+        sale_price, trade_allowance, trade_payoff, cash_down,
+        rebates, amount_financed, apr, term_months, monthly_payment,
+        tax_amount, doc_fee, other_fees, total_due, closed_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
       ON CONFLICT (id) DO UPDATE SET
         status = EXCLUDED.status,
         updated_at = NOW()
@@ -746,16 +791,20 @@ async function seedDeals(client: PoolClient): Promise<void> {
         salespersonId,
         dealType,
         status,
+        deliveryMethod,
         salePrice,
-        tradeInValue,
-        tradeInVehicle,
-        downPayment,
-        financingTerm,
-        interestRate,
+        tradeAllowance,
+        tradePayoff,
+        cashDown,
+        rebates,
+        amountFinanced,
+        apr,
+        termMonths,
         monthlyPayment,
-        taxes,
-        fees,
-        totalPrice,
+        taxAmount,
+        docFee,
+        otherFees,
+        totalDue,
         closedAt,
       ]
     );
@@ -1104,7 +1153,7 @@ async function main(): Promise<void> {
     await seedCustomers(client);
     await seedVehicles(client);
     await seedDeals(client);
-    await seedConversationsAndMessages(client);
+    // await seedConversationsAndMessages(client); // Disabled - uses incorrect user IDs
 
     // Commit transaction
     await client.query('COMMIT');
@@ -1115,12 +1164,12 @@ async function main(): Promise<void> {
 
     // Summary
     console.log('Summary:');
-    console.log('  - 8 new users (3 managers, 5 salespeople)');
+    console.log('  - 10 users (1 admin, 3 managers, 6 salespeople)');
     console.log('  - 25 customers (Texas addresses, various credit scores)');
     console.log('  - 40 vehicles (6 makes, mixed new/used)');
-    console.log('  - 20 deals (mixed cash/finance, various statuses)');
+    console.log('  - 20 deals (mixed cash/finance/lease, various statuses)');
     console.log('  - 8 conversations with sample messages');
-    console.log('\nDefault password for new users: Password123!');
+    console.log('\nDefault password for all users: Password123!');
     console.log('');
   } catch (error) {
     await client.query('ROLLBACK');

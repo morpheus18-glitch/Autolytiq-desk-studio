@@ -59,7 +59,21 @@ export function useDeals(params: DealsParams = {}) {
 
   return useQuery({
     queryKey: queryKeys.deals.list({ ...params }),
-    queryFn: () => api.get<DealsResponse>(endpoint),
+    queryFn: async () => {
+      const response = await api.get<Deal[] | DealsResponse>(endpoint);
+
+      // Handle backend returning array instead of paginated response
+      if (Array.isArray(response)) {
+        return {
+          deals: response,
+          total: response.length,
+          page: params.page || 1,
+          limit: params.limit || 50,
+        };
+      }
+
+      return response;
+    },
   });
 }
 

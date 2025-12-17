@@ -70,7 +70,21 @@ export function useVehicles(params: VehiclesParams = {}) {
 
   return useQuery({
     queryKey: queryKeys.inventory.list({ ...params }),
-    queryFn: () => api.get<VehiclesResponse>(endpoint),
+    queryFn: async () => {
+      const response = await api.get<Vehicle[] | VehiclesResponse>(endpoint);
+
+      // Handle backend returning array instead of paginated response
+      if (Array.isArray(response)) {
+        return {
+          vehicles: response,
+          total: response.length,
+          page: params.page || 1,
+          limit: params.limit || 50,
+        };
+      }
+
+      return response;
+    },
   });
 }
 

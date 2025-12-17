@@ -468,18 +468,28 @@ export function useDealCalculator(_options: UseDealCalculatorOptions = {}) {
   }, []);
 
   /**
-   * Calculate a complete deal
+   * Calculate a complete deal using ATIE (Rust WASM) with TypeScript fallback
    */
   const calculateDeal = useCallback(async (input: DealInput): Promise<DealResult> => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // For now, use TypeScript calculations
-      // TODO: Use WASM when available
-      const result = calculateDealTS(input);
-      setResult(result);
-      return result;
+      // Try to use ATIE WASM if available
+      try {
+        const { calculate_deal } = await import('../../../shared/autoTaxEngine/wasm/tax_engine_rs.js');
+        const resultJson = calculate_deal(JSON.stringify(input));
+        const result = JSON.parse(resultJson) as DealResult;
+        setResult(result);
+        setWasmAvailable(true);
+        return result;
+      } catch (wasmError) {
+        console.warn('[Calculator] ATIE WASM not available, falling back to TypeScript:', wasmError);
+        // Fall back to TypeScript calculations
+        const result = calculateDealTS(input);
+        setResult(result);
+        return result;
+      }
     } catch (e) {
       const errorMsg = e instanceof Error ? e.message : 'Calculation failed';
       setError(errorMsg);
@@ -746,7 +756,14 @@ function calculateLeaseDealTS(input: DealInput): DealResult {
     .filter((p) => p.finance_with_deal)
     .reduce((sum, p) => sum + p.price, 0);
   const acqFee = lease.acquisition_fee_cap ? lease.acquisition_fee : 0;
-  const grossCapCost = price.selling_price + capFees + capFI + acqFee;
+
+  // Sanity check: Cap each component at reasonable maximums
+  const safeSellingPrice = Math.min(price.selling_price, 10000000); // Max $10M
+  const safeCapFees = Math.min(capFees, 100000); // Max $100k in fees
+  const safeCapFI = Math.min(capFI, 100000); // Max $100k in F&I
+  const safeAcqFee = Math.min(acqFee, 10000); // Max $10k acq fee
+
+  const grossCapCost = safeSellingPrice + safeCapFees + safeCapFI + safeAcqFee;
 
   // Cap cost reduction
   const capReduction = price.net_trade + price.total_rebates + price.cash_down;

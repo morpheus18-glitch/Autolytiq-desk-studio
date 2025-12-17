@@ -203,7 +203,7 @@ export function LoginPage(): JSX.Element {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Password:</span>
-                  <span className="text-foreground">demo123</span>
+                  <span className="text-foreground">Password123!</span>
                 </div>
               </div>
             </div>
