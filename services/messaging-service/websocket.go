@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -11,11 +13,65 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// getAllowedOrigins returns the list of allowed origins from environment
+func getAllowedOrigins() []string {
+	originsEnv := os.Getenv("ALLOWED_ORIGINS")
+	if originsEnv == "" {
+		// Default allowed origins for development
+		return []string{
+			"http://localhost:5173",
+			"http://localhost:3000",
+			"http://127.0.0.1:5173",
+			"http://127.0.0.1:3000",
+		}
+	}
+
+	// Support both comma-separated list and single origin
+	origins := strings.Split(originsEnv, ",")
+	result := make([]string, 0, len(origins))
+	for _, origin := range origins {
+		trimmed := strings.TrimSpace(origin)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	return result
+}
+
+// isAllowedOrigin checks if the given origin is in the allowed list
+func isAllowedOrigin(origin string, allowedOrigins []string) bool {
+	for _, allowed := range allowedOrigins {
+		if origin == allowed {
+			return true
+		}
+	}
+	return false
+}
+
+// wsLogger is the package-level logger for WebSocket origin validation
+// It's initialized in ServeWs when first connection attempt occurs
+var wsLogger *logging.Logger
+
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {
-		return true // Allow all origins for development
+		origin := r.Header.Get("Origin")
+		allowedOrigins := getAllowedOrigins()
+
+		if isAllowedOrigin(origin, allowedOrigins) {
+			return true
+		}
+
+		// Log rejected origins for security monitoring
+		if wsLogger != nil {
+			wsLogger.WithFields(map[string]interface{}{
+				"origin":          origin,
+				"remote_addr":     r.RemoteAddr,
+				"allowed_origins": allowedOrigins,
+			}).Warn("WebSocket connection rejected: origin not allowed")
+		}
+		return false
 	},
 }
 
@@ -468,6 +524,11 @@ func (c *Client) handleMessage(message []byte) {
 
 // ServeWs handles WebSocket connection requests
 func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
+	// Initialize wsLogger for origin validation logging (only once)
+	if wsLogger == nil && hub.logger != nil {
+		wsLogger = hub.logger
+	}
+
 	userID := r.Header.Get("X-User-ID")
 	dealershipID := r.Header.Get("X-Dealership-ID")
 

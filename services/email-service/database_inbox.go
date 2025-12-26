@@ -1024,3 +1024,89 @@ func (p *PostgresEmailDatabase) SearchEmails(dealershipID string, userID string,
 		NextOffset: nextOffset,
 	}, nil
 }
+
+// =====================================================
+// PREFERENCES OPERATIONS
+// =====================================================
+
+// GetPreferences gets email preferences for a user
+func (p *PostgresEmailDatabase) GetPreferences(dealershipID, userID string) (*EmailPreferences, error) {
+	query := `
+		SELECT id, dealership_id, user_id, reading_pane_position, conversation_view,
+		       desktop_notifications, auto_advance, preview_lines, density,
+		       swipe_left_action, swipe_right_action, created_at, updated_at
+		FROM email_preferences
+		WHERE dealership_id = $1 AND user_id = $2
+	`
+
+	prefs := &EmailPreferences{}
+	err := p.db.QueryRow(query, dealershipID, userID).Scan(
+		&prefs.ID,
+		&prefs.DealershipID,
+		&prefs.UserID,
+		&prefs.ReadingPanePosition,
+		&prefs.ConversationView,
+		&prefs.DesktopNotifications,
+		&prefs.AutoAdvance,
+		&prefs.PreviewLines,
+		&prefs.Density,
+		&prefs.SwipeLeftAction,
+		&prefs.SwipeRightAction,
+		&prefs.CreatedAt,
+		&prefs.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("preferences not found: %w", err)
+	}
+
+	return prefs, nil
+}
+
+// SavePreferences saves/updates email preferences (upsert)
+func (p *PostgresEmailDatabase) SavePreferences(prefs *EmailPreferences) error {
+	query := `
+		INSERT INTO email_preferences (
+			id, dealership_id, user_id, reading_pane_position, conversation_view,
+			desktop_notifications, auto_advance, preview_lines, density,
+			swipe_left_action, swipe_right_action, created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		ON CONFLICT (dealership_id, user_id)
+		DO UPDATE SET
+			reading_pane_position = EXCLUDED.reading_pane_position,
+			conversation_view = EXCLUDED.conversation_view,
+			desktop_notifications = EXCLUDED.desktop_notifications,
+			auto_advance = EXCLUDED.auto_advance,
+			preview_lines = EXCLUDED.preview_lines,
+			density = EXCLUDED.density,
+			swipe_left_action = EXCLUDED.swipe_left_action,
+			swipe_right_action = EXCLUDED.swipe_right_action,
+			updated_at = EXCLUDED.updated_at
+		RETURNING id
+	`
+
+	var id string
+	err := p.db.QueryRow(
+		query,
+		prefs.ID,
+		prefs.DealershipID,
+		prefs.UserID,
+		prefs.ReadingPanePosition,
+		prefs.ConversationView,
+		prefs.DesktopNotifications,
+		prefs.AutoAdvance,
+		prefs.PreviewLines,
+		prefs.Density,
+		prefs.SwipeLeftAction,
+		prefs.SwipeRightAction,
+		prefs.CreatedAt,
+		prefs.UpdatedAt,
+	).Scan(&id)
+
+	if err != nil {
+		return fmt.Errorf("failed to save preferences: %w", err)
+	}
+
+	prefs.ID = id
+	return nil
+}

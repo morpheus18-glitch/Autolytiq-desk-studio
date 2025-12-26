@@ -20,6 +20,7 @@ import {
   Bell,
   Store,
   MessageCircle,
+  Mail,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ThemeToggle } from '@design-system';
@@ -27,6 +28,10 @@ import { cn, getInitials, getFullName } from '@/lib/utils';
 
 interface MainLayoutProps {
   children: ReactNode;
+  /** Hide sidebar navigation (for pages with their own nav like Email) */
+  hideMobileNav?: boolean;
+  /** Full bleed content (no padding) */
+  fullBleed?: boolean;
 }
 
 /**
@@ -36,13 +41,14 @@ const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/showroom', label: 'Showroom', icon: Store },
   { href: '/messages', label: 'Messages', icon: MessageCircle },
+  { href: '/email', label: 'Email', icon: Mail },
   { href: '/deals', label: 'Deals', icon: Handshake },
   { href: '/customers', label: 'Customers', icon: Users },
   { href: '/inventory', label: 'Inventory', icon: Car },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
-export function MainLayout({ children }: MainLayoutProps): JSX.Element {
+export function MainLayout({ children, hideMobileNav = false, fullBleed = false }: MainLayoutProps): JSX.Element {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [location] = useLocation();
@@ -132,12 +138,14 @@ export function MainLayout({ children }: MainLayoutProps): JSX.Element {
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border/50 bg-background/80 backdrop-blur-xl px-4 lg:px-6 shadow-premium-sm">
           {/* Left side - mobile menu button */}
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="rounded-md p-2 text-foreground hover:bg-muted lg:hidden"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
+            {!hideMobileNav && (
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="rounded-md p-2 text-foreground hover:bg-muted lg:hidden"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+            )}
 
             {/* Dealership name (desktop) */}
             <div className="hidden lg:block">
@@ -211,8 +219,15 @@ export function MainLayout({ children }: MainLayoutProps): JSX.Element {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-auto bg-gradient-to-b from-background to-muted/20">
-          <div className="mx-auto max-w-7xl px-4 py-6 lg:px-6">{children}</div>
+        <main className={cn(
+          'flex-1 overflow-auto',
+          !fullBleed && 'bg-gradient-to-b from-background to-muted/20'
+        )}>
+          {fullBleed ? (
+            children
+          ) : (
+            <div className="mx-auto max-w-7xl px-4 py-6 lg:px-6">{children}</div>
+          )}
         </main>
       </div>
     </div>

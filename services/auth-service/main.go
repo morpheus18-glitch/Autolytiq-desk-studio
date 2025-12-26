@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"autolytiq/shared/auth"
 	"autolytiq/shared/logging"
 	"autolytiq/shared/secrets"
 
@@ -25,6 +26,7 @@ type Config struct {
 	RefreshTokenTTL time.Duration
 	EmailServiceURL string
 	FrontendURL     string
+	ServiceSecret   string
 }
 
 // Server represents the Auth service server
@@ -137,6 +139,7 @@ func loadConfig(ctx context.Context, logger *logging.Logger) *Config {
 		RefreshTokenTTL: parseDuration(getEnv("REFRESH_TOKEN_TTL", "7d")),
 		EmailServiceURL: getEnv("EMAIL_SERVICE_URL", "http://localhost:8004"),
 		FrontendURL:     getEnv("FRONTEND_URL", "http://localhost:5173"),
+		ServiceSecret:   getEnv("SERVICE_SECRET", ""),
 	}
 }
 
@@ -187,6 +190,8 @@ func NewServer(config *Config, db AuthDatabase, redis TokenStore, jwtService *JW
 func (s *Server) setupMiddleware() {
 	s.router.Use(logging.RequestIDMiddleware)
 	s.router.Use(logging.RequestLoggingMiddleware(s.logger))
+	// Add service authentication middleware for inter-service security
+	s.router.Use(auth.ServiceAuthMiddleware(auth.NewServiceAuthConfig(s.config.ServiceSecret)))
 }
 
 func (s *Server) setupRoutes() {

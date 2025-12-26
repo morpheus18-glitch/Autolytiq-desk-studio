@@ -48,7 +48,7 @@ export interface DecodedVehicleInfo {
 export function useDecodeVin() {
   return useMutation({
     mutationFn: async (vin: string): Promise<DecodedVehicleInfo> => {
-      return api.post<DecodedVehicleInfo>('/v1/inventory/vehicles/decode-vin', { vin });
+      return api.post<DecodedVehicleInfo>('/inventory/vehicles/decode-vin', { vin });
     },
   });
 }

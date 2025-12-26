@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"autolytiq/shared/logging"
@@ -31,6 +34,9 @@ type Config struct {
 	AllowedOrigins          string
 	JWTSecret               string
 	JWTIssuer               string
+
+	// Inter-service authentication
+	ServiceSecret string
 
 	// Rate limiting configuration
 	RateLimitConfig *RateLimitConfig
@@ -116,6 +122,10 @@ func (s *Server) setupRoutes() {
 	authProtected.HandleFunc("/me", s.proxyToAuthService).Methods("GET")
 	authProtected.HandleFunc("/change-password", s.proxyToAuthService).Methods("POST")
 
+	// Email webhooks (public - no JWT required, called by external services)
+	emailWebhooks := s.router.PathPrefix("/api/v1/email/webhooks").Subrouter()
+	emailWebhooks.HandleFunc("/resend", s.proxyToEmailService).Methods("POST")
+
 	// Protected routes (authentication required)
 	api := s.router.PathPrefix("/api/v1").Subrouter()
 	api.Use(JWTMiddleware(s.jwtConfig))
@@ -136,13 +146,50 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/inventory/vehicles/decode-vin", s.proxyToInventoryService).Methods("POST")
 	api.HandleFunc("/inventory/stats", s.proxyToInventoryService).Methods("GET")
 
-	// Email Service routes
+	// Email Service routes (legacy)
 	api.HandleFunc("/email/send", s.proxyToEmailService).Methods("POST")
 	api.HandleFunc("/email/send-template", s.proxyToEmailService).Methods("POST")
 	api.HandleFunc("/email/templates", s.proxyToEmailService).Methods("GET", "POST")
 	api.HandleFunc("/email/templates/{id}", s.proxyToEmailService).Methods("GET", "PUT", "DELETE")
 	api.HandleFunc("/email/logs", s.proxyToEmailService).Methods("GET")
 	api.HandleFunc("/email/logs/{id}", s.proxyToEmailService).Methods("GET")
+
+	// Email Inbox API (Gmail/Outlook-like functionality)
+	api.HandleFunc("/email/inbox", s.proxyToEmailService).Methods("GET")
+	api.HandleFunc("/email/inbox/search", s.proxyToEmailService).Methods("GET")
+	api.HandleFunc("/email/inbox/stats", s.proxyToEmailService).Methods("GET")
+	api.HandleFunc("/email/inbox/batch", s.proxyToEmailService).Methods("POST")
+	api.HandleFunc("/email/inbox/{id}", s.proxyToEmailService).Methods("GET")
+	api.HandleFunc("/email/inbox/{id}/star", s.proxyToEmailService).Methods("POST")
+
+	// Email Compose & Threads
+	api.HandleFunc("/email/compose", s.proxyToEmailService).Methods("POST")
+	api.HandleFunc("/email/threads", s.proxyToEmailService).Methods("GET")
+	api.HandleFunc("/email/threads/{id}", s.proxyToEmailService).Methods("GET")
+
+	// Email Drafts
+	api.HandleFunc("/email/drafts", s.proxyToEmailService).Methods("GET", "POST")
+	api.HandleFunc("/email/drafts/{id}", s.proxyToEmailService).Methods("GET", "PUT", "DELETE")
+	api.HandleFunc("/email/drafts/{id}/send", s.proxyToEmailService).Methods("POST")
+
+	// Email Labels
+	api.HandleFunc("/email/labels", s.proxyToEmailService).Methods("GET", "POST")
+	api.HandleFunc("/email/labels/{id}", s.proxyToEmailService).Methods("PUT", "DELETE")
+
+	// Email Signatures
+	api.HandleFunc("/email/signatures", s.proxyToEmailService).Methods("GET", "POST")
+	api.HandleFunc("/email/signatures/{id}", s.proxyToEmailService).Methods("PUT", "DELETE")
+
+	// Email Attachments
+	api.HandleFunc("/email/attachments/upload", s.proxyToEmailService).Methods("POST")
+	api.HandleFunc("/email/attachments/upload-url", s.proxyToEmailService).Methods("GET")
+	api.HandleFunc("/email/attachments/{id}", s.proxyToEmailService).Methods("GET", "DELETE")
+	api.HandleFunc("/email/attachments/{id}/download", s.proxyToEmailService).Methods("GET")
+	api.HandleFunc("/email/inbox/{email_id}/attachments", s.proxyToEmailService).Methods("GET")
+	api.HandleFunc("/email/drafts/{draft_id}/attachments", s.proxyToEmailService).Methods("GET")
+
+	// Email Preferences
+	api.HandleFunc("/email/preferences", s.proxyToEmailService).Methods("GET", "POST")
 
 	// User Service routes
 	api.HandleFunc("/users", s.proxyToUserService).Methods("GET", "POST")
@@ -384,10 +431,40 @@ func corsMiddleware(allowedOrigins string) func(http.Handler) http.Handler {
 	}
 }
 
-// Start starts the API Gateway server
+// Start starts the API Gateway server with graceful shutdown support
 func (s *Server) Start() error {
-	s.logger.Infof("Starting API Gateway on port %s", s.config.Port)
-	return http.ListenAndServe(":"+s.config.Port, s.router)
+	srv := &http.Server{
+		Addr:    ":" + s.config.Port,
+		Handler: s.router,
+	}
+
+	// Channel to listen for shutdown signals
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
+	// Start server in goroutine
+	go func() {
+		s.logger.Infof("Starting API Gateway on port %s", s.config.Port)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			s.logger.Fatalf("Server failed: %v", err)
+		}
+	}()
+
+	// Wait for shutdown signal
+	<-stop
+	s.logger.Info("Shutting down gracefully...")
+
+	// Create context with timeout for shutdown
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		s.logger.Errorf("Graceful shutdown failed: %v", err)
+		return err
+	}
+
+	s.logger.Info("Server stopped")
+	return nil
 }
 
 // Close closes server resources
@@ -413,6 +490,12 @@ func loadConfig(logger *logging.Logger) *Config {
 	// Load rate limiting configuration
 	rateLimitConfig := loadRateLimitConfig()
 
+	// Load service secret for inter-service authentication
+	serviceSecret := getEnv("SERVICE_SECRET", "")
+	if serviceSecret == "" {
+		logger.Warn("SERVICE_SECRET not set. Inter-service authentication is disabled. Set SERVICE_SECRET in production!")
+	}
+
 	return &Config{
 		Port:                    getEnv("PORT", "8080"),
 		AuthServiceURL:          getEnv("AUTH_SERVICE_URL", "http://localhost:8087"),
@@ -430,6 +513,7 @@ func loadConfig(logger *logging.Logger) *Config {
 		AllowedOrigins:          getEnv("ALLOWED_ORIGINS", "http://localhost:5173"),
 		JWTSecret:               jwtSecret,
 		JWTIssuer:               getEnv("JWT_ISSUER", "autolytiq"),
+		ServiceSecret:           serviceSecret,
 		RateLimitConfig:         rateLimitConfig,
 	}
 }

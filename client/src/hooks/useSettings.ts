@@ -29,7 +29,7 @@ import type {
 export function useUserSettings() {
   return useQuery({
     queryKey: queryKeys.settings.user(),
-    queryFn: () => api.get<UserSettings>('/v1/settings/user'),
+    queryFn: () => api.get<UserSettings>('/settings/user'),
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 30 * 60 * 1000, // 30 minutes (formerly cacheTime)
   });
@@ -43,7 +43,7 @@ export function useUpdateUserSettings() {
 
   return useMutation({
     mutationFn: (settings: Partial<UserSettings>) =>
-      api.put<UserSettings>('/v1/settings/user', settings),
+      api.put<UserSettings>('/settings/user', settings),
     onSuccess: (data) => {
       queryClient.setQueryData(queryKeys.settings.user(), data);
     },
@@ -58,7 +58,7 @@ function useUpdateSettingsSection<T>(section: string) {
 
   return useMutation({
     mutationFn: (settings: Partial<T>) =>
-      api.patch<UserSettings>(`/v1/settings/user/${section}`, settings),
+      api.patch<UserSettings>(`/settings/user/${section}`, settings),
     onMutate: async (newSettings) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: queryKeys.settings.user() });
@@ -176,7 +176,7 @@ export function useDeleteUserSettings() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => api.delete('/v1/settings/user'),
+    mutationFn: () => api.delete('/settings/user'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.settings.user() });
     },
@@ -189,7 +189,7 @@ export function useDeleteUserSettings() {
 export function useDealershipSettings() {
   return useQuery({
     queryKey: queryKeys.settings.dealership(),
-    queryFn: () => api.get<DealershipSettings>('/v1/settings/dealership'),
+    queryFn: () => api.get<DealershipSettings>('/settings/dealership'),
     staleTime: 5 * 60 * 1000,
   });
 }
@@ -202,7 +202,7 @@ export function useUpdateDealershipSettings() {
 
   return useMutation({
     mutationFn: (settings: Partial<DealershipSettings>) =>
-      api.put<DealershipSettings>('/v1/settings/dealership', settings),
+      api.put<DealershipSettings>('/settings/dealership', settings),
     onSuccess: (data) => {
       queryClient.setQueryData(queryKeys.settings.dealership(), data);
     },

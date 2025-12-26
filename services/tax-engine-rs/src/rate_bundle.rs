@@ -23,8 +23,48 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::RwLock;
+use std::sync::{RwLock, PoisonError};
 use once_cell::sync::Lazy;
+use std::fmt;
+
+// ============================================================================
+// Error Types for Rate Bundle Operations
+// ============================================================================
+
+/// Error type for rate bundle operations
+///
+/// Provides explicit handling for lock poisoning and other failure modes
+/// instead of silently swallowing errors with `.unwrap_or()`.
+#[derive(Debug)]
+pub enum RateBundleError {
+    /// The RwLock was poisoned by a panicking thread
+    LockPoisoned(String),
+    /// Rates have not been initialized
+    NotInitialized,
+    /// Invalid rate data
+    InvalidRates(String),
+    /// JSON parsing error
+    ParseError(String),
+}
+
+impl fmt::Display for RateBundleError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            RateBundleError::LockPoisoned(msg) => write!(f, "Rate bundle lock poisoned: {}", msg),
+            RateBundleError::NotInitialized => write!(f, "Rate bundle not initialized"),
+            RateBundleError::InvalidRates(msg) => write!(f, "Invalid rates: {}", msg),
+            RateBundleError::ParseError(msg) => write!(f, "Parse error: {}", msg),
+        }
+    }
+}
+
+impl std::error::Error for RateBundleError {}
+
+impl<T> From<PoisonError<T>> for RateBundleError {
+    fn from(e: PoisonError<T>) -> Self {
+        RateBundleError::LockPoisoned(format!("{}", e))
+    }
+}
 
 // ============================================================================
 // Global Rate Store (Thread-Safe)
@@ -35,38 +75,89 @@ use once_cell::sync::Lazy;
 static RATE_BUNDLE: Lazy<RwLock<Option<RateBundleV1>>> = Lazy::new(|| RwLock::new(None));
 
 /// Check if rates have been initialized
-pub fn rates_initialized() -> bool {
+///
+/// Returns `Ok(true)` if rates are loaded, `Ok(false)` if not initialized,
+/// or `Err` if the lock is poisoned.
+pub fn rates_initialized() -> Result<bool, RateBundleError> {
+    let guard = RATE_BUNDLE.read()?;
+    Ok(guard.is_some())
+}
+
+/// Check if rates have been initialized (legacy compatibility)
+///
+/// DEPRECATED: Use `rates_initialized()` which returns a Result.
+/// This function silently returns false on lock poisoning which can hide
+/// serious concurrency bugs.
+pub fn rates_initialized_unchecked() -> bool {
     RATE_BUNDLE.read().map(|r| r.is_some()).unwrap_or(false)
 }
 
 /// Initialize rates from JSON bundle
-/// Returns error message if parsing fails
-pub fn initialize_rates(json: &str) -> Result<RateBundleMetadata, String> {
+///
+/// Returns metadata on success, or an error if parsing fails or lock is poisoned.
+pub fn initialize_rates(json: &str) -> Result<RateBundleMetadata, RateBundleError> {
     let bundle: RateBundleV1 = serde_json::from_str(json)
-        .map_err(|e| format!("Failed to parse rate bundle: {}", e))?;
+        .map_err(|e| RateBundleError::ParseError(format!("Failed to parse rate bundle: {}", e)))?;
 
     // Validate bundle
-    bundle.validate()?;
+    bundle.validate()
+        .map_err(|e| RateBundleError::InvalidRates(e))?;
 
     let metadata = bundle.metadata.clone();
 
-    // Store the bundle
-    let mut store = RATE_BUNDLE.write()
-        .map_err(|e| format!("Failed to acquire lock: {}", e))?;
+    // Store the bundle - propagate poison error explicitly
+    let mut store = RATE_BUNDLE.write()?;
     *store = Some(bundle);
 
     Ok(metadata)
 }
 
+/// Initialize rates from JSON bundle (legacy String error compatibility)
+///
+/// This wrapper maintains backward compatibility for callers expecting String errors.
+pub fn initialize_rates_compat(json: &str) -> Result<RateBundleMetadata, String> {
+    initialize_rates(json).map_err(|e| e.to_string())
+}
+
 /// Clear loaded rates (revert to compiled defaults)
-pub fn clear_rates() {
+///
+/// Returns `Ok(())` on success, or `Err` if the lock is poisoned.
+pub fn clear_rates() -> Result<(), RateBundleError> {
+    let mut store = RATE_BUNDLE.write()?;
+    *store = None;
+    Ok(())
+}
+
+/// Clear loaded rates (legacy compatibility, ignores poison)
+///
+/// DEPRECATED: Use `clear_rates()` which returns a Result.
+pub fn clear_rates_unchecked() {
     if let Ok(mut store) = RATE_BUNDLE.write() {
         *store = None;
     }
 }
 
-/// Get state rate from loaded bundle, or None if not loaded
-pub fn get_loaded_state_rate(state_code: &str) -> Option<f64> {
+/// Get state rate from loaded bundle
+///
+/// Returns the combined rate for the given state, or an error if:
+/// - Lock is poisoned
+/// - Rates not initialized
+/// - State not found
+pub fn get_loaded_state_rate(state_code: &str) -> Result<f64, RateBundleError> {
+    let guard = RATE_BUNDLE.read()?;
+    let bundle = guard.as_ref().ok_or(RateBundleError::NotInitialized)?;
+    bundle
+        .state_rates
+        .get(state_code)
+        .map(|r| r.combined_rate)
+        .ok_or_else(|| RateBundleError::InvalidRates(format!("Unknown state: {}", state_code)))
+}
+
+/// Get state rate from loaded bundle (legacy compatibility)
+///
+/// DEPRECATED: Use `get_loaded_state_rate()` which returns a Result.
+/// Returns None on any error (lock poison, not initialized, or state not found).
+pub fn get_loaded_state_rate_opt(state_code: &str) -> Option<f64> {
     RATE_BUNDLE.read().ok().and_then(|guard| {
         guard.as_ref().and_then(|bundle| {
             bundle.state_rates.get(state_code).map(|r| r.combined_rate)
@@ -75,7 +166,27 @@ pub fn get_loaded_state_rate(state_code: &str) -> Option<f64> {
 }
 
 /// Get local rate from loaded bundle
-pub fn get_loaded_local_rate(state_code: &str, jurisdiction_code: &str) -> Option<f64> {
+///
+/// Returns the local rate for the given jurisdiction, or an error if:
+/// - Lock is poisoned
+/// - Rates not initialized
+/// - State or jurisdiction not found
+pub fn get_loaded_local_rate(state_code: &str, jurisdiction_code: &str) -> Result<f64, RateBundleError> {
+    let guard = RATE_BUNDLE.read()?;
+    let bundle = guard.as_ref().ok_or(RateBundleError::NotInitialized)?;
+    bundle
+        .local_rates
+        .get(state_code)
+        .and_then(|locals| locals.get(jurisdiction_code).map(|r| r.rate))
+        .ok_or_else(|| RateBundleError::InvalidRates(
+            format!("Unknown jurisdiction: {}:{}", state_code, jurisdiction_code)
+        ))
+}
+
+/// Get local rate from loaded bundle (legacy compatibility)
+///
+/// DEPRECATED: Use `get_loaded_local_rate()` which returns a Result.
+pub fn get_loaded_local_rate_opt(state_code: &str, jurisdiction_code: &str) -> Option<f64> {
     RATE_BUNDLE.read().ok().and_then(|guard| {
         guard.as_ref().and_then(|bundle| {
             bundle.local_rates.get(state_code).and_then(|locals| {
@@ -86,7 +197,25 @@ pub fn get_loaded_local_rate(state_code: &str, jurisdiction_code: &str) -> Optio
 }
 
 /// Get full state rate info from loaded bundle
-pub fn get_loaded_state_info(state_code: &str) -> Option<StateRateInfo> {
+///
+/// Returns detailed rate info for the state, or an error if:
+/// - Lock is poisoned
+/// - Rates not initialized
+/// - State not found
+pub fn get_loaded_state_info(state_code: &str) -> Result<StateRateInfo, RateBundleError> {
+    let guard = RATE_BUNDLE.read()?;
+    let bundle = guard.as_ref().ok_or(RateBundleError::NotInitialized)?;
+    bundle
+        .state_rates
+        .get(state_code)
+        .cloned()
+        .ok_or_else(|| RateBundleError::InvalidRates(format!("Unknown state: {}", state_code)))
+}
+
+/// Get full state rate info from loaded bundle (legacy compatibility)
+///
+/// DEPRECATED: Use `get_loaded_state_info()` which returns a Result.
+pub fn get_loaded_state_info_opt(state_code: &str) -> Option<StateRateInfo> {
     RATE_BUNDLE.read().ok().and_then(|guard| {
         guard.as_ref().and_then(|bundle| {
             bundle.state_rates.get(state_code).cloned()
@@ -95,7 +224,20 @@ pub fn get_loaded_state_info(state_code: &str) -> Option<StateRateInfo> {
 }
 
 /// Get bundle metadata
-pub fn get_bundle_metadata() -> Option<RateBundleMetadata> {
+///
+/// Returns metadata if rates are loaded, or an error if:
+/// - Lock is poisoned
+/// - Rates not initialized
+pub fn get_bundle_metadata() -> Result<RateBundleMetadata, RateBundleError> {
+    let guard = RATE_BUNDLE.read()?;
+    let bundle = guard.as_ref().ok_or(RateBundleError::NotInitialized)?;
+    Ok(bundle.metadata.clone())
+}
+
+/// Get bundle metadata (legacy compatibility)
+///
+/// DEPRECATED: Use `get_bundle_metadata()` which returns a Result.
+pub fn get_bundle_metadata_opt() -> Option<RateBundleMetadata> {
     RATE_BUNDLE.read().ok().and_then(|guard| {
         guard.as_ref().map(|bundle| bundle.metadata.clone())
     })
@@ -567,21 +709,31 @@ mod tests {
         // Initialize
         let result = initialize_rates(&json);
         assert!(result.is_ok());
-        assert!(rates_initialized());
+        assert!(rates_initialized().unwrap_or(false));
 
         // Retrieve state rate
         let tx_rate = get_loaded_state_rate("TX");
-        assert!(tx_rate.is_some());
+        assert!(tx_rate.is_ok());
         assert!((tx_rate.unwrap() - 0.0825).abs() < 0.0001);
 
         // Retrieve local rate
         let dallas_rate = get_loaded_local_rate("TX", "TX_DALLAS");
-        assert!(dallas_rate.is_some());
+        assert!(dallas_rate.is_ok());
         assert!((dallas_rate.unwrap() - 0.02).abs() < 0.0001);
 
         // Clear
-        clear_rates();
-        assert!(!rates_initialized());
+        assert!(clear_rates().is_ok());
+        assert!(!rates_initialized().unwrap_or(true));
+    }
+
+    #[test]
+    fn test_not_initialized_error() {
+        // Clear first to ensure clean state
+        let _ = clear_rates();
+
+        // Accessing rates when not initialized should return NotInitialized error
+        let result = get_loaded_state_rate("TX");
+        assert!(matches!(result, Err(RateBundleError::NotInitialized)));
     }
 
     #[test]

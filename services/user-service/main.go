@@ -1,12 +1,17 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
+	"time"
 
+	"autolytiq/shared/auth"
 	"autolytiq/shared/logging"
 
 	"github.com/google/uuid"
@@ -56,6 +61,9 @@ func main() {
 	// Apply middleware
 	router.Use(logging.RequestIDMiddleware)
 	router.Use(logging.RequestLoggingMiddleware(logger))
+	// Add service authentication middleware for inter-service security
+	serviceSecret := getEnv("SERVICE_SECRET", "")
+	router.Use(auth.ServiceAuthMiddleware(auth.NewServiceAuthConfig(serviceSecret)))
 
 	// Health check
 	router.HandleFunc("/health", healthHandler).Methods("GET")
@@ -94,12 +102,39 @@ func main() {
 	router.HandleFunc("/rbac/settings", getSettingsRBACHandler).Methods("GET")
 	router.HandleFunc("/rbac/settings/check", checkSettingAccessHandler).Methods("POST")
 
-	// Start server
+	// Start server with graceful shutdown
 	port := getEnv("PORT", "8080")
-	logger.Infof("User service listening on port %s", port)
-	if err := http.ListenAndServe(":"+port, router); err != nil {
-		logger.Fatal(err.Error())
+
+	srv := &http.Server{
+		Addr:    ":" + port,
+		Handler: router,
 	}
+
+	// Channel to listen for shutdown signals
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
+	// Start server in goroutine
+	go func() {
+		logger.Infof("User service listening on port %s", port)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Fatalf("Server failed: %v", err)
+		}
+	}()
+
+	// Wait for shutdown signal
+	<-stop
+	logger.Info("Shutting down gracefully...")
+
+	// Create context with timeout for shutdown
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		logger.Errorf("Graceful shutdown failed: %v", err)
+	}
+
+	logger.Info("Server stopped")
 }
 
 func getEnv(key, defaultValue string) string {

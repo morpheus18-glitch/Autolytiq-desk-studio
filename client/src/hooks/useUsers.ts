@@ -28,7 +28,7 @@ export function useUsers() {
   return useQuery({
     queryKey: ['users'],
     queryFn: async () => {
-      const response = await api.get<User[] | UsersResponse>('/v1/users');
+      const response = await api.get<User[] | UsersResponse>('/users');
 
       // Handle backend returning array instead of paginated response
       if (Array.isArray(response)) {
@@ -48,7 +48,7 @@ export function useUpdateProfile() {
 
   return useMutation({
     mutationFn: (data: { first_name: string; last_name: string; email: string }) =>
-      api.put('/v1/users/me', data),
+      api.put('/users/me', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
     },
@@ -58,6 +58,6 @@ export function useUpdateProfile() {
 export function useChangePassword() {
   return useMutation({
     mutationFn: (data: { current_password: string; new_password: string }) =>
-      api.post('/v1/auth/change-password', data),
+      api.post('/auth/change-password', data),
   });
 }

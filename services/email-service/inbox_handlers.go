@@ -262,6 +262,14 @@ func (s *Server) ComposeEmailHandler(w http.ResponseWriter, r *http.Request) {
 	emailID := uuid.New().String()
 	messageID := fmt.Sprintf("<%s@autolytiq.com>", emailID)
 
+	// Determine from address (prefer Resend if configured)
+	fromEmail := s.config.SMTPFromEmail
+	fromName := s.config.SMTPFromName
+	if IsResendConfigured(s.config.ResendAPIKey) {
+		fromEmail = s.config.ResendFromEmail
+		fromName = s.config.ResendFromName
+	}
+
 	// Create email record
 	email := &Email{
 		ID:           emailID,
@@ -269,8 +277,8 @@ func (s *Server) ComposeEmailHandler(w http.ResponseWriter, r *http.Request) {
 		UserID:       req.UserID,
 		MessageID:    messageID,
 		Folder:       FolderSent,
-		FromEmail:    s.config.SMTPFromEmail,
-		FromName:     s.config.SMTPFromName,
+		FromEmail:    fromEmail,
+		FromName:     fromName,
 		ToEmails:     req.To,
 		ToNames:      req.ToNames,
 		CcEmails:     req.Cc,
@@ -320,10 +328,31 @@ func (s *Server) ComposeEmailHandler(w http.ResponseWriter, r *http.Request) {
 		s.db.MoveAttachmentToEmail(attachID, emailID)
 	}
 
-	// Send via SMTP
-	recipients := strings.Join(req.To, ", ")
-	if err := s.smtpClient.SendEmail(recipients, req.Subject, req.BodyHTML); err != nil {
-		s.logger.WithContext(r.Context()).WithError(err).Error("Failed to send email via SMTP")
+	// Send email (use Resend advanced features if available, otherwise basic SMTP)
+	var sendErr error
+	if resendClient, ok := s.smtpClient.(*ResendClient); ok && IsResendConfigured(s.config.ResendAPIKey) {
+		// Use Resend's full API with CC, BCC support
+		_, sendErr = resendClient.SendEmailWithAttachments(
+			req.To,
+			req.Cc,
+			req.Bcc,
+			req.Subject,
+			req.BodyHTML,
+			req.ReplyTo,
+			nil, // Attachments would need to be loaded from storage
+			map[string]string{
+				"dealership_id": req.DealershipID,
+				"email_id":      emailID,
+			},
+		)
+	} else {
+		// Fallback to basic SMTP (only supports primary recipients)
+		recipients := strings.Join(req.To, ", ")
+		sendErr = s.smtpClient.SendEmail(recipients, req.Subject, req.BodyHTML)
+	}
+
+	if sendErr != nil {
+		s.logger.WithContext(r.Context()).WithError(sendErr).Error("Failed to send email")
 		// Email is saved but not sent
 		http.Error(w, "Email saved but failed to send", http.StatusAccepted)
 		return
@@ -1018,6 +1047,120 @@ func (s *Server) DeleteSignatureHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// =====================================================
+// PREFERENCES HANDLERS
+// =====================================================
+
+// PreferencesRequest represents the request body for preferences
+type PreferencesRequest struct {
+	DealershipID         string `json:"dealership_id"`
+	UserID               string `json:"user_id"`
+	ReadingPanePosition  string `json:"reading_pane_position,omitempty"`
+	ConversationView     *bool  `json:"conversation_view,omitempty"`
+	DesktopNotifications *bool  `json:"desktop_notifications,omitempty"`
+	AutoAdvance          *bool  `json:"auto_advance,omitempty"`
+	PreviewLines         *int   `json:"preview_lines,omitempty"`
+	Density              string `json:"density,omitempty"`
+	SwipeLeftAction      string `json:"swipe_left_action,omitempty"`
+	SwipeRightAction     string `json:"swipe_right_action,omitempty"`
+}
+
+// GetPreferencesHandler gets user email preferences
+func (s *Server) GetPreferencesHandler(w http.ResponseWriter, r *http.Request) {
+	dealershipID := r.URL.Query().Get("dealership_id")
+	userID := r.URL.Query().Get("user_id")
+
+	if !validateUUID(w, dealershipID, "dealership_id") || !validateUUID(w, userID, "user_id") {
+		return
+	}
+
+	prefs, err := s.db.GetPreferences(dealershipID, userID)
+	if err != nil {
+		// Return defaults if not found
+		prefs = &EmailPreferences{
+			ID:                   "",
+			DealershipID:         dealershipID,
+			UserID:               userID,
+			ReadingPanePosition:  "right",
+			ConversationView:     true,
+			DesktopNotifications: true,
+			AutoAdvance:          true,
+			PreviewLines:         2,
+			Density:              "comfortable",
+			SwipeLeftAction:      "delete",
+			SwipeRightAction:     "archive",
+			CreatedAt:            time.Now(),
+			UpdatedAt:            time.Now(),
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(prefs)
+}
+
+// SavePreferencesHandler saves/updates user email preferences
+func (s *Server) SavePreferencesHandler(w http.ResponseWriter, r *http.Request) {
+	var req PreferencesRequest
+	if !decodeAndValidate(r, w, &req) {
+		return
+	}
+
+	// Get existing preferences or create new
+	prefs, err := s.db.GetPreferences(req.DealershipID, req.UserID)
+	if err != nil || prefs == nil {
+		// Create new preferences with defaults
+		prefs = &EmailPreferences{
+			ID:                   uuid.New().String(),
+			DealershipID:         req.DealershipID,
+			UserID:               req.UserID,
+			ReadingPanePosition:  "right",
+			ConversationView:     true,
+			DesktopNotifications: true,
+			AutoAdvance:          true,
+			PreviewLines:         2,
+			Density:              "comfortable",
+			SwipeLeftAction:      "delete",
+			SwipeRightAction:     "archive",
+			CreatedAt:            time.Now(),
+		}
+	}
+
+	// Apply updates from request
+	if req.ReadingPanePosition != "" {
+		prefs.ReadingPanePosition = req.ReadingPanePosition
+	}
+	if req.ConversationView != nil {
+		prefs.ConversationView = *req.ConversationView
+	}
+	if req.DesktopNotifications != nil {
+		prefs.DesktopNotifications = *req.DesktopNotifications
+	}
+	if req.AutoAdvance != nil {
+		prefs.AutoAdvance = *req.AutoAdvance
+	}
+	if req.PreviewLines != nil {
+		prefs.PreviewLines = *req.PreviewLines
+	}
+	if req.Density != "" {
+		prefs.Density = req.Density
+	}
+	if req.SwipeLeftAction != "" {
+		prefs.SwipeLeftAction = req.SwipeLeftAction
+	}
+	if req.SwipeRightAction != "" {
+		prefs.SwipeRightAction = req.SwipeRightAction
+	}
+	prefs.UpdatedAt = time.Now()
+
+	if err := s.db.SavePreferences(prefs); err != nil {
+		http.Error(w, "Failed to save preferences", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(prefs)
 }
 
 // =====================================================

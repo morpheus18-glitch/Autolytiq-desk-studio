@@ -1,0 +1,651 @@
+{
+  "metadata": {
+    "kernelId": "indiana-retail-v1.0.0",
+    "version": "1.0.0",
+    "generatedAt": "2025-12-24T00:00:00.000Z",
+    "description": "Golden test corpus for Indiana Retail Vehicle Tax Kernel",
+    "testCount": 25
+  },
+  "testCases": [
+    {
+      "id": "GOLDEN-001",
+      "category": "happy-path",
+      "description": "Simple vehicle purchase with no extras",
+      "rulesExercised": ["IN-RATE-001"],
+      "input": {
+        "vehiclePrice": 30000,
+        "dealType": "RETAIL"
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "taxableBase": 30000,
+          "taxRate": 0.07,
+          "totalTax": 2100,
+          "baseComponents": {
+            "vehiclePrice": 30000,
+            "docFee": 0,
+            "accessories": 0,
+            "serviceContracts": 0,
+            "gap": 0,
+            "negativeEquity": 0,
+            "otherTaxableFees": 0
+          },
+          "deductions": {
+            "tradeInCredit": 0,
+            "manufacturerRebate": 0
+          },
+          "reciprocity": {
+            "creditApplied": 0,
+            "originState": null
+          }
+        }
+      }
+    },
+    {
+      "id": "GOLDEN-002",
+      "category": "happy-path",
+      "description": "Vehicle with maximum doc fee ($250 cap)",
+      "rulesExercised": ["IN-RATE-001", "IN-R-004"],
+      "input": {
+        "vehiclePrice": 25000,
+        "dealType": "RETAIL",
+        "docFee": 250
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "taxableBase": 25250,
+          "taxRate": 0.07,
+          "totalTax": 1767.50,
+          "baseComponents": {
+            "vehiclePrice": 25000,
+            "docFee": 250,
+            "accessories": 0,
+            "serviceContracts": 0,
+            "gap": 0,
+            "negativeEquity": 0,
+            "otherTaxableFees": 0
+          },
+          "deductions": {
+            "tradeInCredit": 0,
+            "manufacturerRebate": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "GOLDEN-003",
+      "category": "trade-in",
+      "description": "Vehicle with trade-in credit (FULL policy)",
+      "rulesExercised": ["IN-RATE-001", "IN-R-001", "IN-R-004"],
+      "input": {
+        "vehiclePrice": 30000,
+        "dealType": "RETAIL",
+        "docFee": 250,
+        "tradeInValue": 10000
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "taxableBase": 20250,
+          "taxRate": 0.07,
+          "totalTax": 1417.50,
+          "baseComponents": {
+            "vehiclePrice": 30000,
+            "docFee": 250,
+            "accessories": 0,
+            "serviceContracts": 0,
+            "gap": 0,
+            "negativeEquity": 0,
+            "otherTaxableFees": 0
+          },
+          "deductions": {
+            "tradeInCredit": 10000,
+            "manufacturerRebate": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "GOLDEN-004",
+      "category": "rebate",
+      "description": "Manufacturer rebate REDUCES taxable base",
+      "rulesExercised": ["IN-RATE-001", "IN-R-002"],
+      "input": {
+        "vehiclePrice": 28000,
+        "dealType": "RETAIL",
+        "rebateManufacturer": 2000
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "taxableBase": 26000,
+          "taxRate": 0.07,
+          "totalTax": 1820,
+          "deductions": {
+            "tradeInCredit": 0,
+            "manufacturerRebate": 2000
+          }
+        }
+      },
+      "notes": "Customer saves $140 in tax (7% of $2,000 rebate)"
+    },
+    {
+      "id": "GOLDEN-005",
+      "category": "rebate",
+      "description": "Dealer rebate does NOT reduce taxable base (critical difference)",
+      "rulesExercised": ["IN-RATE-001", "IN-R-003"],
+      "input": {
+        "vehiclePrice": 28000,
+        "dealType": "RETAIL",
+        "rebateDealer": 2000
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "taxableBase": 28000,
+          "taxRate": 0.07,
+          "totalTax": 1960,
+          "deductions": {
+            "tradeInCredit": 0,
+            "manufacturerRebate": 0
+          }
+        }
+      },
+      "notes": "Customer pays tax on full $28,000 despite $2,000 dealer discount. Tax savings: $0"
+    },
+    {
+      "id": "GOLDEN-006",
+      "category": "rebate",
+      "description": "Compare manufacturer vs dealer rebate tax treatment",
+      "rulesExercised": ["IN-RATE-001", "IN-R-002", "IN-R-003"],
+      "input": {
+        "vehiclePrice": 28000,
+        "dealType": "RETAIL",
+        "rebateManufacturer": 2000,
+        "rebateDealer": 1000
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "taxableBase": 26000,
+          "taxRate": 0.07,
+          "totalTax": 1820,
+          "deductions": {
+            "tradeInCredit": 0,
+            "manufacturerRebate": 2000
+          }
+        }
+      },
+      "notes": "Only manufacturer rebate ($2,000) reduces base. Dealer rebate ($1,000) has no tax effect."
+    },
+    {
+      "id": "GOLDEN-007",
+      "category": "negative-equity",
+      "description": "Negative equity is TAXABLE",
+      "rulesExercised": ["IN-RATE-001", "IN-R-001", "IN-R-004", "IN-R-005"],
+      "input": {
+        "vehiclePrice": 25000,
+        "dealType": "RETAIL",
+        "docFee": 250,
+        "tradeInValue": 8000,
+        "tradeInPayoff": 12000
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "taxableBase": 21250,
+          "taxRate": 0.07,
+          "totalTax": 1487.50,
+          "baseComponents": {
+            "vehiclePrice": 25000,
+            "docFee": 250,
+            "accessories": 0,
+            "serviceContracts": 0,
+            "gap": 0,
+            "negativeEquity": 4000,
+            "otherTaxableFees": 0
+          },
+          "deductions": {
+            "tradeInCredit": 8000,
+            "manufacturerRebate": 0
+          }
+        }
+      },
+      "notes": "$4,000 negative equity adds $280 in tax"
+    },
+    {
+      "id": "GOLDEN-008",
+      "category": "backend-products",
+      "description": "Service contract (VSC) is TAXABLE on retail",
+      "rulesExercised": ["IN-RATE-001", "IN-R-006"],
+      "input": {
+        "vehiclePrice": 25000,
+        "dealType": "RETAIL",
+        "serviceContracts": 2500
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "taxableBase": 27500,
+          "taxRate": 0.07,
+          "totalTax": 1925,
+          "baseComponents": {
+            "vehiclePrice": 25000,
+            "docFee": 0,
+            "accessories": 0,
+            "serviceContracts": 2500,
+            "gap": 0,
+            "negativeEquity": 0,
+            "otherTaxableFees": 0
+          }
+        }
+      },
+      "notes": "VSC adds $175 in tax. Note: VSC is NON-taxable on leases."
+    },
+    {
+      "id": "GOLDEN-009",
+      "category": "backend-products",
+      "description": "GAP insurance is TAXABLE on retail",
+      "rulesExercised": ["IN-RATE-001", "IN-R-007"],
+      "input": {
+        "vehiclePrice": 25000,
+        "dealType": "RETAIL",
+        "gap": 895
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "taxableBase": 25895,
+          "taxRate": 0.07,
+          "totalTax": 1812.65,
+          "baseComponents": {
+            "vehiclePrice": 25000,
+            "docFee": 0,
+            "accessories": 0,
+            "serviceContracts": 0,
+            "gap": 895,
+            "negativeEquity": 0,
+            "otherTaxableFees": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "GOLDEN-010",
+      "category": "accessories",
+      "description": "Dealer-installed accessories are TAXABLE",
+      "rulesExercised": ["IN-RATE-001", "IN-R-008"],
+      "input": {
+        "vehiclePrice": 28000,
+        "dealType": "RETAIL",
+        "accessoriesAmount": 1500
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "taxableBase": 29500,
+          "taxRate": 0.07,
+          "totalTax": 2065,
+          "baseComponents": {
+            "vehiclePrice": 28000,
+            "docFee": 0,
+            "accessories": 1500,
+            "serviceContracts": 0,
+            "gap": 0,
+            "negativeEquity": 0,
+            "otherTaxableFees": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "GOLDEN-011",
+      "category": "complex",
+      "description": "Full deal with all components (Indianapolis example from rules)",
+      "rulesExercised": ["IN-RATE-001", "IN-R-001", "IN-R-004", "IN-R-006", "IN-R-007", "IN-R-008"],
+      "input": {
+        "vehiclePrice": 30000,
+        "dealType": "RETAIL",
+        "docFee": 250,
+        "tradeInValue": 9000,
+        "accessoriesAmount": 1500,
+        "serviceContracts": 2500,
+        "gap": 895
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "taxableBase": 26145,
+          "taxRate": 0.07,
+          "totalTax": 1830.15,
+          "baseComponents": {
+            "vehiclePrice": 30000,
+            "docFee": 250,
+            "accessories": 1500,
+            "serviceContracts": 2500,
+            "gap": 895,
+            "negativeEquity": 0,
+            "otherTaxableFees": 0
+          },
+          "deductions": {
+            "tradeInCredit": 9000,
+            "manufacturerRebate": 0
+          }
+        }
+      },
+      "notes": "Example from Indiana rules documentation"
+    },
+    {
+      "id": "GOLDEN-012",
+      "category": "reciprocity",
+      "description": "Reciprocity credit - other state tax LESS than Indiana (owes difference)",
+      "rulesExercised": ["IN-RATE-001", "IN-R-009"],
+      "input": {
+        "vehiclePrice": 25000,
+        "dealType": "RETAIL",
+        "originTaxInfo": {
+          "stateCode": "KY",
+          "amount": 1500
+        }
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "taxableBase": 25000,
+          "taxRate": 0.07,
+          "totalTax": 250,
+          "reciprocity": {
+            "creditApplied": 1500,
+            "originState": "KY",
+            "originalTaxBeforeCredit": 1750
+          }
+        }
+      },
+      "notes": "KY tax $1,500 (6%), IN would be $1,750 (7%). Credit $1,500, owes $250 to IN."
+    },
+    {
+      "id": "GOLDEN-013",
+      "category": "reciprocity",
+      "description": "Reciprocity credit - other state tax MORE than Indiana (credit capped)",
+      "rulesExercised": ["IN-RATE-001", "IN-R-009"],
+      "input": {
+        "vehiclePrice": 30000,
+        "dealType": "RETAIL",
+        "originTaxInfo": {
+          "stateCode": "IL",
+          "amount": 2250
+        }
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "taxableBase": 30000,
+          "taxRate": 0.07,
+          "totalTax": 0,
+          "reciprocity": {
+            "creditApplied": 2100,
+            "originState": "IL",
+            "originalTaxBeforeCredit": 2100
+          }
+        }
+      },
+      "notes": "IL tax $2,250 (7.5%), IN would be $2,100 (7%). Credit capped at $2,100. No additional IN tax."
+    },
+    {
+      "id": "GOLDEN-014",
+      "category": "reciprocity",
+      "description": "Reciprocity credit - no-tax state (Montana)",
+      "rulesExercised": ["IN-RATE-001"],
+      "input": {
+        "vehiclePrice": 30000,
+        "dealType": "RETAIL",
+        "originTaxInfo": {
+          "stateCode": "MT",
+          "amount": 0
+        }
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "taxableBase": 30000,
+          "taxRate": 0.07,
+          "totalTax": 2100,
+          "reciprocity": {
+            "creditApplied": 0,
+            "originState": null,
+            "originalTaxBeforeCredit": 2100
+          }
+        }
+      },
+      "notes": "Montana has no sales tax. Full Indiana tax due."
+    },
+    {
+      "id": "GOLDEN-015",
+      "category": "boundary",
+      "description": "Trade-in exceeds vehicle price - base floors at zero",
+      "rulesExercised": ["IN-RATE-001", "IN-R-001"],
+      "input": {
+        "vehiclePrice": 20000,
+        "dealType": "RETAIL",
+        "tradeInValue": 25000
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "taxableBase": 0,
+          "taxRate": 0.07,
+          "totalTax": 0,
+          "deductions": {
+            "tradeInCredit": 25000,
+            "manufacturerRebate": 0
+          }
+        }
+      },
+      "notes": "Taxable base cannot go negative. Tax is zero."
+    },
+    {
+      "id": "GOLDEN-016",
+      "category": "boundary",
+      "description": "Large manufacturer rebate exceeds remaining base",
+      "rulesExercised": ["IN-RATE-001", "IN-R-001", "IN-R-002"],
+      "input": {
+        "vehiclePrice": 25000,
+        "dealType": "RETAIL",
+        "tradeInValue": 20000,
+        "rebateManufacturer": 10000
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "taxableBase": 0,
+          "taxRate": 0.07,
+          "totalTax": 0,
+          "deductions": {
+            "tradeInCredit": 20000,
+            "manufacturerRebate": 10000
+          }
+        }
+      },
+      "notes": "Base floors at zero after deductions"
+    },
+    {
+      "id": "GOLDEN-017",
+      "category": "boundary",
+      "description": "Minimum valid vehicle price",
+      "rulesExercised": ["IN-RATE-001"],
+      "input": {
+        "vehiclePrice": 0.01,
+        "dealType": "RETAIL"
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "taxableBase": 0.01,
+          "taxRate": 0.07,
+          "totalTax": 0
+        }
+      }
+    },
+    {
+      "id": "GOLDEN-018",
+      "category": "error",
+      "description": "Error - Zero vehicle price",
+      "rulesExercised": [],
+      "input": {
+        "vehiclePrice": 0,
+        "dealType": "RETAIL"
+      },
+      "expected": {
+        "success": false,
+        "errorCode": "ERR_INVALID_VEHICLE_PRICE",
+        "message": "Vehicle price must be a positive number greater than zero."
+      }
+    },
+    {
+      "id": "GOLDEN-019",
+      "category": "error",
+      "description": "Error - Negative vehicle price",
+      "rulesExercised": [],
+      "input": {
+        "vehiclePrice": -5000,
+        "dealType": "RETAIL"
+      },
+      "expected": {
+        "success": false,
+        "errorCode": "ERR_INVALID_VEHICLE_PRICE",
+        "message": "Vehicle price must be a positive number greater than zero."
+      }
+    },
+    {
+      "id": "GOLDEN-020",
+      "category": "error",
+      "description": "Error - Doc fee exceeds statutory cap",
+      "rulesExercised": [],
+      "input": {
+        "vehiclePrice": 25000,
+        "dealType": "RETAIL",
+        "docFee": 300
+      },
+      "expected": {
+        "success": false,
+        "errorCode": "ERR_DOC_FEE_EXCEEDS_CAP",
+        "violatedRule": "IN-R-004"
+      }
+    },
+    {
+      "id": "GOLDEN-021",
+      "category": "error",
+      "description": "Error - Lease transaction (out of scope)",
+      "rulesExercised": [],
+      "input": {
+        "vehiclePrice": 35000,
+        "dealType": "RETAIL",
+        "isLease": true
+      },
+      "expected": {
+        "success": false,
+        "errorCode": "ERR_LEASE_NOT_SUPPORTED"
+      }
+    },
+    {
+      "id": "GOLDEN-022",
+      "category": "error",
+      "description": "Error - Commercial vehicle (out of scope)",
+      "rulesExercised": [],
+      "input": {
+        "vehiclePrice": 50000,
+        "dealType": "RETAIL",
+        "isCommercialVehicle": true
+      },
+      "expected": {
+        "success": false,
+        "errorCode": "ERR_COMMERCIAL_VEHICLE_NOT_SUPPORTED"
+      }
+    },
+    {
+      "id": "GOLDEN-023",
+      "category": "error",
+      "description": "Error - Tax exempt (out of scope)",
+      "rulesExercised": [],
+      "input": {
+        "vehiclePrice": 30000,
+        "dealType": "RETAIL",
+        "isTaxExempt": true
+      },
+      "expected": {
+        "success": false,
+        "errorCode": "ERR_TAX_EXEMPT_NOT_SUPPORTED"
+      }
+    },
+    {
+      "id": "GOLDEN-024",
+      "category": "error",
+      "description": "Error - Private party sale (out of scope)",
+      "rulesExercised": [],
+      "input": {
+        "vehiclePrice": 15000,
+        "dealType": "RETAIL",
+        "isPrivatePartySale": true
+      },
+      "expected": {
+        "success": false,
+        "errorCode": "ERR_PRIVATE_PARTY_NOT_SUPPORTED"
+      }
+    },
+    {
+      "id": "GOLDEN-025",
+      "category": "complex",
+      "description": "Maximum complexity - all fields populated",
+      "rulesExercised": ["IN-RATE-001", "IN-R-001", "IN-R-002", "IN-R-003", "IN-R-004", "IN-R-005", "IN-R-006", "IN-R-007", "IN-R-008", "IN-R-009"],
+      "input": {
+        "vehiclePrice": 45000,
+        "dealType": "RETAIL",
+        "docFee": 250,
+        "tradeInValue": 12000,
+        "tradeInPayoff": 15000,
+        "rebateManufacturer": 3000,
+        "rebateDealer": 1500,
+        "accessoriesAmount": 2000,
+        "serviceContracts": 3500,
+        "gap": 995,
+        "otherFees": [
+          { "code": "FABRIC_PROTECTION", "amount": 299 },
+          { "code": "PAINT_PROTECTION", "amount": 399 }
+        ],
+        "originTaxInfo": {
+          "stateCode": "OH",
+          "amount": 800
+        }
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "taxableBase": 40443,
+          "taxRate": 0.07,
+          "totalTax": 2031.01,
+          "baseComponents": {
+            "vehiclePrice": 45000,
+            "docFee": 250,
+            "accessories": 2000,
+            "serviceContracts": 3500,
+            "gap": 995,
+            "negativeEquity": 3000,
+            "otherTaxableFees": 698
+          },
+          "deductions": {
+            "tradeInCredit": 12000,
+            "manufacturerRebate": 3000
+          },
+          "reciprocity": {
+            "creditApplied": 800,
+            "originState": "OH",
+            "originalTaxBeforeCredit": 2831.01
+          }
+        }
+      },
+      "notes": "Exercises all rules. Calculation: 45000 + 2000 + 3000 - 12000 - 3000 + 250 + 3500 + 995 + 698 = 40443. Tax: 40443 * 0.07 = 2831.01 - 800 (reciprocity) = 2031.01"
+    }
+  ]
+}

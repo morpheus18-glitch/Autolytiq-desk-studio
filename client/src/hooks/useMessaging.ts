@@ -38,7 +38,7 @@ export function useConversations(filters: ConversationFilter = {}) {
   if (filters.offset) queryParams.set('offset', String(filters.offset));
 
   const queryString = queryParams.toString();
-  const endpoint = `/v1/messaging/conversations${queryString ? `?${queryString}` : ''}`;
+  const endpoint = `/messaging/conversations${queryString ? `?${queryString}` : ''}`;
 
   return useQuery({
     queryKey: queryKeys.messaging.conversations.list(filters as Record<string, unknown>),
@@ -53,7 +53,7 @@ export function useConversations(filters: ConversationFilter = {}) {
 export function useConversation(id: string) {
   return useQuery({
     queryKey: queryKeys.messaging.conversations.detail(id),
-    queryFn: () => api.get<Conversation>(`/v1/messaging/conversations/${id}`),
+    queryFn: () => api.get<Conversation>(`/messaging/conversations/${id}`),
     enabled: !!id,
   });
 }
@@ -66,7 +66,7 @@ export function useCreateConversation() {
 
   return useMutation({
     mutationFn: (data: CreateConversationRequest) =>
-      api.post<Conversation>('/v1/messaging/conversations', data),
+      api.post<Conversation>('/messaging/conversations', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.messaging.conversations.all() });
     },
@@ -81,7 +81,7 @@ export function useGetOrCreateDirectConversation() {
 
   return useMutation({
     mutationFn: (userId: string) =>
-      api.post<Conversation>('/v1/messaging/conversations', {
+      api.post<Conversation>('/messaging/conversations', {
         type: 'DIRECT',
         participant_ids: [userId],
       }),
@@ -99,7 +99,7 @@ export function useUpdateConversation() {
 
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateConversationRequest }) =>
-      api.patch<Conversation>(`/v1/messaging/conversations/${id}`, data),
+      api.patch<Conversation>(`/messaging/conversations/${id}`, data),
     onSuccess: (conversation) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.messaging.conversations.all() });
       queryClient.setQueryData(
@@ -124,7 +124,7 @@ export function useMessages(
   if (filters.limit) queryParams.set('limit', String(filters.limit));
 
   const queryString = queryParams.toString();
-  const endpoint = `/v1/messaging/conversations/${conversationId}/messages${queryString ? `?${queryString}` : ''}`;
+  const endpoint = `/messaging/conversations/${conversationId}/messages${queryString ? `?${queryString}` : ''}`;
 
   return useQuery({
     queryKey: queryKeys.messaging.messages.list(conversationId, filters),
@@ -143,7 +143,7 @@ export function useLoadMoreMessages(conversationId: string) {
   return useMutation({
     mutationFn: async (beforeId: string) => {
       const response = await api.get<MessagesResponse>(
-        `/v1/messaging/conversations/${conversationId}/messages?before_id=${beforeId}&limit=50`
+        `/messaging/conversations/${conversationId}/messages?before_id=${beforeId}&limit=50`
       );
       return response;
     },
@@ -172,7 +172,7 @@ export function useSendMessage() {
 
   return useMutation({
     mutationFn: ({ conversationId, data }: { conversationId: string; data: SendMessageRequest }) =>
-      api.post<Message>(`/v1/messaging/conversations/${conversationId}/messages`, data),
+      api.post<Message>(`/messaging/conversations/${conversationId}/messages`, data),
     onSuccess: (message, { conversationId }) => {
       // Add message to cache immediately
       queryClient.setQueryData(
@@ -210,7 +210,7 @@ export function useUpdateMessage() {
       data: UpdateMessageRequest;
     }) =>
       api.patch<Message>(
-        `/v1/messaging/conversations/${conversationId}/messages/${messageId}`,
+        `/messaging/conversations/${conversationId}/messages/${messageId}`,
         data
       ),
     onSuccess: (message, { conversationId }) => {
@@ -237,7 +237,7 @@ export function useDeleteMessage() {
 
   return useMutation({
     mutationFn: ({ conversationId, messageId }: { conversationId: string; messageId: string }) =>
-      api.delete(`/v1/messaging/conversations/${conversationId}/messages/${messageId}`),
+      api.delete(`/messaging/conversations/${conversationId}/messages/${messageId}`),
     onSuccess: (_, { conversationId, messageId }) => {
       // Remove message from cache or mark as deleted
       queryClient.setQueryData(
@@ -264,7 +264,7 @@ export function useMarkAsRead() {
 
   return useMutation({
     mutationFn: (conversationId: string) =>
-      api.post(`/v1/messaging/conversations/${conversationId}/read`),
+      api.post(`/messaging/conversations/${conversationId}/read`),
     onSuccess: (_, conversationId) => {
       // Update unread count in conversations list
       queryClient.setQueryData(
@@ -300,7 +300,7 @@ export function useAddReaction() {
       data: AddReactionRequest;
     }) =>
       api.post<MessageReaction>(
-        `/v1/messaging/conversations/${conversationId}/messages/${messageId}/reactions`,
+        `/messaging/conversations/${conversationId}/messages/${messageId}/reactions`,
         data
       ),
     onSuccess: (reaction, { conversationId }) => {
@@ -347,7 +347,7 @@ export function useRemoveReaction() {
       reactionType: string;
     }) =>
       api.delete(
-        `/v1/messaging/conversations/${conversationId}/messages/${messageId}/reactions/${reactionType}`
+        `/messaging/conversations/${conversationId}/messages/${messageId}/reactions/${reactionType}`
       ),
     onSuccess: (_, { conversationId, messageId, reactionType }) => {
       // Remove reaction from cache
@@ -379,7 +379,7 @@ export function useRemoveReaction() {
 export function useSendTyping() {
   return useMutation({
     mutationFn: ({ conversationId, isTyping }: { conversationId: string; isTyping: boolean }) =>
-      api.post(`/v1/messaging/conversations/${conversationId}/typing`, { is_typing: isTyping }),
+      api.post(`/messaging/conversations/${conversationId}/typing`, { is_typing: isTyping }),
   });
 }
 
@@ -390,7 +390,7 @@ export function useParticipants(conversationId: string) {
   return useQuery({
     queryKey: [...queryKeys.messaging.conversations.detail(conversationId), 'participants'],
     queryFn: () =>
-      api.get<Participant[]>(`/v1/messaging/conversations/${conversationId}/participants`),
+      api.get<Participant[]>(`/messaging/conversations/${conversationId}/participants`),
     enabled: !!conversationId,
   });
 }
@@ -411,7 +411,7 @@ export function useAddParticipant() {
       userId: string;
       role?: string;
     }) =>
-      api.post<Participant>(`/v1/messaging/conversations/${conversationId}/participants`, {
+      api.post<Participant>(`/messaging/conversations/${conversationId}/participants`, {
         user_id: userId,
         role,
       }),
@@ -434,7 +434,7 @@ export function useRemoveParticipant() {
 
   return useMutation({
     mutationFn: ({ conversationId, userId }: { conversationId: string; userId: string }) =>
-      api.delete(`/v1/messaging/conversations/${conversationId}/participants/${userId}`),
+      api.delete(`/messaging/conversations/${conversationId}/participants/${userId}`),
     onSuccess: (_, { conversationId }) => {
       queryClient.invalidateQueries({
         queryKey: [...queryKeys.messaging.conversations.detail(conversationId), 'participants'],

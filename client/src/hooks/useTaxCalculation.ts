@@ -174,7 +174,7 @@ export const taxQueryKeys = {
 export function useStates() {
   return useQuery({
     queryKey: taxQueryKeys.states(),
-    queryFn: () => api.get<StateInfo[]>('/v1/tax/states'),
+    queryFn: () => api.get<StateInfo[]>('/tax/states'),
     staleTime: 24 * 60 * 60 * 1000, // 24 hours - state data rarely changes
   });
 }
@@ -185,7 +185,7 @@ export function useStates() {
 export function useStateRules(stateCode: string) {
   return useQuery({
     queryKey: taxQueryKeys.stateRules(stateCode),
-    queryFn: () => api.get<StateRules>(`/v1/tax/states/${stateCode}`),
+    queryFn: () => api.get<StateRules>(`/tax/states/${stateCode}`),
     enabled: !!stateCode && stateCode.length === 2,
     staleTime: 60 * 60 * 1000, // 1 hour
   });
@@ -197,7 +197,7 @@ export function useStateRules(stateCode: string) {
 export function useJurisdiction(address: JurisdictionRequest | null) {
   return useQuery({
     queryKey: taxQueryKeys.jurisdiction(address || { state: '' }),
-    queryFn: () => api.post<JurisdictionResult>('/v1/tax/jurisdiction', address),
+    queryFn: () => api.post<JurisdictionResult>('/tax/jurisdiction', address),
     enabled: !!address?.state,
   });
 }
@@ -208,7 +208,7 @@ export function useJurisdiction(address: JurisdictionRequest | null) {
 export function useResolveJurisdiction() {
   return useMutation({
     mutationFn: (address: JurisdictionRequest) =>
-      api.post<JurisdictionResult>('/v1/tax/jurisdiction', address),
+      api.post<JurisdictionResult>('/tax/jurisdiction', address),
   });
 }
 
@@ -218,7 +218,7 @@ export function useResolveJurisdiction() {
 export function useCalculateTax() {
   return useMutation({
     mutationFn: (request: TaxCalculationRequest) =>
-      api.post<TaxCalculationResult>('/v1/tax/calculate', request),
+      api.post<TaxCalculationResult>('/tax/calculate', request),
   });
 }
 
@@ -242,20 +242,34 @@ export function useRealtimeTaxCalculation(
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
-    abortControllerRef.current = new AbortController();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     setIsCalculating(true);
     setError(null);
 
     try {
-      const response = await api.post<TaxCalculationResult>('/v1/tax/calculate', req);
-      setResult(response);
+      const response = await api.post<TaxCalculationResult>('/tax/calculate', req, {
+        signal: controller.signal,
+      });
+      // Only update state if this request wasn't aborted
+      if (!controller.signal.aborted) {
+        setResult(response);
+      }
     } catch (err) {
-      if ((err as Error).name !== 'AbortError') {
+      // Ignore abort errors - they're expected when canceling stale requests
+      if ((err as Error).name === 'AbortError') {
+        return;
+      }
+      // Only set error if this request wasn't aborted
+      if (!controller.signal.aborted) {
         setError(err as Error);
       }
     } finally {
-      setIsCalculating(false);
+      // Only update loading state if this request wasn't aborted
+      if (!controller.signal.aborted) {
+        setIsCalculating(false);
+      }
     }
   }, []);
 

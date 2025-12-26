@@ -3,6 +3,7 @@ module auth-service
 go 1.18
 
 require (
+	autolytiq/shared/auth v0.0.0
 	autolytiq/shared/logging v0.0.0
 	autolytiq/shared/secrets v0.0.0
 	github.com/go-redis/redis/v8 v8.11.5
@@ -49,3 +50,5 @@ require (
 replace autolytiq/shared/logging => ../shared/logging
 
 replace autolytiq/shared/secrets => ../shared/secrets
+
+replace autolytiq/shared/auth => ../shared/auth

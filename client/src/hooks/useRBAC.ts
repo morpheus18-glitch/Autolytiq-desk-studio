@@ -126,7 +126,7 @@ const rbacQueryKeys = {
 export function useRoles() {
   return useQuery({
     queryKey: rbacQueryKeys.roles(),
-    queryFn: () => api.get<Role[]>('/v1/rbac/roles'),
+    queryFn: () => api.get<Role[]>('/rbac/roles'),
   });
 }
 
@@ -136,7 +136,7 @@ export function useRoles() {
 export function useRole(name: string) {
   return useQuery({
     queryKey: rbacQueryKeys.role(name),
-    queryFn: () => api.get<Role>(`/v1/rbac/roles/${name}`),
+    queryFn: () => api.get<Role>(`/rbac/roles/${name}`),
     enabled: !!name,
   });
 }
@@ -151,7 +151,7 @@ export function useRole(name: string) {
 export function usePermissions() {
   return useQuery({
     queryKey: rbacQueryKeys.permissions(),
-    queryFn: () => api.get<Permission[]>('/v1/rbac/permissions'),
+    queryFn: () => api.get<Permission[]>('/rbac/permissions'),
   });
 }
 
@@ -162,7 +162,7 @@ export function useUserPermissions(userId: string, dealershipId: string) {
   return useQuery({
     queryKey: rbacQueryKeys.userPermissions(userId),
     queryFn: () =>
-      api.get<UserPermission[]>(`/v1/users/${userId}/permissions?dealership_id=${dealershipId}`),
+      api.get<UserPermission[]>(`/users/${userId}/permissions?dealership_id=${dealershipId}`),
     enabled: !!userId && !!dealershipId,
   });
 }
@@ -173,7 +173,7 @@ export function useUserPermissions(userId: string, dealershipId: string) {
 export function useCheckPermission() {
   return useMutation({
     mutationFn: (request: PermissionCheckRequest) =>
-      api.post<PermissionCheckResponse>('/v1/rbac/check', request),
+      api.post<PermissionCheckResponse>('/rbac/check', request),
   });
 }
 
@@ -187,7 +187,7 @@ export function useCheckPermission() {
 export function useSettingsRBAC() {
   return useQuery({
     queryKey: rbacQueryKeys.settingsRBAC(),
-    queryFn: () => api.get<Record<string, SettingsRBAC>>('/v1/rbac/settings'),
+    queryFn: () => api.get<Record<string, SettingsRBAC>>('/rbac/settings'),
   });
 }
 
@@ -197,7 +197,7 @@ export function useSettingsRBAC() {
 export function useCheckSettingsAccess() {
   return useMutation({
     mutationFn: (request: SettingsAccessCheckRequest) =>
-      api.post<SettingsAccessCheckResponse>('/v1/rbac/settings/check', request),
+      api.post<SettingsAccessCheckResponse>('/rbac/settings/check', request),
   });
 }
 

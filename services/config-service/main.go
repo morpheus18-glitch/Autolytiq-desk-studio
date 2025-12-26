@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"autolytiq/shared/auth"
 	"autolytiq/shared/logging"
 
 	"github.com/gorilla/mux"
@@ -14,17 +15,19 @@ import (
 
 // Server wraps the config database and HTTP router
 type Server struct {
-	db     ConfigDatabase
-	router *mux.Router
-	logger *logging.Logger
+	db            ConfigDatabase
+	router        *mux.Router
+	logger        *logging.Logger
+	serviceSecret string
 }
 
 // NewServer creates a new config service server
-func NewServer(db ConfigDatabase, logger *logging.Logger) *Server {
+func NewServer(db ConfigDatabase, logger *logging.Logger, serviceSecret string) *Server {
 	s := &Server{
-		db:     db,
-		router: mux.NewRouter(),
-		logger: logger,
+		db:            db,
+		router:        mux.NewRouter(),
+		logger:        logger,
+		serviceSecret: serviceSecret,
 	}
 
 	s.setupMiddleware()
@@ -36,6 +39,8 @@ func NewServer(db ConfigDatabase, logger *logging.Logger) *Server {
 func (s *Server) setupMiddleware() {
 	s.router.Use(logging.RequestIDMiddleware)
 	s.router.Use(logging.RequestLoggingMiddleware(s.logger))
+	// Add service authentication middleware for inter-service security
+	s.router.Use(auth.ServiceAuthMiddleware(auth.NewServiceAuthConfig(s.serviceSecret)))
 }
 
 // setupRoutes configures all HTTP routes
@@ -548,7 +553,8 @@ func main() {
 	}
 
 	// Create and start server
-	server := NewServer(db, logger)
+	serviceSecret := os.Getenv("SERVICE_SECRET")
+	server := NewServer(db, logger, serviceSecret)
 
 	port := os.Getenv("PORT")
 	if port == "" {

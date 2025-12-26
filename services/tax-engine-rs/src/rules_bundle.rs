@@ -23,9 +23,49 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::RwLock;
+use std::sync::{RwLock, PoisonError};
 use once_cell::sync::Lazy;
+use std::fmt;
 use crate::types::*;
+
+// ============================================================================
+// Error Types for Rules Bundle Operations
+// ============================================================================
+
+/// Error type for rules bundle operations
+///
+/// Provides explicit handling for lock poisoning and other failure modes
+/// instead of silently swallowing errors with `.unwrap_or()`.
+#[derive(Debug)]
+pub enum RulesBundleError {
+    /// The RwLock was poisoned by a panicking thread
+    LockPoisoned(String),
+    /// Rules have not been initialized
+    NotInitialized,
+    /// Invalid rules data
+    InvalidRules(String),
+    /// JSON parsing error
+    ParseError(String),
+}
+
+impl fmt::Display for RulesBundleError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            RulesBundleError::LockPoisoned(msg) => write!(f, "Rules bundle lock poisoned: {}", msg),
+            RulesBundleError::NotInitialized => write!(f, "Rules bundle not initialized"),
+            RulesBundleError::InvalidRules(msg) => write!(f, "Invalid rules: {}", msg),
+            RulesBundleError::ParseError(msg) => write!(f, "Parse error: {}", msg),
+        }
+    }
+}
+
+impl std::error::Error for RulesBundleError {}
+
+impl<T> From<PoisonError<T>> for RulesBundleError {
+    fn from(e: PoisonError<T>) -> Self {
+        RulesBundleError::LockPoisoned(format!("{}", e))
+    }
+}
 
 // ============================================================================
 // Global Rules Store (Thread-Safe)
@@ -35,37 +75,84 @@ use crate::types::*;
 static RULES_BUNDLE: Lazy<RwLock<Option<RulesBundleV1>>> = Lazy::new(|| RwLock::new(None));
 
 /// Check if rules have been initialized
-pub fn rules_initialized() -> bool {
+///
+/// Returns `Ok(true)` if rules are loaded, `Ok(false)` if not initialized,
+/// or `Err` if the lock is poisoned.
+pub fn rules_initialized() -> Result<bool, RulesBundleError> {
+    let guard = RULES_BUNDLE.read()?;
+    Ok(guard.is_some())
+}
+
+/// Check if rules have been initialized (legacy compatibility)
+///
+/// DEPRECATED: Use `rules_initialized()` which returns a Result.
+pub fn rules_initialized_unchecked() -> bool {
     RULES_BUNDLE.read().map(|r| r.is_some()).unwrap_or(false)
 }
 
 /// Initialize rules from JSON bundle
-pub fn initialize_rules(json: &str) -> Result<RulesBundleMetadata, String> {
+///
+/// Returns metadata on success, or an error if parsing fails or lock is poisoned.
+pub fn initialize_rules(json: &str) -> Result<RulesBundleMetadata, RulesBundleError> {
     let bundle: RulesBundleV1 = serde_json::from_str(json)
-        .map_err(|e| format!("Failed to parse rules bundle: {}", e))?;
+        .map_err(|e| RulesBundleError::ParseError(format!("Failed to parse rules bundle: {}", e)))?;
 
     // Validate
-    bundle.validate()?;
+    bundle.validate()
+        .map_err(|e| RulesBundleError::InvalidRules(e))?;
 
     let metadata = bundle.metadata.clone();
 
-    // Store
-    let mut store = RULES_BUNDLE.write()
-        .map_err(|e| format!("Failed to acquire lock: {}", e))?;
+    // Store - propagate poison error explicitly
+    let mut store = RULES_BUNDLE.write()?;
     *store = Some(bundle);
 
     Ok(metadata)
 }
 
+/// Initialize rules from JSON bundle (legacy String error compatibility)
+pub fn initialize_rules_compat(json: &str) -> Result<RulesBundleMetadata, String> {
+    initialize_rules(json).map_err(|e| e.to_string())
+}
+
 /// Clear loaded rules
-pub fn clear_rules() {
+///
+/// Returns `Ok(())` on success, or `Err` if the lock is poisoned.
+pub fn clear_rules() -> Result<(), RulesBundleError> {
+    let mut store = RULES_BUNDLE.write()?;
+    *store = None;
+    Ok(())
+}
+
+/// Clear loaded rules (legacy compatibility, ignores poison)
+///
+/// DEPRECATED: Use `clear_rules()` which returns a Result.
+pub fn clear_rules_unchecked() {
     if let Ok(mut store) = RULES_BUNDLE.write() {
         *store = None;
     }
 }
 
 /// Get state rules from loaded bundle
-pub fn get_loaded_state_rules(state_code: &str) -> Option<TaxRulesConfig> {
+///
+/// Returns rules for the given state, or an error if:
+/// - Lock is poisoned
+/// - Rules not initialized
+/// - State not found
+pub fn get_loaded_state_rules(state_code: &str) -> Result<TaxRulesConfig, RulesBundleError> {
+    let guard = RULES_BUNDLE.read()?;
+    let bundle = guard.as_ref().ok_or(RulesBundleError::NotInitialized)?;
+    bundle
+        .states
+        .get(state_code)
+        .map(|entry| entry.to_tax_rules_config())
+        .ok_or_else(|| RulesBundleError::InvalidRules(format!("Unknown state: {}", state_code)))
+}
+
+/// Get state rules from loaded bundle (legacy compatibility)
+///
+/// DEPRECATED: Use `get_loaded_state_rules()` which returns a Result.
+pub fn get_loaded_state_rules_opt(state_code: &str) -> Option<TaxRulesConfig> {
     RULES_BUNDLE.read().ok().and_then(|guard| {
         guard.as_ref().and_then(|bundle| {
             bundle.states.get(state_code).map(|entry| entry.to_tax_rules_config())
@@ -74,14 +161,40 @@ pub fn get_loaded_state_rules(state_code: &str) -> Option<TaxRulesConfig> {
 }
 
 /// Get metadata from loaded bundle
-pub fn get_rules_bundle_metadata() -> Option<RulesBundleMetadata> {
+///
+/// Returns metadata if rules are loaded, or an error if:
+/// - Lock is poisoned
+/// - Rules not initialized
+pub fn get_rules_bundle_metadata() -> Result<RulesBundleMetadata, RulesBundleError> {
+    let guard = RULES_BUNDLE.read()?;
+    let bundle = guard.as_ref().ok_or(RulesBundleError::NotInitialized)?;
+    Ok(bundle.metadata.clone())
+}
+
+/// Get metadata from loaded bundle (legacy compatibility)
+///
+/// DEPRECATED: Use `get_rules_bundle_metadata()` which returns a Result.
+pub fn get_rules_bundle_metadata_opt() -> Option<RulesBundleMetadata> {
     RULES_BUNDLE.read().ok().and_then(|guard| {
         guard.as_ref().map(|bundle| bundle.metadata.clone())
     })
 }
 
 /// Get list of available states from bundle
-pub fn get_available_states() -> Vec<String> {
+///
+/// Returns list of state codes, or an error if:
+/// - Lock is poisoned
+/// - Rules not initialized
+pub fn get_available_states() -> Result<Vec<String>, RulesBundleError> {
+    let guard = RULES_BUNDLE.read()?;
+    let bundle = guard.as_ref().ok_or(RulesBundleError::NotInitialized)?;
+    Ok(bundle.states.keys().cloned().collect())
+}
+
+/// Get list of available states from bundle (legacy compatibility)
+///
+/// DEPRECATED: Use `get_available_states()` which returns a Result.
+pub fn get_available_states_unchecked() -> Vec<String> {
     RULES_BUNDLE.read().ok().map(|guard| {
         guard.as_ref().map(|bundle| {
             bundle.states.keys().cloned().collect()
@@ -596,18 +709,28 @@ mod tests {
 
     #[test]
     fn test_initialize_and_retrieve() {
-        clear_rules(); // Reset from any prior tests
+        let _ = clear_rules(); // Reset from any prior tests
 
         let result = initialize_rules(SAMPLE_BUNDLE);
         assert!(result.is_ok());
-        assert!(rules_initialized());
+        assert!(rules_initialized().unwrap_or(false));
 
         let rules = get_loaded_state_rules("IN");
-        assert!(rules.is_some());
+        assert!(rules.is_ok());
         let rules = rules.unwrap();
         assert_eq!(rules.state_code, "IN");
 
-        clear_rules();
-        assert!(!rules_initialized());
+        assert!(clear_rules().is_ok());
+        assert!(!rules_initialized().unwrap_or(true));
+    }
+
+    #[test]
+    fn test_not_initialized_error() {
+        // Clear first to ensure clean state
+        let _ = clear_rules();
+
+        // Accessing rules when not initialized should return NotInitialized error
+        let result = get_loaded_state_rules("IN");
+        assert!(matches!(result, Err(RulesBundleError::NotInitialized)));
     }
 }

@@ -244,6 +244,27 @@ func (p *PostgresEmailDatabase) InitSchema() error {
 
 		CREATE INDEX IF NOT EXISTS idx_email_signatures_dealership_user
 			ON email_signatures(dealership_id, user_id);
+
+		-- Email preferences (per-user settings)
+		CREATE TABLE IF NOT EXISTS email_preferences (
+			id UUID PRIMARY KEY,
+			dealership_id UUID NOT NULL,
+			user_id UUID NOT NULL,
+			reading_pane_position VARCHAR(20) NOT NULL DEFAULT 'right',
+			conversation_view BOOLEAN NOT NULL DEFAULT TRUE,
+			desktop_notifications BOOLEAN NOT NULL DEFAULT TRUE,
+			auto_advance BOOLEAN NOT NULL DEFAULT TRUE,
+			preview_lines INTEGER NOT NULL DEFAULT 2,
+			density VARCHAR(20) NOT NULL DEFAULT 'comfortable',
+			swipe_left_action VARCHAR(20) NOT NULL DEFAULT 'delete',
+			swipe_right_action VARCHAR(20) NOT NULL DEFAULT 'archive',
+			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			UNIQUE(dealership_id, user_id)
+		);
+
+		CREATE INDEX IF NOT EXISTS idx_email_preferences_dealership_user
+			ON email_preferences(dealership_id, user_id);
 	`
 
 	_, err := p.db.Exec(schema)

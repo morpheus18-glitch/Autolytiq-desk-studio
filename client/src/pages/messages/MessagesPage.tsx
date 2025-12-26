@@ -1,7 +1,7 @@
 /**
- * Messages Page
+ * Messages Page - iMessage-style Premium Design
  *
- * Main component for the RCS/iMessage-style messaging interface.
+ * Full-screen messaging interface with glass morphism and fluid animations.
  */
 
 import { useState, useEffect, useRef, useCallback, type JSX } from 'react';
@@ -22,16 +22,16 @@ import { useMessagingWebSocket } from '@/hooks/useMessagingWebSocket';
 import type { Message, ReactionType } from '@/types/messaging';
 import { getConversationDisplayName, isOwnMessage } from '@/types/messaging';
 import {
-  MessageCircle,
   Search,
   MoreVertical,
   ArrowLeft,
   Users,
   Plus,
-  Shield,
-  ShieldOff,
+  Phone,
+  Video,
+  Info,
+  Edit,
 } from 'lucide-react';
-import { Button } from '@design-system';
 
 import { useScreenshotProtection } from './hooks';
 import {
@@ -44,18 +44,54 @@ import {
 } from './components';
 import { NewConversationModal } from './NewConversationModal';
 
-// eslint-disable-next-line complexity
+// =====================================================
+// BREAKPOINT HOOK
+// =====================================================
+
+function useBreakpoint() {
+  const [breakpoint, setBreakpoint] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
+
+  useEffect(() => {
+    const updateBreakpoint = () => {
+      if (window.innerWidth < 768) {
+        setBreakpoint('mobile');
+      } else if (window.innerWidth < 1024) {
+        setBreakpoint('tablet');
+      } else {
+        setBreakpoint('desktop');
+      }
+    };
+
+    updateBreakpoint();
+    window.addEventListener('resize', updateBreakpoint);
+    return () => window.removeEventListener('resize', updateBreakpoint);
+  }, []);
+
+  return {
+    breakpoint,
+    isMobile: breakpoint === 'mobile',
+    isTablet: breakpoint === 'tablet',
+    isDesktop: breakpoint === 'desktop',
+  };
+}
+
+// =====================================================
+// MAIN MESSAGES PAGE
+// =====================================================
+
 export function MessagesPage(): JSX.Element {
   const { user } = useAuth();
   const userId = user?.id || '';
+  const { isMobile } = useBreakpoint();
 
   // State
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
-  const [screenshotProtectionEnabled, setScreenshotProtectionEnabled] = useState(true);
+  const [screenshotProtectionEnabled, setScreenshotProtectionEnabled] = useState(false);
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
+  const [mobileView, setMobileView] = useState<'list' | 'chat'>('list');
 
   // Screenshot protection
   const isProtected = useScreenshotProtection(screenshotProtectionEnabled);
@@ -91,7 +127,6 @@ export function MessagesPage(): JSX.Element {
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   // Subscribe to selected conversation
   useEffect(() => {
@@ -107,7 +142,18 @@ export function MessagesPage(): JSX.Element {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messagesData?.messages.length]);
 
-  // Handlers
+  // Handle mobile navigation
+  const handleSelectConversation = (id: string) => {
+    setSelectedConversationId(id);
+    if (isMobile) setMobileView('chat');
+  };
+
+  const handleBackToList = () => {
+    setMobileView('list');
+    setSelectedConversationId(null);
+  };
+
+  // Message handlers
   const handleSendMessage = useCallback(
     (content: string, replyToId?: string) => {
       if (!selectedConversationId) return;
@@ -167,64 +213,75 @@ export function MessagesPage(): JSX.Element {
 
   const typingUsers = selectedConversationId ? getTypingUsers(selectedConversationId) : [];
 
-  return (
-    <MainLayout>
-      <div className="flex flex-col h-[calc(100vh-4rem)]">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Messages</h1>
-            <p className="text-sm text-muted-foreground">Team communication</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <ConnectionStatus status={wsStatus} />
-            <button
-              onClick={() => setScreenshotProtectionEnabled(!screenshotProtectionEnabled)}
-              className={cn(
-                'flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors',
-                screenshotProtectionEnabled
-                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                  : 'bg-muted text-muted-foreground'
-              )}
-            >
-              {screenshotProtectionEnabled ? (
-                <Shield className="h-4 w-4" />
-              ) : (
-                <ShieldOff className="h-4 w-4" />
-              )}
-              <span className="hidden sm:inline">
-                {screenshotProtectionEnabled ? 'Protected' : 'Unprotected'}
-              </span>
-            </button>
-          </div>
-        </div>
+  // Mobile: show either list or chat
+  const showConversationList = !isMobile || mobileView === 'list';
+  const showChatArea = !isMobile || mobileView === 'chat';
 
-        {/* Main content */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Sidebar */}
-          <div className="w-80 flex-shrink-0 border-r border-border flex flex-col">
-            <div className="p-4">
+  return (
+    <MainLayout hideMobileNav={isMobile} fullBleed>
+      <div className="flex h-[calc(100vh-64px)] bg-background">
+        {/* Conversation List Sidebar */}
+        {showConversationList && (
+          <div
+            className={cn(
+              'flex flex-col border-r border-gray-200/50 dark:border-zinc-700/50',
+              'bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl',
+              isMobile ? 'w-full' : 'w-80 lg:w-96 flex-shrink-0'
+            )}
+          >
+            {/* Sidebar Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200/50 dark:border-zinc-700/50">
+              <h1 className="text-2xl font-bold text-foreground">Messages</h1>
+              <div className="flex items-center gap-2">
+                <ConnectionStatus status={wsStatus} />
+                <button
+                  onClick={() => setIsNewConversationModalOpen(true)}
+                  className={cn(
+                    'p-2 rounded-full transition-all duration-200',
+                    'bg-blue-500 text-white shadow-lg shadow-blue-500/30',
+                    'hover:bg-blue-600 hover:shadow-blue-500/40',
+                    'active:scale-95'
+                  )}
+                >
+                  <Edit className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Search */}
+            <div className="p-3">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search conversations..."
+                  placeholder="Search"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  className={cn(
+                    'w-full pl-10 pr-4 py-2.5 rounded-xl text-sm',
+                    'bg-gray-100 dark:bg-zinc-800 border-0',
+                    'focus:outline-none focus:ring-2 focus:ring-blue-500/50',
+                    'placeholder:text-gray-400'
+                  )}
                 />
               </div>
             </div>
 
+            {/* Conversation List */}
             <div className="flex-1 overflow-y-auto px-2">
               {isLoadingConversations ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                <div className="flex items-center justify-center py-12">
+                  <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : filteredConversations?.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No conversations yet</p>
+                <div className="text-center py-12">
+                  <p className="text-gray-500 dark:text-gray-400">No conversations yet</p>
+                  <button
+                    onClick={() => setIsNewConversationModalOpen(true)}
+                    className="mt-4 text-blue-500 hover:text-blue-600 font-medium"
+                  >
+                    Start a new conversation
+                  </button>
                 </div>
               ) : (
                 filteredConversations?.map((conversation) => (
@@ -233,38 +290,45 @@ export function MessagesPage(): JSX.Element {
                     conversation={conversation}
                     isSelected={conversation.id === selectedConversationId}
                     currentUserId={userId}
-                    onClick={() => setSelectedConversationId(conversation.id)}
+                    onClick={() => handleSelectConversation(conversation.id)}
                   />
                 ))
               )}
             </div>
-
-            <div className="p-4 border-t border-border">
-              <Button
-                variant="primary"
-                className="w-full"
-                onClick={() => setIsNewConversationModalOpen(true)}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                New Conversation
-              </Button>
-            </div>
           </div>
+        )}
 
-          {/* Chat area */}
-          <div className="flex-1 flex flex-col min-w-0">
+        {/* Chat Area */}
+        {showChatArea && (
+          <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-zinc-900">
             {selectedConversationId && selectedConversation ? (
               <>
-                {/* Chat header */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                {/* Chat Header */}
+                <div
+                  className={cn(
+                    'flex items-center justify-between px-4 py-3',
+                    'border-b border-gray-200/50 dark:border-zinc-700/50',
+                    'bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl'
+                  )}
+                >
                   <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => setSelectedConversationId(null)}
-                      className="lg:hidden p-2 rounded-lg hover:bg-muted"
+                    {isMobile && (
+                      <button
+                        onClick={handleBackToList}
+                        className="p-2 -ml-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800"
+                      >
+                        <ArrowLeft className="h-5 w-5 text-blue-500" />
+                      </button>
+                    )}
+                    <div
+                      className={cn(
+                        'w-10 h-10 rounded-full flex items-center justify-center font-semibold text-white',
+                        'bg-gradient-to-br shadow-md',
+                        selectedConversation.type === 'GROUP'
+                          ? 'from-violet-500 to-purple-600'
+                          : 'from-blue-500 to-indigo-600'
+                      )}
                     >
-                      <ArrowLeft className="h-5 w-5" />
-                    </button>
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary">
                       {selectedConversation.type === 'GROUP' ? (
                         <Users className="h-5 w-5" />
                       ) : (
@@ -272,35 +336,43 @@ export function MessagesPage(): JSX.Element {
                       )}
                     </div>
                     <div>
-                      <h2 className="font-medium text-foreground">
+                      <h2 className="font-semibold text-foreground">
                         {getConversationDisplayName(selectedConversation, userId)}
                       </h2>
-                      <p className="text-xs text-muted-foreground">
-                        {selectedConversation.participants.length} participants
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {selectedConversation.participants.length} participant
+                        {selectedConversation.participants.length > 1 ? 's' : ''}
                       </p>
                     </div>
                   </div>
-                  <button className="p-2 rounded-lg hover:bg-muted">
-                    <MoreVertical className="h-5 w-5 text-muted-foreground" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button className="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-800">
+                      <Phone className="h-5 w-5" />
+                    </button>
+                    <button className="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-800">
+                      <Video className="h-5 w-5" />
+                    </button>
+                    <button className="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-800">
+                      <Info className="h-5 w-5" />
+                    </button>
+                  </div>
                 </div>
 
-                {/* Messages */}
+                {/* Messages Area */}
                 <div
-                  ref={messagesContainerRef}
                   className={cn(
-                    'flex-1 overflow-y-auto py-4',
-                    isProtected && 'blur-xl select-none pointer-events-none'
+                    'flex-1 overflow-y-auto',
+                    'bg-gradient-to-b from-gray-50 to-white dark:from-zinc-900 dark:to-zinc-950'
                   )}
                 >
                   {isLoadingMessages ? (
-                    <div className="flex items-center justify-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                    <div className="flex items-center justify-center h-full">
+                      <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
                     </div>
                   ) : messagesData?.messages.length === 0 ? (
                     <EmptyState type="no-messages" />
                   ) : (
-                    <div className="space-y-1">
+                    <div className="py-4">
                       {messagesData?.messages.map((message, index) => {
                         const prevMessage = messagesData.messages[index - 1];
                         const showAvatar =
@@ -319,26 +391,13 @@ export function MessagesPage(): JSX.Element {
                           />
                         );
                       })}
+                      <TypingIndicator users={typingUsers} />
                       <div ref={messagesEndRef} />
                     </div>
                   )}
-                  <TypingIndicator users={typingUsers} />
                 </div>
 
-                {/* Protected overlay */}
-                {isProtected && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
-                    <div className="text-center">
-                      <Shield className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                      <p className="text-lg font-medium">Content Protected</p>
-                      <p className="text-sm text-muted-foreground">
-                        Return to the app to view messages
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Message input */}
+                {/* Message Input */}
                 <MessageInput
                   replyTo={replyTo}
                   editingMessage={editingMessage}
@@ -350,10 +409,10 @@ export function MessagesPage(): JSX.Element {
                 />
               </>
             ) : (
-              <EmptyState type="no-conversation" />
+              !isMobile && <EmptyState type="no-conversation" />
             )}
           </div>
-        </div>
+        )}
       </div>
 
       {/* New Conversation Modal */}
@@ -362,7 +421,7 @@ export function MessagesPage(): JSX.Element {
         onClose={() => setIsNewConversationModalOpen(false)}
         currentUserId={userId}
         onConversationCreated={(conversationId) => {
-          setSelectedConversationId(conversationId);
+          handleSelectConversation(conversationId);
         }}
       />
     </MainLayout>

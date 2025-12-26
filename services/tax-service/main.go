@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -18,8 +19,9 @@ import (
 
 // Config holds service configuration
 type Config struct {
-	Port     string
-	WASMPath string
+	Port          string
+	WASMPath      string
+	ServiceSecret string
 }
 
 // TaxEngine wraps the WASM tax calculation engine
@@ -268,6 +270,9 @@ func NewServer(config *Config) (*Server, error) {
 		engine: engine,
 	}
 
+	// Add service authentication middleware for inter-service security
+	s.router.Use(serviceAuthMiddleware(config.ServiceSecret))
+
 	s.setupRoutes()
 	return s, nil
 }
@@ -282,6 +287,58 @@ func (s *Server) setupRoutes() {
 	s.router.HandleFunc("/api/v1/tax/jurisdiction", s.resolveJurisdiction).Methods("POST")
 	s.router.HandleFunc("/api/v1/tax/states", s.listStates).Methods("GET")
 	s.router.HandleFunc("/api/v1/tax/states/{code}", s.getStateRules).Methods("GET")
+}
+
+// serviceAuthMiddleware provides inter-service authentication
+// Since tax-service doesn't use the shared logging package, we inline the middleware here
+func serviceAuthMiddleware(serviceSecret string) func(http.Handler) http.Handler {
+	bypassPaths := map[string]bool{
+		"/health": true,
+		"/ready":  true,
+		"/live":   true,
+	}
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Skip auth if no service secret is configured (migration mode)
+			if serviceSecret == "" {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			// Check if path should bypass authentication
+			if bypassPaths[r.URL.Path] {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			// Check for service auth header
+			authHeader := r.Header.Get("X-Service-Auth")
+			if authHeader != "" {
+				// Validate using constant-time comparison to prevent timing attacks
+				if subtle.ConstantTimeCompare([]byte(authHeader), []byte(serviceSecret)) == 1 {
+					next.ServeHTTP(w, r)
+					return
+				}
+				http.Error(w, `{"error":"Invalid service credentials"}`, http.StatusForbidden)
+				return
+			}
+
+			// Check if this is an external request (has JWT Authorization header)
+			if r.Header.Get("Authorization") != "" {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			// Check for dealership context headers (set by API gateway after JWT validation)
+			if r.Header.Get("X-Dealership-ID") != "" || r.Header.Get("X-User-ID") != "" {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			http.Error(w, `{"error":"Unauthorized: missing service authentication"}`, http.StatusUnauthorized)
+		})
+	}
 }
 
 // healthCheck handler
@@ -466,8 +523,9 @@ func (s *Server) Start() error {
 
 func loadConfig() *Config {
 	return &Config{
-		Port:     getEnv("PORT", "8090"),
-		WASMPath: getEnv("WASM_PATH", ""),
+		Port:          getEnv("PORT", "8090"),
+		WASMPath:      getEnv("WASM_PATH", ""),
+		ServiceSecret: getEnv("SERVICE_SECRET", ""),
 	}
 }
 

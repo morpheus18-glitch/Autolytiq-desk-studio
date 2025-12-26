@@ -3,6 +3,7 @@ module autolytiq/services/data-retention-service
 go 1.18
 
 require (
+	autolytiq/services/shared/auth v0.0.0
 	autolytiq/services/shared/logging v0.0.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
@@ -18,3 +19,5 @@ require (
 )
 
 replace autolytiq/services/shared/logging => ../shared/logging
+
+replace autolytiq/services/shared/auth => ../shared/auth

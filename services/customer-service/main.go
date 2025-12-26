@@ -1,15 +1,18 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
-	"autolytiq/shared/logging"
-
+	"autolytiq/shared/auth"
 	"autolytiq/shared/encryption"
+	"autolytiq/shared/logging"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -50,6 +53,7 @@ type Config struct {
 	DatabaseURL    string
 	EncryptionKey  string
 	EncryptEnabled bool
+	ServiceSecret  string
 }
 
 // Server represents the Customer service server
@@ -90,6 +94,8 @@ func NewServer(config *Config, db CustomerDatabase, logger *logging.Logger) *Ser
 func (s *Server) setupMiddleware() {
 	s.router.Use(logging.RequestIDMiddleware)
 	s.router.Use(logging.RequestLoggingMiddleware(s.logger))
+	// Add service authentication middleware for inter-service security
+	s.router.Use(auth.ServiceAuthMiddleware(auth.NewServiceAuthConfig(s.config.ServiceSecret)))
 }
 
 // setupRoutes configures all routes
@@ -299,10 +305,40 @@ func (s *Server) deleteCustomer(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// Start starts the Customer service server
+// Start starts the Customer service server with graceful shutdown support
 func (s *Server) Start() error {
-	s.logger.Infof("Starting Customer Service on port %s", s.config.Port)
-	return http.ListenAndServe(":"+s.config.Port, s.router)
+	srv := &http.Server{
+		Addr:    ":" + s.config.Port,
+		Handler: s.router,
+	}
+
+	// Channel to listen for shutdown signals
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
+	// Start server in goroutine
+	go func() {
+		s.logger.Infof("Starting Customer Service on port %s", s.config.Port)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			s.logger.Fatalf("Server failed: %v", err)
+		}
+	}()
+
+	// Wait for shutdown signal
+	<-stop
+	s.logger.Info("Shutting down gracefully...")
+
+	// Create context with timeout for shutdown
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		s.logger.Errorf("Graceful shutdown failed: %v", err)
+		return err
+	}
+
+	s.logger.Info("Server stopped")
+	return nil
 }
 
 func loadConfig() *Config {
@@ -311,6 +347,7 @@ func loadConfig() *Config {
 		DatabaseURL:    getEnv("DATABASE_URL", "postgresql://localhost:5432/autolytiq"),
 		EncryptionKey:  os.Getenv("PII_ENCRYPTION_KEY"),
 		EncryptEnabled: os.Getenv("PII_ENCRYPTION_KEY") != "",
+		ServiceSecret:  getEnv("SERVICE_SECRET", ""),
 	}
 }
 

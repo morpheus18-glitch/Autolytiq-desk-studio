@@ -109,6 +109,11 @@ func (s *Server) doProxyRequest(w http.ResponseWriter, r *http.Request, targetSe
 		proxyReq.Header.Set("X-User-Role", role)
 	}
 
+	// Add service authentication header for inter-service communication
+	if s.config.ServiceSecret != "" {
+		proxyReq.Header.Set("X-Service-Auth", s.config.ServiceSecret)
+	}
+
 	// Execute request
 	resp, err := httpClient.Do(proxyReq)
 	if err != nil {
@@ -147,19 +152,82 @@ func (s *Server) doProxyRequest(w http.ResponseWriter, r *http.Request, targetSe
 	}).Debug("Proxy request completed")
 }
 
-// WebSocket upgrader for the API gateway
-var wsUpgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true // Allow all origins in development
-	},
+// createWSUpgrader creates a WebSocket upgrader with proper origin validation
+// This must be called per-request to access the server's allowed origins config
+func (s *Server) createWSUpgrader() websocket.Upgrader {
+	return websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin: func(r *http.Request) bool {
+			origin := r.Header.Get("Origin")
+			allowedOrigins := s.parseAllowedOrigins()
+
+			for _, allowed := range allowedOrigins {
+				if origin == allowed {
+					return true
+				}
+			}
+
+			// Log rejected origins for security monitoring
+			s.logger.WithFields(map[string]interface{}{
+				"origin":          origin,
+				"remote_addr":     r.RemoteAddr,
+				"allowed_origins": allowedOrigins,
+			}).Warn("WebSocket connection rejected: origin not allowed")
+			return false
+		},
+	}
+}
+
+// parseAllowedOrigins parses the ALLOWED_ORIGINS config into a slice
+func (s *Server) parseAllowedOrigins() []string {
+	originsConfig := s.config.AllowedOrigins
+	if originsConfig == "" || originsConfig == "*" {
+		// Default allowed origins for development - do not allow wildcard for WebSocket
+		return []string{
+			"http://localhost:5173",
+			"http://localhost:3000",
+			"http://127.0.0.1:5173",
+			"http://127.0.0.1:3000",
+		}
+	}
+
+	// Support comma-separated list
+	origins := strings.Split(originsConfig, ",")
+	result := make([]string, 0, len(origins))
+	for _, origin := range origins {
+		trimmed := strings.TrimSpace(origin)
+		if trimmed != "" && trimmed != "*" {
+			result = append(result, trimmed)
+		}
+	}
+	return result
 }
 
 // proxyWebSocket proxies WebSocket connections to a target service
 func (s *Server) proxyWebSocket(w http.ResponseWriter, r *http.Request, targetServiceURL string) {
 	// Get logger with context
 	ctxLogger := s.logger.WithContext(r.Context())
+
+	// Validate origin BEFORE doing any backend work (fail fast for security)
+	origin := r.Header.Get("Origin")
+	allowedOrigins := s.parseAllowedOrigins()
+	originAllowed := false
+	for _, allowed := range allowedOrigins {
+		if origin == allowed {
+			originAllowed = true
+			break
+		}
+	}
+	if !originAllowed {
+		ctxLogger.WithFields(map[string]interface{}{
+			"origin":          origin,
+			"remote_addr":     r.RemoteAddr,
+			"allowed_origins": allowedOrigins,
+		}).Warn("WebSocket connection rejected: origin not allowed")
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
 
 	// Parse target URL and convert to WebSocket URL
 	targetURL, err := url.Parse(targetServiceURL)
@@ -195,7 +263,8 @@ func (s *Server) proxyWebSocket(w http.ResponseWriter, r *http.Request, targetSe
 	}
 	defer backendConn.Close()
 
-	// Upgrade the client connection
+	// Upgrade the client connection using the secure upgrader
+	wsUpgrader := s.createWSUpgrader()
 	clientConn, err := wsUpgrader.Upgrade(w, r, nil)
 	if err != nil {
 		ctxLogger.WithError(err).Error("Failed to upgrade client connection")

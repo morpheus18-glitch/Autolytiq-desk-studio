@@ -1,9 +1,14 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
+	"autolytiq/shared/auth"
 	"autolytiq/shared/logging"
 
 	"github.com/gorilla/mux"
@@ -49,6 +54,12 @@ func main() {
 	// Apply logging middleware
 	router.Use(logging.RequestIDMiddleware)
 	router.Use(logging.RequestLoggingMiddleware(logger))
+	// Add service authentication middleware for inter-service security
+	// Note: WebSocket endpoint bypassed as it has its own auth mechanism
+	serviceSecret := os.Getenv("SERVICE_SECRET")
+	authConfig := auth.NewServiceAuthConfig(serviceSecret).
+		WithBypassPaths("/ws/messaging") // WebSocket has its own auth
+	router.Use(auth.ServiceAuthMiddleware(authConfig))
 
 	// Health check
 	router.HandleFunc("/health", handler.HealthCheck).Methods("GET")
@@ -59,7 +70,7 @@ func main() {
 	})
 
 	// API routes
-	api := router.PathPrefix("/api/messaging").Subrouter()
+	api := router.PathPrefix("/messaging").Subrouter()
 
 	// Conversations
 	api.HandleFunc("/conversations", handler.ListConversations).Methods("GET")
@@ -92,10 +103,36 @@ func main() {
 	// CORS middleware
 	corsHandler := corsMiddleware(router)
 
-	logger.Infof("Messaging service starting on port %s", port)
-	if err := http.ListenAndServe(":"+port, corsHandler); err != nil {
-		logger.Fatalf("Server failed: %v", err)
+	srv := &http.Server{
+		Addr:    ":" + port,
+		Handler: corsHandler,
 	}
+
+	// Channel to listen for shutdown signals
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
+	// Start server in goroutine
+	go func() {
+		logger.Infof("Messaging service starting on port %s", port)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Fatalf("Server failed: %v", err)
+		}
+	}()
+
+	// Wait for shutdown signal
+	<-stop
+	logger.Info("Shutting down gracefully...")
+
+	// Create context with timeout for shutdown
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		logger.Errorf("Graceful shutdown failed: %v", err)
+	}
+
+	logger.Info("Server stopped")
 }
 
 func corsMiddleware(next http.Handler) http.Handler {

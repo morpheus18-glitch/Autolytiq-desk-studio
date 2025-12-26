@@ -75,9 +75,13 @@ pub mod rules_bundle;
 /// Special tax scheme calculators (GA TAVT, NC HUT, WV Privilege, SC Cap)
 pub mod special_schemes;
 
+/// Input validation for WASM boundary
+pub mod validation;
+
 use wasm_bindgen::prelude::*;
 pub use types::*;
 pub use deal_types::*;
+pub use validation::{is_valid_state_code, validation_errors_to_string};
 
 // Re-export key functions for ergonomic native Rust usage
 pub use deal_calculator::calculate_deal as calculate_deal_native;
@@ -100,10 +104,19 @@ pub fn init() {
 ///
 /// This is the main entry point for deal calculations.
 /// Takes JSON input and returns JSON output for easy JS interop.
+///
+/// # Validation
+///
+/// Input is validated at the WASM boundary before any calculations occur.
+/// Invalid inputs will return an error immediately with clear messages.
 #[wasm_bindgen]
 pub fn calculate_deal(input_json: &str) -> Result<String, JsValue> {
     let input: DealInput = serde_json::from_str(input_json)
         .map_err(|e| JsValue::from_str(&format!("Failed to parse deal input: {}", e)))?;
+
+    // Validate input at WASM boundary
+    input.validate()
+        .map_err(|errors| JsValue::from_str(&validation_errors_to_string(errors)))?;
 
     let result = deal_calculator::calculate_deal(&input, None)
         .map_err(|e| JsValue::from_str(&e))?;
@@ -115,27 +128,73 @@ pub fn calculate_deal(input_json: &str) -> Result<String, JsValue> {
 /// Calculate a finance payment
 ///
 /// Quick calculation for monthly payment given principal, APR, and term.
+///
+/// # Validation
+///
+/// - Principal must be positive
+/// - APR must be between 0 and 99.9%
+/// - Term must be between 1 and 120 months
+///
+/// Returns 0.0 if validation fails (use calculate_finance_payment_validated for error details)
 #[wasm_bindgen]
 pub fn calculate_finance_payment(principal: f64, apr: f64, term_months: u16) -> f64 {
+    if validation::validate_finance_payment_inputs(principal, apr, term_months).is_err() {
+        return 0.0;
+    }
     finance::calculate_payment(principal, apr, term_months)
 }
 
+/// Calculate a finance payment with validation (returns Result)
+///
+/// Same as calculate_finance_payment but returns error details on validation failure.
+#[wasm_bindgen]
+pub fn calculate_finance_payment_validated(principal: f64, apr: f64, term_months: u16) -> Result<f64, JsValue> {
+    validation::validate_finance_payment_inputs(principal, apr, term_months)
+        .map_err(|errors| JsValue::from_str(&validation_errors_to_string(errors)))?;
+    Ok(finance::calculate_payment(principal, apr, term_months))
+}
+
 /// Calculate total interest for a finance deal
+///
+/// Returns 0.0 if validation fails.
 #[wasm_bindgen]
 pub fn calculate_finance_interest(principal: f64, apr: f64, term_months: u16) -> f64 {
+    if validation::validate_finance_payment_inputs(principal, apr, term_months).is_err() {
+        return 0.0;
+    }
     let payment = finance::calculate_payment(principal, apr, term_months);
     finance::calculate_total_interest(principal, payment, term_months)
 }
 
 /// Generate payment matrix for multiple term/rate scenarios
+///
+/// # Validation
+///
+/// - Amount financed must be positive
+/// - Base APR must be between 0 and 99.9%
+/// - Terms array must contain valid values (1-120 months)
 #[wasm_bindgen]
 pub fn generate_payment_matrix(
     amount_financed: f64,
     base_apr: f64,
     terms_json: &str,
 ) -> Result<String, JsValue> {
+    // Validate base inputs
+    validation::validate_payment_matrix_inputs(amount_financed, base_apr)
+        .map_err(|errors| JsValue::from_str(&validation_errors_to_string(errors)))?;
+
     let terms: Vec<u16> = serde_json::from_str(terms_json)
         .map_err(|e| JsValue::from_str(&format!("Failed to parse terms: {}", e)))?;
+
+    // Validate terms
+    for term in &terms {
+        if *term == 0 || *term > 120 {
+            return Err(JsValue::from_str(&format!(
+                "Validation error: Invalid term {}. Must be between 1 and 120 months.",
+                term
+            )));
+        }
+    }
 
     let matrix = finance::generate_payment_matrix(
         amount_financed,
@@ -149,6 +208,13 @@ pub fn generate_payment_matrix(
 }
 
 /// Generate amortization schedule
+///
+/// # Validation
+///
+/// - Principal must be positive
+/// - APR must be between 0 and 99.9%
+/// - Term must be between 1 and 120 months
+/// - Start date must be in YYYY-MM-DD format
 #[wasm_bindgen]
 pub fn generate_amortization_schedule(
     principal: f64,
@@ -156,6 +222,10 @@ pub fn generate_amortization_schedule(
     term_months: u16,
     start_date: &str,
 ) -> Result<String, JsValue> {
+    // Validate inputs
+    validation::validate_amortization_inputs(principal, apr, term_months, start_date)
+        .map_err(|errors| JsValue::from_str(&validation_errors_to_string(errors)))?;
+
     let schedule = finance::generate_amortization_schedule(principal, apr, term_months, start_date);
 
     serde_json::to_string(&schedule)
@@ -175,8 +245,13 @@ pub fn apr_to_money_factor(apr: f64) -> f64 {
 }
 
 /// Calculate lease residual value
+///
+/// Returns 0.0 if validation fails.
 #[wasm_bindgen]
 pub fn calculate_residual_value(msrp: f64, residual_percent: f64) -> f64 {
+    if validation::validate_residual_inputs(msrp, residual_percent).is_err() {
+        return 0.0;
+    }
     lease::calculate_residual_value(msrp, residual_percent)
 }
 
@@ -186,7 +261,13 @@ pub fn calculate_residual_value(msrp: f64, residual_percent: f64) -> f64 {
 
 /// Calculate tax for a vehicle deal (WASM-exported function)
 ///
-/// Takes JSON input and returns JSON output for easy JS interop
+/// Takes JSON input and returns JSON output for easy JS interop.
+///
+/// # Validation
+///
+/// Input is validated at the WASM boundary before any calculations occur.
+/// Invalid inputs (negative amounts, invalid state codes, etc.) will return
+/// an error immediately with clear messages.
 #[wasm_bindgen]
 pub fn calculate_vehicle_tax(rules_json: &str, input_json: &str) -> Result<String, JsValue> {
     let rules: TaxRulesConfig = serde_json::from_str(rules_json)
@@ -194,6 +275,10 @@ pub fn calculate_vehicle_tax(rules_json: &str, input_json: &str) -> Result<Strin
 
     let input: TaxCalculationInput = serde_json::from_str(input_json)
         .map_err(|e| JsValue::from_str(&format!("Failed to parse input: {}", e)))?;
+
+    // Validate input at WASM boundary
+    input.validate()
+        .map_err(|errors| JsValue::from_str(&validation_errors_to_string(errors)))?;
 
     let result = calculator::calculate_tax(&rules, &input)
         .map_err(|e| JsValue::from_str(&e))?;
@@ -260,7 +345,7 @@ pub fn initialize_rates(bundle_json: &str) -> String {
         Err(e) => {
             serde_json::json!({
                 "success": false,
-                "error": e,
+                "error": e.to_string(),
             }).to_string()
         }
     }
@@ -269,18 +354,28 @@ pub fn initialize_rates(bundle_json: &str) -> String {
 /// Check if rates have been initialized
 ///
 /// Returns true if `initialize_rates` has been called successfully.
+/// Returns false if not initialized OR if lock is poisoned (logs error).
 #[wasm_bindgen]
 pub fn rates_loaded() -> bool {
-    rate_bundle::rates_initialized()
+    rate_bundle::rates_initialized().unwrap_or_else(|e| {
+        // Log the poison error but return false to maintain WASM interface
+        #[cfg(target_arch = "wasm32")]
+        web_sys::console::error_1(&format!("Rate bundle lock poisoned: {}", e).into());
+        false
+    })
 }
 
 /// Clear loaded rates (revert to compiled defaults)
 ///
 /// Use this to force the engine to use compiled default rates,
 /// or before re-initializing with a new bundle.
+/// Silently ignores lock poison errors to maintain WASM interface stability.
 #[wasm_bindgen]
 pub fn clear_rates() {
-    rate_bundle::clear_rates()
+    if let Err(e) = rate_bundle::clear_rates() {
+        #[cfg(target_arch = "wasm32")]
+        web_sys::console::error_1(&format!("Failed to clear rates: {}", e).into());
+    }
 }
 
 /// Get rate bundle metadata
@@ -289,7 +384,7 @@ pub fn clear_rates() {
 #[wasm_bindgen]
 pub fn get_rate_bundle_info() -> String {
     match rate_bundle::get_bundle_metadata() {
-        Some(metadata) => {
+        Ok(metadata) => {
             serde_json::json!({
                 "loaded": true,
                 "bundle_id": metadata.bundle_id,
@@ -300,10 +395,17 @@ pub fn get_rate_bundle_info() -> String {
                 "source": metadata.source,
             }).to_string()
         }
-        None => {
+        Err(rate_bundle::RateBundleError::NotInitialized) => {
             serde_json::json!({
                 "loaded": false,
                 "message": "Using compiled default rates"
+            }).to_string()
+        }
+        Err(e) => {
+            serde_json::json!({
+                "loaded": false,
+                "error": e.to_string(),
+                "message": "Lock poisoned - using compiled default rates"
             }).to_string()
         }
     }
@@ -340,8 +442,8 @@ pub fn get_supported_states() -> String {
 /// to compiled defaults. Always call `initialize_rates()` first for current rates.
 #[wasm_bindgen]
 pub fn get_state_tax_rate(state_code: &str) -> f64 {
-    // Check for dynamically loaded rate first
-    if let Some(rate) = rate_bundle::get_loaded_state_rate(state_code) {
+    // Check for dynamically loaded rate first (use Ok variant only)
+    if let Ok(rate) = rate_bundle::get_loaded_state_rate(state_code) {
         return rate;
     }
 
@@ -365,11 +467,11 @@ pub fn get_state_tax_rate(state_code: &str) -> f64 {
 
 /// Get state rate info (includes breakdown)
 ///
-/// Returns detailed rate information if loaded from bundle, or None if using defaults.
+/// Returns detailed rate information if loaded from bundle, or defaults if not available.
 #[wasm_bindgen]
 pub fn get_state_rate_info(state_code: &str) -> String {
     match rate_bundle::get_loaded_state_info(state_code) {
-        Some(info) => {
+        Ok(info) => {
             serde_json::json!({
                 "found": true,
                 "from_bundle": true,
@@ -384,8 +486,22 @@ pub fn get_state_rate_info(state_code: &str) -> String {
                 "notes": info.notes,
             }).to_string()
         }
-        None => {
-            // Return info from compiled defaults
+        Err(rate_bundle::RateBundleError::LockPoisoned(msg)) => {
+            // Log and fall back to defaults
+            #[cfg(target_arch = "wasm32")]
+            web_sys::console::error_1(&format!("Rate bundle lock poisoned: {}", msg).into());
+            let rate = get_state_tax_rate(state_code);
+            serde_json::json!({
+                "found": true,
+                "from_bundle": false,
+                "state_code": state_code,
+                "combined_rate": rate,
+                "error": "Lock poisoned - using compiled defaults",
+                "note": "Using compiled default rate - may be outdated"
+            }).to_string()
+        }
+        Err(_) => {
+            // NotInitialized or InvalidRates - fall back to compiled defaults
             let rate = get_state_tax_rate(state_code);
             serde_json::json!({
                 "found": true,
@@ -424,10 +540,20 @@ pub fn get_state_rate_info(state_code: &str) -> String {
 ///   "deal_type": "RETAIL"
 /// }
 /// ```
+///
+/// # Validation
+///
+/// Input is validated at the WASM boundary before pipeline execution.
+/// Invalid state codes, negative amounts, or out-of-range values will
+/// return an error immediately.
 #[wasm_bindgen]
 pub fn calculate_deal_with_reciprocity(input_json: &str) -> Result<String, JsValue> {
     let input: dag::DagInput = serde_json::from_str(input_json)
         .map_err(|e| JsValue::from_str(&format!("Failed to parse DAG input: {}", e)))?;
+
+    // Validate input at WASM boundary
+    input.validate()
+        .map_err(|errors| JsValue::from_str(&validation_errors_to_string(errors)))?;
 
     let tax_dag = dag::TaxDag::new();
     let result = tax_dag.execute(&input)
@@ -446,6 +572,10 @@ pub fn calculate_deal_with_reciprocity(input_json: &str) -> Result<String, JsVal
 /// * `transaction_state` - Where deal closes (T)
 /// * `garaging_state` - Where vehicle will be kept (G, optional - defaults to home)
 /// * `deal_type` - "RETAIL" or "LEASE"
+///
+/// # Validation
+///
+/// All state codes must be valid US state codes (e.g., "TX", "CA", "NY").
 #[wasm_bindgen]
 pub fn resolve_state_reciprocity(
     home_state: &str,
@@ -453,6 +583,10 @@ pub fn resolve_state_reciprocity(
     garaging_state: &str,
     deal_type: &str,
 ) -> Result<String, JsValue> {
+    // Validate state codes
+    validation::validate_state_codes_for_reciprocity(home_state, transaction_state, garaging_state)
+        .map_err(|errors| JsValue::from_str(&validation_errors_to_string(errors)))?;
+
     let matrix = bilateral::BilateralMatrix::load_default();
 
     let dt = match deal_type.to_uppercase().as_str() {
@@ -633,7 +767,7 @@ pub fn initialize_state_rules(bundle_json: &str) -> String {
         Err(e) => {
             serde_json::json!({
                 "success": false,
-                "error": e,
+                "error": e.to_string(),
             }).to_string()
         }
     }
@@ -642,20 +776,27 @@ pub fn initialize_state_rules(bundle_json: &str) -> String {
 /// Check if state rules have been initialized from bundle
 #[wasm_bindgen]
 pub fn state_rules_loaded() -> bool {
-    rules_bundle::rules_initialized()
+    rules_bundle::rules_initialized().unwrap_or_else(|e| {
+        #[cfg(target_arch = "wasm32")]
+        web_sys::console::error_1(&format!("Rules bundle lock poisoned: {}", e).into());
+        false
+    })
 }
 
 /// Clear loaded state rules
 #[wasm_bindgen]
 pub fn clear_state_rules() {
-    rules_bundle::clear_rules()
+    if let Err(e) = rules_bundle::clear_rules() {
+        #[cfg(target_arch = "wasm32")]
+        web_sys::console::error_1(&format!("Failed to clear rules: {}", e).into());
+    }
 }
 
 /// Get rules bundle metadata
 #[wasm_bindgen]
 pub fn get_rules_bundle_info() -> String {
     match rules_bundle::get_rules_bundle_metadata() {
-        Some(metadata) => {
+        Ok(metadata) => {
             serde_json::json!({
                 "loaded": true,
                 "bundle_id": metadata.bundle_id,
@@ -666,10 +807,17 @@ pub fn get_rules_bundle_info() -> String {
                 "checksum": metadata.checksum,
             }).to_string()
         }
-        None => {
+        Err(rules_bundle::RulesBundleError::NotInitialized) => {
             serde_json::json!({
                 "loaded": false,
                 "message": "No rules bundle loaded. Using compiled state_rules.rs defaults."
+            }).to_string()
+        }
+        Err(e) => {
+            serde_json::json!({
+                "loaded": false,
+                "error": e.to_string(),
+                "message": "Lock poisoned - using compiled defaults"
             }).to_string()
         }
     }
@@ -689,7 +837,7 @@ pub fn get_rules_bundle_info() -> String {
 #[wasm_bindgen]
 pub fn get_state_rules_v2(state_code: &str) -> Result<String, JsValue> {
     // Try JSON bundle first (single source of truth)
-    if let Some(rules) = rules_bundle::get_loaded_state_rules(state_code) {
+    if let Ok(rules) = rules_bundle::get_loaded_state_rules(state_code) {
         return serde_json::to_string(&rules)
             .map_err(|e| JsValue::from_str(&format!("Failed to serialize rules: {}", e)));
     }
@@ -706,8 +854,10 @@ pub fn get_state_rules_v2(state_code: &str) -> Result<String, JsValue> {
 /// Get list of states available in the loaded bundle
 #[wasm_bindgen]
 pub fn get_bundle_states() -> String {
-    let states = rules_bundle::get_available_states();
-    serde_json::to_string(&states).unwrap_or_else(|_| "[]".to_string())
+    match rules_bundle::get_available_states() {
+        Ok(states) => serde_json::to_string(&states).unwrap_or_else(|_| "[]".to_string()),
+        Err(_) => "[]".to_string(),
+    }
 }
 
 // ============================================================================
@@ -823,5 +973,127 @@ mod tests {
         let result_json = calculate_deal(input_json).unwrap();
         assert!(result_json.contains("payment"));
         assert!(result_json.contains("amount_financed"));
+    }
+
+    // ========================================================================
+    // WASM Boundary Validation Tests
+    // ========================================================================
+
+    #[test]
+    fn test_deal_validation_rejects_invalid_state_code() {
+        let input_json = r#"{
+            "deal_type": "CASH",
+            "state_code": "XX",
+            "local_jurisdiction": null,
+            "vehicle_msrp": 40000.0,
+            "vehicle_invoice": 36000.0,
+            "selling_price": 38000.0,
+            "trade_in": null,
+            "rebates": [],
+            "cash_down": 2000.0,
+            "fi_products": [],
+            "fees": [],
+            "finance_input": null,
+            "lease_input": null
+        }"#;
+
+        let result = calculate_deal(input_json);
+        assert!(result.is_err());
+        let error = result.unwrap_err();
+        let error_str = error.as_string().unwrap();
+        assert!(error_str.contains("Invalid state code"));
+    }
+
+    #[test]
+    fn test_deal_validation_rejects_zero_selling_price() {
+        let input_json = r#"{
+            "deal_type": "CASH",
+            "state_code": "TX",
+            "local_jurisdiction": null,
+            "vehicle_msrp": 40000.0,
+            "vehicle_invoice": 36000.0,
+            "selling_price": 0.0,
+            "trade_in": null,
+            "rebates": [],
+            "cash_down": 2000.0,
+            "fi_products": [],
+            "fees": [],
+            "finance_input": null,
+            "lease_input": null
+        }"#;
+
+        let result = calculate_deal(input_json);
+        assert!(result.is_err());
+        let error = result.unwrap_err();
+        let error_str = error.as_string().unwrap();
+        assert!(error_str.contains("Selling price"));
+    }
+
+    #[test]
+    fn test_deal_validation_rejects_invalid_apr() {
+        let input_json = r#"{
+            "deal_type": "FINANCE",
+            "state_code": "TX",
+            "local_jurisdiction": null,
+            "vehicle_msrp": 40000.0,
+            "vehicle_invoice": 36000.0,
+            "selling_price": 38000.0,
+            "trade_in": null,
+            "rebates": [],
+            "cash_down": 2000.0,
+            "fi_products": [],
+            "fees": [],
+            "finance_input": {
+                "apr": 150.0,
+                "term_months": 60,
+                "payment_frequency": "MONTHLY"
+            },
+            "lease_input": null
+        }"#;
+
+        let result = calculate_deal(input_json);
+        assert!(result.is_err());
+        let error = result.unwrap_err();
+        let error_str = error.as_string().unwrap();
+        assert!(error_str.contains("APR"));
+    }
+
+    #[test]
+    fn test_finance_payment_validation_rejects_negative_principal() {
+        // Should return 0.0 for invalid input
+        let payment = calculate_finance_payment(-1000.0, 5.9, 60);
+        assert_eq!(payment, 0.0);
+
+        // Validated version should return error
+        let result = calculate_finance_payment_validated(-1000.0, 5.9, 60);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_finance_payment_validation_rejects_invalid_term() {
+        let payment = calculate_finance_payment(25000.0, 5.9, 0);
+        assert_eq!(payment, 0.0);
+
+        let result = calculate_finance_payment_validated(25000.0, 5.9, 150);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_reciprocity_validation_rejects_invalid_state() {
+        let result = resolve_state_reciprocity("XX", "IN", "", "RETAIL");
+        assert!(result.is_err());
+        let error = result.unwrap_err();
+        let error_str = error.as_string().unwrap();
+        assert!(error_str.contains("Invalid"));
+    }
+
+    #[test]
+    fn test_valid_state_code_check() {
+        assert!(is_valid_state_code("TX"));
+        assert!(is_valid_state_code("tx")); // Case insensitive
+        assert!(is_valid_state_code("DC"));
+        assert!(!is_valid_state_code("XX"));
+        assert!(!is_valid_state_code("USA"));
+        assert!(!is_valid_state_code(""));
     }
 }

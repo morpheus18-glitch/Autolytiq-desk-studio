@@ -22,6 +22,7 @@ import {
   SettingsPage,
   ShowroomPage,
   MessagesPage,
+  EmailPage,
   QuickCalcPage,
   CalculatorPage,
 } from '@/pages';
@@ -127,6 +128,12 @@ function AppRoutes(): JSX.Element {
       <Route path="/messages">
         <ProtectedRoute>
           <MessagesPage />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/email">
+        <ProtectedRoute>
+          <EmailPage />
         </ProtectedRoute>
       </Route>
 

@@ -3,6 +3,7 @@ module showroom-service
 go 1.18
 
 require (
+	autolytiq/shared/auth v0.0.0
 	autolytiq/shared/logging v0.0.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.0
@@ -26,3 +27,5 @@ require (
 )
 
 replace autolytiq/shared/logging => ../shared/logging
+
+replace autolytiq/shared/auth => ../shared/auth

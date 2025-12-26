@@ -54,6 +54,8 @@ export function useMessagingWebSocket({
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 10;
+  // Track if component is mounted to prevent state updates after unmount
+  const mountedRef = useRef(true);
 
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [typingUsers, setTypingUsers] = useState<TypingState>({});
@@ -62,6 +64,8 @@ export function useMessagingWebSocket({
   // Clean up typing indicators
   useEffect(() => {
     const interval = setInterval(() => {
+      if (!mountedRef.current) return;
+
       const now = Date.now();
       setTypingUsers((prev) => {
         const updated = { ...prev };
@@ -214,6 +218,8 @@ export function useMessagingWebSocket({
 
   const handleTypingEvent = useCallback(
     (data: MessagingWSMessage, isStart: boolean) => {
+      if (!mountedRef.current) return;
+
       const typingData = data.data as TypingIndicator;
       onTyping?.(typingData);
 
@@ -244,6 +250,8 @@ export function useMessagingWebSocket({
   // Handle incoming WebSocket messages
   const handleMessage = useCallback(
     (event: MessageEvent) => {
+      if (!mountedRef.current) return;
+
       try {
         const data = JSON.parse(event.data) as MessagingWSMessage;
         onEvent?.(data);
@@ -303,6 +311,8 @@ export function useMessagingWebSocket({
 
   // Connect to WebSocket
   const connect = useCallback(() => {
+    // CRITICAL: Check if still mounted before connecting
+    if (!mountedRef.current) return;
     if (!enabled || !userId) return;
 
     // Get auth token
@@ -310,6 +320,17 @@ export function useMessagingWebSocket({
     if (!token) {
       console.warn('No auth token available for WebSocket connection');
       return;
+    }
+
+    // Clean up any existing connection before creating a new one
+    if (wsRef.current) {
+      // Prevent onclose from triggering reconnection
+      wsRef.current.onclose = null;
+      wsRef.current.onerror = null;
+      wsRef.current.onmessage = null;
+      wsRef.current.onopen = null;
+      wsRef.current.close();
+      wsRef.current = null;
     }
 
     // Build WebSocket URL
@@ -322,6 +343,12 @@ export function useMessagingWebSocket({
     wsRef.current = ws;
 
     ws.onopen = () => {
+      // Check if still mounted before updating state
+      if (!mountedRef.current) {
+        ws.close();
+        return;
+      }
+
       setStatus('connected');
       reconnectAttempts.current = 0;
 
@@ -334,10 +361,15 @@ export function useMessagingWebSocket({
     ws.onmessage = handleMessage;
 
     ws.onerror = () => {
+      // Check if still mounted before updating state
+      if (!mountedRef.current) return;
       setStatus('error');
     };
 
     ws.onclose = () => {
+      // Check if still mounted before updating state or reconnecting
+      if (!mountedRef.current) return;
+
       setStatus('disconnected');
       wsRef.current = null;
 
@@ -355,13 +387,30 @@ export function useMessagingWebSocket({
 
   // Initialize connection
   useEffect(() => {
+    // Reset mounted flag when effect runs (component mounted or dependencies changed)
+    mountedRef.current = true;
+
     connect();
 
+    // CRITICAL: Cleanup function to prevent memory leaks
     return () => {
+      // Mark as unmounted FIRST to stop all async operations
+      mountedRef.current = false;
+
+      // Clear any pending reconnection timeout
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = undefined;
       }
+
+      // Clean up WebSocket connection
       if (wsRef.current) {
+        // IMPORTANT: Set onclose to null BEFORE closing to prevent
+        // the reconnection logic from firing on intentional close
+        wsRef.current.onclose = null;
+        wsRef.current.onerror = null;
+        wsRef.current.onmessage = null;
+        wsRef.current.onopen = null;
         wsRef.current.close();
         wsRef.current = null;
       }

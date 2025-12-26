@@ -1,0 +1,533 @@
+{
+  "metadata": {
+    "kernelId": "indiana-lease-v1.0.0",
+    "version": "1.0.0",
+    "generatedAt": "2025-12-24T00:00:00.000Z",
+    "description": "Golden test corpus for Indiana Lease Vehicle Tax Kernel",
+    "testCount": 20
+  },
+  "testCases": [
+    {
+      "id": "GOLDEN-L-001",
+      "category": "happy-path",
+      "description": "Simple 36-month lease with doc fee",
+      "rulesExercised": ["IN-L-001", "IN-L-002", "IN-L-003"],
+      "input": {
+        "dealType": "LEASE",
+        "grossCapCost": 35000,
+        "baseMonthlyPayment": 450,
+        "paymentCount": 36,
+        "residualValue": 18000,
+        "docFee": 250
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "upfront": {
+            "taxableBase": 700,
+            "taxAmount": 49,
+            "components": {
+              "docFeeTax": 17.50,
+              "firstPaymentTax": 31.50
+            }
+          },
+          "monthly": {
+            "basePayment": 450,
+            "taxPerPayment": 31.50,
+            "totalPaymentWithTax": 481.50
+          },
+          "totalTaxOverTerm": 1151.50
+        }
+      },
+      "notes": "Upfront: ($250 + $450) × 7% = $49. Monthly: $450 × 7% = $31.50. Total: $49 + ($31.50 × 35) = $1,151.50"
+    },
+    {
+      "id": "GOLDEN-L-002",
+      "category": "happy-path",
+      "description": "Lease without first payment at signing",
+      "rulesExercised": ["IN-L-001", "IN-L-002"],
+      "input": {
+        "dealType": "LEASE",
+        "grossCapCost": 30000,
+        "baseMonthlyPayment": 400,
+        "paymentCount": 36,
+        "residualValue": 15000,
+        "docFee": 250,
+        "firstPaymentDueAtSigning": false
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "upfront": {
+            "taxableBase": 250,
+            "taxAmount": 17.50,
+            "components": {
+              "docFeeTax": 17.50,
+              "firstPaymentTax": 0
+            }
+          },
+          "monthly": {
+            "taxPerPayment": 28
+          },
+          "totalTaxOverTerm": 1025.50
+        }
+      },
+      "notes": "Upfront: $250 × 7% = $17.50. All 36 payments taxed monthly."
+    },
+    {
+      "id": "GOLDEN-L-003",
+      "category": "cap-reductions",
+      "description": "Lease with cap cost reductions (NOT taxed)",
+      "rulesExercised": ["IN-L-001", "IN-L-002", "IN-L-003", "IN-L-004"],
+      "input": {
+        "dealType": "LEASE",
+        "grossCapCost": 40000,
+        "baseMonthlyPayment": 350,
+        "paymentCount": 36,
+        "residualValue": 20000,
+        "docFee": 250,
+        "capReductionCash": 3000,
+        "capReductionRebateMfr": 2000
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "capCostReductions": {
+            "cash": 3000,
+            "rebateMfr": 2000,
+            "rebateDealer": 0,
+            "tradeInEquity": 0,
+            "total": 5000
+          },
+          "monthly": {
+            "taxPerPayment": 24.50
+          }
+        }
+      },
+      "notes": "$5,000 in cap reductions are NOT taxed directly. They reduce the payment, which reduces the monthly tax."
+    },
+    {
+      "id": "GOLDEN-L-004",
+      "category": "trade-in",
+      "description": "Lease with trade-in equity (NOT taxed)",
+      "rulesExercised": ["IN-L-001", "IN-L-002", "IN-L-003", "IN-L-004", "IN-L-005"],
+      "input": {
+        "dealType": "LEASE",
+        "grossCapCost": 35000,
+        "baseMonthlyPayment": 380,
+        "paymentCount": 36,
+        "residualValue": 17000,
+        "docFee": 250,
+        "capReductionTradeIn": 5000,
+        "tradeInValue": 8000,
+        "tradeInPayoff": 3000
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "capCostReductions": {
+            "tradeInEquity": 5000,
+            "total": 5000
+          },
+          "negativeEquity": 0
+        }
+      },
+      "notes": "Trade-in equity of $5,000 applied as cap reduction (not taxed directly)."
+    },
+    {
+      "id": "GOLDEN-L-005",
+      "category": "negative-equity",
+      "description": "Lease with negative equity (increases cap cost)",
+      "rulesExercised": ["IN-L-001", "IN-L-002", "IN-L-003", "IN-L-006"],
+      "input": {
+        "dealType": "LEASE",
+        "grossCapCost": 35000,
+        "baseMonthlyPayment": 520,
+        "paymentCount": 36,
+        "residualValue": 17000,
+        "docFee": 250,
+        "tradeInValue": 8000,
+        "tradeInPayoff": 12000
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "negativeEquity": 4000,
+          "monthly": {
+            "taxPerPayment": 36.40
+          }
+        }
+      },
+      "notes": "$4,000 negative equity rolled into cap cost increases monthly payment and tax."
+    },
+    {
+      "id": "GOLDEN-L-006",
+      "category": "backend-products",
+      "description": "CRITICAL: VSC is NOT taxable on leases",
+      "rulesExercised": ["IN-L-001", "IN-L-002", "IN-L-003", "IN-L-007"],
+      "input": {
+        "dealType": "LEASE",
+        "grossCapCost": 37500,
+        "baseMonthlyPayment": 450,
+        "paymentCount": 36,
+        "residualValue": 18000,
+        "docFee": 250,
+        "serviceContracts": 2500
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "backendProductsNotTaxed": {
+            "serviceContracts": 2500,
+            "gap": 0,
+            "taxSavingsVsRetail": 175
+          },
+          "monthly": {
+            "taxPerPayment": 31.50
+          }
+        }
+      },
+      "notes": "VSC of $2,500 is NOT taxed on leases. Customer saves $175 vs retail (7% of $2,500)."
+    },
+    {
+      "id": "GOLDEN-L-007",
+      "category": "backend-products",
+      "description": "CRITICAL: GAP is NOT taxable on leases",
+      "rulesExercised": ["IN-L-001", "IN-L-002", "IN-L-003", "IN-L-008"],
+      "input": {
+        "dealType": "LEASE",
+        "grossCapCost": 35895,
+        "baseMonthlyPayment": 450,
+        "paymentCount": 36,
+        "residualValue": 18000,
+        "docFee": 250,
+        "gap": 895
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "backendProductsNotTaxed": {
+            "serviceContracts": 0,
+            "gap": 895,
+            "taxSavingsVsRetail": 62.65
+          }
+        }
+      },
+      "notes": "GAP of $895 is NOT taxed on leases. Customer saves $62.65 vs retail."
+    },
+    {
+      "id": "GOLDEN-L-008",
+      "category": "backend-products",
+      "description": "CRITICAL: VSC + GAP both NOT taxable - major savings",
+      "rulesExercised": ["IN-L-001", "IN-L-002", "IN-L-003", "IN-L-007", "IN-L-008"],
+      "input": {
+        "dealType": "LEASE",
+        "grossCapCost": 38395,
+        "baseMonthlyPayment": 480,
+        "paymentCount": 36,
+        "residualValue": 18000,
+        "docFee": 250,
+        "serviceContracts": 2500,
+        "gap": 895
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "backendProductsNotTaxed": {
+            "serviceContracts": 2500,
+            "gap": 895,
+            "taxSavingsVsRetail": 237.65
+          }
+        }
+      },
+      "notes": "VSC ($2,500) + GAP ($895) = $3,395 NOT taxed. Saves $237.65 vs retail (7% of $3,395)."
+    },
+    {
+      "id": "GOLDEN-L-009",
+      "category": "reciprocity",
+      "description": "Reciprocity credit applied to upfront tax",
+      "rulesExercised": ["IN-L-001", "IN-L-002", "IN-L-003", "IN-L-009"],
+      "input": {
+        "dealType": "LEASE",
+        "grossCapCost": 35000,
+        "baseMonthlyPayment": 450,
+        "paymentCount": 36,
+        "residualValue": 18000,
+        "docFee": 250,
+        "originTaxInfo": {
+          "stateCode": "KY",
+          "amount": 30
+        }
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "upfront": {
+            "taxAmount": 19
+          },
+          "reciprocity": {
+            "creditApplied": 30,
+            "originState": "KY",
+            "originalUpfrontTax": 49
+          },
+          "totalTaxOverTerm": 1121.50
+        }
+      },
+      "notes": "KY tax of $30 credited against $49 upfront = $19 upfront. Monthly tax unchanged."
+    },
+    {
+      "id": "GOLDEN-L-010",
+      "category": "reciprocity",
+      "description": "Reciprocity credit capped at upfront tax",
+      "rulesExercised": ["IN-L-001", "IN-L-002", "IN-L-003", "IN-L-009"],
+      "input": {
+        "dealType": "LEASE",
+        "grossCapCost": 35000,
+        "baseMonthlyPayment": 450,
+        "paymentCount": 36,
+        "residualValue": 18000,
+        "docFee": 250,
+        "originTaxInfo": {
+          "stateCode": "IL",
+          "amount": 100
+        }
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "upfront": {
+            "taxAmount": 0
+          },
+          "reciprocity": {
+            "creditApplied": 49,
+            "originState": "IL"
+          }
+        }
+      },
+      "notes": "IL tax of $100 exceeds $49 upfront. Credit capped at $49. Upfront tax = $0."
+    },
+    {
+      "id": "GOLDEN-L-011",
+      "category": "complex",
+      "description": "Full complexity lease with all components",
+      "rulesExercised": ["IN-L-001", "IN-L-002", "IN-L-003", "IN-L-004", "IN-L-005", "IN-L-007", "IN-L-008"],
+      "input": {
+        "dealType": "LEASE",
+        "grossCapCost": 45000,
+        "baseMonthlyPayment": 420,
+        "paymentCount": 39,
+        "residualValue": 22000,
+        "docFee": 250,
+        "capReductionCash": 2000,
+        "capReductionRebateMfr": 3000,
+        "capReductionRebateDealer": 1000,
+        "capReductionTradeIn": 4000,
+        "tradeInValue": 6000,
+        "tradeInPayoff": 2000,
+        "serviceContracts": 2800,
+        "gap": 950
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "upfront": {
+            "taxableBase": 670,
+            "taxAmount": 46.90
+          },
+          "monthly": {
+            "taxPerPayment": 29.40,
+            "totalPaymentWithTax": 449.40
+          },
+          "capCostReductions": {
+            "cash": 2000,
+            "rebateMfr": 3000,
+            "rebateDealer": 1000,
+            "tradeInEquity": 4000,
+            "total": 10000
+          },
+          "negativeEquity": 0,
+          "backendProductsNotTaxed": {
+            "serviceContracts": 2800,
+            "gap": 950,
+            "taxSavingsVsRetail": 262.50
+          },
+          "totalTaxOverTerm": 1164.10
+        }
+      },
+      "notes": "Complex lease with all optional fields populated."
+    },
+    {
+      "id": "GOLDEN-L-012",
+      "category": "boundary",
+      "description": "24-month lease (short term)",
+      "rulesExercised": ["IN-L-001", "IN-L-002", "IN-L-003"],
+      "input": {
+        "dealType": "LEASE",
+        "grossCapCost": 30000,
+        "baseMonthlyPayment": 500,
+        "paymentCount": 24,
+        "residualValue": 18000,
+        "docFee": 250
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "monthly": {
+            "taxPerPayment": 35
+          },
+          "totalTaxOverTerm": 857.50
+        }
+      }
+    },
+    {
+      "id": "GOLDEN-L-013",
+      "category": "boundary",
+      "description": "48-month lease (long term)",
+      "rulesExercised": ["IN-L-001", "IN-L-002", "IN-L-003"],
+      "input": {
+        "dealType": "LEASE",
+        "grossCapCost": 40000,
+        "baseMonthlyPayment": 380,
+        "paymentCount": 48,
+        "residualValue": 16000,
+        "docFee": 250
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "monthly": {
+            "taxPerPayment": 26.60
+          },
+          "totalTaxOverTerm": 1294.90
+        }
+      }
+    },
+    {
+      "id": "GOLDEN-L-014",
+      "category": "boundary",
+      "description": "No doc fee lease",
+      "rulesExercised": ["IN-L-001", "IN-L-003"],
+      "input": {
+        "dealType": "LEASE",
+        "grossCapCost": 30000,
+        "baseMonthlyPayment": 400,
+        "paymentCount": 36,
+        "residualValue": 15000,
+        "docFee": 0
+      },
+      "expected": {
+        "success": true,
+        "breakdown": {
+          "upfront": {
+            "taxableBase": 400,
+            "taxAmount": 28,
+            "components": {
+              "docFeeTax": 0,
+              "firstPaymentTax": 28
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "GOLDEN-L-015",
+      "category": "error",
+      "description": "Error - Zero monthly payment",
+      "input": {
+        "dealType": "LEASE",
+        "grossCapCost": 30000,
+        "baseMonthlyPayment": 0,
+        "paymentCount": 36,
+        "residualValue": 15000
+      },
+      "expected": {
+        "success": false,
+        "errorCode": "ERR_INVALID_PAYMENT"
+      }
+    },
+    {
+      "id": "GOLDEN-L-016",
+      "category": "error",
+      "description": "Error - Zero payment count",
+      "input": {
+        "dealType": "LEASE",
+        "grossCapCost": 30000,
+        "baseMonthlyPayment": 400,
+        "paymentCount": 0,
+        "residualValue": 15000
+      },
+      "expected": {
+        "success": false,
+        "errorCode": "ERR_INVALID_TERM"
+      }
+    },
+    {
+      "id": "GOLDEN-L-017",
+      "category": "error",
+      "description": "Error - Doc fee exceeds cap",
+      "input": {
+        "dealType": "LEASE",
+        "grossCapCost": 30000,
+        "baseMonthlyPayment": 400,
+        "paymentCount": 36,
+        "residualValue": 15000,
+        "docFee": 300
+      },
+      "expected": {
+        "success": false,
+        "errorCode": "ERR_DOC_FEE_EXCEEDS_CAP"
+      }
+    },
+    {
+      "id": "GOLDEN-L-018",
+      "category": "error",
+      "description": "Error - Retail transaction (out of scope)",
+      "input": {
+        "dealType": "LEASE",
+        "grossCapCost": 30000,
+        "baseMonthlyPayment": 400,
+        "paymentCount": 36,
+        "residualValue": 15000,
+        "isRetail": true
+      },
+      "expected": {
+        "success": false,
+        "errorCode": "ERR_RETAIL_NOT_SUPPORTED"
+      }
+    },
+    {
+      "id": "GOLDEN-L-019",
+      "category": "error",
+      "description": "Error - Commercial vehicle (out of scope)",
+      "input": {
+        "dealType": "LEASE",
+        "grossCapCost": 50000,
+        "baseMonthlyPayment": 600,
+        "paymentCount": 36,
+        "residualValue": 25000,
+        "isCommercialVehicle": true
+      },
+      "expected": {
+        "success": false,
+        "errorCode": "ERR_COMMERCIAL_VEHICLE_NOT_SUPPORTED"
+      }
+    },
+    {
+      "id": "GOLDEN-L-020",
+      "category": "error",
+      "description": "Error - Lease buyout (out of scope)",
+      "input": {
+        "dealType": "LEASE",
+        "grossCapCost": 18000,
+        "baseMonthlyPayment": 0,
+        "paymentCount": 1,
+        "residualValue": 18000,
+        "isLeaseBuyout": true
+      },
+      "expected": {
+        "success": false,
+        "errorCode": "ERR_LEASE_BUYOUT_NOT_SUPPORTED"
+      }
+    }
+  ]
+}

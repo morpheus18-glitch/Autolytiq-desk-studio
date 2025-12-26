@@ -36,6 +36,8 @@ export function useShowroomWebSocket({
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectAttempts = useRef(0);
   const reconnectTimeout = useRef<ReturnType<typeof setTimeout>>();
+  // Track if component is mounted to prevent state updates after unmount
+  const mountedRef = useRef(true);
 
   const [state, setState] = useState<WebSocketState>({
     isConnected: false,
@@ -49,6 +51,8 @@ export function useShowroomWebSocket({
    */
   const handleMessage = useCallback(
     (event: MessageEvent) => {
+      if (!mountedRef.current) return;
+
       try {
         const message = JSON.parse(event.data) as WSMessage;
 
@@ -111,11 +115,19 @@ export function useShowroomWebSocket({
    * Connect to WebSocket server
    */
   const connect = useCallback(() => {
+    // CRITICAL: Check if still mounted before connecting
+    if (!mountedRef.current) return;
     if (!enabled || !dealershipId) return;
 
-    // Clean up existing connection
+    // Clean up existing connection before creating a new one
     if (wsRef.current) {
+      // Prevent onclose from triggering reconnection
+      wsRef.current.onclose = null;
+      wsRef.current.onerror = null;
+      wsRef.current.onmessage = null;
+      wsRef.current.onopen = null;
       wsRef.current.close();
+      wsRef.current = null;
     }
 
     try {
@@ -123,6 +135,12 @@ export function useShowroomWebSocket({
       wsRef.current = ws;
 
       ws.onopen = () => {
+        // Check if still mounted before updating state
+        if (!mountedRef.current) {
+          ws.close();
+          return;
+        }
+
         setState((prev) => ({
           ...prev,
           isConnected: true,
@@ -141,6 +159,9 @@ export function useShowroomWebSocket({
       ws.onmessage = handleMessage;
 
       ws.onerror = (error) => {
+        // Check if still mounted before updating state
+        if (!mountedRef.current) return;
+
         console.error('[WS] WebSocket error:', error);
         setState((prev) => ({
           ...prev,
@@ -149,6 +170,9 @@ export function useShowroomWebSocket({
       };
 
       ws.onclose = () => {
+        // Check if still mounted before updating state or reconnecting
+        if (!mountedRef.current) return;
+
         setState((prev) => ({
           ...prev,
           isConnected: false,
@@ -167,6 +191,9 @@ export function useShowroomWebSocket({
         }
       };
     } catch (error) {
+      // Check if still mounted before updating state
+      if (!mountedRef.current) return;
+
       console.error('[WS] Failed to create WebSocket:', error);
       setState((prev) => ({
         ...prev,
@@ -179,19 +206,33 @@ export function useShowroomWebSocket({
    * Disconnect from WebSocket server
    */
   const disconnect = useCallback(() => {
+    // Clear any pending reconnection timeout
     if (reconnectTimeout.current) {
       clearTimeout(reconnectTimeout.current);
+      reconnectTimeout.current = undefined;
     }
+
+    // Clean up WebSocket connection
     if (wsRef.current) {
+      // IMPORTANT: Set onclose to null BEFORE closing to prevent
+      // the reconnection logic from firing on intentional close
+      wsRef.current.onclose = null;
+      wsRef.current.onerror = null;
+      wsRef.current.onmessage = null;
+      wsRef.current.onopen = null;
       wsRef.current.close();
       wsRef.current = null;
     }
-    setState({
-      isConnected: false,
-      isSubscribed: false,
-      lastEvent: null,
-      error: null,
-    });
+
+    // Only update state if still mounted
+    if (mountedRef.current) {
+      setState({
+        isConnected: false,
+        isSubscribed: false,
+        lastEvent: null,
+        error: null,
+      });
+    }
   }, []);
 
   /**
@@ -207,8 +248,15 @@ export function useShowroomWebSocket({
 
   // Connect on mount, disconnect on unmount
   useEffect(() => {
+    // Reset mounted flag when effect runs
+    mountedRef.current = true;
+
     connect();
+
+    // CRITICAL: Cleanup function to prevent memory leaks
     return () => {
+      // Mark as unmounted FIRST to stop all async operations
+      mountedRef.current = false;
       disconnect();
     };
   }, [connect, disconnect]);

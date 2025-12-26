@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 
+	"autolytiq/shared/auth"
 	"autolytiq/shared/logging"
 
 	"github.com/gorilla/mux"
@@ -50,6 +51,12 @@ func main() {
 	// Apply logging middleware
 	router.Use(logging.RequestIDMiddleware)
 	router.Use(logging.RequestLoggingMiddleware(logger))
+	// Add service authentication middleware for inter-service security
+	// Note: WebSocket endpoint bypassed as it has its own auth mechanism
+	serviceSecret := os.Getenv("SERVICE_SECRET")
+	authConfig := auth.NewServiceAuthConfig(serviceSecret).
+		WithBypassPaths("/ws/showroom") // WebSocket has its own auth
+	router.Use(auth.ServiceAuthMiddleware(authConfig))
 
 	// Health check
 	router.HandleFunc("/health", handler.HealthCheck).Methods("GET")

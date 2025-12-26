@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"autolytiq/services/shared/auth"
 	"autolytiq/services/shared/logging"
 
 	"github.com/gorilla/mux"
@@ -22,6 +23,7 @@ type Config struct {
 	EncryptionKey         string
 	DataRetentionEnabled  bool
 	AnonymizationEnabled  bool
+	ServiceSecret         string
 }
 
 // Server represents the Data Retention service server
@@ -60,6 +62,8 @@ func NewServer(config *Config, db *Database, logger *logging.Logger) *Server {
 func (s *Server) setupMiddleware() {
 	s.router.Use(logging.RequestIDMiddleware)
 	s.router.Use(logging.RequestLoggingMiddleware(s.logger))
+	// Add service authentication middleware for inter-service security
+	s.router.Use(auth.ServiceAuthMiddleware(auth.NewServiceAuthConfig(s.config.ServiceSecret)))
 }
 
 // setupRoutes configures all routes
@@ -672,6 +676,7 @@ func loadConfig() *Config {
 		EncryptionKey:         os.Getenv("PII_ENCRYPTION_KEY"),
 		DataRetentionEnabled:  getEnvBool("DATA_RETENTION_ENABLED", true),
 		AnonymizationEnabled:  getEnvBool("ANONYMIZATION_ENABLED", true),
+		ServiceSecret:         getEnv("SERVICE_SECRET", ""),
 	}
 }
 

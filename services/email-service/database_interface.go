@@ -163,6 +163,23 @@ type EmailSignature struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 }
 
+// EmailPreferences represents user email preferences
+type EmailPreferences struct {
+	ID                   string    `json:"id"`
+	DealershipID         string    `json:"dealership_id"`
+	UserID               string    `json:"user_id"`
+	ReadingPanePosition  string    `json:"reading_pane_position"` // "right", "bottom", "hidden"
+	ConversationView     bool      `json:"conversation_view"`
+	DesktopNotifications bool      `json:"desktop_notifications"`
+	AutoAdvance          bool      `json:"auto_advance"`
+	PreviewLines         int       `json:"preview_lines"`
+	Density              string    `json:"density"` // "comfortable", "compact"
+	SwipeLeftAction      string    `json:"swipe_left_action"` // "archive", "delete", "mark_read"
+	SwipeRightAction     string    `json:"swipe_right_action"` // "archive", "delete", "mark_read"
+	CreatedAt            time.Time `json:"created_at"`
+	UpdatedAt            time.Time `json:"updated_at"`
+}
+
 // =====================================================
 // FILTER AND LIST PARAMETERS
 // =====================================================
@@ -315,4 +332,8 @@ type EmailDatabase interface {
 
 	// Search
 	SearchEmails(dealershipID string, userID string, query string, limit int, offset int) (*EmailListResult, error)
+
+	// Preferences operations
+	GetPreferences(dealershipID string, userID string) (*EmailPreferences, error)
+	SavePreferences(prefs *EmailPreferences) error
 }

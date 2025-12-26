@@ -116,7 +116,7 @@ export function useEmails(filters: EmailFilter) {
   if (filters.offset) queryParams.set('offset', String(filters.offset));
 
   const queryString = queryParams.toString();
-  const endpoint = `/v1/email/logs?${queryString}`;
+  const endpoint = `/email/logs?${queryString}`;
 
   return useQuery({
     queryKey: queryKeys.email.logs.list({ ...filters }),
@@ -134,7 +134,7 @@ export function useEmails(filters: EmailFilter) {
 export function useEmail(id: string, dealershipId: string) {
   return useQuery({
     queryKey: queryKeys.email.logs.detail(id),
-    queryFn: () => api.get<EmailLog>(`/v1/email/logs/${id}?dealership_id=${dealershipId}`),
+    queryFn: () => api.get<EmailLog>(`/email/logs/${id}?dealership_id=${dealershipId}`),
     enabled: !!id && !!dealershipId,
   });
 }
@@ -147,7 +147,7 @@ export function useSendEmail() {
 
   return useMutation({
     mutationFn: (data: SendEmailRequest) =>
-      api.post<{ message: string; log_id: string }>('/v1/email/send', data),
+      api.post<{ message: string; log_id: string }>('/email/send', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.email.logs.all() });
     },
@@ -162,7 +162,7 @@ export function useSendTemplateEmail() {
 
   return useMutation({
     mutationFn: (data: SendTemplateEmailRequest) =>
-      api.post<{ message: string; log_id: string }>('/v1/email/send-template', data),
+      api.post<{ message: string; log_id: string }>('/email/send-template', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.email.logs.all() });
     },
@@ -179,7 +179,7 @@ export function useEmailTemplates(dealershipId: string, limit = 50, offset = 0) 
   queryParams.set('offset', String(offset));
 
   const queryString = queryParams.toString();
-  const endpoint = `/v1/email/templates?${queryString}`;
+  const endpoint = `/email/templates?${queryString}`;
 
   return useQuery({
     queryKey: queryKeys.email.templates.list({ dealership_id: dealershipId, limit, offset }),
@@ -198,7 +198,7 @@ export function useEmailTemplate(id: string, dealershipId: string) {
   return useQuery({
     queryKey: queryKeys.email.templates.detail(id),
     queryFn: () =>
-      api.get<EmailTemplate>(`/v1/email/templates/${id}?dealership_id=${dealershipId}`),
+      api.get<EmailTemplate>(`/email/templates/${id}?dealership_id=${dealershipId}`),
     enabled: !!id && !!dealershipId,
   });
 }
@@ -211,7 +211,7 @@ export function useCreateTemplate() {
 
   return useMutation({
     mutationFn: (data: CreateTemplateRequest) =>
-      api.post<EmailTemplate>('/v1/email/templates', data),
+      api.post<EmailTemplate>('/email/templates', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.email.templates.all() });
     },
@@ -233,7 +233,7 @@ export function useUpdateTemplate() {
       id: string;
       dealershipId: string;
       data: UpdateTemplateRequest;
-    }) => api.put<EmailTemplate>(`/v1/email/templates/${id}?dealership_id=${dealershipId}`, data),
+    }) => api.put<EmailTemplate>(`/email/templates/${id}?dealership_id=${dealershipId}`, data),
     onSuccess: (template) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.email.templates.all() });
       queryClient.setQueryData(queryKeys.email.templates.detail(template.id), template);
@@ -249,7 +249,7 @@ export function useDeleteTemplate() {
 
   return useMutation({
     mutationFn: ({ id, dealershipId }: { id: string; dealershipId: string }) =>
-      api.delete(`/v1/email/templates/${id}?dealership_id=${dealershipId}`),
+      api.delete(`/email/templates/${id}?dealership_id=${dealershipId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.email.templates.all() });
     },
@@ -264,7 +264,7 @@ export function useDeleteEmail() {
 
   return useMutation({
     mutationFn: ({ id, dealershipId }: { id: string; dealershipId: string }) =>
-      api.delete(`/v1/email/logs/${id}?dealership_id=${dealershipId}`),
+      api.delete(`/email/logs/${id}?dealership_id=${dealershipId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.email.logs.all() });
     },
@@ -562,7 +562,7 @@ export function useInbox(filter: InboxFilter) {
 
   return useQuery({
     queryKey: ['inbox', 'emails', filter],
-    queryFn: () => api.get<EmailListResult>(`/v1/email/inbox?${queryString}`),
+    queryFn: () => api.get<EmailListResult>(`/email/inbox?${queryString}`),
     enabled: !!filter.dealership_id && !!filter.user_id,
   });
 }
@@ -574,7 +574,7 @@ export function useInboxEmail(id: string, dealershipId: string, userId: string) 
   return useQuery({
     queryKey: ['inbox', 'email', id],
     queryFn: () =>
-      api.get<InboxEmail>(`/v1/email/inbox/${id}?dealership_id=${dealershipId}&user_id=${userId}`),
+      api.get<InboxEmail>(`/email/inbox/${id}?dealership_id=${dealershipId}&user_id=${userId}`),
     enabled: !!id && !!dealershipId && !!userId,
   });
 }
@@ -586,7 +586,7 @@ export function useEmailStats(dealershipId: string, userId: string) {
   return useQuery({
     queryKey: ['inbox', 'stats', dealershipId, userId],
     queryFn: () =>
-      api.get<EmailStats>(`/v1/email/inbox/stats?dealership_id=${dealershipId}&user_id=${userId}`),
+      api.get<EmailStats>(`/email/inbox/stats?dealership_id=${dealershipId}&user_id=${userId}`),
     enabled: !!dealershipId && !!userId,
     refetchInterval: 30000, // Refresh every 30 seconds
   });
@@ -607,7 +607,7 @@ export function useSearchEmails(params: {
     queryKey: ['inbox', 'search', dealershipId, userId, query, limit, offset],
     queryFn: () =>
       api.get<EmailListResult>(
-        `/v1/email/inbox/search?dealership_id=${dealershipId}&user_id=${userId}&q=${encodeURIComponent(query)}&limit=${limit}&offset=${offset}`
+        `/email/inbox/search?dealership_id=${dealershipId}&user_id=${userId}&q=${encodeURIComponent(query)}&limit=${limit}&offset=${offset}`
       ),
     enabled: !!dealershipId && !!userId && !!query,
   });
@@ -622,7 +622,7 @@ export function useComposeEmail() {
   return useMutation({
     mutationFn: (data: ComposeEmailRequest) =>
       api.post<{ message: string; email_id: string; email?: InboxEmail }>(
-        '/v1/email/compose',
+        '/email/compose',
         data
       ),
     onSuccess: () => {
@@ -639,7 +639,7 @@ export function useBatchEmailAction() {
 
   return useMutation({
     mutationFn: (data: BatchActionRequest) =>
-      api.post<{ message: string; affected: number }>('/v1/email/inbox/batch', data),
+      api.post<{ message: string; affected: number }>('/email/inbox/batch', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inbox'] });
     },
@@ -661,7 +661,7 @@ export function useToggleStar() {
       id: string;
       dealershipId: string;
       userId: string;
-    }) => api.post(`/v1/email/inbox/${id}/star?dealership_id=${dealershipId}&user_id=${userId}`),
+    }) => api.post(`/email/inbox/${id}/star?dealership_id=${dealershipId}&user_id=${userId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inbox'] });
     },
@@ -680,7 +680,7 @@ export function useThreads(filter: InboxFilter) {
 
   return useQuery({
     queryKey: ['inbox', 'threads', filter],
-    queryFn: () => api.get<ThreadListResult>(`/v1/email/threads?${queryString}`),
+    queryFn: () => api.get<ThreadListResult>(`/email/threads?${queryString}`),
     enabled: !!filter.dealership_id && !!filter.user_id,
   });
 }
@@ -693,7 +693,7 @@ export function useThread(id: string, dealershipId: string, userId: string) {
     queryKey: ['inbox', 'thread', id],
     queryFn: () =>
       api.get<EmailThread>(
-        `/v1/email/threads/${id}?dealership_id=${dealershipId}&user_id=${userId}`
+        `/email/threads/${id}?dealership_id=${dealershipId}&user_id=${userId}`
       ),
     enabled: !!id && !!dealershipId && !!userId,
   });
@@ -711,7 +711,7 @@ export function useDrafts(dealershipId: string, userId: string, limit = 50, offs
     queryKey: ['inbox', 'drafts', dealershipId, userId, limit, offset],
     queryFn: () =>
       api.get<EmailDraft[]>(
-        `/v1/email/drafts?dealership_id=${dealershipId}&user_id=${userId}&limit=${limit}&offset=${offset}`
+        `/email/drafts?dealership_id=${dealershipId}&user_id=${userId}&limit=${limit}&offset=${offset}`
       ),
     enabled: !!dealershipId && !!userId,
   });
@@ -724,7 +724,7 @@ export function useDraft(id: string, dealershipId: string, userId: string) {
   return useQuery({
     queryKey: ['inbox', 'draft', id],
     queryFn: () =>
-      api.get<EmailDraft>(`/v1/email/drafts/${id}?dealership_id=${dealershipId}&user_id=${userId}`),
+      api.get<EmailDraft>(`/email/drafts/${id}?dealership_id=${dealershipId}&user_id=${userId}`),
     enabled: !!id && !!dealershipId && !!userId,
   });
 }
@@ -738,8 +738,8 @@ export function useSaveDraft() {
   return useMutation({
     mutationFn: ({ id, data }: { id?: string; data: Partial<EmailDraft> }) =>
       id
-        ? api.put<EmailDraft>(`/v1/email/drafts/${id}`, data)
-        : api.post<EmailDraft>('/v1/email/drafts', data),
+        ? api.put<EmailDraft>(`/email/drafts/${id}`, data)
+        : api.post<EmailDraft>('/email/drafts', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inbox', 'drafts'] });
       queryClient.invalidateQueries({ queryKey: ['inbox', 'stats'] });
@@ -762,7 +762,7 @@ export function useDeleteDraft() {
       id: string;
       dealershipId: string;
       userId: string;
-    }) => api.delete(`/v1/email/drafts/${id}?dealership_id=${dealershipId}&user_id=${userId}`),
+    }) => api.delete(`/email/drafts/${id}?dealership_id=${dealershipId}&user_id=${userId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inbox', 'drafts'] });
       queryClient.invalidateQueries({ queryKey: ['inbox', 'stats'] });
@@ -787,7 +787,7 @@ export function useSendDraft() {
       userId: string;
     }) =>
       api.post<{ message: string; email_id: string }>(
-        `/v1/email/drafts/${id}/send?dealership_id=${dealershipId}&user_id=${userId}`
+        `/email/drafts/${id}/send?dealership_id=${dealershipId}&user_id=${userId}`
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inbox'] });
@@ -806,7 +806,7 @@ export function useEmailLabels(dealershipId: string, userId: string) {
   return useQuery({
     queryKey: ['inbox', 'labels', dealershipId, userId],
     queryFn: () =>
-      api.get<EmailLabel[]>(`/v1/email/labels?dealership_id=${dealershipId}&user_id=${userId}`),
+      api.get<EmailLabel[]>(`/email/labels?dealership_id=${dealershipId}&user_id=${userId}`),
     enabled: !!dealershipId && !!userId,
   });
 }
@@ -819,7 +819,7 @@ export function useCreateLabel() {
 
   return useMutation({
     mutationFn: (data: { dealership_id: string; user_id: string; name: string; color: string }) =>
-      api.post<EmailLabel>('/v1/email/labels', data),
+      api.post<EmailLabel>('/email/labels', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inbox', 'labels'] });
     },
@@ -841,7 +841,7 @@ export function useDeleteLabel() {
       id: string;
       dealershipId: string;
       userId: string;
-    }) => api.delete(`/v1/email/labels/${id}?dealership_id=${dealershipId}&user_id=${userId}`),
+    }) => api.delete(`/email/labels/${id}?dealership_id=${dealershipId}&user_id=${userId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inbox', 'labels'] });
     },
@@ -860,7 +860,7 @@ export function useEmailSignatures(dealershipId: string, userId: string) {
     queryKey: ['inbox', 'signatures', dealershipId, userId],
     queryFn: () =>
       api.get<EmailSignature[]>(
-        `/v1/email/signatures?dealership_id=${dealershipId}&user_id=${userId}`
+        `/email/signatures?dealership_id=${dealershipId}&user_id=${userId}`
       ),
     enabled: !!dealershipId && !!userId,
   });
@@ -879,7 +879,7 @@ export function useCreateSignature() {
       name: string;
       signature_html: string;
       is_default?: boolean;
-    }) => api.post<EmailSignature>('/v1/email/signatures', data),
+    }) => api.post<EmailSignature>('/email/signatures', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inbox', 'signatures'] });
     },
@@ -905,7 +905,7 @@ export function useUpdateSignature() {
         signature_html: string;
         is_default?: boolean;
       };
-    }) => api.put<EmailSignature>(`/v1/email/signatures/${id}`, data),
+    }) => api.put<EmailSignature>(`/email/signatures/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inbox', 'signatures'] });
     },
@@ -927,7 +927,7 @@ export function useDeleteSignature() {
       id: string;
       dealershipId: string;
       userId: string;
-    }) => api.delete(`/v1/email/signatures/${id}?dealership_id=${dealershipId}&user_id=${userId}`),
+    }) => api.delete(`/email/signatures/${id}?dealership_id=${dealershipId}&user_id=${userId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inbox', 'signatures'] });
     },
@@ -957,7 +957,7 @@ export function useEmailAttachments(emailId: string, dealershipId: string) {
     queryKey: ['inbox', 'attachments', emailId],
     queryFn: () =>
       api.get<EmailAttachment[]>(
-        `/v1/email/inbox/${emailId}/attachments?dealership_id=${dealershipId}`
+        `/email/inbox/${emailId}/attachments?dealership_id=${dealershipId}`
       ),
     enabled: !!emailId && !!dealershipId,
   });
@@ -971,7 +971,7 @@ export function useDraftAttachments(draftId: string, dealershipId: string) {
     queryKey: ['inbox', 'draft-attachments', draftId],
     queryFn: () =>
       api.get<EmailAttachment[]>(
-        `/v1/email/drafts/${draftId}/attachments?dealership_id=${dealershipId}`
+        `/email/drafts/${draftId}/attachments?dealership_id=${dealershipId}`
       ),
     enabled: !!draftId && !!dealershipId,
   });
@@ -992,7 +992,7 @@ export function useGetUploadURL() {
       contentType?: string;
     }) =>
       api.get<UploadURLResponse>(
-        `/v1/email/attachments/upload-url?dealership_id=${dealershipId}&filename=${encodeURIComponent(filename)}${contentType ? `&content_type=${encodeURIComponent(contentType)}` : ''}`
+        `/email/attachments/upload-url?dealership_id=${dealershipId}&filename=${encodeURIComponent(filename)}${contentType ? `&content_type=${encodeURIComponent(contentType)}` : ''}`
       ),
   });
 }
@@ -1045,7 +1045,7 @@ export function useAttachment(id: string, dealershipId: string) {
   return useQuery({
     queryKey: ['inbox', 'attachment', id],
     queryFn: () =>
-      api.get<EmailAttachment>(`/v1/email/attachments/${id}?dealership_id=${dealershipId}`),
+      api.get<EmailAttachment>(`/email/attachments/${id}?dealership_id=${dealershipId}`),
     enabled: !!id && !!dealershipId,
   });
 }
@@ -1058,7 +1058,7 @@ export function useDeleteAttachment() {
 
   return useMutation({
     mutationFn: ({ id, dealershipId }: { id: string; dealershipId: string }) =>
-      api.delete(`/v1/email/attachments/${id}?dealership_id=${dealershipId}`),
+      api.delete(`/email/attachments/${id}?dealership_id=${dealershipId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inbox', 'attachments'] });
       queryClient.invalidateQueries({ queryKey: ['inbox', 'draft-attachments'] });
@@ -1071,4 +1071,103 @@ export function useDeleteAttachment() {
  */
 export function getAttachmentDownloadURL(id: string, dealershipId: string): string {
   return `/api/v1/email/attachments/${id}/download?dealership_id=${dealershipId}`;
+}
+
+// =====================================================
+// EMAIL PREFERENCES HOOKS
+// =====================================================
+
+/**
+ * Reading pane position options
+ */
+export type ReadingPanePosition = 'right' | 'bottom' | 'hidden';
+
+/**
+ * Email preferences stored per user
+ */
+export interface EmailPreferences {
+  id: string;
+  dealership_id: string;
+  user_id: string;
+  reading_pane_position: ReadingPanePosition;
+  conversation_view: boolean;
+  desktop_notifications: boolean;
+  auto_advance: boolean;
+  preview_lines: number;
+  density: 'comfortable' | 'compact';
+  swipe_left_action: 'archive' | 'delete' | 'mark_read';
+  swipe_right_action: 'archive' | 'delete' | 'mark_read';
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Default email preferences
+ */
+export const DEFAULT_EMAIL_PREFERENCES: Omit<EmailPreferences, 'id' | 'dealership_id' | 'user_id' | 'created_at' | 'updated_at'> = {
+  reading_pane_position: 'right',
+  conversation_view: true,
+  desktop_notifications: true,
+  auto_advance: true,
+  preview_lines: 2,
+  density: 'comfortable',
+  swipe_left_action: 'delete',
+  swipe_right_action: 'archive',
+};
+
+/**
+ * Hook to get email preferences
+ */
+export function useEmailPreferences(dealershipId: string, userId: string) {
+  return useQuery({
+    queryKey: ['inbox', 'preferences', dealershipId, userId],
+    queryFn: async () => {
+      try {
+        return await api.get<EmailPreferences>(
+          `/email/preferences?dealership_id=${dealershipId}&user_id=${userId}`
+        );
+      } catch {
+        // Return defaults if preferences don't exist yet
+        return {
+          ...DEFAULT_EMAIL_PREFERENCES,
+          id: '',
+          dealership_id: dealershipId,
+          user_id: userId,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        } as EmailPreferences;
+      }
+    },
+    enabled: !!dealershipId && !!userId,
+  });
+}
+
+/**
+ * Hook to update email preferences
+ */
+export function useUpdateEmailPreferences() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      dealershipId,
+      userId,
+      preferences,
+    }: {
+      dealershipId: string;
+      userId: string;
+      preferences: Partial<Omit<EmailPreferences, 'id' | 'dealership_id' | 'user_id' | 'created_at' | 'updated_at'>>;
+    }) =>
+      api.post<EmailPreferences>('/email/preferences', {
+        dealership_id: dealershipId,
+        user_id: userId,
+        ...preferences,
+      }),
+    onSuccess: (data, variables) => {
+      queryClient.setQueryData(
+        ['inbox', 'preferences', variables.dealershipId, variables.userId],
+        data
+      );
+    },
+  });
 }

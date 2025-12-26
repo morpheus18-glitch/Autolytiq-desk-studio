@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"autolytiq/shared/logging"
+
 	"github.com/google/uuid"
 )
 
@@ -76,7 +78,8 @@ func setupTestServer() *Server {
 		DatabaseURL: "mock",
 	}
 	db := NewMockDatabase()
-	return NewServer(config, db)
+	logger := logging.NewLogger("deal-service-test", "info")
+	return NewServer(config, db, logger)
 }
 
 func TestHealthCheck(t *testing.T) {

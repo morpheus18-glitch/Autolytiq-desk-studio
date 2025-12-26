@@ -3,6 +3,7 @@ module autolytiq/customer-service
 go 1.18
 
 require (
+	autolytiq/shared/auth v0.0.0
 	autolytiq/shared/encryption v0.0.0
 	autolytiq/shared/logging v0.0.0
 	github.com/google/uuid v1.6.0
@@ -45,3 +46,5 @@ replace autolytiq/shared/logging => ../shared/logging
 replace autolytiq/shared/encryption => ../shared/encryption
 
 replace autolytiq/shared/secrets => ../shared/secrets
+
+replace autolytiq/shared/auth => ../shared/auth

@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"autolytiq/shared/logging"
+
 	"github.com/google/uuid"
 )
 
@@ -84,13 +86,13 @@ func (db *MockDatabase) ListVehicles(dealershipID string, filters map[string]int
 		}
 
 		if priceMin, ok := filters["price_min"].(float64); ok && priceMin > 0 {
-			if vehicle.Price < priceMin {
+			if vehicle.AskingPrice < priceMin {
 				continue
 			}
 		}
 
 		if priceMax, ok := filters["price_max"].(float64); ok && priceMax > 0 {
-			if vehicle.Price > priceMax {
+			if vehicle.AskingPrice > priceMax {
 				continue
 			}
 		}
@@ -137,7 +139,7 @@ func (db *MockDatabase) GetInventoryStats(dealershipID string) (map[string]inter
 			totalCount++
 			statusCounts[vehicle.Status]++
 			conditionCounts[vehicle.Condition]++
-			totalPrice += vehicle.Price
+			totalPrice += vehicle.AskingPrice
 		}
 	}
 
@@ -159,7 +161,8 @@ func setupTestServer() *Server {
 		DatabaseURL: "mock",
 	}
 	db := NewMockDatabase()
-	return NewServer(config, db)
+	logger := logging.NewLogger("inventory-service-test", "info")
+	return NewServer(config, db, logger)
 }
 
 func TestHealthCheck(t *testing.T) {

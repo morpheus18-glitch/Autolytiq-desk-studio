@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
+	"autolytiq/shared/auth"
 	"autolytiq/shared/logging"
-	"autolytiq/shared/secrets"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -20,12 +22,18 @@ import (
 type Config struct {
 	Port          string
 	DatabaseURL   string
+	ServiceSecret string
 	SMTPHost      string
 	SMTPPort      int
 	SMTPUsername  string
 	SMTPPassword  string
 	SMTPFromEmail string
 	SMTPFromName  string
+	// Resend configuration (preferred over SMTP when set)
+	ResendAPIKey       string
+	ResendFromEmail    string
+	ResendFromName     string
+	ResendWebhookSecret string
 }
 
 // Server holds application dependencies
@@ -83,20 +91,32 @@ func NewServer(config Config, logger *logging.Logger) (*Server, error) {
 		return nil, fmt.Errorf("failed to initialize schema: %w", err)
 	}
 
-	// Initialize SMTP client
-	smtpConfig := SMTPConfig{
-		Host:      config.SMTPHost,
-		Port:      config.SMTPPort,
-		Username:  config.SMTPUsername,
-		Password:  config.SMTPPassword,
-		FromEmail: config.SMTPFromEmail,
-		FromName:  config.SMTPFromName,
+	// Initialize email client (prefer Resend over SMTP if configured)
+	var emailClient SMTPClient
+	if IsResendConfigured(config.ResendAPIKey) {
+		resendConfig := ResendConfig{
+			APIKey:    config.ResendAPIKey,
+			FromEmail: config.ResendFromEmail,
+			FromName:  config.ResendFromName,
+		}
+		emailClient = NewResendClient(resendConfig)
+		logger.Info("Using Resend API for email delivery")
+	} else {
+		smtpConfig := SMTPConfig{
+			Host:      config.SMTPHost,
+			Port:      config.SMTPPort,
+			Username:  config.SMTPUsername,
+			Password:  config.SMTPPassword,
+			FromEmail: config.SMTPFromEmail,
+			FromName:  config.SMTPFromName,
+		}
+		emailClient = NewGoMailSMTPClient(smtpConfig)
+		logger.Info("Using SMTP for email delivery")
 	}
-	smtpClient := NewGoMailSMTPClient(smtpConfig)
 
 	s := &Server{
 		db:         db,
-		smtpClient: smtpClient,
+		smtpClient: emailClient,
 		config:     config,
 		logger:     logger,
 		router:     mux.NewRouter(),
@@ -112,6 +132,11 @@ func NewServer(config Config, logger *logging.Logger) (*Server, error) {
 func (s *Server) setupMiddleware() {
 	s.router.Use(logging.RequestIDMiddleware)
 	s.router.Use(logging.RequestLoggingMiddleware(s.logger))
+	// Add service authentication middleware for inter-service security
+	// Note: Webhook endpoints are handled separately as they come from external services
+	authConfig := auth.NewServiceAuthConfig(s.config.ServiceSecret).
+		WithBypassPaths("/email/webhooks/resend") // Allow Resend webhooks without service auth
+	s.router.Use(auth.ServiceAuthMiddleware(authConfig))
 }
 
 // setupRoutes configures all routes
@@ -181,6 +206,13 @@ func (s *Server) setupRoutes() {
 	s.router.HandleFunc("/email/attachments/{id}", s.DeleteAttachmentHandler).Methods("DELETE")
 	s.router.HandleFunc("/email/inbox/{email_id}/attachments", s.ListEmailAttachmentsHandler).Methods("GET")
 	s.router.HandleFunc("/email/drafts/{draft_id}/attachments", s.ListDraftAttachmentsHandler).Methods("GET")
+
+	// Preferences
+	s.router.HandleFunc("/email/preferences", s.GetPreferencesHandler).Methods("GET")
+	s.router.HandleFunc("/email/preferences", s.SavePreferencesHandler).Methods("POST")
+
+	// Webhooks (for email delivery tracking)
+	s.router.HandleFunc("/email/webhooks/resend", s.ResendWebhookHandler).Methods("POST")
 }
 
 // HealthCheckHandler handles health check requests
@@ -606,69 +638,30 @@ func (s *Server) ListLogsHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(logs)
 }
 
-// LoadConfig loads configuration from secrets provider and environment variables
+// LoadConfig loads configuration from environment variables
 func LoadConfig(ctx context.Context, logger *logging.Logger) Config {
-	// Initialize secrets provider (AWS Secrets Manager in production, env vars in development)
-	secretsProvider, err := secrets.AutoProvider(ctx)
-	if err != nil {
-		logger.Warn("Failed to initialize secrets provider, falling back to environment variables: " + err.Error())
-	}
-	defer func() {
-		if secretsProvider != nil {
-			secretsProvider.Close()
-		}
-	}()
-
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8004"
 	}
 
-	var databaseURL string
-	var smtpConfig *secrets.SMTPConfig
-
-	if secretsProvider != nil {
-		// Try to get secrets from provider
-		if url, err := secretsProvider.GetDatabaseURL(ctx); err == nil {
-			databaseURL = url
-		}
-		if cfg, err := secretsProvider.GetSMTPConfig(ctx); err == nil {
-			smtpConfig = cfg
-		}
-	}
-
-	// Fallback to environment variables for database URL
+	// Get database URL from environment
+	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
-		databaseURL = os.Getenv("DATABASE_URL")
-		if databaseURL == "" {
-			databaseURL = "postgres://postgres:postgres@localhost:5432/autolytiq_email?sslmode=disable"
-		}
+		databaseURL = "postgres://postgres:postgres@localhost:5432/autolytiq_email?sslmode=disable"
 	}
 
-	// Fallback to environment variables for SMTP config
-	smtpHost := ""
+	// Get SMTP config from environment variables
+	smtpHost := os.Getenv("SMTP_HOST")
+	if smtpHost == "" {
+		smtpHost = "smtp.gmail.com"
+	}
+
 	smtpPort := 587
 	smtpUsername := ""
 	smtpPassword := ""
 	smtpFromEmail := ""
 	smtpFromName := "Autolytiq"
-
-	if smtpConfig != nil {
-		smtpHost = smtpConfig.Host
-		smtpPort = smtpConfig.Port
-		smtpUsername = smtpConfig.Username
-		smtpPassword = smtpConfig.Password
-		smtpFromEmail = smtpConfig.FromEmail
-		smtpFromName = smtpConfig.FromName
-	}
-
-	// Override with environment variables if set
-	if envHost := os.Getenv("SMTP_HOST"); envHost != "" {
-		smtpHost = envHost
-	}
-	if smtpHost == "" {
-		smtpHost = "smtp.gmail.com"
-	}
 
 	if smtpPortStr := os.Getenv("SMTP_PORT"); smtpPortStr != "" {
 		if val, err := strconv.Atoi(smtpPortStr); err == nil {
@@ -689,15 +682,35 @@ func LoadConfig(ctx context.Context, logger *logging.Logger) Config {
 		smtpFromName = envName
 	}
 
+	// Resend configuration (preferred over SMTP if set)
+	resendAPIKey := os.Getenv("RESEND_API_KEY")
+	resendFromEmail := os.Getenv("RESEND_FROM_EMAIL")
+	if resendFromEmail == "" {
+		resendFromEmail = smtpFromEmail // Fallback to SMTP from email
+	}
+	resendFromName := os.Getenv("RESEND_FROM_NAME")
+	if resendFromName == "" {
+		resendFromName = smtpFromName // Fallback to SMTP from name
+	}
+	resendWebhookSecret := os.Getenv("RESEND_WEBHOOK_SECRET")
+
+	// Service secret for inter-service authentication
+	serviceSecret := os.Getenv("SERVICE_SECRET")
+
 	return Config{
-		Port:          port,
-		DatabaseURL:   databaseURL,
-		SMTPHost:      smtpHost,
-		SMTPPort:      smtpPort,
-		SMTPUsername:  smtpUsername,
-		SMTPPassword:  smtpPassword,
-		SMTPFromEmail: smtpFromEmail,
-		SMTPFromName:  smtpFromName,
+		Port:            port,
+		DatabaseURL:     databaseURL,
+		ServiceSecret:   serviceSecret,
+		SMTPHost:        smtpHost,
+		SMTPPort:        smtpPort,
+		SMTPUsername:    smtpUsername,
+		SMTPPassword:    smtpPassword,
+		SMTPFromEmail:   smtpFromEmail,
+		SMTPFromName:    smtpFromName,
+		ResendAPIKey:        resendAPIKey,
+		ResendFromEmail:     resendFromEmail,
+		ResendFromName:      resendFromName,
+		ResendWebhookSecret: resendWebhookSecret,
 	}
 }
 
@@ -716,8 +729,34 @@ func main() {
 	}
 	defer server.db.Close()
 
-	logger.Infof("Email Service starting on port %s", config.Port)
-	if err := http.ListenAndServe(":"+config.Port, server.router); err != nil {
-		logger.Fatal(err.Error())
+	srv := &http.Server{
+		Addr:    ":" + config.Port,
+		Handler: server.router,
 	}
+
+	// Channel to listen for shutdown signals
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
+	// Start server in goroutine
+	go func() {
+		logger.Infof("Email Service starting on port %s", config.Port)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Fatalf("Server failed: %v", err)
+		}
+	}()
+
+	// Wait for shutdown signal
+	<-stop
+	logger.Info("Shutting down gracefully...")
+
+	// Create context with timeout for shutdown
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		logger.Errorf("Graceful shutdown failed: %v", err)
+	}
+
+	logger.Info("Server stopped")
 }
